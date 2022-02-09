@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">OffloadingSystem</string>
+    <string name="ip">IP</string>
+    <string name="port">Port</string>
+    <string name="default_ip">147.46.219.55</string>
+    <string name="default_port">1883</string>
+    <string name="default_result">result_placeholder</string>
+    <string name="connect">Connect</string>
+</resources>
