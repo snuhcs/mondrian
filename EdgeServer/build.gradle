@@ -6,7 +6,7 @@ android {
     compileSdk 32
 
     defaultConfig {
-        applicationId "hcs.offloading.system"
+        applicationId "hcs.offloading.edgeserver"
         minSdk 21
         targetSdk 32
         versionCode 1
