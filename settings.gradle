@@ -17,3 +17,4 @@ rootProject.name = "OffloadingSystem"
 include ':EdgeServer'
 include ':Network'
 include ':SensorApplication'
+include ':Scheduler'
