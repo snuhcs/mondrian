@@ -2,6 +2,7 @@ package hcs.offloading.edgeserver;
 
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
+import android.support.annotation.NonNull;
 
 import org.webrtc.VideoFrame;
 
@@ -181,7 +182,7 @@ public class YuvFrame {
         }
     }
 
-    private byte[] getByteArrayFromByteBuffer(ByteBuffer byteBuffer) {
+    private byte[] getByteArrayFromByteBuffer(@NonNull ByteBuffer byteBuffer) {
         byte[] bytesArray = new byte[byteBuffer.remaining()];
         byteBuffer.get(bytesArray, 0, bytesArray.length);
         return bytesArray;

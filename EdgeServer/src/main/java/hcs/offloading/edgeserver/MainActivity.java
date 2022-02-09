@@ -4,19 +4,11 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Switch;
-
-import androidx.appcompat.app.AppCompatActivity;
-
-import hcs.offloading.network.Header;
-import hcs.offloading.network.Message;
-import hcs.offloading.network.NetworkManager;
-import hcs.offloading.network.Packet;
-import hcs.offloading.network.PacketHandler;
-import hcs.offloading.network.Topic;
 
 import org.json.JSONObject;
 import org.tensorflow.lite.support.image.TensorImage;
@@ -45,6 +37,12 @@ import hcs.offloading.edgeserver.models.BoundingBox;
 import hcs.offloading.edgeserver.models.DetectionModel;
 import hcs.offloading.edgeserver.models.MobileNetSSD;
 import hcs.offloading.edgeserver.models.Yolov4;
+import hcs.offloading.network.Header;
+import hcs.offloading.network.Message;
+import hcs.offloading.network.NetworkManager;
+import hcs.offloading.network.Packet;
+import hcs.offloading.network.PacketHandler;
+import hcs.offloading.network.Topic;
 
 public class MainActivity extends AppCompatActivity implements Runnable {
     private static final String TAG = MainActivity.class.getName();
