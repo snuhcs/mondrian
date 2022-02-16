@@ -6,18 +6,17 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <ImageView
-        android:id="@+id/image_view"
+    <org.webrtc.SurfaceViewRenderer
+        android:id="@+id/surfaceView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/white"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"/>
 
     <EditText
-        android:id="@+id/ip_input"
+        android:id="@+id/ipInput"
         android:hint="@string/ip"
         android:text="@string/default_ip"
         android:layout_width="150dp"
@@ -30,7 +29,7 @@
         app:layout_constraintVertical_bias="0.1" />
 
     <EditText
-        android:id="@+id/port_input"
+        android:id="@+id/portInput"
         android:hint="@string/port"
         android:text="@string/default_port"
         android:layout_width="wrap_content"
@@ -43,8 +42,7 @@
         app:layout_constraintVertical_bias="0.1" />
 
     <Switch
-        android:id="@+id/connect_button"
-        android:text="@string/connect"
+        android:id="@+id/connectButton"
         android:textSize="16dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -54,40 +52,5 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintHorizontal_bias="0.85"
         app:layout_constraintVertical_bias="0.11" />
-
-    <RadioGroup
-        android:id="@+id/task_group"
-        android:gravity="end"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:checkedButton="@id/no_inference"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintHorizontal_bias="0.9"
-        app:layout_constraintVertical_bias="0.2">
-
-        <RadioButton
-            android:id="@+id/no_inference"
-            android:text="@string/no_inference"
-            android:layoutDirection="rtl"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-        <RadioButton
-            android:id="@+id/object_detection"
-            android:text="@string/object_detection"
-            android:layoutDirection="rtl"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-        <RadioButton
-            android:id="@+id/face_detection"
-            android:text="@string/face_detection"
-            android:layoutDirection="rtl"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-    </RadioGroup>
 
 </android.support.constraint.ConstraintLayout>
