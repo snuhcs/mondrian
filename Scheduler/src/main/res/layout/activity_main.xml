@@ -7,7 +7,7 @@
     tools:context=".MainActivity">
 
     <EditText
-        android:id="@+id/ip_input"
+        android:id="@+id/ipInput"
         android:layout_width="150dp"
         android:layout_height="wrap_content"
         android:hint="@string/ip"
@@ -20,7 +20,7 @@
         app:layout_constraintVertical_bias="0.1" />
 
     <EditText
-        android:id="@+id/port_input"
+        android:id="@+id/portInput"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:hint="@string/port"
@@ -33,9 +33,8 @@
         app:layout_constraintVertical_bias="0.1" />
 
     <Switch
-        android:id="@+id/connect_button"
-        android:text="@string/connect"
-        android:textSize="16dp"
+        android:id="@+id/connectButton"
+        android:textSize="16sp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintTop_toTopOf="parent"
@@ -46,7 +45,7 @@
         app:layout_constraintVertical_bias="0.11" />
 
     <RadioGroup
-        android:id="@+id/sensor_ip_list"
+        android:id="@+id/sensorIpList"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintTop_toTopOf="parent"
@@ -58,7 +57,7 @@
     </RadioGroup>
 
     <RadioGroup
-        android:id="@+id/edge_ip_list"
+        android:id="@+id/edgeIpList"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintTop_toTopOf="parent"

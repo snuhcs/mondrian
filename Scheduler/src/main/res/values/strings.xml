@@ -4,5 +4,4 @@
     <string name="port">Port</string>
     <string name="default_ip">147.46.219.55</string>
     <string name="default_port">1883</string>
-    <string name="connect">Connect</string>
 </resources>

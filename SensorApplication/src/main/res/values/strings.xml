@@ -4,7 +4,6 @@
     <string name="port">Port</string>
     <string name="default_ip">147.46.219.55</string>
     <string name="default_port">1883</string>
-    <string name="connect">Connect</string>
     <string name="disconnect">Disconnect</string>
     <string name="no_inference">No inference</string>
     <string name="object_detection">Object Detection</string>
