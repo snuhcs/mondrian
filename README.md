@@ -1,28 +1,53 @@
-# Offloading System
+<div id="top"></div>
 
-## Requirements
-* Download `yolov4-640.tflite` to `EdgeServer/src/main/assets/` directory.
+# Multi-Camera Spatio-temporal RoI Mixing
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li><a href="#about-the-project">About The Project</a></li>
+    <li><a href="#getting-started">Getting Started</a></li>
+    <li><a href="#contact">Contact</a></li>
+    <li><a href="#citation">Citation</a></li>
+  </ol>
+</details>
 
-## Network Protocol
-* Topic.REGISTER
-  * Header : `null`
-    * Message : `EDGE` or `SENSOR`
-      * Src, Dst : Each device, `null`
 
-* Topic.SCHEDULE
-  * Header : `null`
-    * Message : Target Sensor IP
-      * Src, Dst : `null`, `null`
+## About The Project
+This project enables effective multi-stream video analytics via spatio-temporal packing.
 
-* Topic.WEBRTC
-  * Header : `ICE`
-    * Message : ICE message
-      * Src, Dst : Sensor <=> Edge
-  * Header : `SDP`
-    * Message : SDP message
-      * Src, Dst : Sensor <=> Edge
+### Built With
+* [TensorFlow Lite](https://www.tensorflow.org/lite/)
+* [MNN](https://github.com/alibaba/MNN/)
+* [WebRTC](https://webrtc.org/)
+* [MQTT](https://mqtt.org/)
+* [Android Studio](https://developer.android.com/studio/)
 
-* Topic.TASK
-  * Header : `null`
-    * Message : `NO_INFERENCE` or `OBJECT_DETECTION` or `FACE_DETECTION`
-      * Src, Dst : Sensor, `null`
+
+## Getting Started
+
+### Prerequisites
+1. Download MNN and TensorFlow Lite models from google drive.
+2. Put downloaded models in `EdgeServer/src/main/assets` directory.
+
+### Installation
+1. Download the Android Studio.
+2. Open this project with the Android Studio.
+3. Select each application to install. (`edgeserver`, `sensorapplication`, `scheduler`)
+4. Build the target application.
+
+### How to Run
+Run the application with the Android Studio.
+
+
+## Contact
+Doil Yoon - doil.yoon@hcs.snu.ac.kr
+Changmin Jeon - wisechang1@snu.ac.kr
+
+Project Link: [https://github.com/snuhcs/offloading-system](https://github.com/snuhcs/offloading-system)
+
+
+## Citation
+If you find our work useful, please cite our paper below!
+```
+Will be added
+```
