@@ -78,7 +78,7 @@ public class EdgeServer implements WebRTCCallback {
         mNumProcessedFrames = 0;
         mApplicationStartTime = System.nanoTime();
         synchronized (this) {
-            mPatchReconstructor = new PatchReconstructor(this);
+            mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, this);
             mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig,
                     mContext.getAssets(), this, mPatchReconstructor, mInferenceOutputView);
             mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, mInferenceEngine);

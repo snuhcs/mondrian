@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import hcs.offloading.edgeserver.config.PatchReconstructorConfig;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.edgeserver.datatypes.RoI;
@@ -19,8 +20,8 @@ import hcs.offloading.edgeserver.datatypes.RoI;
 public class PatchReconstructor implements Runnable {
     private static final String TAG = PatchReconstructor.class.getName();
 
-    private final static int MATCH_PADDING = 40;
-    private final static float USE_IOU_THRESHOLD = 0.1f;
+    private final int MATCH_PADDING;
+    private final float USE_IOU_THRESHOLD;
 
     private final EdgeServer mEdgeServer;
 
@@ -28,7 +29,10 @@ public class PatchReconstructor implements Runnable {
 
     private final Thread mPatchReconstructorThread;
 
-    PatchReconstructor(EdgeServer edgeServer) {
+    PatchReconstructor(PatchReconstructorConfig config, EdgeServer edgeServer) {
+        MATCH_PADDING = config.MATCH_PADDING;
+        USE_IOU_THRESHOLD = config.USE_IOU_THRESHOLD;
+
         mEdgeServer = edgeServer;
 
         mPatchReconstructorThread = new Thread(this);
