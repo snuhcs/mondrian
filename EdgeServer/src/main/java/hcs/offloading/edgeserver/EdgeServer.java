@@ -33,7 +33,7 @@ import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
-public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker.Callback {
+public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker.Callback, PatchReconstructor.Callback {
     private static final String TAG = EdgeServer.class.getName();
 
     private Config mConfig;
@@ -140,20 +140,6 @@ public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker
         }
     };
 
-    public void updateResult(Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults) {
-        int numProcessedFrames = 0;
-        Set<String> IPs = multiStreamResults.keySet();
-        for (String ip : IPs) {
-            Map<Integer, List<BoundingBox>> results = multiStreamResults.get(ip);
-            Dispatcher dispatcher = mDispatchers.get(ip);
-            if (dispatcher != null) {
-                dispatcher.updateResult(results);
-            }
-            numProcessedFrames += results.size();
-        }
-        updateFPS(numProcessedFrames);
-    }
-
     @SuppressLint("DefaultLocale")
     private void updateFPS(int numProcessedFrames) {
         mNumProcessedFrames += numProcessedFrames;
@@ -199,5 +185,20 @@ public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker
     @Override
     public void updateInferenceOutputView(Bitmap result) {
         mInferenceOutputView.post(() -> mInferenceOutputView.setImageBitmap(result));
+    }
+
+    @Override
+    public void updateResult(Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults) {
+        int numProcessedFrames = 0;
+        Set<String> IPs = multiStreamResults.keySet();
+        for (String ip : IPs) {
+            Map<Integer, List<BoundingBox>> results = multiStreamResults.get(ip);
+            Dispatcher dispatcher = mDispatchers.get(ip);
+            if (dispatcher != null) {
+                dispatcher.updateResult(results);
+            }
+            numProcessedFrames += results.size();
+        }
+        updateFPS(numProcessedFrames);
     }
 }
