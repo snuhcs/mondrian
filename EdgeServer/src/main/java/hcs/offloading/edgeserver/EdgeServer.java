@@ -7,6 +7,8 @@ import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import org.json.JSONException;
+import org.json.simple.parser.ParseException;
 import org.webrtc.EglBase;
 import org.webrtc.MediaStream;
 import org.webrtc.SurfaceViewRenderer;
@@ -16,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import hcs.offloading.edgeserver.config.Config;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.network.mqtt.DeviceMqttManager;
@@ -28,6 +31,8 @@ import hcs.offloading.network.webrtc.WebRTCManager;
 @RequiresApi(api = Build.VERSION_CODES.P)
 public class EdgeServer implements WebRTCCallback {
     private static final String TAG = EdgeServer.class.getName();
+
+    private Config mConfig;
 
     private SurfaceViewRenderer mInputView;
     private ImageView[] mOutputViews;
@@ -44,8 +49,9 @@ public class EdgeServer implements WebRTCCallback {
     private RoIExtractor mRoIExtractor;
     private InferenceEngine mInferenceEngine;
 
-    EdgeServer(Context context, EglBase eglBase, String uri, SurfaceViewRenderer inputView, ImageView[] outputViews, ImageView inferenceOutputView, TextView fpsView) {
+    EdgeServer(Config config, Context context, EglBase eglBase, String uri, SurfaceViewRenderer inputView, ImageView[] outputViews, ImageView inferenceOutputView, TextView fpsView) throws JSONException, ParseException {
         mContext = context;
+        mConfig = config;
 
         mInputView = inputView;
         mOutputViews = outputViews;
@@ -65,8 +71,8 @@ public class EdgeServer implements WebRTCCallback {
 
     private void startEdgeServer() {
         synchronized (this) {
-            mInferenceEngine = new InferenceEngine(mContext.getAssets(), this, mInferenceOutputView, mFpsView);
-            mRoIExtractor = new RoIExtractor(mInferenceEngine);
+            mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, mContext.getAssets(), this, mInferenceOutputView, mFpsView);
+            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, mInferenceEngine);
         }
     }
 
@@ -111,7 +117,7 @@ public class EdgeServer implements WebRTCCallback {
                     return;
                 }
                 mDispatchers.put(packet.srcIp, new Dispatcher(
-                        packet.srcIp, mWebRTCManager, mRoIExtractor, mInferenceEngine, mInputView, mOutputViews[streamID]));
+                        mConfig.dispatcherConfig, packet.srcIp, mWebRTCManager, mRoIExtractor, mInferenceEngine, mInputView, mOutputViews[streamID]));
                 mDispatchers.get(packet.srcIp).handleSdpAndAnswer(packet.message);
             } else if (packet.header.equals(WebRTCHeader.ICE.name())) {
                 mDispatchers.get(packet.srcIp).handleIceMessage(packet.message);

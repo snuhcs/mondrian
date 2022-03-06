@@ -20,7 +20,6 @@ import hcs.offloading.edgeserver.datatypes.RoI;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
 public class PatchMixer {
-    private final static int TARGET_SIZE = InferenceEngine.MIXED_FRAME_SIZE;
     private final static int MATCH_PADDING = 40;
     private final static float USE_IOU_THRESHOLD = 0.1f;
 
@@ -70,13 +69,13 @@ public class PatchMixer {
         return batchResults;
     }
 
-    public static Bitmap packRoIs(List<RoI> rois) {
-        Bitmap bitmap = Bitmap.createBitmap(TARGET_SIZE, TARGET_SIZE, Bitmap.Config.ARGB_8888);
+    public static Bitmap packRoIs(List<RoI> rois, int targetSize) {
+        Bitmap bitmap = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888);
         bitmap.eraseColor(Color.BLACK);
         Canvas canvas = new Canvas(bitmap);
 
         List<Rect> freeRectList = new ArrayList<>();
-        freeRectList.add(new Rect(0, 0, TARGET_SIZE, TARGET_SIZE));
+        freeRectList.add(new Rect(0, 0, targetSize, targetSize));
 
         for (RoI roi : rois) {
             int[] WH = roi.resizedWH();

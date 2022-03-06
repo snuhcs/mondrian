@@ -17,13 +17,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import hcs.offloading.edgeserver.config.InferenceEngineConfig;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 
 public class InferenceEngine {
     private final static String TAG = InferenceEngine.class.getName();
 
-    public static final int MIXED_FRAME_SIZE = 640;
-    public static final int NUM_WORKERS = 1;
+    public final int MIXED_FRAME_SIZE;
+    public final int NUM_WORKERS;
 
     private final List<Worker> mWorkers = new ArrayList<>();
     private final LinkedBlockingQueue<InferenceRequest> mInferenceRequests = new LinkedBlockingQueue<>();
@@ -35,7 +36,10 @@ public class InferenceEngine {
     private long mApplicationStartTime = 0;
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    InferenceEngine(AssetManager assetManager, EdgeServer edgeServer, ImageView outputView, TextView fpsView) {
+    InferenceEngine(InferenceEngineConfig config, AssetManager assetManager, EdgeServer edgeServer, ImageView outputView, TextView fpsView) {
+        MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
+        NUM_WORKERS = config.NUM_WORKERS;
+
         mOutputView = outputView;
         mFpsView = fpsView;
 
