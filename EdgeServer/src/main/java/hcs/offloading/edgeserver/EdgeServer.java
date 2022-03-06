@@ -1,5 +1,6 @@
 package hcs.offloading.edgeserver;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
@@ -48,6 +49,10 @@ public class EdgeServer implements WebRTCCallback {
     private final Map<String, Dispatcher> mDispatchers = new ConcurrentHashMap<>();
     private RoIExtractor mRoIExtractor;
     private InferenceEngine mInferenceEngine;
+    private PatchReconstructor mPatchReconstructor;
+
+    private int mNumProcessedFrames;
+    private long mApplicationStartTime;
 
     EdgeServer(Config config, Context context, EglBase eglBase, String uri, SurfaceViewRenderer inputView, ImageView[] outputViews, ImageView inferenceOutputView, TextView fpsView) throws JSONException, ParseException {
         mContext = context;
@@ -70,8 +75,12 @@ public class EdgeServer implements WebRTCCallback {
     }
 
     private void startEdgeServer() {
+        mNumProcessedFrames = 0;
+        mApplicationStartTime = System.nanoTime();
         synchronized (this) {
-            mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, mContext.getAssets(), this, mInferenceOutputView, mFpsView);
+            mPatchReconstructor = new PatchReconstructor(this);
+            mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig,
+                    mContext.getAssets(), this, mPatchReconstructor, mInferenceOutputView);
             mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, mInferenceEngine);
         }
     }
@@ -92,6 +101,10 @@ public class EdgeServer implements WebRTCCallback {
             if (mInferenceEngine != null) {
                 mInferenceEngine.close();
                 mInferenceEngine = null;
+            }
+            if (mPatchReconstructor != null) {
+                mPatchReconstructor.close();
+                mPatchReconstructor = null;
             }
         }
     }
@@ -130,9 +143,10 @@ public class EdgeServer implements WebRTCCallback {
         if (dispatcher != null) {
             dispatcher.updateResult(frame.frameIndex, boxes);
         }
+        updateFPS(1);
     }
 
-    public int updateResult(Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults) {
+    public void updateResult(Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults) {
         int numProcessedFrames = 0;
         Set<String> IPs = multiStreamResults.keySet();
         for (String ip : IPs) {
@@ -143,7 +157,14 @@ public class EdgeServer implements WebRTCCallback {
             }
             numProcessedFrames += results.size();
         }
-        return numProcessedFrames;
+        updateFPS(numProcessedFrames);
+    }
+
+    @SuppressLint("DefaultLocale")
+    private void updateFPS(int numProcessedFrames) {
+        mNumProcessedFrames += numProcessedFrames;
+        float fps = mNumProcessedFrames / ((System.nanoTime() - mApplicationStartTime) / 1000000000f);
+        mFpsView.post(() -> mFpsView.setText(String.format("%.3f", fps)));
     }
 
     @Override

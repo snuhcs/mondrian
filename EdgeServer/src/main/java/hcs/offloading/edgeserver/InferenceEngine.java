@@ -1,13 +1,11 @@
 package hcs.offloading.edgeserver;
 
-import android.annotation.SuppressLint;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 import org.tensorflow.lite.support.common.ops.NormalizeOp;
 import org.tensorflow.lite.support.image.ImageProcessor;
@@ -30,21 +28,13 @@ public class InferenceEngine {
     private final LinkedBlockingQueue<InferenceRequest> mInferenceRequests = new LinkedBlockingQueue<>();
 
     private final ImageView mOutputView;
-    private final TextView mFpsView;
-
-    private int mNumProcessedFrames = 0;
-    private long mApplicationStartTime = 0;
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    InferenceEngine(InferenceEngineConfig config, AssetManager assetManager, EdgeServer edgeServer, ImageView outputView, TextView fpsView) {
+    InferenceEngine(InferenceEngineConfig config, AssetManager assetManager, EdgeServer edgeServer, PatchReconstructor patchReconstructor, ImageView outputView) {
         MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
         NUM_WORKERS = config.NUM_WORKERS;
 
         mOutputView = outputView;
-        mFpsView = fpsView;
-
-        mNumProcessedFrames = 0;
-        mApplicationStartTime = System.nanoTime();
 
         for (int workerId = 0; workerId < NUM_WORKERS; workerId++) {
             mWorkers.add(new Worker(
@@ -54,6 +44,7 @@ public class InferenceEngine {
                             .add(new NormalizeOp(0.0f, 255.0f))
                             .build(),
                     edgeServer,
+                    patchReconstructor,
                     this));
         }
     }
@@ -81,13 +72,5 @@ public class InferenceEngine {
 
     public void updateOutputView(Bitmap result) {
         mOutputView.post(() -> mOutputView.setImageBitmap(result));
-    }
-
-    @SuppressLint({"DefaultLocale", "SetTextI18n"})
-    public void updateFPS(int numProcessedFrames) {
-        mNumProcessedFrames += numProcessedFrames;
-        float fps = mNumProcessedFrames / ((System.nanoTime() - mApplicationStartTime) / 1000000000f);
-        mFpsView.post(() -> mFpsView.setText(String.format("%.3f", fps)));
-//        mFpsView.post(() -> mFpsView.setText(Integer.toString(mInferenceRequests.size())));
     }
 }
