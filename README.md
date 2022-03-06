@@ -36,7 +36,9 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 4. Build the target application.
 
 ### How to Run
-Run the application with the Android Studio.
+1. Install applications to different mobile devices with the Android Studio.
+2. Upload `edgeserver.json` into `/data/local/tmp`. (`adb push edgeserver.json /data/local/tmp`)
+3. Run applications with the Android Studio.
 
 
 ## Contact
