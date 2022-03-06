@@ -67,7 +67,7 @@ public class PatchReconstructor implements Runnable {
         }
     }
 
-    public void putInferenceResult(Pair<InferenceRequest, List<BoundingBox>> resultToReconstruct) {
+    public void enqueueInferenceResult(Pair<InferenceRequest, List<BoundingBox>> resultToReconstruct) {
         try {
             mResultsToReconstruct.put(resultToReconstruct);
         } catch (InterruptedException e) {

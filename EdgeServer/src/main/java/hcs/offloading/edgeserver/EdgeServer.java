@@ -2,9 +2,11 @@ package hcs.offloading.edgeserver;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
+import android.util.Pair;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -31,7 +33,7 @@ import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
-public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback {
+public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker.Callback {
     private static final String TAG = EdgeServer.class.getName();
 
     private Config mConfig;
@@ -80,8 +82,7 @@ public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback {
         mApplicationStartTime = System.nanoTime();
         synchronized (this) {
             mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, this);
-            mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig,
-                    mContext.getAssets(), this, mPatchReconstructor, mInferenceOutputView);
+            mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, this, mContext.getAssets());
             mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, this);
         }
     }
@@ -139,14 +140,6 @@ public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback {
         }
     };
 
-    public void updateResult(Frame frame, List<BoundingBox> boxes) {
-        Dispatcher dispatcher = mDispatchers.get(frame.sourceIP);
-        if (dispatcher != null) {
-            dispatcher.updateResult(frame.frameIndex, boxes);
-        }
-        updateFPS(1);
-    }
-
     public void updateResult(Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults) {
         int numProcessedFrames = 0;
         Set<String> IPs = multiStreamResults.keySet();
@@ -187,5 +180,24 @@ public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback {
     @Override
     public void enqueueInferenceRequest(InferenceRequest inferenceRequest) {
         mInferenceEngine.enqueueRequest(inferenceRequest);
+    }
+
+    @Override
+    public void enqueueInferenceResult(Pair<InferenceRequest, List<BoundingBox>> inferenceResult) {
+        mPatchReconstructor.enqueueInferenceResult(inferenceResult);
+    }
+
+    @Override
+    public void updateResult(Frame frame, List<BoundingBox> boxes) {
+        Dispatcher dispatcher = mDispatchers.get(frame.sourceIP);
+        if (dispatcher != null) {
+            dispatcher.updateResult(frame.frameIndex, boxes);
+        }
+        updateFPS(1);
+    }
+
+    @Override
+    public void updateInferenceOutputView(Bitmap result) {
+        mInferenceOutputView.post(() -> mInferenceOutputView.setImageBitmap(result));
     }
 }

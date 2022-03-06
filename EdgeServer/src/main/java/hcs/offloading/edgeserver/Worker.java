@@ -20,20 +20,25 @@ import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 public class Worker implements Runnable {
     private static final String TAG = Worker.class.getName();
 
+    public interface Callback {
+        void enqueueInferenceResult(Pair<InferenceRequest, List<BoundingBox>> inferenceResult);
+        void updateResult(Frame frame, List<BoundingBox> boxes);
+        void updateInferenceOutputView(Bitmap result);
+    }
+
     private final YoloV4Classifier model;
     private final ImageProcessor preprocessor;
-    private final EdgeServer edgeServer;
-    private final PatchReconstructor patchReconstructor;
     private final InferenceEngine engine;
 
     private final Thread mWorkerThread;
+    private final Callback mCallback;
 
-    public Worker(YoloV4Classifier model, ImageProcessor preprocessor, EdgeServer edgeServer, PatchReconstructor patchReconstructor, InferenceEngine engine) {
+    public Worker(Callback callback, InferenceEngine engine, YoloV4Classifier model, ImageProcessor preprocessor) {
+        mCallback = callback;
+
+        this.engine = engine;
         this.model = model;
         this.preprocessor = preprocessor;
-        this.edgeServer = edgeServer;
-        this.patchReconstructor = patchReconstructor;
-        this.engine = engine;
 
         mWorkerThread = new Thread(this);
         mWorkerThread.start();
@@ -75,14 +80,14 @@ public class Worker implements Runnable {
                 inferenceRequest.inferenceTime = inferenceTime;
 
                 List<BoundingBox> filteredResults = Utils.filterResults(results);
-                engine.updateOutputView(Utils.drawResult(inputImage, YoloV4Classifier.nms(filteredResults)));
+                mCallback.updateInferenceOutputView(Utils.drawResult(inputImage, YoloV4Classifier.nms(filteredResults)));
 
                 if (inferenceRequest.frame.isMixedFrame()) {
-                    patchReconstructor.putInferenceResult(new Pair<>(inferenceRequest, filteredResults));
+                    mCallback.enqueueInferenceResult(new Pair<>(inferenceRequest, filteredResults));
                 } else {
                     List<BoundingBox> nmsResult = YoloV4Classifier.nms(filteredResults);
                     Log.d(TAG, "Full Inference End: " + nmsResult.size());
-                    edgeServer.updateResult(inputFrame, nmsResult);
+                    mCallback.updateResult(inputFrame, nmsResult);
                 }
             }
         } catch (InterruptedException e) {

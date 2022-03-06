@@ -105,7 +105,7 @@ public class Dispatcher implements Runnable, VideoSink {
                 Pair<List<Integer>, Integer> frameIndicesAndLastIndex = mFrameIndicesAndLastIndexList.take();
                 int lastIndex = frameIndicesAndLastIndex.second;
                 List<BoundingBox> prevResults = getResult(lastIndex);
-                mRoIExtractor.putFrameBatch(mSourceIP, new FrameBatch(
+                mRoIExtractor.enqueueFrameBatch(mSourceIP, new FrameBatch(
                         frameIndicesAndLastIndex.first.stream().map(mFrames::get).collect(Collectors.toList()),
                         mFrames.get(lastIndex),
                         prevResults));

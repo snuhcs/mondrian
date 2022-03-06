@@ -81,7 +81,7 @@ public class RoIExtractor implements Runnable {
         Log.d(TAG, "closed");
     }
 
-    public void putFrameBatch(String ip, FrameBatch frameBatch) {
+    public void enqueueFrameBatch(String ip, FrameBatch frameBatch) {
         synchronized (this) {
             if (!mFrameBatches.containsKey(ip)) {
                 mFrameBatches.put(ip, new LinkedList<>());

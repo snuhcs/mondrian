@@ -1,11 +1,9 @@
 package hcs.offloading.edgeserver;
 
 import android.content.res.AssetManager;
-import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
-import android.widget.ImageView;
 
 import org.tensorflow.lite.support.common.ops.NormalizeOp;
 import org.tensorflow.lite.support.image.ImageProcessor;
@@ -27,25 +25,18 @@ public class InferenceEngine {
     private final List<Worker> mWorkers = new ArrayList<>();
     private final LinkedBlockingQueue<InferenceRequest> mInferenceRequests = new LinkedBlockingQueue<>();
 
-    private final ImageView mOutputView;
-
     @RequiresApi(api = Build.VERSION_CODES.N)
-    InferenceEngine(InferenceEngineConfig config, AssetManager assetManager, EdgeServer edgeServer, PatchReconstructor patchReconstructor, ImageView outputView) {
+    InferenceEngine(InferenceEngineConfig config, Worker.Callback callback, AssetManager assetManager) {
         MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
         NUM_WORKERS = config.NUM_WORKERS;
 
-        mOutputView = outputView;
-
         for (int workerId = 0; workerId < NUM_WORKERS; workerId++) {
-            mWorkers.add(new Worker(
+            mWorkers.add(new Worker(callback, this,
                     new YoloV4Classifier(assetManager, MIXED_FRAME_SIZE),
                     new ImageProcessor.Builder()
                             .add(new ResizeOp(MIXED_FRAME_SIZE, MIXED_FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
                             .add(new NormalizeOp(0.0f, 255.0f))
-                            .build(),
-                    edgeServer,
-                    patchReconstructor,
-                    this));
+                            .build()));
         }
     }
 
@@ -68,9 +59,5 @@ public class InferenceEngine {
 
     public int getRequestQueueSize() {
         return mInferenceRequests.size();
-    }
-
-    public void updateOutputView(Bitmap result) {
-        mOutputView.post(() -> mOutputView.setImageBitmap(result));
     }
 }
