@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import hcs.offloading.edgeserver.config.Config;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
+import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.network.mqtt.DeviceMqttManager;
 import hcs.offloading.network.mqtt.datatypes.Device;
 import hcs.offloading.network.mqtt.datatypes.PacketHandler;
@@ -30,7 +31,7 @@ import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
-public class EdgeServer implements WebRTCCallback {
+public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback {
     private static final String TAG = EdgeServer.class.getName();
 
     private Config mConfig;
@@ -81,7 +82,7 @@ public class EdgeServer implements WebRTCCallback {
             mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, this);
             mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig,
                     mContext.getAssets(), this, mPatchReconstructor, mInferenceOutputView);
-            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, mInferenceEngine);
+            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, this);
         }
     }
 
@@ -181,5 +182,10 @@ public class EdgeServer implements WebRTCCallback {
         if (dispatcher != null) {
             dispatcher.onAddStream(mediaStream);
         }
+    }
+
+    @Override
+    public void enqueueInferenceRequest(InferenceRequest inferenceRequest) {
+        mInferenceEngine.enqueueRequest(inferenceRequest);
     }
 }

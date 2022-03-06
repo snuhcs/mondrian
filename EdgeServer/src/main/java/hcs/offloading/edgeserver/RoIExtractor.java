@@ -39,6 +39,7 @@ import hcs.offloading.edgeserver.datatypes.RoI;
 public class RoIExtractor implements Runnable {
     private static final String TAG = RoIExtractor.class.getName();
 
+    private final int MIXED_FRAME_SIZE;
     private final int IDLE_WAIT_MS;
     private final int AREA_THRESHOLD;
     private final int ROI_PADDING;
@@ -48,18 +49,24 @@ public class RoIExtractor implements Runnable {
         else Log.d("OpenCV", "OpenCV loaded Successfully");
     }
 
-    private final InferenceEngine mInferenceEngine;
+    public interface Callback {
+        void enqueueInferenceRequest(InferenceRequest inferenceRequest);
+    }
+
     private final Map<String, Queue<FrameBatch>> mFrameBatches = new HashMap<>();
 
     private final Thread mRoIExtractorThread;
+    private final Callback mCallback;
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    RoIExtractor(RoIExtractorConfig config, InferenceEngine inferenceEngine) {
+    RoIExtractor(RoIExtractorConfig config, Callback callback) {
+        MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
         IDLE_WAIT_MS = config.IDLE_WAIT_MS;
         AREA_THRESHOLD = config.AREA_THRESHOLD;
         ROI_PADDING = config.ROI_PADDING;
 
-        mInferenceEngine = inferenceEngine;
+        mCallback = callback;
+
         mRoIExtractorThread = new Thread(this);
         mRoIExtractorThread.start();
     }
@@ -135,11 +142,11 @@ public class RoIExtractor implements Runnable {
                 startTime = System.nanoTime();
                 resizeRoIs(rois);
                 rois = rois.stream().sorted((lhs, rhs) -> Integer.compare(rhs.getFrameIndex(), lhs.getFrameIndex())).collect(Collectors.toList());
-                Bitmap mixedFrame = PatchMixer.packRoIs(rois, mInferenceEngine.MIXED_FRAME_SIZE);
+                Bitmap mixedFrame = PatchMixer.packRoIs(rois, MIXED_FRAME_SIZE);
                 endTime = System.nanoTime();
                 Log.v(TAG, "RoI packing time: " + (endTime - startTime) / 1000000.0f);
 
-                mInferenceEngine.enqueueRequest(new InferenceRequest(Frame.createMixedFrame(mixedFrame), rois, mixedFrameIndices));
+                mCallback.enqueueInferenceRequest(new InferenceRequest(Frame.createMixedFrame(mixedFrame), rois, mixedFrameIndices));
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
