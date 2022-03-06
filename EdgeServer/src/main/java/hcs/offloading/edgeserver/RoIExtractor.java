@@ -91,7 +91,7 @@ public class RoIExtractor implements Runnable {
         }
     }
 
-    public void removeSource(String ip) {
+    public void removeSourceIP(String ip) {
         synchronized (this) {
             mFrameBatches.remove(ip);
             notifyAll();

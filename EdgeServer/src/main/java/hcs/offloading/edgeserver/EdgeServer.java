@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import hcs.offloading.edgeserver.config.Config;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
+import hcs.offloading.edgeserver.datatypes.FrameBatch;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.network.mqtt.DeviceMqttManager;
 import hcs.offloading.network.mqtt.datatypes.Device;
@@ -33,7 +34,7 @@ import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
-public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker.Callback, PatchReconstructor.Callback {
+public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker.Callback, PatchReconstructor.Callback, Dispatcher.Callback {
     private static final String TAG = EdgeServer.class.getName();
 
     private Config mConfig;
@@ -131,8 +132,8 @@ public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker
                 if (streamID >= mOutputViews.length) {
                     return;
                 }
-                mDispatchers.put(packet.srcIp, new Dispatcher(
-                        mConfig.dispatcherConfig, packet.srcIp, mWebRTCManager, mRoIExtractor, mInferenceEngine, mInputView, mOutputViews[streamID]));
+                mDispatchers.put(packet.srcIp, new Dispatcher(mConfig.dispatcherConfig, this,
+                        packet.srcIp, mWebRTCManager, mInputView, mOutputViews[streamID]));
                 mDispatchers.get(packet.srcIp).handleSdpAndAnswer(packet.message);
             } else if (packet.header.equals(WebRTCHeader.ICE.name())) {
                 mDispatchers.get(packet.srcIp).handleIceMessage(packet.message);
@@ -200,5 +201,15 @@ public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker
             numProcessedFrames += results.size();
         }
         updateFPS(numProcessedFrames);
+    }
+
+    @Override
+    public void removeSourceIP(String ip) {
+        mRoIExtractor.removeSourceIP(ip);
+    }
+
+    @Override
+    public void enqueueFrameBatch(String ip, FrameBatch frameBatch) {
+        mRoIExtractor.enqueueFrameBatch(ip, frameBatch);
     }
 }
