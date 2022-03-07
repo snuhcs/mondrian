@@ -77,7 +77,6 @@ public class Config {
         }
     }
 
-
     private static int getInt(JSONObject jsonObject, String key) {
         return Integer.parseInt(String.valueOf(jsonObject.get(key)));
     }
