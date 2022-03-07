@@ -4,6 +4,7 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
+import android.util.Pair;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.support.image.ImageProcessor;
@@ -22,14 +23,16 @@ public class Worker implements Runnable {
     private final YoloV4Classifier model;
     private final ImageProcessor preprocessor;
     private final EdgeServer edgeServer;
+    private final PatchReconstructor patchReconstructor;
     private final InferenceEngine engine;
 
     private final Thread mWorkerThread;
 
-    public Worker(YoloV4Classifier model, ImageProcessor preprocessor, EdgeServer edgeServer, InferenceEngine engine) {
+    public Worker(YoloV4Classifier model, ImageProcessor preprocessor, EdgeServer edgeServer, PatchReconstructor patchReconstructor, InferenceEngine engine) {
         this.model = model;
         this.preprocessor = preprocessor;
         this.edgeServer = edgeServer;
+        this.patchReconstructor = patchReconstructor;
         this.engine = engine;
 
         mWorkerThread = new Thread(this);
@@ -74,19 +77,13 @@ public class Worker implements Runnable {
                 List<BoundingBox> filteredResults = Utils.filterResults(results);
                 engine.updateOutputView(Utils.drawResult(inputImage, YoloV4Classifier.nms(filteredResults)));
 
-                int numProcessedFrames = -1;
                 if (inferenceRequest.frame.isMixedFrame()) {
-                    startTime = System.nanoTime();
-                    numProcessedFrames = edgeServer.updateResult(PatchMixer.reconstructFrames(inferenceRequest, filteredResults));
-                    endTime = System.nanoTime();
-                    Log.v(TAG, "Reconstructing time: " + (endTime - startTime) / 1000000f);
+                    patchReconstructor.putInferenceResult(new Pair<>(inferenceRequest, filteredResults));
                 } else {
                     List<BoundingBox> nmsResult = YoloV4Classifier.nms(filteredResults);
                     Log.d(TAG, "Full Inference End: " + nmsResult.size());
                     edgeServer.updateResult(inputFrame, nmsResult);
-                    numProcessedFrames = 1;
                 }
-                engine.updateFPS(numProcessedFrames);
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");

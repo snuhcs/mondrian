@@ -9,66 +9,13 @@ import android.support.annotation.RequiresApi;
 import android.util.Pair;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 
-import hcs.offloading.edgeserver.datatypes.BoundingBox;
-import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.edgeserver.datatypes.RoI;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
 public class PatchMixer {
-    private final static int MATCH_PADDING = 40;
-    private final static float USE_IOU_THRESHOLD = 0.1f;
-
-    public static Map<String, Map<Integer, List<BoundingBox>>> reconstructFrames(InferenceRequest inferenceRequest, List<BoundingBox> boxes) {
-        Map<String, Map<Integer, List<BoundingBox>>> batchResults = new HashMap<>();
-        for (Map.Entry<String, List<Integer>> kv : inferenceRequest.mixedFrameIndices.entrySet()) {
-            batchResults.put(kv.getKey(), new HashMap<>());
-            for (int frameIndex : kv.getValue()) {
-                batchResults.get(kv.getKey()).put(frameIndex, new ArrayList<>());
-            }
-        }
-        List<RoI> rois = inferenceRequest.rois;
-        for (BoundingBox box : boxes) {
-            float maxIoU = -1f;
-            RoI maxRoI = null;
-            Rect maxBoxPos = null;
-            for (RoI roi : rois) {
-                if (!roi.isPacked()) {
-                    continue;
-                }
-                Rect paddedRoIPos = new Rect(
-                        roi.position.left - MATCH_PADDING,
-                        roi.position.top - MATCH_PADDING,
-                        roi.position.right + MATCH_PADDING,
-                        roi.position.bottom + MATCH_PADDING
-                );
-                Rect boxPos = box.location;
-                Rect movedAndResizedBoxPos = new Rect(
-                        (int) ((boxPos.left - roi.packedLocation[0]) / roi.scale) + roi.position.left,
-                        (int) ((boxPos.top - roi.packedLocation[1]) / roi.scale) + roi.position.top,
-                        (int) ((boxPos.right - roi.packedLocation[0]) / roi.scale) + roi.position.left,
-                        (int) ((boxPos.bottom - roi.packedLocation[1]) / roi.scale) + roi.position.top
-                );
-                float iou = Utils.box_iou(paddedRoIPos, movedAndResizedBoxPos);
-                if (maxRoI == null || maxIoU < iou) {
-                    maxIoU = iou;
-                    maxRoI = roi;
-                    maxBoxPos = movedAndResizedBoxPos;
-                }
-            }
-            if (maxRoI != null && maxIoU > USE_IOU_THRESHOLD) {
-                maxRoI.packedLocation = null;
-                box = box.move(maxBoxPos);
-                batchResults.get(maxRoI.getSourceIP()).get(maxRoI.getFrameIndex()).add(box);
-            }
-        }
-        return batchResults;
-    }
-
     public static Bitmap packRoIs(List<RoI> rois, int targetSize) {
         Bitmap bitmap = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888);
         bitmap.eraseColor(Color.BLACK);

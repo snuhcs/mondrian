@@ -17,6 +17,7 @@ public class Config {
     public final DispatcherConfig dispatcherConfig;
     public final RoIExtractorConfig roIExtractorConfig;
     public final InferenceEngineConfig inferenceEngineConfig;
+    public final PatchReconstructorConfig patchReconstructorConfig;
     public final UtilsConfig utilsConfig;
 
     public Config(String jsonPath) throws ParseException, JSONException, IOException {
@@ -52,6 +53,14 @@ public class Config {
         }
         if (jsonObject.containsKey("num_workers")) {
             inferenceEngineConfig.NUM_WORKERS = getInt(jsonObject, "num_workers");
+        }
+
+        patchReconstructorConfig = new PatchReconstructorConfig();
+        if (jsonObject.containsKey("match_padding")) {
+            patchReconstructorConfig.MATCH_PADDING = getInt(jsonObject, "match_padding");
+        }
+        if (jsonObject.containsKey("use_iou_threshold")) {
+            patchReconstructorConfig.USE_IOU_THRESHOLD = getFloat(jsonObject, "use_iou_threshold");
         }
 
         utilsConfig = new UtilsConfig();
