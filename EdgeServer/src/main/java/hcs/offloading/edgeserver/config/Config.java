@@ -20,7 +20,7 @@ public class Config {
     public final PatchReconstructorConfig patchReconstructorConfig;
     public final UtilsConfig utilsConfig;
 
-    public Config(String jsonPath) throws ParseException, JSONException, IOException {
+    public Config(String jsonPath) throws ParseException, JSONException, IOException, IllegalArgumentException {
         JSONParser jsonParser = new JSONParser();
         JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(new File(jsonPath)));
         Log.d(TAG, "Parsed Config: " + jsonObject.toJSONString());
@@ -37,6 +37,9 @@ public class Config {
         }
 
         roIExtractorConfig = new RoIExtractorConfig();
+        if (jsonObject.containsKey("mixed_frame_size")) {
+            roIExtractorConfig.MIXED_FRAME_SIZE = getInt(jsonObject, "mixed_frame_size");
+        }
         if (jsonObject.containsKey("idle_wait_ms")) {
             roIExtractorConfig.IDLE_WAIT_MS = getInt(jsonObject, "idle_wait_ms");
         }
@@ -48,9 +51,7 @@ public class Config {
         }
 
         inferenceEngineConfig = new InferenceEngineConfig();
-        if (jsonObject.containsKey("mixed_frame_size")) {
-            inferenceEngineConfig.MIXED_FRAME_SIZE = getInt(jsonObject, "mixed_frame_size");
-        }
+        inferenceEngineConfig.MIXED_FRAME_SIZE = roIExtractorConfig.MIXED_FRAME_SIZE;
         if (jsonObject.containsKey("num_workers")) {
             inferenceEngineConfig.NUM_WORKERS = getInt(jsonObject, "num_workers");
         }
@@ -66,6 +67,13 @@ public class Config {
         utilsConfig = new UtilsConfig();
         if (jsonObject.containsKey("minimum_confidence")) {
             utilsConfig.MINIMUM_CONFIDENCE = getFloat(jsonObject, "minimum_confidence");
+        }
+        validate();
+    }
+
+    private void validate() throws IllegalArgumentException {
+        if (roIExtractorConfig.MIXED_FRAME_SIZE != inferenceEngineConfig.MIXED_FRAME_SIZE) {
+            throw new IllegalArgumentException("roIExtractorConfig.MIXED_FRAME_SIZE and inferenceEngineConfig.MIXED_FRAME_SIZE must be same");
         }
     }
 

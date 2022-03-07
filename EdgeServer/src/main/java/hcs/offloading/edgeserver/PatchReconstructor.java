@@ -23,17 +23,21 @@ public class PatchReconstructor implements Runnable {
     private final int MATCH_PADDING;
     private final float USE_IOU_THRESHOLD;
 
-    private final EdgeServer mEdgeServer;
+    public interface Callback {
+        void updateResult(Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults);
+    }
+
+    private final Callback mCallback;
 
     private final LinkedBlockingQueue<Pair<InferenceRequest, List<BoundingBox>>> mResultsToReconstruct = new LinkedBlockingQueue<>();
 
     private final Thread mPatchReconstructorThread;
 
-    PatchReconstructor(PatchReconstructorConfig config, EdgeServer edgeServer) {
+    PatchReconstructor(PatchReconstructorConfig config, Callback callback) {
         MATCH_PADDING = config.MATCH_PADDING;
         USE_IOU_THRESHOLD = config.USE_IOU_THRESHOLD;
 
-        mEdgeServer = edgeServer;
+        mCallback = callback;
 
         mPatchReconstructorThread = new Thread(this);
         mPatchReconstructorThread.start();
@@ -60,14 +64,14 @@ public class PatchReconstructor implements Runnable {
                 Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults = reconstructFrames(resultToReconstruct);
                 endTime = System.nanoTime();
                 Log.v(TAG, "Reconstructing time: " + (endTime - startTime) / 1000000f);
-                mEdgeServer.updateResult(multiStreamResults);
+                mCallback.updateResult(multiStreamResults);
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
     }
 
-    public void putInferenceResult(Pair<InferenceRequest, List<BoundingBox>> resultToReconstruct) {
+    public void enqueueInferenceResult(Pair<InferenceRequest, List<BoundingBox>> resultToReconstruct) {
         try {
             mResultsToReconstruct.put(resultToReconstruct);
         } catch (InterruptedException e) {

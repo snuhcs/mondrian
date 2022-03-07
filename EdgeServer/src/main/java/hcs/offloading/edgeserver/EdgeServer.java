@@ -2,9 +2,11 @@ package hcs.offloading.edgeserver;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
+import android.util.Pair;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -22,6 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import hcs.offloading.edgeserver.config.Config;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
+import hcs.offloading.edgeserver.datatypes.FrameBatch;
+import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.network.mqtt.DeviceMqttManager;
 import hcs.offloading.network.mqtt.datatypes.Device;
 import hcs.offloading.network.mqtt.datatypes.PacketHandler;
@@ -30,7 +34,7 @@ import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
-public class EdgeServer implements WebRTCCallback {
+public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker.Callback, PatchReconstructor.Callback, Dispatcher.Callback {
     private static final String TAG = EdgeServer.class.getName();
 
     private Config mConfig;
@@ -79,9 +83,8 @@ public class EdgeServer implements WebRTCCallback {
         mApplicationStartTime = System.nanoTime();
         synchronized (this) {
             mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, this);
-            mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig,
-                    mContext.getAssets(), this, mPatchReconstructor, mInferenceOutputView);
-            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, mInferenceEngine);
+            mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, this, mContext.getAssets());
+            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, this);
         }
     }
 
@@ -129,36 +132,14 @@ public class EdgeServer implements WebRTCCallback {
                 if (streamID >= mOutputViews.length) {
                     return;
                 }
-                mDispatchers.put(packet.srcIp, new Dispatcher(
-                        mConfig.dispatcherConfig, packet.srcIp, mWebRTCManager, mRoIExtractor, mInferenceEngine, mInputView, mOutputViews[streamID]));
+                mDispatchers.put(packet.srcIp, new Dispatcher(mConfig.dispatcherConfig, this,
+                        packet.srcIp, mWebRTCManager, mInputView, mOutputViews[streamID]));
                 mDispatchers.get(packet.srcIp).handleSdpAndAnswer(packet.message);
             } else if (packet.header.equals(WebRTCHeader.ICE.name())) {
                 mDispatchers.get(packet.srcIp).handleIceMessage(packet.message);
             }
         }
     };
-
-    public void updateResult(Frame frame, List<BoundingBox> boxes) {
-        Dispatcher dispatcher = mDispatchers.get(frame.sourceIP);
-        if (dispatcher != null) {
-            dispatcher.updateResult(frame.frameIndex, boxes);
-        }
-        updateFPS(1);
-    }
-
-    public void updateResult(Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults) {
-        int numProcessedFrames = 0;
-        Set<String> IPs = multiStreamResults.keySet();
-        for (String ip : IPs) {
-            Map<Integer, List<BoundingBox>> results = multiStreamResults.get(ip);
-            Dispatcher dispatcher = mDispatchers.get(ip);
-            if (dispatcher != null) {
-                dispatcher.updateResult(results);
-            }
-            numProcessedFrames += results.size();
-        }
-        updateFPS(numProcessedFrames);
-    }
 
     @SuppressLint("DefaultLocale")
     private void updateFPS(int numProcessedFrames) {
@@ -181,5 +162,54 @@ public class EdgeServer implements WebRTCCallback {
         if (dispatcher != null) {
             dispatcher.onAddStream(mediaStream);
         }
+    }
+
+    @Override
+    public void enqueueInferenceRequest(InferenceRequest inferenceRequest) {
+        mInferenceEngine.enqueueRequest(inferenceRequest);
+    }
+
+    @Override
+    public void enqueueInferenceResult(Pair<InferenceRequest, List<BoundingBox>> inferenceResult) {
+        mPatchReconstructor.enqueueInferenceResult(inferenceResult);
+    }
+
+    @Override
+    public void updateResult(Frame frame, List<BoundingBox> boxes) {
+        Dispatcher dispatcher = mDispatchers.get(frame.sourceIP);
+        if (dispatcher != null) {
+            dispatcher.updateResult(frame.frameIndex, boxes);
+        }
+        updateFPS(1);
+    }
+
+    @Override
+    public void updateInferenceOutputView(Bitmap result) {
+        mInferenceOutputView.post(() -> mInferenceOutputView.setImageBitmap(result));
+    }
+
+    @Override
+    public void updateResult(Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults) {
+        int numProcessedFrames = 0;
+        Set<String> IPs = multiStreamResults.keySet();
+        for (String ip : IPs) {
+            Map<Integer, List<BoundingBox>> results = multiStreamResults.get(ip);
+            Dispatcher dispatcher = mDispatchers.get(ip);
+            if (dispatcher != null) {
+                dispatcher.updateResult(results);
+            }
+            numProcessedFrames += results.size();
+        }
+        updateFPS(numProcessedFrames);
+    }
+
+    @Override
+    public void removeSourceIP(String ip) {
+        mRoIExtractor.removeSourceIP(ip);
+    }
+
+    @Override
+    public void enqueueFrameBatch(String ip, FrameBatch frameBatch) {
+        mRoIExtractor.enqueueFrameBatch(ip, frameBatch);
     }
 }

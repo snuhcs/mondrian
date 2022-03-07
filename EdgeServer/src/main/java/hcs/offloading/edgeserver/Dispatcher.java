@@ -39,6 +39,14 @@ public class Dispatcher implements Runnable, VideoSink {
     private final int FULL_INFERENCE_INTERVAL;
     private final int NUM_FRAMES_ON_MEMORY;
 
+    public interface Callback {
+        void removeSourceIP(String ip);
+        void enqueueFrameBatch(String ip, FrameBatch frameBatch);
+        void enqueueInferenceRequest(InferenceRequest inferenceRequest);
+    }
+
+    private final Callback mCallback;
+
     private final SurfaceViewRenderer mInputView;
     private final ImageView mOutputView;
 
@@ -55,18 +63,15 @@ public class Dispatcher implements Runnable, VideoSink {
     private final PeerConnection mPeerConnection;
     private final WebRTCManager mWebRTCManager;
 
-    private final RoIExtractor mRoIExtractor;
-    private final InferenceEngine mInferenceEngine;
-
-    Dispatcher(DispatcherConfig config, String sourceIP, WebRTCManager webRTCManager, RoIExtractor roIExtractor, InferenceEngine inferenceEngine, SurfaceViewRenderer inputView, ImageView outputView) {
+    Dispatcher(DispatcherConfig config, Callback callback, String sourceIP, WebRTCManager webRTCManager, SurfaceViewRenderer inputView, ImageView outputView) {
         BATCH_SIZE = config.BATCH_SIZE;
         FULL_INFERENCE_INTERVAL = config.FULL_INFERENCE_INTERVAL;
         NUM_FRAMES_ON_MEMORY = config.NUM_FRAMES_ON_MEMORY;
 
+        mCallback = callback;
+
         mSourceIP = sourceIP;
         mWebRTCManager = webRTCManager;
-        mRoIExtractor = roIExtractor;
-        mInferenceEngine = inferenceEngine;
         mInputView = inputView;
         mOutputView = outputView;
 
@@ -94,7 +99,7 @@ public class Dispatcher implements Runnable, VideoSink {
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
-        mRoIExtractor.removeSource(mSourceIP);
+        mCallback.removeSourceIP(mSourceIP);
         Log.d(TAG, "closed");
     }
 
@@ -105,7 +110,7 @@ public class Dispatcher implements Runnable, VideoSink {
                 Pair<List<Integer>, Integer> frameIndicesAndLastIndex = mFrameIndicesAndLastIndexList.take();
                 int lastIndex = frameIndicesAndLastIndex.second;
                 List<BoundingBox> prevResults = getResult(lastIndex);
-                mRoIExtractor.putFrameBatch(mSourceIP, new FrameBatch(
+                mCallback.enqueueFrameBatch(mSourceIP, new FrameBatch(
                         frameIndicesAndLastIndex.first.stream().map(mFrames::get).collect(Collectors.toList()),
                         mFrames.get(lastIndex),
                         prevResults));
@@ -128,7 +133,7 @@ public class Dispatcher implements Runnable, VideoSink {
         }
         if (mFrameIndex % (FULL_INFERENCE_INTERVAL * BATCH_SIZE) == 0) {
             Log.d(TAG, "dispatch full frame " + mFrameIndex);
-            mInferenceEngine.enqueueRequest(new InferenceRequest(frame));
+            mCallback.enqueueInferenceRequest(new InferenceRequest(frame));
         } else {
             mFrameIndices.add(mFrameIndex);
         }

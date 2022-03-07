@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                             new ImageView[]{findViewById(R.id.outputView0), findViewById(R.id.outputView1)},
                             findViewById(R.id.inferenceOutputView),
                             findViewById(R.id.FPS));
-                } catch (ParseException | JSONException | IOException e) {
+                } catch (ParseException | JSONException | IOException | IllegalArgumentException e) {
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                     mEdgeServer = null;
                 }
