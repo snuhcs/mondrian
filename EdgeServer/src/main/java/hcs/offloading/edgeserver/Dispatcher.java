@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
+import hcs.offloading.edgeserver.config.DispatcherConfig;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.edgeserver.datatypes.FrameBatch;
@@ -34,9 +35,9 @@ import hcs.offloading.network.webrtc.YuvFrame;
 public class Dispatcher implements Runnable, VideoSink {
     private static final String TAG = Dispatcher.class.getName();
 
-    private final int BATCH_SIZE = 8;
-    private final int FULL_INFERENCE_INTERVAL = 5;
-    private final int NUM_FRAMES_ON_MEMORY = 10 * BATCH_SIZE;
+    private final int BATCH_SIZE;
+    private final int FULL_INFERENCE_INTERVAL;
+    private final int NUM_FRAMES_ON_MEMORY;
 
     private final SurfaceViewRenderer mInputView;
     private final ImageView mOutputView;
@@ -57,7 +58,11 @@ public class Dispatcher implements Runnable, VideoSink {
     private final RoIExtractor mRoIExtractor;
     private final InferenceEngine mInferenceEngine;
 
-    Dispatcher(String sourceIP, WebRTCManager webRTCManager, RoIExtractor roIExtractor, InferenceEngine inferenceEngine, SurfaceViewRenderer inputView, ImageView outputView) {
+    Dispatcher(DispatcherConfig config, String sourceIP, WebRTCManager webRTCManager, RoIExtractor roIExtractor, InferenceEngine inferenceEngine, SurfaceViewRenderer inputView, ImageView outputView) {
+        BATCH_SIZE = config.BATCH_SIZE;
+        FULL_INFERENCE_INTERVAL = config.FULL_INFERENCE_INTERVAL;
+        NUM_FRAMES_ON_MEMORY = config.NUM_FRAMES_ON_MEMORY;
+
         mSourceIP = sourceIP;
         mWebRTCManager = webRTCManager;
         mRoIExtractor = roIExtractor;

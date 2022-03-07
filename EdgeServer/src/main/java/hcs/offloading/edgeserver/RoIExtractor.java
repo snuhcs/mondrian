@@ -30,6 +30,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import hcs.offloading.edgeserver.config.RoIExtractorConfig;
 import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.edgeserver.datatypes.FrameBatch;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
@@ -38,9 +39,9 @@ import hcs.offloading.edgeserver.datatypes.RoI;
 public class RoIExtractor implements Runnable {
     private static final String TAG = RoIExtractor.class.getName();
 
-    private static final int IDLE_WAIT_MS = 1000;
-    private static final int AREA_THRESHOLD = 10000;
-    private static final int ROI_PADDING = 0;
+    private final int IDLE_WAIT_MS;
+    private final int AREA_THRESHOLD;
+    private final int ROI_PADDING;
 
     static {
         if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
@@ -53,7 +54,11 @@ public class RoIExtractor implements Runnable {
     private final Thread mRoIExtractorThread;
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    RoIExtractor(InferenceEngine inferenceEngine) {
+    RoIExtractor(RoIExtractorConfig config, InferenceEngine inferenceEngine) {
+        IDLE_WAIT_MS = config.IDLE_WAIT_MS;
+        AREA_THRESHOLD = config.AREA_THRESHOLD;
+        ROI_PADDING = config.ROI_PADDING;
+
         mInferenceEngine = inferenceEngine;
         mRoIExtractorThread = new Thread(this);
         mRoIExtractorThread.start();
@@ -130,7 +135,7 @@ public class RoIExtractor implements Runnable {
                 startTime = System.nanoTime();
                 resizeRoIs(rois);
                 rois = rois.stream().sorted((lhs, rhs) -> Integer.compare(rhs.getFrameIndex(), lhs.getFrameIndex())).collect(Collectors.toList());
-                Bitmap mixedFrame = PatchMixer.packRoIs(rois);
+                Bitmap mixedFrame = PatchMixer.packRoIs(rois, mInferenceEngine.MIXED_FRAME_SIZE);
                 endTime = System.nanoTime();
                 Log.v(TAG, "RoI packing time: " + (endTime - startTime) / 1000000.0f);
 
