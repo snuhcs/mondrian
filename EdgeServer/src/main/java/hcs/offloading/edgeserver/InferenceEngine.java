@@ -33,7 +33,7 @@ public class InferenceEngine {
     InferenceEngine(InferenceEngineConfig config, AssetManager assetManager, EdgeServer edgeServer, PatchReconstructor patchReconstructor, ImageView outputView) {
         MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
         NUM_WORKERS = config.NUM_WORKERS;
-
+  
         mOutputView = outputView;
 
         for (int workerId = 0; workerId < NUM_WORKERS; workerId++) {
