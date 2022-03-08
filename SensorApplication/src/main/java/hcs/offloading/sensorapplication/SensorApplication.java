@@ -45,7 +45,7 @@ public class SensorApplication {
         mMediaStream = mWebRTCManager.createMediaStream();
 
         if (mConfig.USE_SAVED_VIDEO) {
-            mVideoTrack = mWebRTCManager.createSavedVideoTrack(eglBase, mConfig.WIDTH, mConfig.HEIGHT, mConfig.FPS, mConfig.VIDEO_PATH);
+            mVideoTrack = mWebRTCManager.createSavedVideoTrack(eglBase, mConfig.WIDTH, mConfig.HEIGHT, mConfig.FPS, mConfig.VIDEO_PATH_0);
         } else {
             mVideoTrack = mWebRTCManager.createCameraTrack(eglBase, mConfig.WIDTH, mConfig.HEIGHT, mConfig.FPS);
             mVideoTrack.addSink(mInputView);

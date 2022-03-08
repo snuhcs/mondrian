@@ -1,0 +1,8 @@
+{
+  "use_saved_video": true,
+  "width": 1920,
+  "height": 1080,
+  "fps": 5,
+  "video_path_0": "/data/local/tmp/surveillance_0.mp4",
+  "video_path_1": "/data/local/tmp/surveillance_1.mp4"
+}
