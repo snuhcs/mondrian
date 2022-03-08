@@ -1,6 +1,8 @@
 package hcs.offloading.sensorapplication;
 
 import android.content.Context;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import org.json.JSONException;
@@ -8,6 +10,7 @@ import org.webrtc.EglBase;
 import org.webrtc.MediaStream;
 import org.webrtc.PeerConnection;
 import org.webrtc.SurfaceViewRenderer;
+import org.webrtc.VideoCapturer;
 import org.webrtc.VideoTrack;
 
 import hcs.offloading.network.mqtt.DeviceMqttManager;
@@ -19,35 +22,41 @@ import hcs.offloading.network.webrtc.WebRTCManager;
 public class SensorApplication {
     private static final String TAG = SensorApplication.class.getName();
 
-    private static final int WIDTH = 1920;
-    private static final int HEIGHT = 1080;
-    private static final int FPS = 5;
+    Config mConfig;
 
     private final SurfaceViewRenderer mInputView;
 
     private String mTargetEdgeIP;
-    private final VideoTrack mCameraTrack;
+    private final VideoTrack mVideoTrack;
     private final MediaStream mMediaStream;
     private PeerConnection mPeerConnection;
     private WebRTCManager mWebRTCManager;
     private DeviceMqttManager mMqttManager;
 
-    SensorApplication(Context context, EglBase eglBase, String uri, SurfaceViewRenderer inputView) {
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    SensorApplication(Config config, Context context, EglBase eglBase, String uri, SurfaceViewRenderer inputView) {
+        mConfig = config;
+
         mInputView = inputView;
 
         mMqttManager = new DeviceMqttManager(context, uri, Device.SENSOR, scheduleTopicHandler, webrtcTopicHandler);
         mWebRTCManager = new WebRTCManager(context, mMqttManager, eglBase, null);
 
-        mCameraTrack = mWebRTCManager.createCameraTrack(eglBase, WIDTH, HEIGHT, FPS);
         mMediaStream = mWebRTCManager.createMediaStream();
-        mCameraTrack.addSink(mInputView);
-        mMediaStream.addTrack(mCameraTrack);
+
+        if (mConfig.USE_SAVED_VIDEO) {
+            mVideoTrack = mWebRTCManager.createSavedVideoTrack(eglBase, mConfig.WIDTH, mConfig.HEIGHT, mConfig.FPS, mConfig.VIDEO_PATH);
+        } else {
+            mVideoTrack = mWebRTCManager.createCameraTrack(eglBase, mConfig.WIDTH, mConfig.HEIGHT, mConfig.FPS);
+            mVideoTrack.addSink(mInputView);
+        }
+        mMediaStream.addTrack(mVideoTrack);
     }
 
     void close() {
         stopSensorApplication();
-        mMediaStream.removeTrack(mCameraTrack);
-        mCameraTrack.removeSink(mInputView);
+        mMediaStream.removeTrack(mVideoTrack);
+        mVideoTrack.removeSink(mInputView);
         mMqttManager.close();
     }
 

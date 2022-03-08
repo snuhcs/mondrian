@@ -32,6 +32,9 @@ android {
 
 dependencies {
 
+    implementation ('com.googlecode.json-simple:json-simple:1.1.1') {
+        exclude group: "org.hamcrest", module: "hamcrest-core"
+    }
     implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
     implementation 'org.eclipse.paho:org.eclipse.paho.android.service:1.1.1'
     implementation 'org.webrtc:google-webrtc:1.0.32006'
