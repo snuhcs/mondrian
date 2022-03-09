@@ -6,6 +6,7 @@
     "idle_wait_ms": 1000,
     "area_threshold": 10000,
     "roi_padding": 0,
+    "extraction_method": "combined",
     "num_workers": 1,
     "match_padding": 40,
     "use_iou_threshold": 0.1,
