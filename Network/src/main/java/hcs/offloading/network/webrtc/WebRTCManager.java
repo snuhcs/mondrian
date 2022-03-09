@@ -1,12 +1,16 @@
 package hcs.offloading.network.webrtc;
 
 import android.content.Context;
+import android.os.Build;
+import android.provider.MediaStore;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
+import org.webrtc.CapturerObserver;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
 import org.webrtc.EglBase;
@@ -18,6 +22,7 @@ import org.webrtc.PeerConnectionFactory;
 import org.webrtc.SessionDescription;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.VideoCapturer;
+import org.webrtc.VideoFrame;
 import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 
@@ -171,6 +176,17 @@ public class WebRTCManager {
 
     public MediaStream createMediaStream() {
         return mPeerConnectionFactory.createLocalMediaStream("102");
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    public VideoTrack createSavedVideoTrack(EglBase eglBase, int width, int height, int fps, String videoFilePath) {
+        SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
+        CustomCapturer videoCapturer = new CustomCapturer();
+        VideoSource videoSource = mPeerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
+        videoCapturer.initialize(surfaceTextureHelper, mContext, videoSource.getCapturerObserver());
+        videoCapturer.initializeVideo(videoFilePath);
+        videoCapturer.startCapture(width, height, fps);
+        return mPeerConnectionFactory.createVideoTrack("101", videoSource);
     }
 
     public VideoTrack createCameraTrack(EglBase eglBase, int width, int height, int fps) {
