@@ -14,8 +14,7 @@ public class Config {
     public int WIDTH = 1920;
     public int HEIGHT = 1080;
     public int FPS = 5;
-    public String VIDEO_PATH_0 = "/data/local/tmp";
-    public String VIDEO_PATH_1 = "/data/local/tmp";
+    public String VIDEO_PATH = "/data/local/tmp";
 
     Config(String jsonPath) throws IOException, ParseException {
 
@@ -34,11 +33,8 @@ public class Config {
         if (jsonObject.containsKey("fps")) {
             FPS = Integer.parseInt(String.valueOf(jsonObject.get("fps")));
         }
-        if (jsonObject.containsKey("video_path_0")) {
-            VIDEO_PATH_0 = String.valueOf(jsonObject.get("video_path_0"));
-        }
-        if (jsonObject.containsKey("video_path_1")) {
-            VIDEO_PATH_1 = String.valueOf(jsonObject.get("video_path_1"));
+        if (jsonObject.containsKey("video_path")) {
+            VIDEO_PATH = String.valueOf(jsonObject.get("video_path"));
         }
     }
 
