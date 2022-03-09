@@ -66,7 +66,7 @@ public class CustomCapturer implements VideoCapturer {
                         VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
 
                         long frameTime = System.nanoTime() - start;
-                        VideoFrame videoFrame = new VideoFrame(i420Buf, 0, frameTime);
+                        VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
                         capturerObs.onFrameCaptured(videoFrame);
                     });
                     long endTime = System.currentTimeMillis();

@@ -178,10 +178,8 @@ public class WebRTCManager {
         return mPeerConnectionFactory.createLocalMediaStream("102");
     }
 
-    // TODO: implement with saved video
     @RequiresApi(api = Build.VERSION_CODES.P)
     public VideoTrack createSavedVideoTrack(EglBase eglBase, int width, int height, int fps, String videoFilePath) {
-        // create video capturer here
         SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
         CustomCapturer videoCapturer = new CustomCapturer();
         VideoSource videoSource = mPeerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
