@@ -5,4 +5,6 @@ public class RoIExtractorConfig {
     public int IDLE_WAIT_MS = 1000;
     public int AREA_THRESHOLD = 10000;
     public int ROI_PADDING = 0;
+    public ExtractionMethod EXTRACTION_METHOD = ExtractionMethod.COMBINED; // combined / pd (pixel diff) / of (optical flow)
 }
+

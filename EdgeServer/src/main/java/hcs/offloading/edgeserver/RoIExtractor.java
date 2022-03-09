@@ -30,6 +30,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import hcs.offloading.edgeserver.config.ExtractionMethod;
 import hcs.offloading.edgeserver.config.RoIExtractorConfig;
 import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.edgeserver.datatypes.FrameBatch;
@@ -43,6 +44,7 @@ public class RoIExtractor implements Runnable {
     private final int IDLE_WAIT_MS;
     private final int AREA_THRESHOLD;
     private final int ROI_PADDING;
+    private final ExtractionMethod EXTRACTION_METHOD;
 
     static {
         if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
@@ -64,6 +66,7 @@ public class RoIExtractor implements Runnable {
         IDLE_WAIT_MS = config.IDLE_WAIT_MS;
         AREA_THRESHOLD = config.AREA_THRESHOLD;
         ROI_PADDING = config.ROI_PADDING;
+        EXTRACTION_METHOD = config.EXTRACTION_METHOD;
 
         mCallback = callback;
 
@@ -156,26 +159,35 @@ public class RoIExtractor implements Runnable {
     @RequiresApi(api = Build.VERSION_CODES.N)
     public List<RoI> getRoIs(FrameBatch frameBatch) {
         List<RoI> rois = new ArrayList<>();
+        List<RoI> opticalFlowRoIs = new ArrayList<>();
+        List<RoI> pixelDiffRoIs = new ArrayList<>();
         Frame prevFrame = frameBatch.prevFrame;
         List<Rect> prevResults = frameBatch.prevResults.stream().map(box -> box.location).collect(Collectors.toList());
+        // add other methods below if needed
         for (Frame currentFrame : frameBatch.frames) {
             Bitmap prevBitmap = prevFrame.bitmap;
             Bitmap currBitmap = currentFrame.bitmap;
             if (prevBitmap.getWidth() != currBitmap.getWidth() || prevBitmap.getHeight() != currBitmap.getHeight()) {
                 prevBitmap = Bitmap.createScaledBitmap(prevBitmap, currBitmap.getWidth(), currBitmap.getHeight(), false);
             }
-            List<Rect> currentRects = createRoIWithInferenceResult(prevBitmap, currBitmap, prevResults);
-            List<RoI> opticalFlowRoIs = currentRects.stream()
-                    .map(rect -> new RoI(currentFrame, rect))
-                    .collect(Collectors.toList());
-            List<RoI> diffRois = createRoIsFromDiff(prevBitmap, currBitmap).stream()
-                    .map(rect -> new RoI(currentFrame, rect))
-                    .collect(Collectors.toList());
-            rois.addAll(opticalFlowRoIs);
-            rois.addAll(diffRois);
-            prevResults = opticalFlowRoIs.stream().map(roi -> roi.position).collect(Collectors.toList());
+            if (EXTRACTION_METHOD.equals(ExtractionMethod.COMBINED) || EXTRACTION_METHOD.equals(ExtractionMethod.OF)) {
+                List<Rect> currentRects = createRoIWithInferenceResult(prevBitmap, currBitmap, prevResults);
+                List<RoI> tempRoIs = currentRects.stream()
+                        .map(rect -> new RoI(currentFrame, rect))
+                        .collect(Collectors.toList());
+                opticalFlowRoIs.addAll(tempRoIs);
+                prevResults = tempRoIs.stream().map(roi -> roi.position).collect(Collectors.toList());
+            }
+            if (EXTRACTION_METHOD.equals(ExtractionMethod.COMBINED) || EXTRACTION_METHOD.equals(ExtractionMethod.PD)) {
+                List<RoI> tempRoIs = createRoIsFromDiff(prevBitmap, currBitmap).stream()
+                        .map(rect -> new RoI(currentFrame, rect))
+                        .collect(Collectors.toList());
+                pixelDiffRoIs.addAll(tempRoIs);
+            }
             prevFrame = currentFrame;
         }
+        rois.addAll(opticalFlowRoIs);
+        rois.addAll(pixelDiffRoIs);
         return rois;
     }
 
