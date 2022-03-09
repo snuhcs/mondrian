@@ -50,7 +50,18 @@ public class Config {
             roIExtractorConfig.ROI_PADDING = getInt(jsonObject, "roi_padding");
         }
         if (jsonObject.containsKey("extraction_method")) {
-            roIExtractorConfig.EXTRACTION_METHOD = String.valueOf(jsonObject.get("extraction_method"));
+            String method = String.valueOf(jsonObject.get("extraction_method"));
+            switch (method) {
+                case "combined":
+                    roIExtractorConfig.EXTRACTION_METHOD = ExtractionMethod.COMBINED;
+                    break;
+                case "of":
+                    roIExtractorConfig.EXTRACTION_METHOD = ExtractionMethod.OF;
+                    break;
+                case "pd":
+                    roIExtractorConfig.EXTRACTION_METHOD = ExtractionMethod.PD;
+                    break;
+            }
         }
 
         inferenceEngineConfig = new InferenceEngineConfig();
