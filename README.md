@@ -38,7 +38,9 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 ### How to Run
 1. Install applications to different mobile devices with the Android Studio.
 2. Upload `edgeserver.json` into `/data/local/tmp`. (`adb push edgeserver.json /data/local/tmp`)
-3. Run applications with the Android Studio.
+3. Upload `sensorapplication.json` into `/data/local/tmp`. (`adb push sensorapplication.json /data/local/tmp`)
+4. If local video file is to be sent from `SensorApplication`, upload video specified in `sensorapplication.json` into `/data/local/tmp`. (`adb push [video_file_path] /data/local/tmp`)
+5. Run applications with the Android Studio.
 
 
 ## Contact
