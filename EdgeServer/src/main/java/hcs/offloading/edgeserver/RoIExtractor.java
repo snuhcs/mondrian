@@ -175,14 +175,18 @@ public class RoIExtractor implements Runnable {
                         .map(rect -> new RoI(currentFrame, rect))
                         .collect(Collectors.toList());
                 opticalFlowRoIs.addAll(tempRoIs);
-                prevResults = opticalFlowRoIs.stream().map(roi -> roi.position).collect(Collectors.toList());
+                prevResults = tempRoIs.stream().map(roi -> roi.position).collect(Collectors.toList());
                 prevFrame = currentFrame;
             }
         }
+        prevFrame = frameBatch.prevFrame;
         if (EXTRACTION_METHOD.equals("combined") || EXTRACTION_METHOD.equals("pd")) {
             for (Frame currentFrame : frameBatch.frames) {
                 Bitmap prevBitmap = prevFrame.bitmap;
                 Bitmap currBitmap = currentFrame.bitmap;
+                if (prevBitmap.getWidth() != currBitmap.getWidth() || prevBitmap.getHeight() != currBitmap.getHeight()) {
+                    prevBitmap = Bitmap.createScaledBitmap(prevBitmap, currBitmap.getWidth(), currBitmap.getHeight(), false);
+                }
                 List<RoI> tempRoIs = createRoIsFromDiff(prevBitmap, currBitmap).stream()
                         .map(rect -> new RoI(currentFrame, rect))
                         .collect(Collectors.toList());
