@@ -90,7 +90,7 @@ public class RoIExtractor implements Runnable {
         synchronized (mFrames) {
             mFrames.add(frame);
             if (mFrames.size() > BATCH_SIZE) {
-                notifyAll();
+                mFrames.notifyAll();
             }
         }
     }
@@ -99,7 +99,7 @@ public class RoIExtractor implements Runnable {
         List<Frame> frames = new ArrayList<>(BATCH_SIZE);
         synchronized (mFrames) {
             while (mFrames.size() < BATCH_SIZE) {
-                wait();
+                mFrames.wait();
             }
             for (int i = 0; i < BATCH_SIZE; i++) {
                 frames.add(mFrames.poll());

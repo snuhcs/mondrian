@@ -1,6 +1,5 @@
 package hcs.offloading.edgeserver;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
