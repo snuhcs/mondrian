@@ -2,6 +2,7 @@ package hcs.offloading.network.webrtc;
 
 import android.content.Context;
 import android.os.Build;
+import android.provider.MediaStore;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 
@@ -9,6 +10,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
+import org.webrtc.CapturerObserver;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
 import org.webrtc.EglBase;
@@ -20,35 +22,28 @@ import org.webrtc.PeerConnectionFactory;
 import org.webrtc.SessionDescription;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.VideoCapturer;
+import org.webrtc.VideoFrame;
 import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import hcs.offloading.network.mqtt.DeviceMqttManager;
+
 public class WebRTCManager {
     private static final String TAG = WebRTCManager.class.getName();
 
-    public interface ConnectCallback {
-        void sendSdpMessage(String dstIp, String message);
-        void sendIceMessage(String dstIp, String message);
-    }
-
-    public interface StreamCallback {
-        void onDisconnect(String ip);
-        void onAddStream(String ip, MediaStream mediaStream);
-    }
-
     private final Context mContext;
-    private final ConnectCallback mConnectCallback;
-    private final StreamCallback mStreamCallback;
+    private final WebRTCCallback mWebRTCCallback;
 
+    private final DeviceMqttManager mMqttManager;
     private final PeerConnectionFactory mPeerConnectionFactory;
 
-    public WebRTCManager(Context context, EglBase eglBase, ConnectCallback connectCallback, StreamCallback streamCallback) {
+    public WebRTCManager(Context context, DeviceMqttManager mqttManager, EglBase eglBase, WebRTCCallback webRTCCallback) {
         mContext = context;
-        mConnectCallback = connectCallback;
-        mStreamCallback = streamCallback;
+        mMqttManager = mqttManager;
+        mWebRTCCallback = webRTCCallback;
 
         DefaultVideoEncoderFactory defaultVideoEncoderFactory = new DefaultVideoEncoderFactory(
                 eglBase.getEglBaseContext(), true, true
@@ -78,7 +73,7 @@ public class WebRTCManager {
                     JSONObject jsonSessionDescription = new JSONObject();
                     jsonSessionDescription.put("type", sessionDescription.type.canonicalForm());
                     jsonSessionDescription.put("sdp", sessionDescription.description);
-                    mConnectCallback.sendSdpMessage(ip, jsonSessionDescription.toString());
+                    mMqttManager.sendSdpMessage(ip, jsonSessionDescription.toString());
                 } catch (Exception e) {
                     Log.e(TAG, e.getMessage());
                 }
@@ -99,7 +94,7 @@ public class WebRTCManager {
                     JSONObject jsonSessionDescription = new JSONObject();
                     jsonSessionDescription.put("type", sessionDescription.type.canonicalForm());
                     jsonSessionDescription.put("sdp", sessionDescription.description);
-                    mConnectCallback.sendSdpMessage(ip, jsonSessionDescription.toString());
+                    mMqttManager.sendSdpMessage(ip, jsonSessionDescription.toString());
                 } catch (Exception e) {
                     Log.e(TAG, e.getMessage());
                 }
@@ -122,7 +117,7 @@ public class WebRTCManager {
                     jsonIceCandidate.put("label", iceCandidate.sdpMLineIndex);
                     jsonIceCandidate.put("id", iceCandidate.sdpMid);
                     jsonIceCandidate.put("candidate", iceCandidate.sdp);
-                    mConnectCallback.sendIceMessage(ip, jsonIceCandidate.toString());
+                    mMqttManager.sendIceMessage(ip, jsonIceCandidate.toString());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -133,8 +128,8 @@ public class WebRTCManager {
                 super.onAddStream(mediaStream);
                 Log.d(TAG, "onAddStream " + ip);
                 if (mediaStream.videoTracks != null && mediaStream.videoTracks.size() == 1) {
-                    if (mStreamCallback != null) {
-                        mStreamCallback.onAddStream(ip, mediaStream);
+                    if (mWebRTCCallback != null) {
+                        mWebRTCCallback.onAddStream(ip, mediaStream);
                     }
                 }
             }
@@ -147,8 +142,8 @@ public class WebRTCManager {
                     case CLOSED:
                     case DISCONNECTED:
                     case FAILED:
-                        if (mStreamCallback != null) {
-                            mStreamCallback.onDisconnect(ip);
+                        if (mWebRTCCallback != null) {
+                            mWebRTCCallback.onDisconnect(ip);
                         }
                         break;
                     default:

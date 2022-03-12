@@ -28,10 +28,11 @@ import hcs.offloading.network.mqtt.DeviceMqttManager;
 import hcs.offloading.network.mqtt.datatypes.Device;
 import hcs.offloading.network.mqtt.datatypes.PacketHandler;
 import hcs.offloading.network.mqtt.datatypes.WebRTCHeader;
+import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
-public class EdgeServer implements WebRTCManager.ConnectCallback, WebRTCManager.StreamCallback, Dispatcher.Callback, RoIExtractor.Callback, Worker.Callback {
+public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtractor.Callback, Worker.Callback {
     private static final String TAG = EdgeServer.class.getName();
 
     private static final String CONFIG_FILEPATH = "/data/local/tmp/edgeserver.json";
@@ -63,7 +64,7 @@ public class EdgeServer implements WebRTCManager.ConnectCallback, WebRTCManager.
 
         EglBase eglBase = EglBase.create();
         mInputView.init(eglBase.getEglBaseContext(), null);
-        mWebRTCManager = new WebRTCManager(context, eglBase, this, this);
+        mWebRTCManager = new WebRTCManager(context, mMqttManager, eglBase, this);
     }
 
     void close() {
@@ -129,17 +130,6 @@ public class EdgeServer implements WebRTCManager.ConnectCallback, WebRTCManager.
             }
         }
     };
-
-    // WebRTCManager.ConnectCallback
-    @Override
-    public void sendSdpMessage(String dstIp, String message) {
-        mMqttManager.sendSdpMessage(dstIp, message);
-    }
-
-    @Override
-    public void sendIceMessage(String dstIp, String message) {
-        mMqttManager.sendIceMessage(dstIp, message);
-    }
 
     // WebRTCManager.StreamCallback
     @Override

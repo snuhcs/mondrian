@@ -10,6 +10,7 @@ import org.webrtc.EglBase;
 import org.webrtc.MediaStream;
 import org.webrtc.PeerConnection;
 import org.webrtc.SurfaceViewRenderer;
+import org.webrtc.VideoCapturer;
 import org.webrtc.VideoTrack;
 
 import hcs.offloading.network.mqtt.DeviceMqttManager;
@@ -18,7 +19,7 @@ import hcs.offloading.network.mqtt.datatypes.WebRTCHeader;
 import hcs.offloading.network.mqtt.datatypes.PacketHandler;
 import hcs.offloading.network.webrtc.WebRTCManager;
 
-public class SensorApplication implements WebRTCManager.ConnectCallback {
+public class SensorApplication {
     private static final String TAG = SensorApplication.class.getName();
 
     Config mConfig;
@@ -39,7 +40,7 @@ public class SensorApplication implements WebRTCManager.ConnectCallback {
         mInputView = inputView;
 
         mMqttManager = new DeviceMqttManager(context, uri, Device.SENSOR, scheduleTopicHandler, webrtcTopicHandler);
-        mWebRTCManager = new WebRTCManager(context, eglBase, this, null);
+        mWebRTCManager = new WebRTCManager(context, mMqttManager, eglBase, null);
 
         mMediaStream = mWebRTCManager.createMediaStream();
 
@@ -102,14 +103,4 @@ public class SensorApplication implements WebRTCManager.ConnectCallback {
             }
         }
     };
-
-    @Override
-    public void sendSdpMessage(String dstIp, String message) {
-        mMqttManager.sendSdpMessage(dstIp, message);
-    }
-
-    @Override
-    public void sendIceMessage(String dstIp, String message) {
-        mMqttManager.sendIceMessage(dstIp, message);
-    }
 }
