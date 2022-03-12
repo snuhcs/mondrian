@@ -20,12 +20,15 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.core.TermCriteria;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.objdetect.Objdetect;
 import org.opencv.video.Video;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -137,23 +140,6 @@ public class RoIExtractor implements Runnable {
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    private List<RoI> getRoIsFromMultipleSourceFrames(List<Frame> frames) throws InterruptedException {
-        List<RoI> rois = new ArrayList<>();
-        Map<String, List<Frame>> framesPerStream = groupBySourceStream(frames);
-        for (Map.Entry<String, List<Frame>> kv : framesPerStream.entrySet()) {
-            String sourceIP = kv.getKey();
-            List<Frame> sameSourceFrames = kv.getValue();
-            int minIndex = sameSourceFrames.stream().map(frame -> frame.frameIndex).min(Integer::compare).orElseThrow(NoSuchElementException::new);
-            int prevLastIndex = minIndex - 1;
-            Pair<Bitmap, List<BoundingBox>> prevFrameAndResults = mCallback.getFrameAndResults(sourceIP, prevLastIndex);
-            if (prevFrameAndResults != null) {
-                rois.addAll(getRoIs(sameSourceFrames, prevFrameAndResults.first, prevFrameAndResults.second));
-            }
-        }
-        return rois;
-    }
-
     private static Map<String, List<Frame>> groupBySourceStream(List<Frame> frames) {
         Map<String, List<Frame>> framesPerStream = new HashMap<>();
         for (Frame frame : frames) {
@@ -173,6 +159,23 @@ public class RoIExtractor implements Runnable {
     @RequiresApi(api = Build.VERSION_CODES.N)
     private static List<RoI> sortByPriority(List<RoI> rois) {
         return rois.stream().sorted((lhs, rhs) -> Integer.compare(rhs.getFrameIndex(), lhs.getFrameIndex())).collect(Collectors.toList());
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private List<RoI> getRoIsFromMultipleSourceFrames(List<Frame> frames) throws InterruptedException {
+        List<RoI> rois = new ArrayList<>();
+        Map<String, List<Frame>> framesPerStream = groupBySourceStream(frames);
+        for (Map.Entry<String, List<Frame>> kv : framesPerStream.entrySet()) {
+            String sourceIP = kv.getKey();
+            List<Frame> sameSourceFrames = kv.getValue();
+            int minIndex = sameSourceFrames.stream().map(frame -> frame.frameIndex).min(Integer::compare).orElseThrow(NoSuchElementException::new);
+            int prevLastIndex = minIndex - 1;
+            Pair<Bitmap, List<BoundingBox>> prevFrameAndResults = mCallback.getFrameAndResults(sourceIP, prevLastIndex);
+            if (prevFrameAndResults != null) {
+                rois.addAll(getRoIs(sameSourceFrames, prevFrameAndResults.first, prevFrameAndResults.second));
+            }
+        }
+        return rois;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -205,7 +208,45 @@ public class RoIExtractor implements Runnable {
         }
         rois.addAll(opticalFlowRoIs);
         rois.addAll(pixelDiffRoIs);
-        return rois;
+        return mergeRoIs(rois);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public List<RoI> mergeRoIs(List<RoI> rois) {
+        List<RoI> mergedRoIs = new ArrayList<>();
+        List<Integer> frameIndices = rois.stream().map(RoI::getFrameIndex).distinct().collect(Collectors.toList());
+        for (int i : frameIndices) {
+            List<RoI> frameRoIs = rois.stream().filter((roi)->roi.getFrameIndex() == i).collect(Collectors.toList());
+            mergedRoIs.addAll(mergeRoIsForFrame(frameRoIs));
+        }
+        return mergedRoIs;
+    }
+
+    public List<RoI> mergeRoIsForFrame(List<RoI> rois) {
+        List<RoI> mergedRoIs = new ArrayList<>();
+        for (RoI roi : rois) {
+            ListIterator<RoI> iter = mergedRoIs.listIterator();
+            boolean roiMerged = false;
+            while(iter.hasNext()) {
+                RoI mergedRoI = iter.next();
+                if (hcs.offloading.edgeserver.Utils.box_intersection(roi.position, mergedRoI.position) > 0) {
+                    iter.remove();
+                    int newTop = Math.min(roi.position.top, mergedRoI.position.top);
+                    int newBottom = Math.max(roi.position.bottom, mergedRoI.position.bottom);
+                    int newRight = Math.max(roi.position.right, mergedRoI.position.right);
+                    int newLeft = Math.min(roi.position.left, mergedRoI.position.left);
+                    Rect newPosition = new Rect(newLeft, newTop, newRight, newBottom);
+                    RoI newRoI = new RoI(roi.frame, newPosition);
+                    iter.add(newRoI);
+                    roiMerged = true;
+                    break;
+                }
+            }
+            if (!roiMerged) {
+                mergedRoIs.add(roi);
+            }
+        }
+        return mergedRoIs;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
