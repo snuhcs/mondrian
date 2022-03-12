@@ -20,12 +20,10 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.core.TermCriteria;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.objdetect.Objdetect;
 import org.opencv.video.Video;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
@@ -57,6 +55,7 @@ public class RoIExtractor implements Runnable {
 
     public interface Callback {
         Pair<Bitmap, List<BoundingBox>> getFrameAndResults(String sourceIP, int frameIndex) throws InterruptedException;
+
         void enqueueInferenceRequest(InferenceRequest inferenceRequest);
     }
 
@@ -181,8 +180,6 @@ public class RoIExtractor implements Runnable {
     @RequiresApi(api = Build.VERSION_CODES.N)
     private List<RoI> getRoIs(List<Frame> frames, Bitmap prevBitmap, List<BoundingBox> prevBoxes) {
         List<RoI> rois = new ArrayList<>();
-        List<RoI> opticalFlowRoIs = new ArrayList<>();
-        List<RoI> pixelDiffRoIs = new ArrayList<>();
         List<Rect> prevResults = prevBoxes.stream().map(box -> box.location).collect(Collectors.toList());
         // add other methods below if needed
         for (Frame currentFrame : frames) {
@@ -190,44 +187,33 @@ public class RoIExtractor implements Runnable {
             if (prevBitmap.getWidth() != currBitmap.getWidth() || prevBitmap.getHeight() != currBitmap.getHeight()) {
                 prevBitmap = Bitmap.createScaledBitmap(prevBitmap, currBitmap.getWidth(), currBitmap.getHeight(), false);
             }
+            List<RoI> frameRoIs = new ArrayList<>();
             if (EXTRACTION_METHOD.equals(ExtractionMethod.COMBINED) || EXTRACTION_METHOD.equals(ExtractionMethod.OF)) {
                 List<Rect> currentRects = createRoIWithInferenceResult(prevBitmap, currBitmap, prevResults);
-                List<RoI> tempRoIs = currentRects.stream()
+                List<RoI> opticalFlowRoIs = currentRects.stream()
                         .map(rect -> new RoI(currentFrame, rect))
                         .collect(Collectors.toList());
-                opticalFlowRoIs.addAll(tempRoIs);
-                prevResults = tempRoIs.stream().map(roi -> roi.position).collect(Collectors.toList());
+                frameRoIs.addAll(opticalFlowRoIs);
+                prevResults = opticalFlowRoIs.stream().map(roi -> roi.position).collect(Collectors.toList());
             }
             if (EXTRACTION_METHOD.equals(ExtractionMethod.COMBINED) || EXTRACTION_METHOD.equals(ExtractionMethod.PD)) {
-                List<RoI> tempRoIs = createRoIsFromDiff(prevBitmap, currBitmap).stream()
+                List<RoI> pixelDiffRoIs = createRoIsFromDiff(prevBitmap, currBitmap).stream()
                         .map(rect -> new RoI(currentFrame, rect))
                         .collect(Collectors.toList());
-                pixelDiffRoIs.addAll(tempRoIs);
+                frameRoIs.addAll(pixelDiffRoIs);
             }
+            rois.addAll(mergeSingleFrameRoIs(frameRoIs))
             prevBitmap = currBitmap;
         }
-        rois.addAll(opticalFlowRoIs);
-        rois.addAll(pixelDiffRoIs);
-        return mergeRoIs(rois);
+        return rois;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    public List<RoI> mergeRoIs(List<RoI> rois) {
-        List<RoI> mergedRoIs = new ArrayList<>();
-        List<Integer> frameIndices = rois.stream().map(RoI::getFrameIndex).distinct().collect(Collectors.toList());
-        for (int i : frameIndices) {
-            List<RoI> frameRoIs = rois.stream().filter((roi)->roi.getFrameIndex() == i).collect(Collectors.toList());
-            mergedRoIs.addAll(mergeRoIsForFrame(frameRoIs));
-        }
-        return mergedRoIs;
-    }
-
-    public List<RoI> mergeRoIsForFrame(List<RoI> rois) {
+    public List<RoI> mergeSingleFrameRoIs(List<RoI> rois) {
         List<RoI> mergedRoIs = new ArrayList<>();
         for (RoI roi : rois) {
             ListIterator<RoI> iter = mergedRoIs.listIterator();
             boolean roiMerged = false;
-            while(iter.hasNext()) {
+            while (iter.hasNext()) {
                 RoI mergedRoI = iter.next();
                 if (hcs.offloading.edgeserver.Utils.box_intersection(roi.position, mergedRoI.position) > 0) {
                     iter.remove();
