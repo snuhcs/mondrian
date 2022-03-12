@@ -1,9 +1,7 @@
 {
+    "full_inference_interval": 40,
     "batch_size": 8,
-    "full_inference_interval": 5,
-    "num_frames_on_memory": 80,
     "mixed_frame_size": 640,
-    "idle_wait_ms": 1000,
     "area_threshold": 10000,
     "roi_padding": 0,
     "extraction_method": "combined",

@@ -1,5 +1,6 @@
 package hcs.offloading.edgeserver;
 
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.RequiresApi;
@@ -9,29 +10,27 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Switch;
+import android.widget.TextView;
 
 import org.json.JSONException;
 import org.json.simple.parser.ParseException;
-import org.webrtc.EglBase;
 import org.webrtc.SurfaceViewRenderer;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import hcs.offloading.edgeserver.config.Config;
 import hcs.offloading.edgeserver.databinding.ActivityMainBinding;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
-public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener {
+public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ViewCallback {
     private static final String TAG = MainActivity.class.getName();
 
     private EditText mIpInput;
     private EditText mPortInput;
     private SurfaceViewRenderer mInputView;
+    private ImageView mOutputView;
+    private ImageView mInferenceOutputView;
+    private TextView mFpsView;
 
-    private static final String CONFIG_FILEPATH = "/data/local/tmp/edgeserver.json";
-
-    private EglBase mEglBase = EglBase.create();
     private EdgeServer mEdgeServer;
 
     @Override
@@ -43,7 +42,9 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         mPortInput = findViewById(R.id.portInput);
         mInputView = findViewById(R.id.inputView);
         mInputView.setMirror(true);
-        mInputView.init(mEglBase.getEglBaseContext(), null);
+        mOutputView = findViewById(R.id.outputView);
+        mInferenceOutputView = findViewById(R.id.inferenceOutputView);
+        mFpsView = findViewById(R.id.FPS);
 
         Switch connectButton = findViewById(R.id.connectButton);
         connectButton.setOnCheckedChangeListener(this);
@@ -57,14 +58,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                 int port = Integer.parseInt(mPortInput.getText().toString());
                 String uri = "tcp://" + ip + ":" + port;
                 try {
-                    mEdgeServer = new EdgeServer(
-                            new Config(CONFIG_FILEPATH),
-                            getApplicationContext(),
-                            mEglBase, uri,
-                            mInputView,
-                            new ImageView[]{findViewById(R.id.outputView0), findViewById(R.id.outputView1)},
-                            findViewById(R.id.inferenceOutputView),
-                            findViewById(R.id.FPS));
+                    mEdgeServer = new EdgeServer(getApplicationContext(), uri, mInputView, this);
                 } catch (ParseException | JSONException | IOException | IllegalArgumentException e) {
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                     mEdgeServer = null;
@@ -85,5 +79,20 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                 mEdgeServer.close();
             }
         }
+    }
+
+    @Override
+    public void drawInferenceResult(Bitmap bitmap) {
+        mInferenceOutputView.post(() -> mInferenceOutputView.setImageBitmap(bitmap));
+    }
+
+    @Override
+    public void drawObjectDetectionResult(Bitmap bitmap) {
+        mOutputView.post(() -> mOutputView.setImageBitmap(bitmap));
+    }
+
+    @Override
+    public void drawFPS(String fpsStr) {
+        mFpsView.post(() -> mFpsView.setText(fpsStr));
     }
 }

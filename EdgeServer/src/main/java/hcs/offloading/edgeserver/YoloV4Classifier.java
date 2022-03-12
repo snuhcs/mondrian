@@ -89,7 +89,7 @@ public class YoloV4Classifier {
 
     public List<BoundingBox> recognizeImage(ByteBuffer byteBuffer, Bitmap bitmap) {
         ArrayList<BoundingBox> detections = getDetectionsForFull(byteBuffer, bitmap);
-        return detections;
+        return nms(detections);
     }
 
     private static MappedByteBuffer loadModelFile(AssetManager assets, String modelFilename) {
