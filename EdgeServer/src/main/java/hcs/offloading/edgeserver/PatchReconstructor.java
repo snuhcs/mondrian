@@ -84,9 +84,8 @@ public class PatchReconstructor implements Runnable {
                         roi.position.right + bbx.location.right,
                         roi.position.bottom + bbx.location.bottom
                 );
-                bbx.move(newPosition);
+                reconstructedBbx.add(bbx.move(newPosition));
             }
-            reconstructedBbx.addAll(roi.bbx);
         }
         return reconstructedBbx;
     }
