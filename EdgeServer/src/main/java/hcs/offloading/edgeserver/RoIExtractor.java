@@ -45,6 +45,7 @@ public class RoIExtractor implements Runnable {
 
     private final boolean IS_BASELINE;
     private final int BATCH_SIZE;
+    private final int MAX_QUEUED_FRAMES;
     private final int MIXED_FRAME_SIZE;
     private final float MERGE_THRESHOLD;
     private final int ROI_PADDING;
@@ -73,6 +74,7 @@ public class RoIExtractor implements Runnable {
     RoIExtractor(RoIExtractorConfig config, Callback callback) {
         IS_BASELINE = config.IS_BASELINE;
         BATCH_SIZE = config.BATCH_SIZE;
+        MAX_QUEUED_FRAMES = config.MAX_QUEUED_FRAMES;
         MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
         ROI_PADDING = config.ROI_PADDING;
@@ -97,11 +99,18 @@ public class RoIExtractor implements Runnable {
     }
 
     public void enqueueFrame(Frame frame) {
-        synchronized (mFrames) {
-            mFrames.add(frame);
-            if (mFrames.size() >= BATCH_SIZE) {
-                mFrames.notifyAll();
+        try {
+            synchronized (mFrames) {
+                while (MAX_QUEUED_FRAMES > 0 && mFrames.size() > MAX_QUEUED_FRAMES) {
+                    mFrames.wait();
+                }
+                mFrames.add(frame);
+                if (mFrames.size() >= BATCH_SIZE) {
+                    mFrames.notifyAll();
+                }
             }
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
     }
 
@@ -114,6 +123,7 @@ public class RoIExtractor implements Runnable {
             for (int i = 0; i < BATCH_SIZE; i++) {
                 frames.add(mFrames.poll());
             }
+            mFrames.notifyAll();
         }
         return frames;
     }

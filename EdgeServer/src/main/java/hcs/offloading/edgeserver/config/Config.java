@@ -28,7 +28,10 @@ public class Config {
 
         if (jsonObject.has("use_local_video")) {
             dispatcherConfig.USE_LOCAL_VIDEO = jsonObject.getBoolean("use_local_video");
-            if (dispatcherConfig.USE_LOCAL_VIDEO && jsonObject.has("video_configs")) {
+            if (dispatcherConfig.USE_LOCAL_VIDEO) {
+                if (!jsonObject.has("video_configs")) {
+                    throw new IllegalArgumentException("Video configs should be specified");
+                }
                 JSONArray videoConfigs = jsonObject.getJSONArray("video_configs");
                 for (int i = 0; i < videoConfigs.length(); i++) {
                     DispatcherConfig.VideoConfig videoConfig = new DispatcherConfig.VideoConfig();
@@ -60,6 +63,9 @@ public class Config {
             roIExtractorConfig.BATCH_SIZE = 1;
         } else if (jsonObject.has("batch_size")) { // else, use "batch_size"
             roIExtractorConfig.BATCH_SIZE = jsonObject.getInt("batch_size");
+        }
+        if (jsonObject.has("max_queued_frames")) {
+            roIExtractorConfig.MAX_QUEUED_FRAMES = jsonObject.getInt("max_queued_frames");
         }
         if (jsonObject.has("frame_size")) {
             roIExtractorConfig.MIXED_FRAME_SIZE = jsonObject.getInt("frame_size");
@@ -128,6 +134,9 @@ public class Config {
         }
         if (roIExtractorConfig.IS_BASELINE && roIExtractorConfig.BATCH_SIZE != 1) {
             throw new IllegalArgumentException("if is_baseline = true, roIExtractorConfig.BATCH_SIZE must be 1");
+        }
+        if (roIExtractorConfig.MAX_QUEUED_FRAMES != -1 && roIExtractorConfig.MAX_QUEUED_FRAMES <= roIExtractorConfig.BATCH_SIZE) {
+
         }
     }
 
