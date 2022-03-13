@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -37,14 +36,16 @@ import hcs.offloading.edgeserver.config.RoIExtractorConfig;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
+import hcs.offloading.edgeserver.datatypes.MockProfiles;
 import hcs.offloading.edgeserver.datatypes.RoI;
+import hcs.offloading.edgeserver.datatypes.RoIType;
 
 public class RoIExtractor implements Runnable {
     private static final String TAG = RoIExtractor.class.getName();
 
     private final int BATCH_SIZE;
     private final int MIXED_FRAME_SIZE;
-    private final int AREA_THRESHOLD;
+    private final float MERGE_THRESHOLD;
     private final int ROI_PADDING;
     private final ExtractionMethod EXTRACTION_METHOD;
 
@@ -68,7 +69,7 @@ public class RoIExtractor implements Runnable {
     RoIExtractor(RoIExtractorConfig config, Callback callback) {
         BATCH_SIZE = config.BATCH_SIZE;
         MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
-        AREA_THRESHOLD = config.AREA_THRESHOLD;
+        MERGE_THRESHOLD = config.MERGE_THRESHOLD;
         ROI_PADDING = config.ROI_PADDING;
         EXTRACTION_METHOD = config.EXTRACTION_METHOD;
 
@@ -153,7 +154,7 @@ public class RoIExtractor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private List<RoI> resize(List<RoI> rois) {
-        return rois.stream().map(roi -> roi.resize(AREA_THRESHOLD)).collect(Collectors.toList());
+        return rois.stream().map(roi -> roi.resize(MockProfiles.get_profile(roi.labelName))).collect(Collectors.toList());
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -181,7 +182,6 @@ public class RoIExtractor implements Runnable {
     @RequiresApi(api = Build.VERSION_CODES.N)
     private List<RoI> getRoIs(List<Frame> frames, Bitmap prevBitmap, List<BoundingBox> prevBoxes) {
         List<RoI> rois = new ArrayList<>();
-        List<Rect> prevResults = prevBoxes.stream().map(box -> box.location).collect(Collectors.toList());
         // add other methods below if needed
         for (Frame currentFrame : frames) {
             Bitmap currBitmap = currentFrame.bitmap;
@@ -190,16 +190,16 @@ public class RoIExtractor implements Runnable {
             }
             List<RoI> frameRoIs = new ArrayList<>();
             if (EXTRACTION_METHOD.equals(ExtractionMethod.COMBINED) || EXTRACTION_METHOD.equals(ExtractionMethod.OF)) {
-                List<Rect> currentRects = createRoIWithInferenceResult(prevBitmap, currBitmap, prevResults);
-                List<RoI> opticalFlowRoIs = currentRects.stream()
-                        .map(rect -> new RoI(currentFrame, rect))
+                List<BoundingBox> currentBoxes = createRoIWithInferenceResult(prevBitmap, currBitmap, prevBoxes);
+                List<RoI> opticalFlowRoIs = currentBoxes.stream()
+                        .map(bbx -> new RoI(currentFrame, bbx.location, RoIType.OF, bbx.labelName))
                         .collect(Collectors.toList());
                 frameRoIs.addAll(opticalFlowRoIs);
-                prevResults = opticalFlowRoIs.stream().map(roi -> roi.position).collect(Collectors.toList());
+                prevBoxes = currentBoxes;
             }
             if (EXTRACTION_METHOD.equals(ExtractionMethod.COMBINED) || EXTRACTION_METHOD.equals(ExtractionMethod.PD)) {
                 List<RoI> pixelDiffRoIs = createRoIsFromDiff(prevBitmap, currBitmap).stream()
-                        .map(rect -> new RoI(currentFrame, rect))
+                        .map(rect -> new RoI(currentFrame, rect, RoIType.PD, null))
                         .collect(Collectors.toList());
                 frameRoIs.addAll(pixelDiffRoIs);
             }
@@ -222,7 +222,8 @@ public class RoIExtractor implements Runnable {
                 for (int j = i + 1; j < rois.size(); j++) {
                     RoI roi0 = rois.get(i);
                     RoI roi1 = rois.get(j);
-                    if (hcs.offloading.edgeserver.Utils.box_intersection(roi0.position, roi1.position) > 0) {
+                    float intersection = hcs.offloading.edgeserver.Utils.box_intersection(roi0.position, roi1.position);
+                    if (intersection/roi0.getArea() > MERGE_THESHOLD || intersection/ roi1.getArea() > MERGE_THRESHOLD) {
                         indices = new Pair<>(i, j);
                         break;
                     }
@@ -241,7 +242,15 @@ public class RoIExtractor implements Runnable {
             int newRight = Math.max(roi0.position.right, roi1.position.right);
             int newLeft = Math.min(roi0.position.left, roi1.position.left);
             Rect newPosition = new Rect(newLeft, newTop, newRight, newBottom);
-            RoI mergedRoI = new RoI(frame, newPosition);
+            RoIType roiType = RoIType.PD;
+            String roiLabel = null;
+            if (roi0.type.equals(RoIType.OF) || roi1.type.equals(RoIType.OF)) {
+                roiType = RoIType.OF;
+                if (roi0.labelName != null && roi0.labelName.equals(roi1.labelName)) {
+                    roiLabel = roi0.labelName;
+                }
+            }
+            RoI mergedRoI = new RoI(frame, newPosition, roiType, roiLabel);
             rois.remove(roi0);
             rois.remove(roi1);
             rois.add(mergedRoI);
@@ -249,16 +258,18 @@ public class RoIExtractor implements Runnable {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private List<Rect> createRoIWithInferenceResult(Bitmap f0, Bitmap f1, List<Rect> boundingBoxes) {
+    private List<BoundingBox> createRoIWithInferenceResult(Bitmap f0, Bitmap f1, List<BoundingBox> boundingBoxes) {
         final int width = f1.getWidth();
         final int height = f1.getHeight();
 
-        List<Rect> shiftedBoxes = new ArrayList<>();
+        List<Rect> boundingRects = boundingBoxes.stream().map(bbx -> bbx.location).collect(Collectors.toList());
+
+        List<BoundingBox> shiftedBoxes = new ArrayList<>();
         if (!boundingBoxes.isEmpty()) {
-            int[][] shifts = getOpticalFlowForBoundingBoxes(f0, f1, boundingBoxes);
+            int[][] shifts = getOpticalFlowForBoundingBoxes(f0, f1, boundingRects);
             for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
                 int[] shift = shifts[boxIndex];
-                Rect bbx = boundingBoxes.get(boxIndex);
+                Rect bbx = boundingRects.get(boxIndex);
                 int newLeft = bbx.left + shift[0] - ROI_PADDING;
                 int newTop = bbx.top + shift[1] - ROI_PADDING;
                 int newRight = bbx.right + shift[0] + ROI_PADDING;
@@ -275,7 +286,7 @@ public class RoIExtractor implements Runnable {
                 if (newBottom > height) {
                     newBottom = height;
                 }
-                shiftedBoxes.add(new Rect(newLeft, newTop, newRight, newBottom));
+                shiftedBoxes.add(boundingBoxes.get(boxIndex).move(new Rect(newLeft, newTop, newRight, newBottom)));
             }
         }
         return shiftedBoxes;

@@ -10,11 +10,16 @@ public class RoI {
     public final float scale;
     public final int[] packedLocation;
 
-    public RoI(Frame frame, Rect position) {
+    public final RoIType type;
+    public final String labelName;
+
+    public RoI(Frame frame, Rect position, RoIType type, String labelName) {
         this.frame = frame;
         this.position = position;
         this.scale = 1f;
         this.packedLocation = null;
+        this.type = type;
+        this.labelName = labelName;
     }
 
     private RoI(RoI roi, float scale) {
@@ -22,6 +27,8 @@ public class RoI {
         this.position = roi.position;
         this.scale = scale;
         this.packedLocation = roi.packedLocation;
+        this.type = roi.type;
+        this.labelName = roi.labelName;
     }
 
     private RoI(RoI roi, int[] packedLocation) {
@@ -29,6 +36,8 @@ public class RoI {
         this.position = roi.position;
         this.scale = roi.scale;
         this.packedLocation = packedLocation;
+        this.type = roi.type;
+        this.labelName = roi.labelName;
     }
 
     public Bitmap getBitmap() {
@@ -39,9 +48,10 @@ public class RoI {
         return packedLocation != null;
     }
 
-    public RoI resize(int areaThreshold) {
-        if (position.height() * position.width() > areaThreshold) {
-            float updatedScale = (float) Math.sqrt((double) areaThreshold / (position.height() * position.width()));
+    public RoI resize(int lengthThreshold) {
+        int basis = Math.max(position.height(), position.width());
+        if (basis > lengthThreshold) {
+            float updatedScale = ((float) lengthThreshold) / basis;
             return new RoI(this, updatedScale);
         }
         return this;
@@ -49,6 +59,10 @@ public class RoI {
 
     public RoI pack(int[] packedLocation) {
         return new RoI(this, packedLocation);
+    }
+
+    public int getArea() {
+        return position.width() * position.height();
     }
 
     public int[] getResizedWidthHeight() {
