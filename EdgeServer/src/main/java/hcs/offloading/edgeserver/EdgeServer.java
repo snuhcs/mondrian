@@ -8,13 +8,10 @@ import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
-import org.json.JSONException;
-import org.json.simple.parser.ParseException;
 import org.webrtc.EglBase;
 import org.webrtc.MediaStream;
 import org.webrtc.SurfaceViewRenderer;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,8 +32,6 @@ import hcs.offloading.network.webrtc.WebRTCManager;
 public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtractor.Callback, Worker.Callback {
     private static final String TAG = EdgeServer.class.getName();
 
-    private static final String CONFIG_FILEPATH = "/data/local/tmp/edgeserver.json";
-
     private Config mConfig;
 
     private SurfaceViewRenderer mInputView;
@@ -53,8 +48,8 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     private InferenceEngine mInferenceEngine;
     private PatchReconstructor mPatchReconstructor;
 
-    EdgeServer(Context context, String uri, SurfaceViewRenderer inputView, ViewCallback viewCallback) throws JSONException, ParseException, IOException {
-        mConfig = new Config(CONFIG_FILEPATH);
+    EdgeServer(Config config, Context context, String uri, SurfaceViewRenderer inputView, ViewCallback viewCallback) {
+        mConfig = config;
         mAssetManager = context.getAssets();
 
         mInputView = inputView;
@@ -156,28 +151,40 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     // Dispatcher.Callback
     @Override
     public void enqueueFrame(Frame frame) {
-        mRoIExtractor.enqueueFrame(frame);
+        if (mRoIExtractor != null) {
+            mRoIExtractor.enqueueFrame(frame);
+        }
     }
 
     @Override
     public void removeStream(String sourceIP) {
-        mPatchReconstructor.removeStream(sourceIP);
+        if (mPatchReconstructor != null) {
+            mPatchReconstructor.removeStream(sourceIP);
+        }
     }
 
     // RoIExtractor.Callback
     @Override
     public Pair<Bitmap, List<BoundingBox>> getFrameAndResults(String sourceIP, int frameIndex) throws InterruptedException {
-        return mPatchReconstructor.getRemoveDrawResult(sourceIP, frameIndex);
+        if (mPatchReconstructor != null) {
+            return mPatchReconstructor.getRemoveDrawResult(sourceIP, frameIndex);
+        } else {
+            return null;
+        }
     }
 
     @Override
     public void enqueueInferenceRequest(InferenceRequest inferenceRequest) {
-        mInferenceEngine.enqueueRequest(inferenceRequest);
+        if (mInferenceEngine != null) {
+            mInferenceEngine.enqueueRequest(inferenceRequest);
+        }
     }
 
     // Worker.Callback
     @Override
     public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
-        mPatchReconstructor.enqueueInferenceResult(request, results);
+        if (mPatchReconstructor != null) {
+            mPatchReconstructor.enqueueInferenceResult(request, results);
+        }
     }
 }

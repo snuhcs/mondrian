@@ -26,8 +26,4 @@ public class Frame {
     public static Frame createMixedFrame(Bitmap bitmap) {
         return new Frame(bitmap);
     }
-
-    boolean isMixed() {
-        return sourceIP == null;
-    }
 }

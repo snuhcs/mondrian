@@ -43,6 +43,7 @@ import hcs.offloading.edgeserver.datatypes.RoIType;
 public class RoIExtractor implements Runnable {
     private static final String TAG = RoIExtractor.class.getName();
 
+    private final boolean IS_BASELINE;
     private final int BATCH_SIZE;
     private final int MIXED_FRAME_SIZE;
     private final float MERGE_THRESHOLD;
@@ -65,8 +66,10 @@ public class RoIExtractor implements Runnable {
     private final Thread mRoIExtractorThread;
     private final Callback mCallback;
 
+
     @RequiresApi(api = Build.VERSION_CODES.P)
     RoIExtractor(RoIExtractorConfig config, Callback callback) {
+        IS_BASELINE = config.IS_BASELINE;
         BATCH_SIZE = config.BATCH_SIZE;
         MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
@@ -124,16 +127,20 @@ public class RoIExtractor implements Runnable {
                 endTime = System.nanoTime();
                 Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
 
-                List<RoI> resizedRoIs = resize(rois);
-                List<RoI> sortedRoIs = sortByPriority(resizedRoIs);
+                if (!IS_BASELINE) {
+                    List<RoI> resizedRoIs = resize(rois);
+                    List<RoI> sortedRoIs = sortByPriority(resizedRoIs);
 
-                startTime = System.nanoTime();
-                List<RoI> packedRoIs = PatchMixer.packRoIs(sortedRoIs, MIXED_FRAME_SIZE);
-                Bitmap mixedFrame = PatchMixer.getMixedFrame(packedRoIs, MIXED_FRAME_SIZE);
-                endTime = System.nanoTime();
-                Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
+                    startTime = System.nanoTime();
+                    List<RoI> packedRoIs = PatchMixer.packRoIs(sortedRoIs, MIXED_FRAME_SIZE);
+                    Bitmap mixedFrame = PatchMixer.getMixedFrame(packedRoIs, MIXED_FRAME_SIZE);
+                    endTime = System.nanoTime();
+                    Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
 
-                mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, rois));
+                    mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, sortedRoIs));
+                } else {
+                    mCallback.enqueueInferenceRequest(InferenceRequest.createBaselineRequest(frames.get(0), rois));
+                }
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");

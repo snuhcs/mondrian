@@ -13,7 +13,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Switch;
 
-import org.json.simple.parser.ParseException;
+import org.json.JSONException;
 import org.webrtc.EglBase;
 import org.webrtc.SurfaceViewRenderer;
 
@@ -22,8 +22,9 @@ import java.io.IOException;
 import hcs.offloading.sensorapplication.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener {
-
     private static final String TAG = MainActivity.class.getName();
+
+    private static final String CONFIG_FILEPATH = "/data/local/tmp/sensorapplication.json";
 
     private EditText mIpInput;
     private EditText mPortInput;
@@ -31,8 +32,6 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
     private final EglBase mEglBase = EglBase.create();
     private SensorApplication mSensorApplication;
-
-    private static final String CONFIG_FILEPATH = "/data/local/tmp/sensorapplication.json";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,7 +68,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                             uri,
                             mInputView
                     );
-                } catch (ParseException | IOException e) {
+                } catch (IOException | JSONException e) {
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                     mSensorApplication = null;
                 }

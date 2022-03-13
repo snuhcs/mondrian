@@ -13,16 +13,18 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import org.json.JSONException;
-import org.json.simple.parser.ParseException;
 import org.webrtc.SurfaceViewRenderer;
 
 import java.io.IOException;
 
+import hcs.offloading.edgeserver.config.Config;
 import hcs.offloading.edgeserver.databinding.ActivityMainBinding;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ViewCallback {
     private static final String TAG = MainActivity.class.getName();
+
+    private static final String CONFIG_FILEPATH = "/data/local/tmp/edgeserver.json";
 
     private EditText mIpInput;
     private EditText mPortInput;
@@ -58,8 +60,13 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                 int port = Integer.parseInt(mPortInput.getText().toString());
                 String uri = "tcp://" + ip + ":" + port;
                 try {
-                    mEdgeServer = new EdgeServer(getApplicationContext(), uri, mInputView, this);
-                } catch (ParseException | JSONException | IOException | IllegalArgumentException e) {
+                    mEdgeServer = new EdgeServer(
+                            new Config(CONFIG_FILEPATH),
+                            getApplicationContext(),
+                            uri,
+                            mInputView,
+                            this);
+                } catch (JSONException | IOException | IllegalArgumentException e) {
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                     mEdgeServer = null;
                 }

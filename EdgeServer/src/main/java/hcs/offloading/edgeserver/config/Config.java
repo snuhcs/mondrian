@@ -2,46 +2,49 @@ package hcs.offloading.edgeserver.config;
 
 import android.util.Log;
 
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import org.json.JSONException;
+import org.json.JSONObject;
 
-import java.io.FileReader;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 public class Config {
     private static final String TAG = Config.class.getName();
 
-    public final DispatcherConfig dispatcherConfig;
-    public final RoIExtractorConfig roIExtractorConfig;
-    public final InferenceEngineConfig inferenceEngineConfig;
-    public final PatchReconstructorConfig patchReconstructorConfig;
-    public final UtilsConfig utilsConfig;
+    public final DispatcherConfig dispatcherConfig = new DispatcherConfig();
+    public final RoIExtractorConfig roIExtractorConfig = new RoIExtractorConfig();
+    public final InferenceEngineConfig inferenceEngineConfig = new InferenceEngineConfig();
+    public final PatchReconstructorConfig patchReconstructorConfig = new PatchReconstructorConfig();
+    public final UtilsConfig utilsConfig = new UtilsConfig();
 
-    public Config(String jsonPath) throws ParseException, IOException, IllegalArgumentException {
-        JSONParser jsonParser = new JSONParser();
-        JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(jsonPath));
-        Log.d(TAG, "Parsed Config: " + jsonObject.toJSONString());
+    public Config(String jsonPath) throws IOException, JSONException {
+        JSONObject jsonObject = new JSONObject(getStringFromFile(jsonPath));
+        Log.d(TAG, "Parsed Config: " + jsonObject);
 
-        dispatcherConfig = new DispatcherConfig();
-        if (jsonObject.containsKey("full_inference_interval")) {
-            dispatcherConfig.FULL_INFERENCE_INTERVAL = getInt(jsonObject, "full_inference_interval");
+        if (jsonObject.has("full_inference_interval")) {
+            dispatcherConfig.FULL_INFERENCE_INTERVAL = jsonObject.getInt("full_inference_interval");
         }
 
-        roIExtractorConfig = new RoIExtractorConfig();
-        if (jsonObject.containsKey("batch_size")) {
-            roIExtractorConfig.BATCH_SIZE = getInt(jsonObject, "batch_size");
+        if (jsonObject.has("is_baseline")) { // if is_baseline = true, BATCH_SIZE must be 1
+            roIExtractorConfig.IS_BASELINE = jsonObject.getBoolean("is_baseline");
+            roIExtractorConfig.BATCH_SIZE = 1;
+        } else if (jsonObject.has("batch_size")) { // else, use "batch_size"
+            roIExtractorConfig.BATCH_SIZE = jsonObject.getInt("batch_size");
         }
-        if (jsonObject.containsKey("mixed_frame_size")) {
-            roIExtractorConfig.MIXED_FRAME_SIZE = getInt(jsonObject, "mixed_frame_size");
+        if (jsonObject.has("frame_size")) {
+            roIExtractorConfig.MIXED_FRAME_SIZE = jsonObject.getInt("frame_size");
         }
-        if (jsonObject.containsKey("merge_threshold")) {
-            roIExtractorConfig.MERGE_THRESHOLD = getFloat(jsonObject, "merge_threshold");
+        if (jsonObject.has("merge_threshold")) {
+            roIExtractorConfig.MERGE_THRESHOLD = (float) jsonObject.getDouble("merge_threshold");
         }
-        if (jsonObject.containsKey("roi_padding")) {
-            roIExtractorConfig.ROI_PADDING = getInt(jsonObject, "roi_padding");
+        if (jsonObject.has("roi_padding")) {
+            roIExtractorConfig.ROI_PADDING = jsonObject.getInt("roi_padding");
         }
-        if (jsonObject.containsKey("extraction_method")) {
+        if (jsonObject.has("extraction_method")) {
             String method = String.valueOf(jsonObject.get("extraction_method"));
             switch (method) {
                 case "combined":
@@ -56,38 +59,52 @@ public class Config {
             }
         }
 
-        inferenceEngineConfig = new InferenceEngineConfig();
-        inferenceEngineConfig.MIXED_FRAME_SIZE = roIExtractorConfig.MIXED_FRAME_SIZE;
-        if (jsonObject.containsKey("num_workers")) {
-            inferenceEngineConfig.NUM_WORKERS = getInt(jsonObject, "num_workers");
+        if (jsonObject.has("num_workers")) {
+            inferenceEngineConfig.NUM_WORKERS = jsonObject.getInt("num_workers");
+        }
+        if (jsonObject.has("frame_size")) {
+            inferenceEngineConfig.FRAME_SIZE = jsonObject.getInt("frame_size");
         }
 
-        patchReconstructorConfig = new PatchReconstructorConfig();
-        if (jsonObject.containsKey("match_padding")) {
-            patchReconstructorConfig.MATCH_PADDING = getInt(jsonObject, "match_padding");
+        if (jsonObject.has("match_padding")) {
+            patchReconstructorConfig.MATCH_PADDING = jsonObject.getInt("match_padding");
         }
-        if (jsonObject.containsKey("use_iou_threshold")) {
-            patchReconstructorConfig.USE_IOU_THRESHOLD = getFloat(jsonObject, "use_iou_threshold");
+        if (jsonObject.has("use_iou_threshold")) {
+            patchReconstructorConfig.USE_IOU_THRESHOLD = (float) jsonObject.getDouble("use_iou_threshold");
         }
 
-        utilsConfig = new UtilsConfig();
-        if (jsonObject.containsKey("minimum_confidence")) {
-            utilsConfig.MINIMUM_CONFIDENCE = getFloat(jsonObject, "minimum_confidence");
+        if (jsonObject.has("minimum_confidence")) {
+            utilsConfig.MINIMUM_CONFIDENCE = (float) jsonObject.getDouble("minimum_confidence");
         }
+
         validate();
     }
 
     private void validate() throws IllegalArgumentException {
-        if (roIExtractorConfig.MIXED_FRAME_SIZE != inferenceEngineConfig.MIXED_FRAME_SIZE) {
+        if (!roIExtractorConfig.IS_BASELINE && roIExtractorConfig.MIXED_FRAME_SIZE != inferenceEngineConfig.FRAME_SIZE) {
             throw new IllegalArgumentException("roIExtractorConfig.MIXED_FRAME_SIZE and inferenceEngineConfig.MIXED_FRAME_SIZE must be same");
+        }
+        if (roIExtractorConfig.IS_BASELINE && roIExtractorConfig.BATCH_SIZE != 1) {
+            throw new IllegalArgumentException("if is_baseline = true, roIExtractorConfig.BATCH_SIZE must be 1");
         }
     }
 
-    private static int getInt(JSONObject jsonObject, String key) {
-        return Integer.parseInt(String.valueOf(jsonObject.get(key)));
+    private static String convertStreamToString(InputStream is) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line).append("\n");
+        }
+        reader.close();
+        return sb.toString();
     }
 
-    private static float getFloat(JSONObject jsonObject, String key) {
-        return Float.parseFloat(String.valueOf(jsonObject.get(key)));
+    private static String getStringFromFile(String filePath) throws IOException {
+        File fl = new File(filePath);
+        FileInputStream fin = new FileInputStream(fl);
+        String ret = convertStreamToString(fin);
+        fin.close();
+        return ret;
     }
 }
