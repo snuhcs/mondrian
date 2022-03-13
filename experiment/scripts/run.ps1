@@ -3,12 +3,12 @@ Set-PSDebug -Trace 1
 $CONFIG_PATH="/data/local/tmp/edgeserver.json"
 $APP_DATA_PATH="/data/data/hcs.offloading.edgeserver"
 
-# adb push  ./experiment/configs/end_to_end/e2e_0_full_inference.json           $CONFIG_PATH
-# adb shell am start-activity hcs.offloading.edgeserver/.MainActivity
-# Start-Sleep -Seconds 30
-# adb shell am force-stop hcs.offloading.edgeserver
-# adb shell run-as hcs.offloading.edgeserver cat $APP_DATA_PATH/e2e_0_full_inference.log > ./results/e2e_0_full_inference.log
-# Start-Sleep -Seconds 20
+adb push  ./experiment/configs/end_to_end/e2e_0_full_inference.json           $CONFIG_PATH
+adb shell am start-activity hcs.offloading.edgeserver/.MainActivity
+Start-Sleep -Seconds 30
+adb shell am force-stop hcs.offloading.edgeserver
+adb shell run-as hcs.offloading.edgeserver cat $APP_DATA_PATH/e2e_0_full_inference.log > ./results/e2e_0_full_inference.log
+Start-Sleep -Seconds 20
 
 
 adb push  ./experiment/configs/end_to_end/e2e_1_accuracy_sacrificing.json     $CONFIG_PATH

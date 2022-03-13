@@ -116,7 +116,7 @@ public class YoloV4Classifier {
         long start = System.nanoTime();
         tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
         long end = System.nanoTime();
-        Log.d(TAG, "inference time: " + (end - start) / 1000000.0f);
+        Log.d(TAG, "Inference time (us): " + (end - start) / 1000);
 
         int gridWidth = OUTPUT_WIDTH_FULL[0];
         float[][][] bboxes = (float[][][]) outputMap.get(0);
