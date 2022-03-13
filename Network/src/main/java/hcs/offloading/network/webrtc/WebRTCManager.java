@@ -171,12 +171,12 @@ public class WebRTCManager {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    public Pair<VideoCapturer, VideoTrack> createSavedVideoTrack(EglBase eglBase, String videoFilePath, String logFilePath) {
+    public Pair<VideoCapturer, VideoTrack> createSavedVideoTrack(EglBase eglBase, String videoFilePath) {
         SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
         CustomCapturer videoCapturer = new CustomCapturer();
         VideoSource videoSource = mPeerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
         videoCapturer.initialize(surfaceTextureHelper, mContext, videoSource.getCapturerObserver());
-        videoCapturer.initializeVideoAndLog(videoFilePath, logFilePath);
+        videoCapturer.initializeVideo(videoFilePath);
         return new Pair<>(videoCapturer, mPeerConnectionFactory.createVideoTrack("101", videoSource));
     }
 

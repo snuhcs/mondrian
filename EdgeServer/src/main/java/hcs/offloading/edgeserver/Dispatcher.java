@@ -67,15 +67,15 @@ public class Dispatcher implements VideoSink {
     }
 
     public void close() {
-        if (mPeerConnection != null && !mPeerConnection.signalingState().equals(PeerConnection.SignalingState.CLOSED)) {
-            synchronized (mPeerConnection) {
-                if (mMediaStream != null) {
-                    mVideoTrack.removeSink(this);
-                    mVideoTrack.removeSink(mInputView);
-                    mMediaStream.removeTrack(mVideoTrack);
-                    mPeerConnection.removeStream(mMediaStream);
-                }
+        synchronized (mPeerConnection) {
+            if (mMediaStream != null) {
+                mVideoTrack.removeSink(this);
+                mVideoTrack.removeSink(mInputView);
+                mMediaStream.removeTrack(mVideoTrack);
+                mPeerConnection.removeStream(mMediaStream);
             }
+        }
+        if (!mPeerConnection.connectionState().equals(PeerConnection.PeerConnectionState.CLOSED)) {
             mPeerConnection.close();
         }
         mCallback.removeStream(mSourceIP);

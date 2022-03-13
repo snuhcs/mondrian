@@ -3,6 +3,5 @@
   "width": 1920,
   "height": 1080,
   "fps": 5,
-  "video_path": "/data/local/tmp/surveillance_0.mp4",
-  "log_path": "/data/data/hcs.offloading.sensorapplication/sensorapplication_log.csv"
+  "video_path": "/data/local/tmp/surveillance_0.mp4"
 }

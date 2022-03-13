@@ -13,7 +13,6 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Switch;
 
-import org.json.JSONException;
 import org.json.simple.parser.ParseException;
 import org.webrtc.EglBase;
 import org.webrtc.SurfaceViewRenderer;
@@ -74,8 +73,11 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                     mSensorApplication = null;
                 }
-            } else{
-                mSensorApplication.close();
+            } else {
+                if (mSensorApplication != null) {
+                    mSensorApplication.close();
+                    mSensorApplication = null;
+                }
             }
         }
     }
@@ -84,7 +86,10 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     protected void onDestroy() {
         super.onDestroy();
         synchronized (this) {
-            mSensorApplication.close();
+            if (mSensorApplication != null) {
+                mSensorApplication.close();
+                mSensorApplication = null;
+            }
         }
     }
 }

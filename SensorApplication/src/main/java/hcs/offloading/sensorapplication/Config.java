@@ -14,7 +14,6 @@ public class Config {
     public int HEIGHT = 1080;
     public int FPS = 5;
     public String VIDEO_PATH = null;
-    public String LOG_PATH = null;
 
     Config(String jsonPath) throws IOException, ParseException {
 
@@ -36,9 +35,5 @@ public class Config {
         if (jsonObject.containsKey("video_path")) {
             VIDEO_PATH = String.valueOf(jsonObject.get("video_path"));
         }
-        if (jsonObject.containsKey("log_path")) {
-            LOG_PATH = String.valueOf(jsonObject.get("log_path"));
-        }
     }
-
 }

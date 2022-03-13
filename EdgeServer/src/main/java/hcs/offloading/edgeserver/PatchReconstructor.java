@@ -7,14 +7,11 @@ import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 
 import hcs.offloading.edgeserver.config.PatchReconstructorConfig;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
@@ -35,20 +32,12 @@ public class PatchReconstructor implements Runnable {
 
     private final Thread mPatchReconstructorThread;
 
-    private FileWriter logWriter;
     private int mNumProcessedFrames = 0;
     private final long mApplicationStartTime = System.nanoTime();
 
     PatchReconstructor(PatchReconstructorConfig config, ViewCallback callback) {
         MATCH_PADDING = config.MATCH_PADDING;
         USE_IOU_THRESHOLD = config.USE_IOU_THRESHOLD;
-        if (config.LOG_PATH != null) {
-            try {
-                logWriter = new FileWriter(config.LOG_PATH);
-            } catch (IOException e) {
-                Log.e(TAG, e.getMessage());
-            }
-        }
 
         mCallback = callback;
 
@@ -63,7 +52,6 @@ public class PatchReconstructor implements Runnable {
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage());
         }
-        saveLog();
         Log.d(TAG, "closed");
     }
 
@@ -77,7 +65,6 @@ public class PatchReconstructor implements Runnable {
                 if (!mFramesAndResults.containsKey(frame.sourceIP)) {
                     mFramesAndResults.put(frame.sourceIP, new HashMap<>());
                 }
-                log(request.frame, results);
                 mFramesAndResults.get(frame.sourceIP).put(frame.index, new Pair<>(request.frame, results));
                 mFramesAndResults.notifyAll();
             }
@@ -112,7 +99,6 @@ public class PatchReconstructor implements Runnable {
                             for (Integer frameIndex : multiFrameResults.keySet()) {
                                 Frame frame = frameMap.get(new Pair<>(sourceIP, frameIndex));
                                 List<BoundingBox> boxes = multiFrameResults.get(frameIndex);
-                                log(frame, boxes);
                                 mFramesAndResults.get(sourceIP).put(frameIndex, new Pair<>(frame, boxes));
                             }
                         }
@@ -198,28 +184,6 @@ public class PatchReconstructor implements Runnable {
             }
         }
         return mixedFrameResults;
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    private void log(Frame frame, List<BoundingBox> boxes) {
-        if (logWriter != null) {
-            try {
-                logWriter.write(frame.sourceIP + "," + frame.index + "," + frame.timeNs + "," + boxes.stream().map(BoundingBox::toString).collect(Collectors.joining(",")) + "\n");
-            } catch (IOException e) {
-                Log.e(TAG, e.getMessage());
-            }
-        }
-    }
-
-    private void saveLog() {
-        if (logWriter != null) {
-            try {
-                logWriter.flush();
-                logWriter.close();
-            } catch (IOException e) {
-                Log.e(TAG, e.getMessage());
-            }
-        }
     }
 
     @SuppressLint("DefaultLocale")

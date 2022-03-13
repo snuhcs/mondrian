@@ -26,30 +26,31 @@ public class SensorApplication implements WebRTCCallback {
 
     private final Config mConfig;
 
-    private final SurfaceViewRenderer mInputView;
-
-    private String mTargetEdgeIP;
-    private final VideoCapturer mVideoCapturer;
-    private final VideoTrack mVideoTrack;
-    private final MediaStream mMediaStream;
-    private PeerConnection mPeerConnection;
     private WebRTCManager mWebRTCManager;
     private DeviceMqttManager mMqttManager;
+
+    private final SurfaceViewRenderer mInputView;
+    private final MediaStream mMediaStream;
+    private final VideoCapturer mVideoCapturer;
+    private final VideoTrack mVideoTrack;
+
+    private String mTargetEdgeIP;
+    private PeerConnection mPeerConnection;
+    private boolean isClosed = false;
 
     @RequiresApi(api = Build.VERSION_CODES.P)
     SensorApplication(Config config, Context context, EglBase eglBase, String uri, SurfaceViewRenderer inputView) {
         mConfig = config;
 
-        mInputView = inputView;
-
         mMqttManager = new DeviceMqttManager(context, uri, Device.SENSOR, scheduleTopicHandler, webrtcTopicHandler);
         mWebRTCManager = new WebRTCManager(context, mMqttManager, eglBase, this);
 
+        mInputView = inputView;
         mMediaStream = mWebRTCManager.createMediaStream();
 
         Pair<VideoCapturer, VideoTrack> capturerAndTrack;
         if (mConfig.USE_SAVED_VIDEO) {
-            capturerAndTrack = mWebRTCManager.createSavedVideoTrack(eglBase, mConfig.VIDEO_PATH, mConfig.LOG_PATH);
+            capturerAndTrack = mWebRTCManager.createSavedVideoTrack(eglBase, mConfig.VIDEO_PATH);
         } else {
             capturerAndTrack = mWebRTCManager.createCameraTrack(eglBase);
         }
@@ -60,10 +61,15 @@ public class SensorApplication implements WebRTCCallback {
     }
 
     void close() {
+        Log.d(TAG, "close()");
+        isClosed = true;
         stopSensorApplication();
         mMediaStream.removeTrack(mVideoTrack);
+        Log.d(TAG, "mMediaStream.removeTrack(mVideoTrack);");
         mVideoTrack.removeSink(mInputView);
+        Log.d(TAG, "mVideoTrack.removeSink(mInputView);");
         mMqttManager.close();
+        Log.d(TAG, "mMqttManager.close();");
     }
 
     void startSensorApplication() {
@@ -77,16 +83,25 @@ public class SensorApplication implements WebRTCCallback {
     }
 
     void stopSensorApplication() {
+        Log.d(TAG, "stopSensorApplication");
         synchronized (this) {
+            Log.d(TAG, "synchronized (this) {");
             if (mPeerConnection != null) {
+                Log.d(TAG, "if (mPeerConnection != null)");
                 try {
                     mVideoCapturer.stopCapture();
+                    Log.d(TAG, "mVideoCapturer.stopCapture();");
                 } catch (InterruptedException e) {
                     Log.e(TAG, e.getMessage());
                 }
                 mPeerConnection.removeStream(mMediaStream);
-                mPeerConnection.close();
+                Log.d(TAG, "mPeerConnection.removeStream(mMediaStream);");
+                if (!mPeerConnection.connectionState().equals(PeerConnection.PeerConnectionState.CLOSED)) {
+                    mPeerConnection.close();
+                    Log.d(TAG, "mPeerConnection.close();");
+                }
                 mPeerConnection = null;
+                Log.d(TAG, "mPeerConnection = null;");
             }
         }
     }
@@ -125,7 +140,10 @@ public class SensorApplication implements WebRTCCallback {
 
     @Override
     public void onDisconnect(String ip) {
-        stopSensorApplication();
+        Log.d(TAG, "onDisconnect(String ip)");
+        if (!isClosed) {
+            stopSensorApplication();
+        }
     }
 
     @Override

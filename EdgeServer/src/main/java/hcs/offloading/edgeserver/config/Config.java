@@ -2,12 +2,10 @@ package hcs.offloading.edgeserver.config;
 
 import android.util.Log;
 
-import org.json.JSONException;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -70,9 +68,6 @@ public class Config {
         }
         if (jsonObject.containsKey("use_iou_threshold")) {
             patchReconstructorConfig.USE_IOU_THRESHOLD = getFloat(jsonObject, "use_iou_threshold");
-        }
-        if (jsonObject.containsKey("log_path")) {
-            patchReconstructorConfig.LOG_PATH = String.valueOf(jsonObject.get("log_path"));
         }
 
         utilsConfig = new UtilsConfig();
