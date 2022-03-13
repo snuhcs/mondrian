@@ -22,8 +22,9 @@ import java.io.IOException;
 import hcs.offloading.sensorapplication.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener {
-
     private static final String TAG = MainActivity.class.getName();
+
+    private static final String CONFIG_FILEPATH = "/data/local/tmp/sensorapplication.json";
 
     private EditText mIpInput;
     private EditText mPortInput;
@@ -31,8 +32,6 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
     private final EglBase mEglBase = EglBase.create();
     private SensorApplication mSensorApplication;
-
-    private static final String CONFIG_FILEPATH = "/data/local/tmp/sensorapplication.json";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,8 +72,11 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                     mSensorApplication = null;
                 }
-            } else{
-                mSensorApplication.close();
+            } else {
+                if (mSensorApplication != null) {
+                    mSensorApplication.close();
+                    mSensorApplication = null;
+                }
             }
         }
     }
@@ -83,7 +85,10 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     protected void onDestroy() {
         super.onDestroy();
         synchronized (this) {
-            mSensorApplication.close();
+            if (mSensorApplication != null) {
+                mSensorApplication.close();
+                mSensorApplication = null;
+            }
         }
     }
 }

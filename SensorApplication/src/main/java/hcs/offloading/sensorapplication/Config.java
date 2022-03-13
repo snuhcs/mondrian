@@ -16,7 +16,7 @@ public class Config {
     public int WIDTH = 1920;
     public int HEIGHT = 1080;
     public int FPS = 5;
-    public String VIDEO_PATH = "/data/local/tmp";
+    public String VIDEO_PATH = null;
 
     Config(String jsonPath) throws IOException, JSONException {
         JSONObject jsonObject = new JSONObject(getStringFromFile(jsonPath));

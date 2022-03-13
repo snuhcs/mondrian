@@ -43,6 +43,7 @@ import hcs.offloading.edgeserver.datatypes.RoIType;
 public class RoIExtractor implements Runnable {
     private static final String TAG = RoIExtractor.class.getName();
 
+    private final boolean IS_BASELINE;
     private final int BATCH_SIZE;
     private final int MIXED_FRAME_SIZE;
     private final float MERGE_THRESHOLD;
@@ -65,12 +66,10 @@ public class RoIExtractor implements Runnable {
     private final Thread mRoIExtractorThread;
     private final Callback mCallback;
 
-    private final boolean isBaseline;
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    RoIExtractor(boolean isBaseline, RoIExtractorConfig config, Callback callback) {
-        this.isBaseline = isBaseline;
-
+    RoIExtractor(RoIExtractorConfig config, Callback callback) {
+        IS_BASELINE = config.IS_BASELINE;
         BATCH_SIZE = config.BATCH_SIZE;
         MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
@@ -128,7 +127,7 @@ public class RoIExtractor implements Runnable {
                 endTime = System.nanoTime();
                 Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
 
-                if (!isBaseline) {
+                if (!IS_BASELINE) {
                     List<RoI> resizedRoIs = resize(rois);
                     List<RoI> sortedRoIs = sortByPriority(resizedRoIs);
 

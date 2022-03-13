@@ -2,15 +2,13 @@ package hcs.offloading.network.webrtc;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.Paint;
 import android.media.MediaMetadataRetriever;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
+import android.util.Log;
 
 import org.webrtc.CapturerObserver;
 import org.webrtc.SurfaceTextureHelper;
@@ -20,9 +18,9 @@ import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
 public class CustomCapturer implements VideoCapturer {
+    private static final String TAG = CustomCapturer.class.getName();
 
     private SurfaceTextureHelper surTexture;
-    private Context appContext;
     private CapturerObserver capturerObs;
     private Thread captureThread;
     private MediaMetadataRetriever retriever = new MediaMetadataRetriever();
@@ -30,7 +28,6 @@ public class CustomCapturer implements VideoCapturer {
     @Override
     public void initialize(SurfaceTextureHelper surfaceTextureHelper, Context applicationContext, CapturerObserver capturerObserver) {
         surTexture = surfaceTextureHelper;
-        appContext = applicationContext;
         capturerObs = capturerObserver;
     }
 
@@ -41,9 +38,10 @@ public class CustomCapturer implements VideoCapturer {
     @RequiresApi(api = Build.VERSION_CODES.P)
     @Override
     public void startCapture(int width, int height, int fps) {
+        Log.d(TAG, "startCapture");
         captureThread = new Thread(() -> {
             try {
-                long start = System.nanoTime();
+                long startTimeNs = System.nanoTime();
                 capturerObs.onCapturerStarted(true);
 
                 int[] textures = new int[1];
@@ -52,30 +50,31 @@ public class CustomCapturer implements VideoCapturer {
                 YuvConverter yuvConverter = new YuvConverter();
                 TextureBufferImpl buffer = new TextureBufferImpl(width, height, VideoFrame.TextureBuffer.Type.RGB, textures[0], new Matrix(), surTexture.getHandler(), yuvConverter, null);
 
-                int frameIndex = 0;
                 int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
                 while (true) {
-                    long startTime = System.currentTimeMillis();
-                    Bitmap bitmap = retriever.getFrameAtIndex(frameIndex++%frameCount);
+                    for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+                        long frameStartTimeNs = System.nanoTime();
+                        Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
-                    surTexture.getHandler().post(() -> {
-                        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-                        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
-                        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+                        surTexture.getHandler().post(() -> {
+                            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+                            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+                            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
-                        VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
+                            VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
 
-                        long frameTime = System.nanoTime() - start;
-                        VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
-                        capturerObs.onFrameCaptured(videoFrame);
-                    });
-                    long endTime = System.currentTimeMillis();
-                    long elapsed = endTime - startTime;
-                    long latencyLimit = 1000/fps;
-                    Thread.sleep(elapsed > latencyLimit? 0 : latencyLimit - elapsed);
+                            long frameTime = System.nanoTime() - startTimeNs;
+                            VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
+                            capturerObs.onFrameCaptured(videoFrame);
+                        });
+                        long frameEndTimeNs = System.nanoTime();
+                        long frameTimeMs = (frameEndTimeNs - frameStartTimeNs) / 1000000;
+                        long latencyLimitMs = 1000 / fps;
+                        Thread.sleep(frameTimeMs > latencyLimitMs ? 0 : latencyLimitMs - frameTimeMs);
+                    }
                 }
-            } catch(InterruptedException ex) {
-                ex.printStackTrace();
+            } catch (InterruptedException e) {
+                Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
             }
         });
         captureThread.start();
@@ -83,6 +82,7 @@ public class CustomCapturer implements VideoCapturer {
 
     @Override
     public void stopCapture() {
+        Log.d(TAG, "stopCapture");
         captureThread.interrupt();
     }
 

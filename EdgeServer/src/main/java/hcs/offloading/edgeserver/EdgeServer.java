@@ -8,12 +8,10 @@ import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
-import org.json.JSONException;
 import org.webrtc.EglBase;
 import org.webrtc.MediaStream;
 import org.webrtc.SurfaceViewRenderer;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,8 +32,6 @@ import hcs.offloading.network.webrtc.WebRTCManager;
 public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtractor.Callback, Worker.Callback {
     private static final String TAG = EdgeServer.class.getName();
 
-    private static final String CONFIG_FILEPATH = "/data/local/tmp/edgeserver.json";
-
     private Config mConfig;
 
     private SurfaceViewRenderer mInputView;
@@ -52,8 +48,8 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     private InferenceEngine mInferenceEngine;
     private PatchReconstructor mPatchReconstructor;
 
-    EdgeServer(Context context, String uri, SurfaceViewRenderer inputView, ViewCallback viewCallback) throws JSONException, IOException {
-        mConfig = new Config(CONFIG_FILEPATH);
+    EdgeServer(Config config, Context context, String uri, SurfaceViewRenderer inputView, ViewCallback viewCallback) {
+        mConfig = config;
         mAssetManager = context.getAssets();
 
         mInputView = inputView;
@@ -77,7 +73,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
         synchronized (this) {
             mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, mViewCallback);
             mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, this, mAssetManager);
-            mRoIExtractor = new RoIExtractor(mConfig.isBaseline, mConfig.roIExtractorConfig, this);
+            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, this);
         }
     }
 
@@ -130,7 +126,12 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
         }
     };
 
-    // WebRTCManager.StreamCallback
+    // WebRTCCallback
+    @Override
+    public void onConnect(String ip) {
+
+    }
+
     @Override
     public void onDisconnect(String ip) {
         Dispatcher dispatcher = mDispatchers.remove(ip);

@@ -1,8 +1,6 @@
 {
     "is_baseline": true,
     "full_inference_interval": 40,
-    "batch_size": 1,
-    "mixed_frame_size": 640,
     "merge_threshold": 0.5,
     "roi_padding": 0,
     "extraction_method": "combined",
