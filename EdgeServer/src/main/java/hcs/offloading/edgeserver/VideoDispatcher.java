@@ -79,7 +79,6 @@ public class VideoDispatcher extends CustomCapturer {
                     long frameEndTimeNs = System.nanoTime();
                     long frameTimeMs = (frameEndTimeNs - frameStartTimeNs) / 1000000;
                     long latencyLimitMs = 1000 / fps;
-                    Log.d(TAG, "Frame Extraction Time (ms): " + frameTimeMs);
                     Thread.sleep(frameTimeMs > latencyLimitMs ? 0 : latencyLimitMs - frameTimeMs);
                 }
             } catch (InterruptedException e) {

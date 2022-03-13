@@ -1,6 +1,6 @@
 {
     "is_baseline": true,
-    "full_inference_interval": 40,
+    "full_inference_interval": 120,
     "frame_size": 160,
     "merge_threshold": 0.5,
     "roi_padding": 0,

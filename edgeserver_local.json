@@ -5,18 +5,18 @@
             "path": "/data/local/tmp/surveillance_0.mp4",
             "width": 1920,
             "height": 1080,
-            "fps": 30
+            "fps": 10
         },
         {
             "path": "/data/local/tmp/surveillance_1.mp4",
             "width": 1920,
             "height": 1080,
-            "fps": 30
+            "fps": 10
         }
     ],
     "is_baseline": false,
-    "full_inference_interval": 40,
-    "batch_size": 8,
+    "full_inference_interval": 120,
+    "batch_size": 24,
     "frame_size": 640,
     "merge_threshold": 0.5,
     "roi_padding": 0,

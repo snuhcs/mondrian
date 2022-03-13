@@ -201,7 +201,7 @@ public class PatchReconstructor implements Runnable {
 
         List<RoI> rois = request.rois;
         for (BoundingBox box : boxes) {
-            float maxIoU = -1f;
+            float maxOverlap = -1f;
             RoI maxRoI = null;
             Rect maxBoxPos = null;
             for (RoI roi : rois) {
@@ -221,14 +221,16 @@ public class PatchReconstructor implements Runnable {
                         (int) ((boxPos.right - roi.packedLocation[0]) / roi.scale) + roi.position.left,
                         (int) ((boxPos.bottom - roi.packedLocation[1]) / roi.scale) + roi.position.top
                 );
-                float iou = Utils.box_iou(paddedRoIPos, movedAndResizedBoxPos);
-                if (maxRoI == null || maxIoU < iou) {
-                    maxIoU = iou;
+                float intersection = Utils.box_intersection(paddedRoIPos, movedAndResizedBoxPos);
+                float overlapRatio = Math.max(intersection / (movedAndResizedBoxPos.width() * movedAndResizedBoxPos.height()),
+                        intersection / (paddedRoIPos.width() * paddedRoIPos.height()));
+                if (maxRoI == null || maxOverlap < overlapRatio) {
+                    maxOverlap = overlapRatio;
                     maxRoI = roi;
                     maxBoxPos = movedAndResizedBoxPos;
                 }
             }
-            if (maxRoI != null && maxIoU > USE_IOU_THRESHOLD) {
+            if (maxRoI != null && maxOverlap > USE_IOU_THRESHOLD) {
                 box = box.move(maxBoxPos);
                 mixedFrameResults.get(maxRoI.getSourceIP()).get(maxRoI.getFrameIndex()).add(box);
             }
