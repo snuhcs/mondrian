@@ -223,7 +223,7 @@ public class RoIExtractor implements Runnable {
                     RoI roi0 = rois.get(i);
                     RoI roi1 = rois.get(j);
                     float intersection = hcs.offloading.edgeserver.Utils.box_intersection(roi0.position, roi1.position);
-                    if (intersection/roi0.getArea() > MERGE_THESHOLD || intersection/ roi1.getArea() > MERGE_THRESHOLD) {
+                    if (intersection/roi0.getArea() > MERGE_THRESHOLD || intersection/ roi1.getArea() > MERGE_THRESHOLD) {
                         indices = new Pair<>(i, j);
                         break;
                     }
