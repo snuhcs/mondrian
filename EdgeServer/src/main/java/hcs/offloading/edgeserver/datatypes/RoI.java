@@ -44,9 +44,10 @@ public class RoI {
         return packedLocation != null;
     }
 
-    public RoI resize(int areaThreshold) {
-        if (position.height() * position.width() > areaThreshold) {
-            float updatedScale = (float) Math.sqrt((double) areaThreshold / (position.height() * position.width()));
+    public RoI resize(int lengthThreshold) {
+        int basis = Math.max(position.height(), position.width());
+        if (basis > lengthThreshold) {
+            float updatedScale = ((float) lengthThreshold) / basis;
             return new RoI(this, updatedScale);
         }
         return this;
