@@ -56,6 +56,9 @@ public class PatchReconstructor implements Runnable {
     public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
         mCallback.drawInferenceResult(Utils.drawBoxes(request.frame.bitmap, results));
         if (!request.isMixed()) {
+            if (request.isBaseline()) {
+                results = reconstructBaselineRequest(request);
+            }
             updateFPS(1);
             String sourceIP = request.frame.sourceIP;
             int frameIndex = request.frame.frameIndex;
@@ -69,6 +72,23 @@ public class PatchReconstructor implements Runnable {
         } else {
             mMixedFrameResults.add(new Pair<>(request, results));
         }
+    }
+
+    public List<BoundingBox> reconstructBaselineRequest(InferenceRequest request) {
+        List<BoundingBox> reconstructedBbx = new ArrayList<>();
+        for (RoI roi : request.rois) {
+            for (BoundingBox bbx : roi.bbx) {
+                Rect newPosition = new Rect(
+                        roi.position.left + bbx.location.left,
+                        roi.position.top + bbx.location.top,
+                        roi.position.right + bbx.location.right,
+                        roi.position.bottom + bbx.location.bottom
+                );
+                bbx.move(newPosition);
+            }
+            reconstructedBbx.addAll(roi.bbx);
+        }
+        return reconstructedBbx;
     }
 
     @Override

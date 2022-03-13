@@ -76,14 +76,16 @@ public class Worker implements Runnable {
                         preprocessingTimeUs += (int)((endTime - startTime) / 1e3);
 
                         startTime = System.nanoTime();
-                        results.addAll(model.recognizeImage(processedBuffer, input));
+                        List<BoundingBox> bbx = model.recognizeImage(processedBuffer, input);
                         endTime = System.nanoTime();
                         inferenceTimeUs += (int)((endTime - startTime) / 1e3);
+                        bbx = Utils.filterPerson(bbx);
+                        roi.setBbx(bbx);
+                        results.addAll(bbx);
                     }
                     request.preprocessingTimeUs = preprocessingTimeUs;
                     request.inferenceTimeUs = inferenceTimeUs;
 
-                    results = Utils.filterPerson(results);
                     mCallback.enqueueInferenceResult(request, results);
 
                 } else {
