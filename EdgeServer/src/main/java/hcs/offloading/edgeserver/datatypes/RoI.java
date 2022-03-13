@@ -7,12 +7,28 @@ public class RoI {
     public final Frame frame;
     public final Rect position;
 
-    public float scale = 1f;
-    public int[] packedLocation;
+    public final float scale;
+    public final int[] packedLocation;
 
     public RoI(Frame frame, Rect position) {
         this.frame = frame;
         this.position = position;
+        this.scale = 1f;
+        this.packedLocation = null;
+    }
+
+    private RoI(RoI roi, float scale) {
+        this.frame = roi.frame;
+        this.position = roi.position;
+        this.scale = scale;
+        this.packedLocation = roi.packedLocation;
+    }
+
+    private RoI(RoI roi, int[] packedLocation) {
+        this.frame = roi.frame;
+        this.position = roi.position;
+        this.scale = roi.scale;
+        this.packedLocation = packedLocation;
     }
 
     public Bitmap getBitmap() {
@@ -23,18 +39,24 @@ public class RoI {
         return packedLocation != null;
     }
 
-    public void resizeRoI(int areaThreshold) {
+    public RoI resize(int areaThreshold) {
         if (position.height() * position.width() > areaThreshold) {
-            this.scale = (float) Math.sqrt((double) areaThreshold / (position.height() * position.width()));
+            float updatedScale = (float) Math.sqrt((double) areaThreshold / (position.height() * position.width()));
+            return new RoI(this, updatedScale);
         }
+        return this;
     }
 
-    public int[] resizedWH() {
+    public RoI pack(int[] packedLocation) {
+        return new RoI(this, packedLocation);
+    }
+
+    public int[] getResizedWidthHeight() {
         return new int[]{(int) Math.max(1f, position.width() * scale), (int) Math.max(1f, position.height() * scale)};
     }
 
-    public Bitmap resizedBitmap() {
-        int[] wh = resizedWH();
+    public Bitmap getResizedBitmap() {
+        int[] wh = getResizedWidthHeight();
         return Bitmap.createScaledBitmap(getBitmap(), wh[0], wh[1], false);
     }
 

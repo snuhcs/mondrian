@@ -1,8 +1,8 @@
 package hcs.offloading.edgeserver;
 
+import android.annotation.SuppressLint;
+import android.graphics.Bitmap;
 import android.graphics.Rect;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
@@ -14,6 +14,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import hcs.offloading.edgeserver.config.PatchReconstructorConfig;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
+import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.edgeserver.datatypes.RoI;
 
@@ -23,20 +24,19 @@ public class PatchReconstructor implements Runnable {
     private final int MATCH_PADDING;
     private final float USE_IOU_THRESHOLD;
 
-    public interface Callback {
-        void updateResult(Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults);
-    }
+    private final ViewCallback mCallback;
 
-    private final Callback mCallback;
-
-    private final LinkedBlockingQueue<Pair<InferenceRequest, List<BoundingBox>>> mResultsToReconstruct = new LinkedBlockingQueue<>();
+    private final Map<String, Map<Integer, Pair<Bitmap, List<BoundingBox>>>> mFramesAndResults = new HashMap<>();
+    private final LinkedBlockingQueue<Pair<InferenceRequest, List<BoundingBox>>> mMixedFrameResults = new LinkedBlockingQueue<>();
 
     private final Thread mPatchReconstructorThread;
 
-    PatchReconstructor(PatchReconstructorConfig config, Callback callback) {
+    private int mNumProcessedFrames = 0;
+    private final long mApplicationStartTime = System.nanoTime();
+
+    PatchReconstructor(PatchReconstructorConfig config, ViewCallback callback) {
         MATCH_PADDING = config.MATCH_PADDING;
         USE_IOU_THRESHOLD = config.USE_IOU_THRESHOLD;
-
         mCallback = callback;
 
         mPatchReconstructorThread = new Thread(this);
@@ -53,43 +53,100 @@ public class PatchReconstructor implements Runnable {
         Log.d(TAG, "closed");
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
+    public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
+        mCallback.drawInferenceResult(Utils.drawBoxes(request.frame.bitmap, results));
+        if (!request.isMixed()) {
+            updateFPS(1);
+            String sourceIP = request.frame.sourceIP;
+            int frameIndex = request.frame.frameIndex;
+            synchronized (mFramesAndResults) {
+                if (!mFramesAndResults.containsKey(sourceIP)) {
+                    mFramesAndResults.put(sourceIP, new HashMap<>());
+                }
+                mFramesAndResults.get(sourceIP).put(frameIndex, new Pair<>(request.frame.bitmap, results));
+                mFramesAndResults.notifyAll();
+            }
+        } else {
+            mMixedFrameResults.add(new Pair<>(request, results));
+        }
+    }
+
     @Override
     public void run() {
         try {
             long startTime, endTime;
             while (true) {
-                Pair<InferenceRequest, List<BoundingBox>> resultToReconstruct = mResultsToReconstruct.take();
+                Pair<InferenceRequest, List<BoundingBox>> batchResults = mMixedFrameResults.take();
+
                 startTime = System.nanoTime();
-                Map<String, Map<Integer, List<BoundingBox>>> multiStreamResults = reconstructFrames(resultToReconstruct);
+                Map<String, Map<Integer, List<BoundingBox>>> mixedFrameResults =
+                        reconstructResults(batchResults.first, batchResults.second);
                 endTime = System.nanoTime();
-                Log.v(TAG, "Reconstructing time: " + (endTime - startTime) / 1000000f);
-                mCallback.updateResult(multiStreamResults);
+                Log.v(TAG, "Reconstructing time (us): " + (endTime - startTime) / 1e3);
+
+                Map<Pair<String, Integer>, Bitmap> bitmapMap = new HashMap<>();
+                for (Frame frame : batchResults.first.frames) {
+                    bitmapMap.put(new Pair<>(frame.sourceIP, frame.frameIndex), frame.bitmap);
+                }
+
+                synchronized (mFramesAndResults) {
+                    for (String sourceIP : mixedFrameResults.keySet()) {
+                        if (mFramesAndResults.containsKey(sourceIP)) {
+                            Map<Integer, List<BoundingBox>> multiFrameResults = mixedFrameResults.get(sourceIP);
+                            for (Integer frameIndex : multiFrameResults.keySet()) {
+                                Bitmap bitmap = bitmapMap.get(new Pair<>(sourceIP, frameIndex));
+                                mFramesAndResults.get(sourceIP).put(
+                                        frameIndex, new Pair<>(bitmap, multiFrameResults.get(frameIndex)));
+                            }
+                        }
+                    }
+                    mFramesAndResults.notifyAll();
+                }
+
+                updateFPS(batchResults.first.frames.size());
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
     }
 
-    public void enqueueInferenceResult(Pair<InferenceRequest, List<BoundingBox>> resultToReconstruct) {
-        try {
-            mResultsToReconstruct.put(resultToReconstruct);
-        } catch (InterruptedException e) {
-            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+    public Pair<Bitmap, List<BoundingBox>> getRemoveDrawResult(String sourceIP, int frameIndex) throws InterruptedException {
+        Pair<Bitmap, List<BoundingBox>> result = null;
+        synchronized (mFramesAndResults) {
+            Map<Integer, Pair<Bitmap, List<BoundingBox>>> streamResults = mFramesAndResults.get(sourceIP);
+            while (streamResults != null && !streamResults.containsKey(frameIndex)) {
+                mFramesAndResults.wait();
+                streamResults = mFramesAndResults.get(sourceIP);
+            }
+            if (streamResults != null) {
+                result = streamResults.get(frameIndex);
+                streamResults.remove(frameIndex);
+            }
+        }
+        if (result != null) {
+            mCallback.drawObjectDetectionResult(Utils.drawBoxes(result.first, result.second));
+        }
+        return result;
+    }
+
+    public void removeStream(String sourceIP) {
+        synchronized (mFramesAndResults) {
+            mFramesAndResults.remove(sourceIP);
         }
     }
 
-    public Map<String, Map<Integer, List<BoundingBox>>> reconstructFrames(Pair<InferenceRequest, List<BoundingBox>> resultToReconstruct) {
-        InferenceRequest inferenceRequest = resultToReconstruct.first;
-        List<BoundingBox> boxes = resultToReconstruct.second;
-        Map<String, Map<Integer, List<BoundingBox>>> batchResults = new HashMap<>();
-        for (Map.Entry<String, List<Integer>> kv : inferenceRequest.mixedFrameIndices.entrySet()) {
-            batchResults.put(kv.getKey(), new HashMap<>());
-            for (int frameIndex : kv.getValue()) {
-                batchResults.get(kv.getKey()).put(frameIndex, new ArrayList<>());
+    private Map<String, Map<Integer, List<BoundingBox>>> reconstructResults(InferenceRequest request, List<BoundingBox> boxes) {
+        Map<String, Map<Integer, List<BoundingBox>>> mixedFrameResults = new HashMap<>();
+        for (Frame frame : request.frames) {
+            String sourceIP = frame.sourceIP;
+            int frameIndex = frame.frameIndex;
+            if (!mixedFrameResults.containsKey(sourceIP)) {
+                mixedFrameResults.put(sourceIP, new HashMap<>());
             }
+            mixedFrameResults.get(sourceIP).put(frameIndex, new ArrayList<>());
         }
-        List<RoI> rois = inferenceRequest.rois;
+
+        List<RoI> rois = request.rois;
         for (BoundingBox box : boxes) {
             float maxIoU = -1f;
             RoI maxRoI = null;
@@ -119,11 +176,17 @@ public class PatchReconstructor implements Runnable {
                 }
             }
             if (maxRoI != null && maxIoU > USE_IOU_THRESHOLD) {
-                maxRoI.packedLocation = null;
                 box = box.move(maxBoxPos);
-                batchResults.get(maxRoI.getSourceIP()).get(maxRoI.getFrameIndex()).add(box);
+                mixedFrameResults.get(maxRoI.getSourceIP()).get(maxRoI.getFrameIndex()).add(box);
             }
         }
-        return batchResults;
+        return mixedFrameResults;
+    }
+
+    @SuppressLint("DefaultLocale")
+    private void updateFPS(int numProcessedFrames) {
+        mNumProcessedFrames += numProcessedFrames;
+        float fps = mNumProcessedFrames / ((System.nanoTime() - mApplicationStartTime) / 1e9f);
+        mCallback.drawFPS(String.format("%.3f", fps));
     }
 }

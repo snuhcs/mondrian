@@ -17,11 +17,11 @@ public class Utils {
     private final static float MINIMUM_CONFIDENCE = 0.5f;
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public static List<BoundingBox> filterResults(List<BoundingBox> results) {
+    public static List<BoundingBox> filterPerson(List<BoundingBox> results) {
         return results.stream().filter(result -> result.labelName.equals("person")).collect(Collectors.toList());
     }
 
-    public static Bitmap drawResult(Bitmap image, List<BoundingBox> boxes) {
+    public static Bitmap drawBoxes(Bitmap image, List<BoundingBox> boxes) {
         Bitmap drawableBitmap = image.copy(image.getConfig(), true);
         final Canvas canvas = new Canvas(drawableBitmap);
         final Paint paint = new Paint();

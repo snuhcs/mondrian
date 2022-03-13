@@ -26,22 +26,16 @@ public class Config {
         Log.d(TAG, "Parsed Config: " + jsonObject.toJSONString());
 
         dispatcherConfig = new DispatcherConfig();
-        if (jsonObject.containsKey("batch_size")) {
-            dispatcherConfig.BATCH_SIZE = getInt(jsonObject, "batch_size");
-        }
         if (jsonObject.containsKey("full_inference_interval")) {
             dispatcherConfig.FULL_INFERENCE_INTERVAL = getInt(jsonObject, "full_inference_interval");
         }
-        if (jsonObject.containsKey("num_frames_on_memory")) {
-            dispatcherConfig.NUM_FRAMES_ON_MEMORY = getInt(jsonObject, "num_frames_on_memory");
-        }
 
         roIExtractorConfig = new RoIExtractorConfig();
+        if (jsonObject.containsKey("batch_size")) {
+            roIExtractorConfig.BATCH_SIZE = getInt(jsonObject, "batch_size");
+        }
         if (jsonObject.containsKey("mixed_frame_size")) {
             roIExtractorConfig.MIXED_FRAME_SIZE = getInt(jsonObject, "mixed_frame_size");
-        }
-        if (jsonObject.containsKey("idle_wait_ms")) {
-            roIExtractorConfig.IDLE_WAIT_MS = getInt(jsonObject, "idle_wait_ms");
         }
         if (jsonObject.containsKey("area_threshold")) {
             roIExtractorConfig.AREA_THRESHOLD = getInt(jsonObject, "area_threshold");
