@@ -79,10 +79,10 @@ public class PatchReconstructor implements Runnable {
         for (RoI roi : request.rois) {
             for (BoundingBox bbx : roi.bbx) {
                 Rect newPosition = new Rect(
-                        roi.position.left + bbx.location.left,
-                        roi.position.top + bbx.location.top,
-                        roi.position.right + bbx.location.right,
-                        roi.position.bottom + bbx.location.bottom
+                        bbx.location.left + roi.position.left,
+                        bbx.location.top + roi.position.top,
+                        bbx.location.right + roi.position.left,
+                        bbx.location.bottom + roi.position.top
                 );
                 reconstructedBbx.add(bbx.move(newPosition));
             }
