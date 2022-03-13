@@ -33,6 +33,7 @@ public class WebRTCManager {
     private static final String TAG = WebRTCManager.class.getName();
 
     private final Context mContext;
+    private final EglBase mEglBase;
     private final WebRTCCallback mWebRTCCallback;
 
     private final DeviceMqttManager mMqttManager;
@@ -41,6 +42,7 @@ public class WebRTCManager {
     public WebRTCManager(Context context, DeviceMqttManager mqttManager, EglBase eglBase, WebRTCCallback webRTCCallback) {
         mContext = context;
         mMqttManager = mqttManager;
+        mEglBase = eglBase;
         mWebRTCCallback = webRTCCallback;
 
         DefaultVideoEncoderFactory defaultVideoEncoderFactory = new DefaultVideoEncoderFactory(
@@ -171,19 +173,21 @@ public class WebRTCManager {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    public Pair<VideoCapturer, VideoTrack> createSavedVideoTrack(EglBase eglBase, String videoFilePath) {
-        SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
-        CustomCapturer videoCapturer = new CustomCapturer();
+    public Pair<VideoCapturer, VideoTrack> createSavedVideoTrack(String videoFilePath, CustomCapturer videoCapturer) {
+        SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", mEglBase.getEglBaseContext());
+        if (videoCapturer == null) {
+            videoCapturer = new CustomCapturer();
+        }
         VideoSource videoSource = mPeerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
         videoCapturer.initialize(surfaceTextureHelper, mContext, videoSource.getCapturerObserver());
         videoCapturer.initializeVideo(videoFilePath);
         return new Pair<>(videoCapturer, mPeerConnectionFactory.createVideoTrack("101", videoSource));
     }
 
-    public Pair<VideoCapturer, VideoTrack> createCameraTrack(EglBase eglBase) {
+    public Pair<VideoCapturer, VideoTrack> createCameraTrack() {
         Log.d(TAG, "createVideoTrack");
         VideoCapturer videoCapturer = createCameraCapturer(new Camera2Enumerator(mContext));
-        SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
+        SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", mEglBase.getEglBaseContext());
         assert videoCapturer != null;
         VideoSource videoSource = mPeerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
         videoCapturer.initialize(surfaceTextureHelper, mContext, videoSource.getCapturerObserver());

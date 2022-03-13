@@ -1,0 +1,28 @@
+{
+    "use_local_video": true,
+    "video_configs": [
+        {
+            "path": "/data/local/tmp/surveillance_0.mp4",
+            "width": 1920,
+            "height": 1080,
+            "fps": 10
+        },
+        {
+            "path": "/data/local/tmp/surveillance_1.mp4",
+            "width": 1920,
+            "height": 1080,
+            "fps": 10
+        }
+    ],
+    "is_baseline": false,
+    "full_inference_interval": 40,
+    "batch_size": 8,
+    "frame_size": 640,
+    "merge_threshold": 0.5,
+    "roi_padding": 0,
+    "extraction_method": "combined",
+    "num_workers": 1,
+    "match_padding": 40,
+    "use_iou_threshold": 0.1,
+    "minimum_confidence": 0.5
+}

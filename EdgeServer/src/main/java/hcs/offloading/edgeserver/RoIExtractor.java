@@ -95,7 +95,7 @@ public class RoIExtractor implements Runnable {
     public void enqueueFrame(Frame frame) {
         synchronized (mFrames) {
             mFrames.add(frame);
-            if (mFrames.size() > BATCH_SIZE) {
+            if (mFrames.size() >= BATCH_SIZE) {
                 mFrames.notifyAll();
             }
         }
@@ -128,16 +128,16 @@ public class RoIExtractor implements Runnable {
                 Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
 
                 if (!IS_BASELINE) {
-                    List<RoI> resizedRoIs = resize(rois);
-                    List<RoI> sortedRoIs = sortByPriority(resizedRoIs);
+                    rois = resize(rois);
+                    rois = sortByPriority(rois);
 
                     startTime = System.nanoTime();
-                    List<RoI> packedRoIs = PatchMixer.packRoIs(sortedRoIs, MIXED_FRAME_SIZE);
-                    Bitmap mixedFrame = PatchMixer.getMixedFrame(packedRoIs, MIXED_FRAME_SIZE);
+                    rois = PatchMixer.packRoIs(rois, MIXED_FRAME_SIZE);
+                    Bitmap mixedFrame = PatchMixer.getMixedFrame(rois, MIXED_FRAME_SIZE);
                     endTime = System.nanoTime();
                     Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
 
-                    mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, sortedRoIs));
+                    mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, rois));
                 } else {
                     mCallback.enqueueInferenceRequest(InferenceRequest.createBaselineRequest(frames.get(0), rois));
                 }
@@ -230,7 +230,7 @@ public class RoIExtractor implements Runnable {
                     RoI roi0 = rois.get(i);
                     RoI roi1 = rois.get(j);
                     float intersection = hcs.offloading.edgeserver.Utils.box_intersection(roi0.position, roi1.position);
-                    if (intersection/roi0.getArea() > MERGE_THRESHOLD || intersection/ roi1.getArea() > MERGE_THRESHOLD) {
+                    if (intersection / roi0.getArea() > MERGE_THRESHOLD || intersection / roi1.getArea() > MERGE_THRESHOLD) {
                         indices = new Pair<>(i, j);
                         break;
                     }

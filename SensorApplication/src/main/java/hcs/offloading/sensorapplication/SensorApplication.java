@@ -50,9 +50,9 @@ public class SensorApplication implements WebRTCCallback {
 
         Pair<VideoCapturer, VideoTrack> capturerAndTrack;
         if (mConfig.USE_SAVED_VIDEO) {
-            capturerAndTrack = mWebRTCManager.createSavedVideoTrack(eglBase, mConfig.VIDEO_PATH);
+            capturerAndTrack = mWebRTCManager.createSavedVideoTrack(mConfig.VIDEO_PATH, null);
         } else {
-            capturerAndTrack = mWebRTCManager.createCameraTrack(eglBase);
+            capturerAndTrack = mWebRTCManager.createCameraTrack();
         }
         mVideoCapturer = capturerAndTrack.first;
         mVideoTrack = capturerAndTrack.second;

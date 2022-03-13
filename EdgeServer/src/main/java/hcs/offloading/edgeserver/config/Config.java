@@ -2,6 +2,7 @@ package hcs.offloading.edgeserver.config;
 
 import android.util.Log;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -25,12 +26,37 @@ public class Config {
         JSONObject jsonObject = new JSONObject(getStringFromFile(jsonPath));
         Log.d(TAG, "Parsed Config: " + jsonObject);
 
+        if (jsonObject.has("use_local_video")) {
+            dispatcherConfig.USE_LOCAL_VIDEO = jsonObject.getBoolean("use_local_video");
+            if (dispatcherConfig.USE_LOCAL_VIDEO && jsonObject.has("video_configs")) {
+                JSONArray videoConfigs = jsonObject.getJSONArray("video_configs");
+                for (int i = 0; i < videoConfigs.length(); i++) {
+                    DispatcherConfig.VideoConfig videoConfig = new DispatcherConfig.VideoConfig();
+                    JSONObject jsonVideoConfig = videoConfigs.getJSONObject(i);
+                    if (jsonVideoConfig.has("path")) {
+                        videoConfig.PATH = jsonVideoConfig.getString("path");
+                    }
+                    if (jsonVideoConfig.has("width")) {
+                        videoConfig.WIDTH = jsonVideoConfig.getInt("width");
+                    }
+                    if (jsonVideoConfig.has("height")) {
+                        videoConfig.HEIGHT = jsonVideoConfig.getInt("height");
+                    }
+                    if (jsonVideoConfig.has("fps")) {
+                        videoConfig.FPS = jsonVideoConfig.getInt("fps");
+                    }
+                    dispatcherConfig.VIDEO_CONFIGS.add(videoConfig);
+                }
+            }
+        }
         if (jsonObject.has("full_inference_interval")) {
             dispatcherConfig.FULL_INFERENCE_INTERVAL = jsonObject.getInt("full_inference_interval");
         }
 
         if (jsonObject.has("is_baseline")) { // if is_baseline = true, BATCH_SIZE must be 1
             roIExtractorConfig.IS_BASELINE = jsonObject.getBoolean("is_baseline");
+        }
+        if (roIExtractorConfig.IS_BASELINE) {
             roIExtractorConfig.BATCH_SIZE = 1;
         } else if (jsonObject.has("batch_size")) { // else, use "batch_size"
             roIExtractorConfig.BATCH_SIZE = jsonObject.getInt("batch_size");
@@ -81,6 +107,13 @@ public class Config {
     }
 
     private void validate() throws IllegalArgumentException {
+        if (dispatcherConfig.USE_LOCAL_VIDEO) {
+            for (DispatcherConfig.VideoConfig videoConfig : dispatcherConfig.VIDEO_CONFIGS) {
+                if (videoConfig.PATH == null) {
+                    throw new IllegalArgumentException("All video paths should be specified");
+                }
+            }
+        }
         if (!roIExtractorConfig.IS_BASELINE && roIExtractorConfig.MIXED_FRAME_SIZE != inferenceEngineConfig.FRAME_SIZE) {
             throw new IllegalArgumentException("roIExtractorConfig.MIXED_FRAME_SIZE and inferenceEngineConfig.MIXED_FRAME_SIZE must be same");
         }

@@ -1,6 +1,5 @@
-package hcs.offloading.network.webrtc;
+package hcs.offloading.edgeserver;
 
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.media.MediaMetadataRetriever;
@@ -10,29 +9,31 @@ import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 
-import org.webrtc.CapturerObserver;
-import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.TextureBufferImpl;
-import org.webrtc.VideoCapturer;
 import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
-public class CustomCapturer implements VideoCapturer {
-    private static final String TAG = CustomCapturer.class.getName();
+import hcs.offloading.edgeserver.config.DispatcherConfig;
+import hcs.offloading.edgeserver.datatypes.Frame;
+import hcs.offloading.edgeserver.datatypes.InferenceRequest;
+import hcs.offloading.network.webrtc.CustomCapturer;
 
-    protected SurfaceTextureHelper surTexture;
-    protected CapturerObserver capturerObs;
-    protected Thread captureThread;
-    protected MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+public class VideoDispatcher extends CustomCapturer {
+    private static final String TAG = VideoDispatcher.class.getName();
 
-    @Override
-    public void initialize(SurfaceTextureHelper surfaceTextureHelper, Context applicationContext, CapturerObserver capturerObserver) {
-        surTexture = surfaceTextureHelper;
-        capturerObs = capturerObserver;
-    }
+    private final DispatcherConfig.VideoConfig mConfig;
+    private final int FULL_INFERENCE_INTERVAL;
+    private final Dispatcher.Callback mCallback;
 
-    public void initializeVideo(String videoFilePath) {
-        retriever.setDataSource(videoFilePath);
+    private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+
+    VideoDispatcher(DispatcherConfig.VideoConfig config, Dispatcher.Callback callback, int fullInferenceInterval) {
+        Log.d(TAG, config.PATH + " videoDispatcher created");
+        mConfig = config;
+        FULL_INFERENCE_INTERVAL = fullInferenceInterval;
+        mCallback = callback;
+
+        retriever.setDataSource(mConfig.PATH);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.P)
@@ -67,9 +68,18 @@ public class CustomCapturer implements VideoCapturer {
                             VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
                             capturerObs.onFrameCaptured(videoFrame);
                         });
+
+                        Frame frame = Frame.createSingleFrame(bitmap, mConfig.PATH, frameIndex);
+                        if (frameIndex % FULL_INFERENCE_INTERVAL == 0) {
+                            mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
+                        } else {
+                            mCallback.enqueueFrame(frame);
+                        }
+
                         long frameEndTimeNs = System.nanoTime();
                         long frameTimeMs = (frameEndTimeNs - frameStartTimeNs) / 1000000;
                         long latencyLimitMs = 1000 / fps;
+                        Log.d(TAG, "Frame Extraction Time (ms): " + frameTimeMs);
                         Thread.sleep(frameTimeMs > latencyLimitMs ? 0 : latencyLimitMs - frameTimeMs);
                     }
                 }
@@ -78,26 +88,5 @@ public class CustomCapturer implements VideoCapturer {
             }
         });
         captureThread.start();
-    }
-
-    @Override
-    public void stopCapture() {
-        Log.d(TAG, "stopCapture");
-        captureThread.interrupt();
-    }
-
-    @Override
-    public void changeCaptureFormat(int width, int height, int fps) {
-
-    }
-
-    @Override
-    public void dispose() {
-
-    }
-
-    @Override
-    public boolean isScreencast() {
-        return false;
     }
 }
