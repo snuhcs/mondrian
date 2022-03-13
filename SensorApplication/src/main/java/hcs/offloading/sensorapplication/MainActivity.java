@@ -14,7 +14,6 @@ import android.widget.EditText;
 import android.widget.Switch;
 
 import org.json.JSONException;
-import org.json.simple.parser.ParseException;
 import org.webrtc.EglBase;
 import org.webrtc.SurfaceViewRenderer;
 
@@ -70,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                             uri,
                             mInputView
                     );
-                } catch (ParseException | IOException e) {
+                } catch (IOException | JSONException e) {
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                     mSensorApplication = null;
                 }

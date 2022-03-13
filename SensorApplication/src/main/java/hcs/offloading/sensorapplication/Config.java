@@ -1,12 +1,14 @@
 package hcs.offloading.sensorapplication;
 
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 public class Config {
 
@@ -16,26 +18,42 @@ public class Config {
     public int FPS = 5;
     public String VIDEO_PATH = "/data/local/tmp";
 
-    Config(String jsonPath) throws IOException, ParseException {
+    Config(String jsonPath) throws IOException, JSONException {
+        JSONObject jsonObject = new JSONObject(getStringFromFile(jsonPath));
 
-        JSONParser jsonParser = new JSONParser();
-        JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(new File(jsonPath)));
-
-        if (jsonObject.containsKey("use_saved_video")) {
-            USE_SAVED_VIDEO = Boolean.parseBoolean(String.valueOf(jsonObject.get("use_saved_video")));
+        if (jsonObject.has("use_saved_video")) {
+            USE_SAVED_VIDEO = jsonObject.getBoolean("use_saved_video");
         }
-        if (jsonObject.containsKey("width")) {
-            WIDTH = Integer.parseInt(String.valueOf(jsonObject.get("width")));
+        if (jsonObject.has("width")) {
+            WIDTH = jsonObject.getInt("width");
         }
-        if (jsonObject.containsKey("height")) {
-            HEIGHT = Integer.parseInt(String.valueOf(jsonObject.get("height")));
+        if (jsonObject.has("height")) {
+            HEIGHT = jsonObject.getInt("height");
         }
-        if (jsonObject.containsKey("fps")) {
-            FPS = Integer.parseInt(String.valueOf(jsonObject.get("fps")));
+        if (jsonObject.has("fps")) {
+            FPS = jsonObject.getInt("fps");
         }
-        if (jsonObject.containsKey("video_path")) {
-            VIDEO_PATH = String.valueOf(jsonObject.get("video_path"));
+        if (jsonObject.has("video_path")) {
+            VIDEO_PATH = jsonObject.getString("video_path");
         }
     }
 
+    private static String convertStreamToString(InputStream is) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line).append("\n");
+        }
+        reader.close();
+        return sb.toString();
+    }
+
+    private static String getStringFromFile(String filePath) throws IOException {
+        File fl = new File(filePath);
+        FileInputStream fin = new FileInputStream(fl);
+        String ret = convertStreamToString(fin);
+        fin.close();
+        return ret;
+    }
 }

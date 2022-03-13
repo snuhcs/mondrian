@@ -33,25 +33,27 @@ public class InferenceRequest {
     }
 
     public static InferenceRequest createFullFrameRequest(Frame frame) {
-        assert !frame.isMixed();
         return new InferenceRequest(frame);
     }
 
-    public static InferenceRequest createMixedFrameRequest(Frame frame, List<Frame> frames, List<RoI> rois) {
-        assert frame.isMixed();
-        return new InferenceRequest(frame, frames, rois);
-    }
-
     public static InferenceRequest createBaselineRequest(Frame frame, List<RoI> rois) {
-        assert !frame.isMixed();
         return new InferenceRequest(frame, rois);
     }
 
+    public static InferenceRequest createMixedFrameRequest(Frame frame, List<Frame> frames, List<RoI> rois) {
+        return new InferenceRequest(frame, frames, rois);
+    }
+
+    /*
+     * Full Frame : frames/rois == null
+     * Baseline Frame : frames == null, rois != null
+     * Mixed Frame : frames/rois != null
+     */
     public boolean isMixed() {
-        return frame.isMixed();
+        return frames != null && rois != null;
     }
 
     public boolean isBaseline() {
-        return !frame.isMixed() && frames == null;
+        return frames == null && rois != null;
     }
 }
