@@ -37,8 +37,8 @@ public class Config {
         if (jsonObject.containsKey("mixed_frame_size")) {
             roIExtractorConfig.MIXED_FRAME_SIZE = getInt(jsonObject, "mixed_frame_size");
         }
-        if (jsonObject.containsKey("area_threshold")) {
-            roIExtractorConfig.AREA_THRESHOLD = getInt(jsonObject, "area_threshold");
+        if (jsonObject.containsKey("merge_threshold")) {
+            roIExtractorConfig.MERGE_THRESHOLD = getFloat(jsonObject, "merge_threshold");
         }
         if (jsonObject.containsKey("roi_padding")) {
             roIExtractorConfig.ROI_PADDING = getInt(jsonObject, "roi_padding");

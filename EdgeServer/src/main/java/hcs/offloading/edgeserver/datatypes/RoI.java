@@ -27,6 +27,8 @@ public class RoI {
         this.position = roi.position;
         this.scale = scale;
         this.packedLocation = roi.packedLocation;
+        this.type = roi.type;
+        this.labelName = roi.labelName;
     }
 
     private RoI(RoI roi, int[] packedLocation) {
@@ -34,6 +36,8 @@ public class RoI {
         this.position = roi.position;
         this.scale = roi.scale;
         this.packedLocation = packedLocation;
+        this.type = roi.type;
+        this.labelName = roi.labelName;
     }
 
     public Bitmap getBitmap() {
@@ -55,6 +59,10 @@ public class RoI {
 
     public RoI pack(int[] packedLocation) {
         return new RoI(this, packedLocation);
+    }
+
+    public int getArea() {
+        return position.width() * position.height();
     }
 
     public int[] getResizedWidthHeight() {

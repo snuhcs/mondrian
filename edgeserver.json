@@ -2,7 +2,7 @@
     "full_inference_interval": 40,
     "batch_size": 8,
     "mixed_frame_size": 640,
-    "area_threshold": 10000,
+    "merge_threshold": 0.5,
     "roi_padding": 0,
     "extraction_method": "combined",
     "num_workers": 1,

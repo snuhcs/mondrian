@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -46,7 +45,7 @@ public class RoIExtractor implements Runnable {
 
     private final int BATCH_SIZE;
     private final int MIXED_FRAME_SIZE;
-    private final int AREA_THRESHOLD;
+    private final float MERGE_THRESHOLD;
     private final int ROI_PADDING;
     private final ExtractionMethod EXTRACTION_METHOD;
 
@@ -70,7 +69,7 @@ public class RoIExtractor implements Runnable {
     RoIExtractor(RoIExtractorConfig config, Callback callback) {
         BATCH_SIZE = config.BATCH_SIZE;
         MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
-        AREA_THRESHOLD = config.AREA_THRESHOLD;
+        MERGE_THRESHOLD = config.MERGE_THRESHOLD;
         ROI_PADDING = config.ROI_PADDING;
         EXTRACTION_METHOD = config.EXTRACTION_METHOD;
 
@@ -204,39 +203,58 @@ public class RoIExtractor implements Runnable {
                         .collect(Collectors.toList());
                 frameRoIs.addAll(pixelDiffRoIs);
             }
-            rois.addAll(mergeSingleFrameRoIs(frameRoIs));
+            mergeSingleFrameRoIs(frameRoIs);
+            rois.addAll(frameRoIs);
             prevBitmap = currBitmap;
         }
         return rois;
     }
 
-    public List<RoI> mergeSingleFrameRoIs(List<RoI> rois) {
-        List<RoI> mergedRoIs = new ArrayList<>();
-        for (RoI roi : rois) {
-            ListIterator<RoI> iter = mergedRoIs.listIterator();
-            boolean roiMerged = false;
-            while (iter.hasNext()) {
-                RoI mergedRoI = iter.next();
-                if (hcs.offloading.edgeserver.Utils.box_intersection(roi.position, mergedRoI.position) > 0) {
-                    iter.remove();
-                    int newTop = Math.min(roi.position.top, mergedRoI.position.top);
-                    int newBottom = Math.max(roi.position.bottom, mergedRoI.position.bottom);
-                    int newRight = Math.max(roi.position.right, mergedRoI.position.right);
-                    int newLeft = Math.min(roi.position.left, mergedRoI.position.left);
-                    Rect newPosition = new Rect(newLeft, newTop, newRight, newBottom);
-                    RoIType newType = (roi.type.equals(RoIType.OF) || mergedRoI.type.equals(RoIType.OF)) ? RoIType.OF : RoIType.PD;
-                    String newLabel = roi.type.equals(RoIType.OF) ? roi.labelName : (mergedRoI.type.equals(RoIType.OF) ? mergedRoI.labelName : null);
-                    RoI newRoI = new RoI(roi.frame, newPosition, newType, newLabel);
-                    iter.add(newRoI);
-                    roiMerged = true;
+    public void mergeSingleFrameRoIs(List<RoI> rois) {
+        if (rois.size() == 0) {
+            return;
+        }
+        Frame frame = rois.get(0).frame;
+
+        while (true) {
+            Pair<Integer, Integer> indices = null;
+            for (int i = 0; i < rois.size(); i++) {
+                for (int j = i + 1; j < rois.size(); j++) {
+                    RoI roi0 = rois.get(i);
+                    RoI roi1 = rois.get(j);
+                    float intersection = hcs.offloading.edgeserver.Utils.box_intersection(roi0.position, roi1.position);
+                    if (intersection/roi0.getArea() > MERGE_THRESHOLD || intersection/ roi1.getArea() > MERGE_THRESHOLD) {
+                        indices = new Pair<>(i, j);
+                        break;
+                    }
+                }
+                if (indices != null) {
                     break;
                 }
             }
-            if (!roiMerged) {
-                mergedRoIs.add(roi);
+            if (indices == null) {
+                break;
             }
+            RoI roi0 = rois.get(indices.first);
+            RoI roi1 = rois.get(indices.second);
+            int newTop = Math.min(roi0.position.top, roi1.position.top);
+            int newBottom = Math.max(roi0.position.bottom, roi1.position.bottom);
+            int newRight = Math.max(roi0.position.right, roi1.position.right);
+            int newLeft = Math.min(roi0.position.left, roi1.position.left);
+            Rect newPosition = new Rect(newLeft, newTop, newRight, newBottom);
+            RoIType roiType = RoIType.PD;
+            String roiLabel = null;
+            if (roi0.type.equals(RoIType.OF) || roi1.type.equals(RoIType.OF)) {
+                roiType = RoIType.OF;
+                if (roi0.labelName != null && roi0.labelName.equals(roi1.labelName)) {
+                    roiLabel = roi0.labelName;
+                }
+            }
+            RoI mergedRoI = new RoI(frame, newPosition, roiType, roiLabel);
+            rois.remove(roi0);
+            rois.remove(roi1);
+            rois.add(mergedRoI);
         }
-        return mergedRoIs;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
