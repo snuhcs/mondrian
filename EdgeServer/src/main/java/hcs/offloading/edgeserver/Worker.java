@@ -10,10 +10,12 @@ import org.tensorflow.lite.support.image.ImageProcessor;
 import org.tensorflow.lite.support.image.TensorImage;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
+import hcs.offloading.edgeserver.datatypes.RoI;
 
 public class Worker implements Runnable {
     private static final String TAG = Worker.class.getName();
@@ -58,20 +60,49 @@ public class Worker implements Runnable {
                 long startTime, endTime;
                 InferenceRequest request = engine.getRequest();
                 request.queueSize = engine.getRequestQueueSize();
-                Bitmap input = request.frame.bitmap;
 
-                startTime = System.nanoTime();
-                ByteBuffer processedBuffer = preprocess(input);
-                endTime = System.nanoTime();
-                request.preprocessingTimeUs = (int) ((endTime - startTime) / 1e3);
+                if (request.isBaseline()) {
 
-                startTime = System.nanoTime();
-                List<BoundingBox> results = model.recognizeImage(processedBuffer, input);
-                endTime = System.nanoTime();
-                request.inferenceTimeUs = (int) ((endTime - startTime) / 1e6);
+                    int preprocessingTimeUs = 0;
+                    int inferenceTimeUs = 0;
 
-                results = Utils.filterPerson(results);
-                mCallback.enqueueInferenceResult(request, results);
+                    List<BoundingBox> results = new ArrayList<>();
+
+                    for (RoI roi : request.rois) {
+                        Bitmap input = roi.getBitmap();
+                        startTime = System.nanoTime();
+                        ByteBuffer processedBuffer = preprocess(input);
+                        endTime = System.nanoTime();
+                        preprocessingTimeUs += (int)((endTime - startTime) / 1e3);
+
+                        startTime = System.nanoTime();
+                        results.addAll(model.recognizeImage(processedBuffer, input));
+                        endTime = System.nanoTime();
+                        inferenceTimeUs += (int)((endTime - startTime) / 1e3);
+                    }
+                    request.preprocessingTimeUs = preprocessingTimeUs;
+                    request.inferenceTimeUs = inferenceTimeUs;
+
+                    results = Utils.filterPerson(results);
+                    mCallback.enqueueInferenceResult(request, results);
+
+                } else {
+                    Bitmap input = request.frame.bitmap;
+
+                    startTime = System.nanoTime();
+                    ByteBuffer processedBuffer = preprocess(input);
+                    endTime = System.nanoTime();
+                    request.preprocessingTimeUs = (int) ((endTime - startTime) / 1e3);
+
+                    startTime = System.nanoTime();
+                    List<BoundingBox> results = model.recognizeImage(processedBuffer, input);
+                    endTime = System.nanoTime();
+                    request.inferenceTimeUs = (int) ((endTime - startTime) / 1e3);
+
+                    results = Utils.filterPerson(results);
+                    mCallback.enqueueInferenceResult(request, results);
+                }
+
 
                 Log.v(TAG, "InferenceEngine Queue Size: " + request.queueSize);
                 Log.v(TAG, "Preprocessing time (us): " + request.preprocessingTimeUs);

@@ -1,6 +1,6 @@
 package hcs.offloading.edgeserver.config;
 
 public class InferenceEngineConfig {
-    public int MIXED_FRAME_SIZE; // Must be same as RoIExtractorConfig.MIXED_FRAME_SIZE
+    public int FRAME_SIZE = 640; // Must be same as RoIExtractorConfig.MIXED_FRAME_SIZE if is_baseline = false
     public int NUM_WORKERS = 1;
 }

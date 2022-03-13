@@ -65,8 +65,12 @@ public class RoIExtractor implements Runnable {
     private final Thread mRoIExtractorThread;
     private final Callback mCallback;
 
+    private final boolean isBaseline;
+
     @RequiresApi(api = Build.VERSION_CODES.P)
-    RoIExtractor(RoIExtractorConfig config, Callback callback) {
+    RoIExtractor(boolean isBaseline, RoIExtractorConfig config, Callback callback) {
+        this.isBaseline = isBaseline;
+
         BATCH_SIZE = config.BATCH_SIZE;
         MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
@@ -127,13 +131,17 @@ public class RoIExtractor implements Runnable {
                 List<RoI> resizedRoIs = resize(rois);
                 List<RoI> sortedRoIs = sortByPriority(resizedRoIs);
 
-                startTime = System.nanoTime();
-                List<RoI> packedRoIs = PatchMixer.packRoIs(sortedRoIs, MIXED_FRAME_SIZE);
-                Bitmap mixedFrame = PatchMixer.getMixedFrame(packedRoIs, MIXED_FRAME_SIZE);
-                endTime = System.nanoTime();
-                Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
+                if (!isBaseline) {
+                    startTime = System.nanoTime();
+                    List<RoI> packedRoIs = PatchMixer.packRoIs(sortedRoIs, MIXED_FRAME_SIZE);
+                    Bitmap mixedFrame = PatchMixer.getMixedFrame(packedRoIs, MIXED_FRAME_SIZE);
+                    endTime = System.nanoTime();
+                    Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
 
-                mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, rois));
+                    mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, sortedRoIs));
+                } else {
+                    mCallback.enqueueInferenceRequest(InferenceRequest.createBaselineRequest(frames.get(0), sortedRoIs));
+                }
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");

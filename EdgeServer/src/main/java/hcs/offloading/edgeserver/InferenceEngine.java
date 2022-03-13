@@ -19,7 +19,7 @@ import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 public class InferenceEngine {
     private final static String TAG = InferenceEngine.class.getName();
 
-    public final int MIXED_FRAME_SIZE;
+    public final int FRAME_SIZE;
     public final int NUM_WORKERS;
 
     private final List<Worker> mWorkers = new ArrayList<>();
@@ -27,14 +27,14 @@ public class InferenceEngine {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     InferenceEngine(InferenceEngineConfig config, Worker.Callback callback, AssetManager assetManager) {
-        MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
+        FRAME_SIZE = config.FRAME_SIZE;
         NUM_WORKERS = config.NUM_WORKERS;
 
         for (int workerId = 0; workerId < NUM_WORKERS; workerId++) {
             mWorkers.add(new Worker(callback, this,
-                    new YoloV4Classifier(assetManager, MIXED_FRAME_SIZE),
+                    new YoloV4Classifier(assetManager, FRAME_SIZE),
                     new ImageProcessor.Builder()
-                            .add(new ResizeOp(MIXED_FRAME_SIZE, MIXED_FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+                            .add(new ResizeOp(FRAME_SIZE, FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
                             .add(new NormalizeOp(0.0f, 255.0f))
                             .build()));
         }

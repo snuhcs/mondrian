@@ -20,6 +20,12 @@ public class InferenceRequest {
         this.rois = null;
     }
 
+    private InferenceRequest(Frame frame, List<RoI> rois) {
+        this.frame = frame;
+        this.frames = null;
+        this.rois = rois;
+    }
+
     private InferenceRequest(Frame frame, List<Frame> frames, List<RoI> rois) {
         this.frame = frame;
         this.frames = frames;
@@ -36,7 +42,16 @@ public class InferenceRequest {
         return new InferenceRequest(frame, frames, rois);
     }
 
+    public static InferenceRequest createBaselineRequest(Frame frame, List<RoI> rois) {
+        assert !frame.isMixed();
+        return new InferenceRequest(frame, rois);
+    }
+
     public boolean isMixed() {
         return frame.isMixed();
+    }
+
+    public boolean isBaseline() {
+        return !frame.isMixed() && frames == null;
     }
 }

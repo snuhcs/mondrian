@@ -14,6 +14,8 @@ import java.io.IOException;
 public class Config {
     private static final String TAG = Config.class.getName();
 
+    public final boolean isBaseline;
+
     public final DispatcherConfig dispatcherConfig;
     public final RoIExtractorConfig roIExtractorConfig;
     public final InferenceEngineConfig inferenceEngineConfig;
@@ -25,13 +27,19 @@ public class Config {
         JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(new File(jsonPath)));
         Log.d(TAG, "Parsed Config: " + jsonObject.toJSONString());
 
+        if (jsonObject.containsKey("is_baseline")) { // if is_baseline = true, BATCH_SIZE must be 1
+            this.isBaseline = Boolean.getBoolean(String.valueOf(jsonObject.get("is_baseline")));
+        } else {
+            this.isBaseline = false;
+        }
+
         dispatcherConfig = new DispatcherConfig();
         if (jsonObject.containsKey("full_inference_interval")) {
             dispatcherConfig.FULL_INFERENCE_INTERVAL = getInt(jsonObject, "full_inference_interval");
         }
 
         roIExtractorConfig = new RoIExtractorConfig();
-        if (jsonObject.containsKey("batch_size")) {
+        if (jsonObject.containsKey("batch_size")) { // if is_baseline = true, BATCH_SIZE must be 1
             roIExtractorConfig.BATCH_SIZE = getInt(jsonObject, "batch_size");
         }
         if (jsonObject.containsKey("mixed_frame_size")) {
@@ -59,7 +67,9 @@ public class Config {
         }
 
         inferenceEngineConfig = new InferenceEngineConfig();
-        inferenceEngineConfig.MIXED_FRAME_SIZE = roIExtractorConfig.MIXED_FRAME_SIZE;
+        if (jsonObject.containsKey("frame_size")) {
+            inferenceEngineConfig.FRAME_SIZE = getInt(jsonObject, "frame_size");
+        }
         if (jsonObject.containsKey("num_workers")) {
             inferenceEngineConfig.NUM_WORKERS = getInt(jsonObject, "num_workers");
         }
@@ -80,8 +90,11 @@ public class Config {
     }
 
     private void validate() throws IllegalArgumentException {
-        if (roIExtractorConfig.MIXED_FRAME_SIZE != inferenceEngineConfig.MIXED_FRAME_SIZE) {
+        if (!isBaseline && roIExtractorConfig.MIXED_FRAME_SIZE != inferenceEngineConfig.FRAME_SIZE) {
             throw new IllegalArgumentException("roIExtractorConfig.MIXED_FRAME_SIZE and inferenceEngineConfig.MIXED_FRAME_SIZE must be same");
+        }
+        if (isBaseline && roIExtractorConfig.BATCH_SIZE != 1) {
+            throw new IllegalArgumentException("if is_baseline = true, roIExtractorConfig.BATCH_SIZE must be 1");
         }
     }
 
