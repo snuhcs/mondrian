@@ -66,6 +66,8 @@ public class RoIExtractor implements Runnable {
     private final Thread mRoIExtractorThread;
     private final Callback mCallback;
 
+    private final MockProfiles mMockProfiles;
+
 
     @RequiresApi(api = Build.VERSION_CODES.P)
     RoIExtractor(RoIExtractorConfig config, Callback callback) {
@@ -75,6 +77,8 @@ public class RoIExtractor implements Runnable {
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
         ROI_PADDING = config.ROI_PADDING;
         EXTRACTION_METHOD = config.EXTRACTION_METHOD;
+
+        mMockProfiles = new MockProfiles(config.PERSON_THRESHOLD, config.CLASS_AGNOSTIC_THRESHOLD);
 
         mCallback = callback;
 
@@ -161,7 +165,7 @@ public class RoIExtractor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private List<RoI> resize(List<RoI> rois) {
-        return rois.stream().map(roi -> roi.resize(MockProfiles.get_profile(roi.labelName))).collect(Collectors.toList());
+        return rois.stream().map(roi -> roi.resize(mMockProfiles.getProfile(roi.labelName))).collect(Collectors.toList());
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -181,6 +185,7 @@ public class RoIExtractor implements Runnable {
             Pair<Bitmap, List<BoundingBox>> prevFrameAndResults = mCallback.getFrameAndResults(sourceIP, prevLastIndex);
             if (prevFrameAndResults != null) {
                 rois.addAll(getRoIs(sameSourceFrames, prevFrameAndResults.first, prevFrameAndResults.second));
+                prevFrameAndResults.first.recycle();
             }
         }
         return rois;
@@ -325,6 +330,12 @@ public class RoIExtractor implements Runnable {
             }
         }
 
+        p0.release();
+        p1.release();
+        f1_gray.release();
+        f2_gray.release();
+        status.release();
+        err.release();
         return shifts;
     }
 
@@ -339,6 +350,11 @@ public class RoIExtractor implements Runnable {
         Mat hierarchy = new Mat();
         Imgproc.findContours(dilated, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
+        img_0_gray.release();
+        img_1_gray.release();
+        diff.release();
+        dilated.release();
+        hierarchy.release();
         return getRoIBitmapsFromContours(contours, f1);
     }
 
@@ -398,7 +414,11 @@ public class RoIExtractor implements Runnable {
             Bitmap croppedROIBitmap = Bitmap.createBitmap(rect.width, rect.height, Bitmap.Config.RGB_565);
             Utils.matToBitmap(croppedROI, croppedROIBitmap);
             roiList.add(location);
+            croppedROI.release();
         }
+
+        laterMat.release();
+        laterMatCopyForROIExtraction.release();
 
         return roiList;
     }

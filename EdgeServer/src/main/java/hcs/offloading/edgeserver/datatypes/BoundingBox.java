@@ -1,6 +1,7 @@
 package hcs.offloading.edgeserver.datatypes;
 
 import android.graphics.Rect;
+import android.support.annotation.NonNull;
 
 public class BoundingBox {
     public final float confidence;
@@ -17,5 +18,11 @@ public class BoundingBox {
 
     public BoundingBox move(Rect location) {
         return new BoundingBox(location, confidence, label, labelName);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return location.left + "," + location.top + "," + location.right + "," + location.bottom + "," + confidence + "," + labelName;
     }
 }

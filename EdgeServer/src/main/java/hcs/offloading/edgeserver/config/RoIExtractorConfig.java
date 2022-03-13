@@ -7,4 +7,6 @@ public class RoIExtractorConfig {
     public float MERGE_THRESHOLD = 0.5f;
     public int ROI_PADDING = 0;
     public ExtractionMethod EXTRACTION_METHOD = ExtractionMethod.COMBINED; // combined / pd (pixel diff) / of (optical flow)
+    public int PERSON_THRESHOLD = 80;
+    public int CLASS_AGNOSTIC_THRESHOLD = 100;
 }

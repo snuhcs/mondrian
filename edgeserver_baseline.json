@@ -1,12 +1,13 @@
 {
     "is_baseline": true,
     "full_inference_interval": 40,
+    "frame_size": 160,
     "merge_threshold": 0.5,
     "roi_padding": 0,
     "extraction_method": "combined",
-    "frame_size": 64,
     "num_workers": 1,
     "match_padding": 40,
     "use_iou_threshold": 0.1,
+    "log_path": "/data/data/hcs.offloading.edgeserver/edgeserver_baseline.log",
     "minimum_confidence": 0.5
 }

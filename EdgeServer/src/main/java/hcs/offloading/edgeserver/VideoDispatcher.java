@@ -52,36 +52,35 @@ public class VideoDispatcher extends CustomCapturer {
                 TextureBufferImpl buffer = new TextureBufferImpl(width, height, VideoFrame.TextureBuffer.Type.RGB, textures[0], new Matrix(), surTexture.getHandler(), yuvConverter, null);
 
                 int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
-                while (true) {
-                    for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-                        long frameStartTimeNs = System.nanoTime();
-                        Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
+                for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+                    long frameStartTimeNs = System.nanoTime();
+                    Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
-                        surTexture.getHandler().post(() -> {
-                            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-                            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
-                            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+                    surTexture.getHandler().post(() -> {
+                        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+                        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+                        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
-                            VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
+                        VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
 
-                            long frameTime = System.nanoTime() - startTimeNs;
-                            VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
-                            capturerObs.onFrameCaptured(videoFrame);
-                        });
+                        long frameTime = System.nanoTime() - startTimeNs;
+                        VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
+                        capturerObs.onFrameCaptured(videoFrame);
+                        i420Buf.release();
+                    });
 
-                        Frame frame = Frame.createSingleFrame(bitmap, mConfig.PATH, frameIndex);
-                        if (frameIndex % FULL_INFERENCE_INTERVAL == 0) {
-                            mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
-                        } else {
-                            mCallback.enqueueFrame(frame);
-                        }
-
-                        long frameEndTimeNs = System.nanoTime();
-                        long frameTimeMs = (frameEndTimeNs - frameStartTimeNs) / 1000000;
-                        long latencyLimitMs = 1000 / fps;
-                        Log.d(TAG, "Frame Extraction Time (ms): " + frameTimeMs);
-                        Thread.sleep(frameTimeMs > latencyLimitMs ? 0 : latencyLimitMs - frameTimeMs);
+                    Frame frame = Frame.createSingleFrame(bitmap, mConfig.PATH, frameIndex);
+                    if (frameIndex % FULL_INFERENCE_INTERVAL == 0) {
+                        mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
+                    } else {
+                        mCallback.enqueueFrame(frame);
                     }
+
+                    long frameEndTimeNs = System.nanoTime();
+                    long frameTimeMs = (frameEndTimeNs - frameStartTimeNs) / 1000000;
+                    long latencyLimitMs = 1000 / fps;
+                    Log.d(TAG, "Frame Extraction Time (ms): " + frameTimeMs);
+                    Thread.sleep(frameTimeMs > latencyLimitMs ? 0 : latencyLimitMs - frameTimeMs);
                 }
             } catch (InterruptedException e) {
                 Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");

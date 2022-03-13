@@ -6,8 +6,11 @@
     "merge_threshold": 0.5,
     "roi_padding": 0,
     "extraction_method": "combined",
+    "person_threshold": 80,
+    "class_agnostic_threshold": 100,
     "num_workers": 1,
     "match_padding": 40,
     "use_iou_threshold": 0.1,
+    "log_path": "/data/data/hcs.offloading.edgeserver/edgeserver.log",
     "minimum_confidence": 0.5
 }

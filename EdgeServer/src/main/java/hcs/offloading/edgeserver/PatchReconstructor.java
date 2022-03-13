@@ -3,14 +3,19 @@ package hcs.offloading.edgeserver;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
 
 import hcs.offloading.edgeserver.config.PatchReconstructorConfig;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
@@ -26,17 +31,26 @@ public class PatchReconstructor implements Runnable {
 
     private final ViewCallback mCallback;
 
+    private final Map<String, Integer> mLastRemovedIndex = new HashMap<>();
     private final Map<String, Map<Integer, Pair<Bitmap, List<BoundingBox>>>> mFramesAndResults = new HashMap<>();
     private final LinkedBlockingQueue<Pair<InferenceRequest, List<BoundingBox>>> mMixedFrameResults = new LinkedBlockingQueue<>();
 
     private final Thread mPatchReconstructorThread;
 
+    private FileWriter logWriter;
     private int mNumProcessedFrames = 0;
-    private final long mApplicationStartTime = System.nanoTime();
+    private final long mStartTimeNs = System.nanoTime();
 
     PatchReconstructor(PatchReconstructorConfig config, ViewCallback callback) {
         MATCH_PADDING = config.MATCH_PADDING;
         USE_IOU_THRESHOLD = config.USE_IOU_THRESHOLD;
+        if (config.LOG_PATH != null) {
+            try {
+                logWriter = new FileWriter(config.LOG_PATH);
+            } catch (IOException e) {
+                Log.e(TAG, e.getMessage());
+            }
+        }
         mCallback = callback;
 
         mPatchReconstructorThread = new Thread(this);
@@ -50,9 +64,18 @@ public class PatchReconstructor implements Runnable {
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage());
         }
+        if (logWriter != null) {
+            try {
+                logWriter.flush();
+                logWriter.close();
+            } catch (IOException e) {
+                Log.e(TAG, e.getMessage());
+            }
+        }
         Log.d(TAG, "closed");
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
         if (request.isBaseline()) {
             results = reconstructBaselineRequest(request);
@@ -66,6 +89,7 @@ public class PatchReconstructor implements Runnable {
                 if (!mFramesAndResults.containsKey(sourceIP)) {
                     mFramesAndResults.put(sourceIP, new HashMap<>());
                 }
+                log(request.frame, results);
                 mFramesAndResults.get(sourceIP).put(frameIndex, new Pair<>(request.frame.bitmap, results));
                 mFramesAndResults.notifyAll();
             }
@@ -90,6 +114,7 @@ public class PatchReconstructor implements Runnable {
         return reconstructedBbx;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     public void run() {
         try {
@@ -103,9 +128,9 @@ public class PatchReconstructor implements Runnable {
                 endTime = System.nanoTime();
                 Log.v(TAG, "Reconstructing time (us): " + (endTime - startTime) / 1e3);
 
-                Map<Pair<String, Integer>, Bitmap> bitmapMap = new HashMap<>();
+                Map<Pair<String, Integer>, Frame> frameMap = new HashMap<>();
                 for (Frame frame : batchResults.first.frames) {
-                    bitmapMap.put(new Pair<>(frame.sourceIP, frame.frameIndex), frame.bitmap);
+                    frameMap.put(new Pair<>(frame.sourceIP, frame.frameIndex), frame);
                 }
 
                 synchronized (mFramesAndResults) {
@@ -113,9 +138,11 @@ public class PatchReconstructor implements Runnable {
                         if (mFramesAndResults.containsKey(sourceIP)) {
                             Map<Integer, List<BoundingBox>> multiFrameResults = mixedFrameResults.get(sourceIP);
                             for (Integer frameIndex : multiFrameResults.keySet()) {
-                                Bitmap bitmap = bitmapMap.get(new Pair<>(sourceIP, frameIndex));
+                                Frame frame = frameMap.get(new Pair<>(sourceIP, frameIndex));
+                                List<BoundingBox> results = multiFrameResults.get(frameIndex);
+                                log(frame, results);
                                 mFramesAndResults.get(sourceIP).put(
-                                        frameIndex, new Pair<>(bitmap, multiFrameResults.get(frameIndex)));
+                                        frameIndex, new Pair<>(frame.bitmap, results));
                             }
                         }
                     }
@@ -129,6 +156,7 @@ public class PatchReconstructor implements Runnable {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     public Pair<Bitmap, List<BoundingBox>> getRemoveDrawResult(String sourceIP, int frameIndex) throws InterruptedException {
         Pair<Bitmap, List<BoundingBox>> result = null;
         synchronized (mFramesAndResults) {
@@ -139,7 +167,13 @@ public class PatchReconstructor implements Runnable {
             }
             if (streamResults != null) {
                 result = streamResults.get(frameIndex);
+                int lastRemovedIndex = mLastRemovedIndex.getOrDefault(sourceIP, -1);
+                for (int i = lastRemovedIndex + 1; i < frameIndex; i++) {
+                    streamResults.get(i).first.recycle();
+                    streamResults.remove(i);
+                }
                 streamResults.remove(frameIndex);
+                mLastRemovedIndex.put(sourceIP, frameIndex);
             }
         }
         if (result != null) {
@@ -202,10 +236,23 @@ public class PatchReconstructor implements Runnable {
         return mixedFrameResults;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void log(Frame frame, List<BoundingBox> boxes) {
+        if (logWriter != null) {
+            try {
+                long timeStamp = System.nanoTime() - mStartTimeNs;
+                logWriter.write(frame.sourceIP + "," + frame.frameIndex + "," + timeStamp + "," + boxes.stream().map(BoundingBox::toString).collect(Collectors.joining(",")) + "\n");
+                logWriter.flush();
+            } catch (IOException e) {
+                Log.e(TAG, e.getMessage());
+            }
+        }
+    }
+
     @SuppressLint("DefaultLocale")
     private void updateFPS(int numProcessedFrames) {
         mNumProcessedFrames += numProcessedFrames;
-        float fps = mNumProcessedFrames / ((System.nanoTime() - mApplicationStartTime) / 1e9f);
+        float fps = mNumProcessedFrames / ((System.nanoTime() - mStartTimeNs) / 1e9f);
         mCallback.drawFPS(String.format("%.3f", fps));
     }
 }

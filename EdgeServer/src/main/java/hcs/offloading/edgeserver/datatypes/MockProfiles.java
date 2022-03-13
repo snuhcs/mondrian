@@ -2,10 +2,15 @@ package hcs.offloading.edgeserver.datatypes;
 
 public class MockProfiles {
 
-    public static int PERSON_THRESHOLD = 100;
-    public static int CLASS_AGNOSTIC_THRESHOLD = 150;
+    public final int PERSON_THRESHOLD;
+    public final int CLASS_AGNOSTIC_THRESHOLD;
 
-    public static int get_profile(String labelName) {
+    public MockProfiles(int personThreshold, int classAgnosticThreshold) {
+        PERSON_THRESHOLD = personThreshold;
+        CLASS_AGNOSTIC_THRESHOLD = classAgnosticThreshold;
+    }
+
+    public int getProfile(String labelName) {
         if (labelName == null) {
             return CLASS_AGNOSTIC_THRESHOLD;
         } else if (labelName.equals("person")) {

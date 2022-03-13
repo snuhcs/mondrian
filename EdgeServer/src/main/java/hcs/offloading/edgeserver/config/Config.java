@@ -84,6 +84,12 @@ public class Config {
                     break;
             }
         }
+        if (jsonObject.has("person_threshold")) {
+            roIExtractorConfig.PERSON_THRESHOLD = jsonObject.getInt("person_threshold");
+        }
+        if (jsonObject.has("class_agnostic_threshold")) {
+            roIExtractorConfig.CLASS_AGNOSTIC_THRESHOLD = jsonObject.getInt("class_agnostic_threshold");
+        }
 
         if (jsonObject.has("num_workers")) {
             inferenceEngineConfig.NUM_WORKERS = jsonObject.getInt("num_workers");
@@ -97,6 +103,9 @@ public class Config {
         }
         if (jsonObject.has("use_iou_threshold")) {
             patchReconstructorConfig.USE_IOU_THRESHOLD = (float) jsonObject.getDouble("use_iou_threshold");
+        }
+        if (jsonObject.has("log_path")) {
+            patchReconstructorConfig.LOG_PATH = jsonObject.getString("log_path");
         }
 
         if (jsonObject.has("minimum_confidence")) {

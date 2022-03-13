@@ -5,13 +5,13 @@
             "path": "/data/local/tmp/surveillance_0.mp4",
             "width": 1920,
             "height": 1080,
-            "fps": 10
+            "fps": 30
         },
         {
             "path": "/data/local/tmp/surveillance_1.mp4",
             "width": 1920,
             "height": 1080,
-            "fps": 10
+            "fps": 30
         }
     ],
     "is_baseline": false,
@@ -21,8 +21,11 @@
     "merge_threshold": 0.5,
     "roi_padding": 0,
     "extraction_method": "combined",
+    "person_threshold": 80,
+    "class_agnostic_threshold": 100,
     "num_workers": 1,
     "match_padding": 40,
     "use_iou_threshold": 0.1,
+    "log_path": "/data/data/hcs.offloading.edgeserver/edgeserver_local.log",
     "minimum_confidence": 0.5
 }
