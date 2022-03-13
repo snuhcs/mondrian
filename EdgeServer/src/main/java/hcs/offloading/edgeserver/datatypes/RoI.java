@@ -10,11 +10,16 @@ public class RoI {
     public final float scale;
     public final int[] packedLocation;
 
-    public RoI(Frame frame, Rect position) {
+    public RoIType type;
+    public String labelName;
+
+    public RoI(Frame frame, Rect position, RoIType type, String labelName) {
         this.frame = frame;
         this.position = position;
         this.scale = 1f;
         this.packedLocation = null;
+        this.type = type;
+        this.labelName = labelName;
     }
 
     private RoI(RoI roi, float scale) {
