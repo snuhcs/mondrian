@@ -20,9 +20,9 @@ public class Config {
     public final PatchReconstructorConfig patchReconstructorConfig;
     public final UtilsConfig utilsConfig;
 
-    public Config(String jsonPath) throws ParseException, JSONException, IOException, IllegalArgumentException {
+    public Config(String jsonPath) throws ParseException, IOException, IllegalArgumentException {
         JSONParser jsonParser = new JSONParser();
-        JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(new File(jsonPath)));
+        JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(jsonPath));
         Log.d(TAG, "Parsed Config: " + jsonObject.toJSONString());
 
         dispatcherConfig = new DispatcherConfig();
@@ -70,6 +70,9 @@ public class Config {
         }
         if (jsonObject.containsKey("use_iou_threshold")) {
             patchReconstructorConfig.USE_IOU_THRESHOLD = getFloat(jsonObject, "use_iou_threshold");
+        }
+        if (jsonObject.containsKey("log_path")) {
+            patchReconstructorConfig.LOG_PATH = String.valueOf(jsonObject.get("log_path"));
         }
 
         utilsConfig = new UtilsConfig();

@@ -28,7 +28,7 @@ public class Dispatcher implements VideoSink {
     public interface Callback {
         void enqueueFrame(Frame frame);
         void enqueueInferenceRequest(InferenceRequest inferenceRequest);
-        void removeStream(String sourceIP);
+        void removeStream(String ip);
     }
 
     private final Callback mCallback;
@@ -87,7 +87,7 @@ public class Dispatcher implements VideoSink {
         YuvFrame yuvFrame = new YuvFrame(videoFrame);
         Bitmap bitmap = yuvFrame.getBitmap();
 
-        Frame frame = Frame.createSingleFrame(bitmap, mSourceIP, mFrameIndex);
+        Frame frame = Frame.createSingleFrame(bitmap, mSourceIP, mFrameIndex, videoFrame.getTimestampNs());
         if (mFrameIndex % FULL_INFERENCE_INTERVAL == 0) {
             mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
         } else {

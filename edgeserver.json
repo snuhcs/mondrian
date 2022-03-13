@@ -8,5 +8,6 @@
     "num_workers": 1,
     "match_padding": 40,
     "use_iou_threshold": 0.1,
+    "log_path": "/data/data/hcs.offloading.edgeserver/edgeserver_log.csv",
     "minimum_confidence": 0.5
 }

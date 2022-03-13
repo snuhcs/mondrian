@@ -166,7 +166,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
 
     // RoIExtractor.Callback
     @Override
-    public Pair<Bitmap, List<BoundingBox>> getFrameAndResults(String sourceIP, int frameIndex) throws InterruptedException {
+    public Pair<Frame, List<BoundingBox>> getFrameAndResults(String sourceIP, int frameIndex) throws InterruptedException {
         return mPatchReconstructor.getRemoveDrawResult(sourceIP, frameIndex);
     }
 
