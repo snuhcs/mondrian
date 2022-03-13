@@ -80,7 +80,7 @@ public class Worker implements Runnable {
                         endTime = System.nanoTime();
                         inferenceTimeUs += (int)((endTime - startTime) / 1e3);
                         bbx = Utils.filterPerson(bbx);
-                        roi.setBbx(bbx);
+                        roi.setBoundingBoxes(bbx);
                         results.addAll(bbx);
                     }
                     request.preprocessingTimeUs = preprocessingTimeUs;

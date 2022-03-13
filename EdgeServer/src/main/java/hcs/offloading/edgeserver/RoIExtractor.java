@@ -128,10 +128,10 @@ public class RoIExtractor implements Runnable {
                 endTime = System.nanoTime();
                 Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
 
-                List<RoI> resizedRoIs = resize(rois);
-                List<RoI> sortedRoIs = sortByPriority(resizedRoIs);
-
                 if (!isBaseline) {
+                    List<RoI> resizedRoIs = resize(rois);
+                    List<RoI> sortedRoIs = sortByPriority(resizedRoIs);
+
                     startTime = System.nanoTime();
                     List<RoI> packedRoIs = PatchMixer.packRoIs(sortedRoIs, MIXED_FRAME_SIZE);
                     Bitmap mixedFrame = PatchMixer.getMixedFrame(packedRoIs, MIXED_FRAME_SIZE);
@@ -140,7 +140,7 @@ public class RoIExtractor implements Runnable {
 
                     mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, sortedRoIs));
                 } else {
-                    mCallback.enqueueInferenceRequest(InferenceRequest.createBaselineRequest(frames.get(0), sortedRoIs));
+                    mCallback.enqueueInferenceRequest(InferenceRequest.createBaselineRequest(frames.get(0), rois));
                 }
             }
         } catch (InterruptedException e) {

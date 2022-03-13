@@ -15,7 +15,7 @@ public class RoI {
     public final RoIType type;
     public final String labelName;
 
-    public List<BoundingBox> bbx;
+    public List<BoundingBox> boundingBoxes;
 
     public RoI(Frame frame, Rect position, RoIType type, String labelName) {
         this.frame = frame;
@@ -86,8 +86,8 @@ public class RoI {
         return frame.frameIndex;
     }
 
-    public void setBbx(List<BoundingBox> bbx) {
-        this.bbx = bbx;
+    public void setBoundingBoxes(List<BoundingBox> boundingBoxes) {
+        this.boundingBoxes = boundingBoxes;
     }
 
     @Override
