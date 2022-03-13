@@ -69,7 +69,7 @@ public class CustomCapturer implements VideoCapturer {
                         });
                         long frameEndTimeNs = System.nanoTime();
                         long frameTimeMs = (frameEndTimeNs - frameStartTimeNs) / 1000000;
-                        long latencyLimitMs = frameTimeMs / fps;
+                        long latencyLimitMs = 1000 / fps;
                         Thread.sleep(frameTimeMs > latencyLimitMs ? 0 : latencyLimitMs - frameTimeMs);
                     }
                 }
