@@ -1,0 +1,28 @@
+{
+    "use_local_video": true,
+    "video_configs": [
+        {
+            "path": "/data/local/tmp/VIRAT_S_000002_cut.mp4",
+            "width": 1920,
+            "height": 1080,
+            "fps": 10
+        },
+        {
+            "path": "/data/local/tmp/VIRAT_S_000006_cut.mp4",
+            "width": 1920,
+            "height": 1080,
+            "fps": 10
+        }
+    ],
+    "is_baseline": true,
+    "full_inference_interval": 120,
+    "frame_size": 160,
+    "merge_threshold": 0.5,
+    "roi_padding": 0,
+    "extraction_method": "of",
+    "person_threshold": 160,
+    "class_agnostic_threshold": 160,
+    "num_workers": 1,
+    "log_path": "/data/data/hcs.offloading.edgeserver/pb_0_baseline.log",
+    "minimum_confidence": 0.5
+}

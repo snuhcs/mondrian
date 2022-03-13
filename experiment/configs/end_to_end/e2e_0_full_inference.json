@@ -1,0 +1,21 @@
+{
+    "use_local_video": true,
+    "video_configs": [
+        {
+            "path": "/data/local/tmp/VIRAT_S_000002_cut.mp4",
+            "width": 1920,
+            "height": 1080,
+            "fps": 10
+        },
+        {
+            "path": "/data/local/tmp/VIRAT_S_000006_cut.mp4",
+            "width": 1920,
+            "height": 1080,
+            "fps": 10
+        }
+    ],
+    "full_inference_interval": 1,
+    "frame_size": 640,
+    "num_workers": 1,
+    "log_path": "/data/data/hcs.offloading.edgeserver/e2e_0_full_inference.log"
+}
