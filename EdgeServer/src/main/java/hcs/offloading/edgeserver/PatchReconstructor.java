@@ -54,11 +54,11 @@ public class PatchReconstructor implements Runnable {
     }
 
     public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
+        if (request.isBaseline()) {
+            results = reconstructBaselineRequest(request);
+        }
         mCallback.drawInferenceResult(Utils.drawBoxes(request.frame.bitmap, results));
         if (!request.isMixed()) {
-            if (request.isBaseline()) {
-                results = reconstructBaselineRequest(request);
-            }
             updateFPS(1);
             String sourceIP = request.frame.sourceIP;
             int frameIndex = request.frame.frameIndex;
