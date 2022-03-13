@@ -2,15 +2,14 @@ package hcs.offloading.network.webrtc;
 
 import android.content.Context;
 import android.os.Build;
-import android.provider.MediaStore;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
+import android.util.Pair;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
-import org.webrtc.CapturerObserver;
 import org.webrtc.DefaultVideoDecoderFactory;
 import org.webrtc.DefaultVideoEncoderFactory;
 import org.webrtc.EglBase;
@@ -22,7 +21,6 @@ import org.webrtc.PeerConnectionFactory;
 import org.webrtc.SessionDescription;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.VideoCapturer;
-import org.webrtc.VideoFrame;
 import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 
@@ -128,26 +126,20 @@ public class WebRTCManager {
                 super.onAddStream(mediaStream);
                 Log.d(TAG, "onAddStream " + ip);
                 if (mediaStream.videoTracks != null && mediaStream.videoTracks.size() == 1) {
-                    if (mWebRTCCallback != null) {
-                        mWebRTCCallback.onAddStream(ip, mediaStream);
-                    }
+                    mWebRTCCallback.onAddStream(ip, mediaStream);
                 }
             }
 
             @Override
-            public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
-                super.onIceConnectionChange(iceConnectionState);
-                Log.d(TAG, "onIceConnectionChange: " + iceConnectionState.name());
-                switch (iceConnectionState) {
-                    case CLOSED:
-                    case DISCONNECTED:
-                    case FAILED:
-                        if (mWebRTCCallback != null) {
-                            mWebRTCCallback.onDisconnect(ip);
-                        }
-                        break;
-                    default:
-                        break;
+            public void onConnectionChange(PeerConnection.PeerConnectionState state) {
+                super.onConnectionChange(state);
+                Log.d(TAG, "onConnectionChange: " + state.name());
+                if (state == PeerConnection.PeerConnectionState.CONNECTED) {
+                    mWebRTCCallback.onConnect(ip);
+                } else if (state == PeerConnection.PeerConnectionState.DISCONNECTED ||
+                        state == PeerConnection.PeerConnectionState.FAILED ||
+                        state == PeerConnection.PeerConnectionState.CLOSED) {
+                    mWebRTCCallback.onDisconnect(ip);
                 }
             }
         });
@@ -179,25 +171,23 @@ public class WebRTCManager {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    public VideoTrack createSavedVideoTrack(EglBase eglBase, int width, int height, int fps, String videoFilePath) {
+    public Pair<VideoCapturer, VideoTrack> createSavedVideoTrack(EglBase eglBase, String videoFilePath, String logFilePath) {
         SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
         CustomCapturer videoCapturer = new CustomCapturer();
         VideoSource videoSource = mPeerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
         videoCapturer.initialize(surfaceTextureHelper, mContext, videoSource.getCapturerObserver());
-        videoCapturer.initializeVideo(videoFilePath);
-        videoCapturer.startCapture(width, height, fps);
-        return mPeerConnectionFactory.createVideoTrack("101", videoSource);
+        videoCapturer.initializeVideoAndLog(videoFilePath, logFilePath);
+        return new Pair<>(videoCapturer, mPeerConnectionFactory.createVideoTrack("101", videoSource));
     }
 
-    public VideoTrack createCameraTrack(EglBase eglBase, int width, int height, int fps) {
+    public Pair<VideoCapturer, VideoTrack> createCameraTrack(EglBase eglBase) {
         Log.d(TAG, "createVideoTrack");
         VideoCapturer videoCapturer = createCameraCapturer(new Camera2Enumerator(mContext));
         SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBase.getEglBaseContext());
         assert videoCapturer != null;
         VideoSource videoSource = mPeerConnectionFactory.createVideoSource(videoCapturer.isScreencast());
         videoCapturer.initialize(surfaceTextureHelper, mContext, videoSource.getCapturerObserver());
-        videoCapturer.startCapture(width, height, fps);
-        return mPeerConnectionFactory.createVideoTrack("100", videoSource);
+        return new Pair<>(videoCapturer, mPeerConnectionFactory.createVideoTrack("100", videoSource));
     }
 
     private VideoCapturer createCameraCapturer(CameraEnumerator enumerator) {

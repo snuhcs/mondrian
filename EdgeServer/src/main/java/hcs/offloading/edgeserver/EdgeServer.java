@@ -131,7 +131,12 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
         }
     };
 
-    // WebRTCManager.StreamCallback
+    // WebRTCCallback
+    @Override
+    public void onConnect(String ip) {
+
+    }
+
     @Override
     public void onDisconnect(String ip) {
         Dispatcher dispatcher = mDispatchers.remove(ip);

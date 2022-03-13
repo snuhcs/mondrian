@@ -14,12 +14,13 @@ public class Config {
     public int WIDTH = 1920;
     public int HEIGHT = 1080;
     public int FPS = 5;
-    public String VIDEO_PATH = "/data/local/tmp";
+    public String VIDEO_PATH = null;
+    public String LOG_PATH = null;
 
     Config(String jsonPath) throws IOException, ParseException {
 
         JSONParser jsonParser = new JSONParser();
-        JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(new File(jsonPath)));
+        JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(jsonPath));
 
         if (jsonObject.containsKey("use_saved_video")) {
             USE_SAVED_VIDEO = Boolean.parseBoolean(String.valueOf(jsonObject.get("use_saved_video")));
@@ -35,6 +36,9 @@ public class Config {
         }
         if (jsonObject.containsKey("video_path")) {
             VIDEO_PATH = String.valueOf(jsonObject.get("video_path"));
+        }
+        if (jsonObject.containsKey("log_path")) {
+            LOG_PATH = String.valueOf(jsonObject.get("log_path"));
         }
     }
 

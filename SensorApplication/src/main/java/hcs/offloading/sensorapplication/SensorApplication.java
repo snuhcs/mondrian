@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
+import android.util.Pair;
 
 import org.json.JSONException;
 import org.webrtc.EglBase;
@@ -17,16 +18,18 @@ import hcs.offloading.network.mqtt.DeviceMqttManager;
 import hcs.offloading.network.mqtt.datatypes.Device;
 import hcs.offloading.network.mqtt.datatypes.WebRTCHeader;
 import hcs.offloading.network.mqtt.datatypes.PacketHandler;
+import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
 
-public class SensorApplication {
+public class SensorApplication implements WebRTCCallback {
     private static final String TAG = SensorApplication.class.getName();
 
-    Config mConfig;
+    private final Config mConfig;
 
     private final SurfaceViewRenderer mInputView;
 
     private String mTargetEdgeIP;
+    private final VideoCapturer mVideoCapturer;
     private final VideoTrack mVideoTrack;
     private final MediaStream mMediaStream;
     private PeerConnection mPeerConnection;
@@ -40,15 +43,18 @@ public class SensorApplication {
         mInputView = inputView;
 
         mMqttManager = new DeviceMqttManager(context, uri, Device.SENSOR, scheduleTopicHandler, webrtcTopicHandler);
-        mWebRTCManager = new WebRTCManager(context, mMqttManager, eglBase, null);
+        mWebRTCManager = new WebRTCManager(context, mMqttManager, eglBase, this);
 
         mMediaStream = mWebRTCManager.createMediaStream();
 
+        Pair<VideoCapturer, VideoTrack> capturerAndTrack;
         if (mConfig.USE_SAVED_VIDEO) {
-            mVideoTrack = mWebRTCManager.createSavedVideoTrack(eglBase, mConfig.WIDTH, mConfig.HEIGHT, mConfig.FPS, mConfig.VIDEO_PATH);
+            capturerAndTrack = mWebRTCManager.createSavedVideoTrack(eglBase, mConfig.VIDEO_PATH, mConfig.LOG_PATH);
         } else {
-            mVideoTrack = mWebRTCManager.createCameraTrack(eglBase, mConfig.WIDTH, mConfig.HEIGHT, mConfig.FPS);
+            capturerAndTrack = mWebRTCManager.createCameraTrack(eglBase);
         }
+        mVideoCapturer = capturerAndTrack.first;
+        mVideoTrack = capturerAndTrack.second;
         mVideoTrack.addSink(mInputView);
         mMediaStream.addTrack(mVideoTrack);
     }
@@ -62,15 +68,22 @@ public class SensorApplication {
 
     void startSensorApplication() {
         synchronized (this) {
-            mPeerConnection = mWebRTCManager.createPeerConnection(mTargetEdgeIP);
-            mPeerConnection.addStream(mMediaStream);
-            mWebRTCManager.offer(mPeerConnection, mTargetEdgeIP);
+            if (mPeerConnection == null) {
+                mPeerConnection = mWebRTCManager.createPeerConnection(mTargetEdgeIP);
+                mPeerConnection.addStream(mMediaStream);
+                mWebRTCManager.offer(mPeerConnection, mTargetEdgeIP);
+            }
         }
     }
 
     void stopSensorApplication() {
         synchronized (this) {
             if (mPeerConnection != null) {
+                try {
+                    mVideoCapturer.stopCapture();
+                } catch (InterruptedException e) {
+                    Log.e(TAG, e.getMessage());
+                }
                 mPeerConnection.removeStream(mMediaStream);
                 mPeerConnection.close();
                 mPeerConnection = null;
@@ -103,4 +116,20 @@ public class SensorApplication {
             }
         }
     };
+
+    // WebRTCCallback
+    @Override
+    public void onConnect(String ip) {
+        mVideoCapturer.startCapture(mConfig.WIDTH, mConfig.HEIGHT, mConfig.FPS);
+    }
+
+    @Override
+    public void onDisconnect(String ip) {
+        stopSensorApplication();
+    }
+
+    @Override
+    public void onAddStream(String ip, MediaStream mediaStream) {
+
+    }
 }
