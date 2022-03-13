@@ -150,6 +150,7 @@ public class RoIExtractor implements Runnable {
         return framesPerStream;
     }
 
+
     @RequiresApi(api = Build.VERSION_CODES.N)
     private List<RoI> resize(List<RoI> rois) {
         return rois.stream().map(roi -> roi.resize(AREA_THRESHOLD)).collect(Collectors.toList());
