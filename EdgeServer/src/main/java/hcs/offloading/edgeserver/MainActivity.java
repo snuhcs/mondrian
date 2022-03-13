@@ -13,7 +13,6 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import org.json.JSONException;
-import org.json.simple.parser.ParseException;
 import org.webrtc.SurfaceViewRenderer;
 
 import java.io.IOException;
@@ -59,7 +58,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                 String uri = "tcp://" + ip + ":" + port;
                 try {
                     mEdgeServer = new EdgeServer(getApplicationContext(), uri, mInputView, this);
-                } catch (ParseException | JSONException | IOException | IllegalArgumentException e) {
+                } catch (JSONException | IOException | IllegalArgumentException e) {
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                     mEdgeServer = null;
                 }

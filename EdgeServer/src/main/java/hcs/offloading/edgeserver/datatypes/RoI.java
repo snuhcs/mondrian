@@ -3,6 +3,8 @@ package hcs.offloading.edgeserver.datatypes;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
 
+import java.util.List;
+
 public class RoI {
     public final Frame frame;
     public final Rect position;
@@ -12,6 +14,8 @@ public class RoI {
 
     public final RoIType type;
     public final String labelName;
+
+    public List<BoundingBox> boundingBoxes;
 
     public RoI(Frame frame, Rect position, RoIType type, String labelName) {
         this.frame = frame;
@@ -80,6 +84,10 @@ public class RoI {
 
     public int getFrameIndex() {
         return frame.frameIndex;
+    }
+
+    public void setBoundingBoxes(List<BoundingBox> boundingBoxes) {
+        this.boundingBoxes = boundingBoxes;
     }
 
     @Override

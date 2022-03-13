@@ -9,7 +9,6 @@ import android.util.Log;
 import android.util.Pair;
 
 import org.json.JSONException;
-import org.json.simple.parser.ParseException;
 import org.webrtc.EglBase;
 import org.webrtc.MediaStream;
 import org.webrtc.SurfaceViewRenderer;
@@ -53,7 +52,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     private InferenceEngine mInferenceEngine;
     private PatchReconstructor mPatchReconstructor;
 
-    EdgeServer(Context context, String uri, SurfaceViewRenderer inputView, ViewCallback viewCallback) throws JSONException, ParseException, IOException {
+    EdgeServer(Context context, String uri, SurfaceViewRenderer inputView, ViewCallback viewCallback) throws JSONException, IOException {
         mConfig = new Config(CONFIG_FILEPATH);
         mAssetManager = context.getAssets();
 
@@ -78,7 +77,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
         synchronized (this) {
             mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, mViewCallback);
             mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, this, mAssetManager);
-            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, this);
+            mRoIExtractor = new RoIExtractor(mConfig.isBaseline, mConfig.roIExtractorConfig, this);
         }
     }
 
@@ -151,28 +150,40 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     // Dispatcher.Callback
     @Override
     public void enqueueFrame(Frame frame) {
-        mRoIExtractor.enqueueFrame(frame);
+        if (mRoIExtractor != null) {
+            mRoIExtractor.enqueueFrame(frame);
+        }
     }
 
     @Override
     public void removeStream(String sourceIP) {
-        mPatchReconstructor.removeStream(sourceIP);
+        if (mPatchReconstructor != null) {
+            mPatchReconstructor.removeStream(sourceIP);
+        }
     }
 
     // RoIExtractor.Callback
     @Override
     public Pair<Bitmap, List<BoundingBox>> getFrameAndResults(String sourceIP, int frameIndex) throws InterruptedException {
-        return mPatchReconstructor.getRemoveDrawResult(sourceIP, frameIndex);
+        if (mPatchReconstructor != null) {
+            return mPatchReconstructor.getRemoveDrawResult(sourceIP, frameIndex);
+        } else {
+            return null;
+        }
     }
 
     @Override
     public void enqueueInferenceRequest(InferenceRequest inferenceRequest) {
-        mInferenceEngine.enqueueRequest(inferenceRequest);
+        if (mInferenceEngine != null) {
+            mInferenceEngine.enqueueRequest(inferenceRequest);
+        }
     }
 
     // Worker.Callback
     @Override
     public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
-        mPatchReconstructor.enqueueInferenceResult(request, results);
+        if (mPatchReconstructor != null) {
+            mPatchReconstructor.enqueueInferenceResult(request, results);
+        }
     }
 }
