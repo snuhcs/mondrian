@@ -16,8 +16,8 @@ import org.webrtc.VideoTrack;
 
 import hcs.offloading.network.mqtt.DeviceMqttManager;
 import hcs.offloading.network.mqtt.datatypes.Device;
-import hcs.offloading.network.mqtt.datatypes.WebRTCHeader;
 import hcs.offloading.network.mqtt.datatypes.PacketHandler;
+import hcs.offloading.network.mqtt.datatypes.WebRTCHeader;
 import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
 
@@ -65,11 +65,8 @@ public class SensorApplication implements WebRTCCallback {
         isClosed = true;
         stopSensorApplication();
         mMediaStream.removeTrack(mVideoTrack);
-        Log.d(TAG, "mMediaStream.removeTrack(mVideoTrack);");
         mVideoTrack.removeSink(mInputView);
-        Log.d(TAG, "mVideoTrack.removeSink(mInputView);");
         mMqttManager.close();
-        Log.d(TAG, "mMqttManager.close();");
     }
 
     void startSensorApplication() {
@@ -85,23 +82,17 @@ public class SensorApplication implements WebRTCCallback {
     void stopSensorApplication() {
         Log.d(TAG, "stopSensorApplication");
         synchronized (this) {
-            Log.d(TAG, "synchronized (this) {");
             if (mPeerConnection != null) {
-                Log.d(TAG, "if (mPeerConnection != null)");
                 try {
                     mVideoCapturer.stopCapture();
-                    Log.d(TAG, "mVideoCapturer.stopCapture();");
                 } catch (InterruptedException e) {
                     Log.e(TAG, e.getMessage());
                 }
                 mPeerConnection.removeStream(mMediaStream);
-                Log.d(TAG, "mPeerConnection.removeStream(mMediaStream);");
                 if (!mPeerConnection.connectionState().equals(PeerConnection.PeerConnectionState.CLOSED)) {
                     mPeerConnection.close();
-                    Log.d(TAG, "mPeerConnection.close();");
                 }
                 mPeerConnection = null;
-                Log.d(TAG, "mPeerConnection = null;");
             }
         }
     }
@@ -140,7 +131,7 @@ public class SensorApplication implements WebRTCCallback {
 
     @Override
     public void onDisconnect(String ip) {
-        Log.d(TAG, "onDisconnect(String ip)");
+        Log.d(TAG, "onDisconnect(" + ip + ")");
         if (!isClosed) {
             stopSensorApplication();
         }

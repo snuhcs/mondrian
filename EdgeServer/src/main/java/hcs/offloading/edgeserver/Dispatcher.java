@@ -28,7 +28,7 @@ public class Dispatcher implements VideoSink {
     public interface Callback {
         void enqueueFrame(Frame frame);
         void enqueueInferenceRequest(InferenceRequest inferenceRequest);
-        void removeStream(String ip);
+        void removeStream(String sourceIP);
     }
 
     private final Callback mCallback;
@@ -74,9 +74,9 @@ public class Dispatcher implements VideoSink {
                 mMediaStream.removeTrack(mVideoTrack);
                 mPeerConnection.removeStream(mMediaStream);
             }
-        }
-        if (!mPeerConnection.connectionState().equals(PeerConnection.PeerConnectionState.CLOSED)) {
-            mPeerConnection.close();
+            if (!mPeerConnection.connectionState().equals(PeerConnection.PeerConnectionState.CLOSED)) {
+                mPeerConnection.close();
+            }
         }
         mCallback.removeStream(mSourceIP);
         Log.d(TAG, "closed");
@@ -87,7 +87,7 @@ public class Dispatcher implements VideoSink {
         YuvFrame yuvFrame = new YuvFrame(videoFrame);
         Bitmap bitmap = yuvFrame.getBitmap();
 
-        Frame frame = Frame.createSingleFrame(bitmap, mSourceIP, mFrameIndex, videoFrame.getTimestampNs());
+        Frame frame = Frame.createSingleFrame(bitmap, mSourceIP, mFrameIndex);
         if (mFrameIndex % FULL_INFERENCE_INTERVAL == 0) {
             mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
         } else {

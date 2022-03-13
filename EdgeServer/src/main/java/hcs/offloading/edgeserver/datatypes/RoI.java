@@ -79,12 +79,12 @@ public class RoI {
     }
 
     public int getFrameIndex() {
-        return frame.index;
+        return frame.frameIndex;
     }
 
     @Override
     public String toString() {
-        String result = "RoI " + frame.index + ": " + position.toString();
+        String result = "RoI " + frame.frameIndex + ": " + position.toString();
         return result.trim();
     }
 }

@@ -41,7 +41,7 @@ public class CustomCapturer implements VideoCapturer {
         Log.d(TAG, "startCapture");
         captureThread = new Thread(() -> {
             try {
-                long start = System.nanoTime();
+                long startTimeNs = System.nanoTime();
                 capturerObs.onCapturerStarted(true);
 
                 int[] textures = new int[1];
@@ -53,7 +53,7 @@ public class CustomCapturer implements VideoCapturer {
                 int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
                 while (true) {
                     for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-                        long startTime = System.currentTimeMillis();
+                        long frameStartTimeNs = System.nanoTime();
                         Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
                         surTexture.getHandler().post(() -> {
@@ -63,14 +63,14 @@ public class CustomCapturer implements VideoCapturer {
 
                             VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
 
-                            long frameTime = System.nanoTime() - start;
+                            long frameTime = System.nanoTime() - startTimeNs;
                             VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
                             capturerObs.onFrameCaptured(videoFrame);
                         });
-                        long endTime = System.currentTimeMillis();
-                        long elapsed = endTime - startTime;
-                        long latencyLimit = 1000 / fps;
-                        Thread.sleep(elapsed > latencyLimit ? 0 : latencyLimit - elapsed);
+                        long frameEndTimeNs = System.nanoTime();
+                        long frameTimeMs = (frameEndTimeNs - frameStartTimeNs) / 1000000;
+                        long latencyLimitMs = frameTimeMs / fps;
+                        Thread.sleep(frameTimeMs > latencyLimitMs ? 0 : latencyLimitMs - frameTimeMs);
                     }
                 }
             } catch (InterruptedException e) {

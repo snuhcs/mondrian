@@ -5,25 +5,22 @@ import android.graphics.Bitmap;
 public class Frame {
     public final Bitmap bitmap;
     public final String sourceIP;
-    public final int index;
-    public final long timeNs;
+    public final int frameIndex;
 
-    private Frame(Bitmap bitmap, String sourceIP, int index, long timeNs) {
+    private Frame(Bitmap bitmap, String sourceIP, int frameIndex) {
         this.bitmap = bitmap;
         this.sourceIP = sourceIP;
-        this.index = index;
-        this.timeNs = timeNs;
+        this.frameIndex = frameIndex;
     }
 
     private Frame(Bitmap bitmap) {
         this.bitmap = bitmap;
         this.sourceIP = null;
-        this.index = -1;
-        this.timeNs = -1;
+        this.frameIndex = -1;
     }
 
-    public static Frame createSingleFrame(Bitmap bitmap, String sourceIP, int index, long timeNs) {
-        return new Frame(bitmap, sourceIP, index, timeNs);
+    public static Frame createSingleFrame(Bitmap bitmap, String sourceIP, int frameIndex) {
+        return new Frame(bitmap, sourceIP, frameIndex);
     }
 
     public static Frame createMixedFrame(Bitmap bitmap) {

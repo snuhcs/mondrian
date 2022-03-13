@@ -55,7 +55,7 @@ public class RoIExtractor implements Runnable {
     }
 
     public interface Callback {
-        Pair<Frame, List<BoundingBox>> getFrameAndResults(String ip, int frameIndex) throws InterruptedException;
+        Pair<Bitmap, List<BoundingBox>> getFrameAndResults(String sourceIP, int frameIndex) throws InterruptedException;
 
         void enqueueInferenceRequest(InferenceRequest inferenceRequest);
     }
@@ -169,11 +169,11 @@ public class RoIExtractor implements Runnable {
         for (Map.Entry<String, List<Frame>> kv : framesPerStream.entrySet()) {
             String sourceIP = kv.getKey();
             List<Frame> sameSourceFrames = kv.getValue();
-            int minIndex = sameSourceFrames.stream().map(frame -> frame.index).min(Integer::compare).orElseThrow(NoSuchElementException::new);
+            int minIndex = sameSourceFrames.stream().map(frame -> frame.frameIndex).min(Integer::compare).orElseThrow(NoSuchElementException::new);
             int prevLastIndex = minIndex - 1;
-            Pair<Frame, List<BoundingBox>> prevFrameAndResults = mCallback.getFrameAndResults(sourceIP, prevLastIndex);
+            Pair<Bitmap, List<BoundingBox>> prevFrameAndResults = mCallback.getFrameAndResults(sourceIP, prevLastIndex);
             if (prevFrameAndResults != null) {
-                rois.addAll(getRoIs(sameSourceFrames, prevFrameAndResults.first.bitmap, prevFrameAndResults.second));
+                rois.addAll(getRoIs(sameSourceFrames, prevFrameAndResults.first, prevFrameAndResults.second));
             }
         }
         return rois;
