@@ -203,7 +203,7 @@ public class RoIExtractor implements Runnable {
                         .collect(Collectors.toList());
                 frameRoIs.addAll(pixelDiffRoIs);
             }
-            rois.addAll(mergeSingleFrameRoIs(frameRoIs))
+            rois.addAll(mergeSingleFrameRoIs(frameRoIs));
             prevBitmap = currBitmap;
         }
         return rois;
