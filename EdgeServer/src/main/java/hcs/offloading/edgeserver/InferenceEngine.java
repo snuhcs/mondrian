@@ -80,7 +80,7 @@ public class InferenceEngine {
             request = mInferenceRequests.poll();
             mInferenceRequests.notifyAll();
         }
-        Log.v(TAG, "End getRequest() : " + (request == null ? "null" : request.frame.frameIndex));
+        Log.v(TAG, "End getRequest()");
         return request;
     }
 
