@@ -156,7 +156,7 @@ public class RoIExtractor implements Runnable {
 
                     mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, rois));
                 } else {
-                    mCallback.enqueueInferenceRequest(InferenceRequest.createBaselineRequest(frames.get(0), rois));
+                    mCallback.enqueueInferenceRequest(InferenceRequest.createSingleRoIFrameRequest(frames, rois));
                 }
             }
         } catch (InterruptedException e) {

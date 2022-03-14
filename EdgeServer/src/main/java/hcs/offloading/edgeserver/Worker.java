@@ -61,34 +61,9 @@ public class Worker implements Runnable {
                 InferenceRequest request = engine.getRequest();
                 request.queueSize = engine.getRequestQueueSize();
 
-                if (request.isBaseline()) {
-
-                    int preprocessingTimeUs = 0;
-                    int inferenceTimeUs = 0;
-
-                    List<BoundingBox> results = new ArrayList<>();
-
-                    for (RoI roi : request.rois) {
-                        Bitmap input = roi.getBitmap();
-                        startTime = System.nanoTime();
-                        ByteBuffer processedBuffer = preprocess(input);
-                        endTime = System.nanoTime();
-                        preprocessingTimeUs += (int)((endTime - startTime) / 1e3);
-
-                        startTime = System.nanoTime();
-                        List<BoundingBox> bbx = model.recognizeImage(processedBuffer, input);
-                        endTime = System.nanoTime();
-                        inferenceTimeUs += (int)((endTime - startTime) / 1e3);
-                        bbx = Utils.filterPerson(bbx);
-                        roi.setBoundingBoxes(bbx);
-                        results.addAll(bbx);
-                    }
-                    request.preprocessingTimeUs = preprocessingTimeUs;
-                    request.inferenceTimeUs = inferenceTimeUs;
-
-                    mCallback.enqueueInferenceResult(request, results);
-
-                } else {
+                List<BoundingBox> results = new ArrayList<>();
+                if (request.type == InferenceRequest.Type.MIXED ||
+                        request.type == InferenceRequest.Type.FULL) {
                     Bitmap input = request.frame.bitmap;
 
                     startTime = System.nanoTime();
@@ -97,14 +72,36 @@ public class Worker implements Runnable {
                     request.preprocessingTimeUs = (int) ((endTime - startTime) / 1e3);
 
                     startTime = System.nanoTime();
-                    List<BoundingBox> results = model.recognizeImage(processedBuffer, input);
+                    results = model.recognizeImage(processedBuffer, input);
                     endTime = System.nanoTime();
                     request.inferenceTimeUs = (int) ((endTime - startTime) / 1e3);
 
                     results = Utils.filterPerson(results);
-                    mCallback.enqueueInferenceResult(request, results);
-                }
+                } else if (request.type == InferenceRequest.Type.PER_ROI) {
+                    int preprocessingTimeUs = 0;
+                    int inferenceTimeUs = 0;
 
+                    for (RoI roi : request.rois) {
+                        Bitmap input = roi.getBitmap();
+                        startTime = System.nanoTime();
+                        ByteBuffer processedBuffer = preprocess(input);
+                        endTime = System.nanoTime();
+                        preprocessingTimeUs += (int) ((endTime - startTime) / 1e3);
+
+                        startTime = System.nanoTime();
+                        List<BoundingBox> roiBoxes = model.recognizeImage(processedBuffer, input);
+                        endTime = System.nanoTime();
+                        inferenceTimeUs += (int) ((endTime - startTime) / 1e3);
+                        roiBoxes = Utils.filterPerson(roiBoxes);
+                        roi.setBoundingBoxes(roiBoxes);
+                        results.addAll(roiBoxes);
+                    }
+                    request.preprocessingTimeUs = preprocessingTimeUs;
+                    request.inferenceTimeUs = inferenceTimeUs;
+                } else {
+                    throw new IllegalArgumentException("Wrong request type! " + request.type);
+                }
+                mCallback.enqueueInferenceResult(request, results);
 
                 Log.v(TAG, "InferenceEngine Queue Size: " + request.queueSize);
                 Log.v(TAG, "Preprocessing time (us): " + request.preprocessingTimeUs);
