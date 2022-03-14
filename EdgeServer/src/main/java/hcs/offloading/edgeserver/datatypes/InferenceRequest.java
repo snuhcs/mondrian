@@ -3,9 +3,16 @@ package hcs.offloading.edgeserver.datatypes;
 import java.util.List;
 
 public class InferenceRequest {
-    public final Frame frame;
+    public enum Type {
+        FULL,
+        PER_ROI,
+        MIXED
+    }
 
-    // For Mixed Frame
+    public final Frame frame;
+    public final Type type;
+
+    // For SINGLE_ROI_FRAME / MIXED_FRAME
     public final List<Frame> frames;
     public final List<RoI> rois;
 
@@ -14,52 +21,22 @@ public class InferenceRequest {
     public int preprocessingTimeUs = -1;
     public int inferenceTimeUs = -1;
 
-    private boolean isFullFrame = false;
-    private boolean isBaseline = false;
-    private boolean isMixedFrame = false;
-
-    private InferenceRequest(Frame frame) {
+    private InferenceRequest(Frame frame, Type type, List<Frame> frames, List<RoI> rois) {
         this.frame = frame;
-        this.frames = null;
-        this.rois = null;
-        this.isFullFrame = true;
-    }
-
-    private InferenceRequest(List<Frame> frames, List<RoI> rois) {
-        this.frame = null;
+        this.type = type;
         this.frames = frames;
         this.rois = rois;
-        this.isBaseline = true;
-    }
-
-    private InferenceRequest(Frame frame, List<Frame> frames, List<RoI> rois) {
-        this.frame = frame;
-        this.frames = frames;
-        this.rois = rois;
-        this.isMixedFrame = true;
     }
 
     public static InferenceRequest createFullFrameRequest(Frame frame) {
-        return new InferenceRequest(frame);
+        return new InferenceRequest(frame, Type.FULL, null, null);
     }
 
-    public static InferenceRequest createBaselineRequest(List<Frame> frames, List<RoI> rois) {
-        return new InferenceRequest(frames, rois);
+    public static InferenceRequest createSingleRoIFrameRequest(List<Frame> frames, List<RoI> rois) {
+        return new InferenceRequest(null, Type.PER_ROI, frames, rois);
     }
 
     public static InferenceRequest createMixedFrameRequest(Frame frame, List<Frame> frames, List<RoI> rois) {
-        return new InferenceRequest(frame, frames, rois);
-    }
-
-    public boolean isFullFrame() {
-        return isFullFrame;
-    }
-
-    public boolean isMixed() {
-        return isMixedFrame;
-    }
-
-    public boolean isBaseline() {
-        return isBaseline;
+        return new InferenceRequest(frame, Type.MIXED, frames, rois);
     }
 }

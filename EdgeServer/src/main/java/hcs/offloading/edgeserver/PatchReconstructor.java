@@ -33,7 +33,7 @@ public class PatchReconstructor implements Runnable {
 
     private final Map<String, Integer> mLastRemovedIndex = new HashMap<>();
     private final Map<String, Map<Integer, Pair<Bitmap, List<BoundingBox>>>> mFramesAndResults = new HashMap<>();
-    private final LinkedBlockingQueue<Pair<InferenceRequest, List<BoundingBox>>> mMixedFrameResults = new LinkedBlockingQueue<>();
+    private final LinkedBlockingQueue<Pair<InferenceRequest, List<BoundingBox>>> mResultsToReconstruct = new LinkedBlockingQueue<>();
 
     private final Thread mPatchReconstructorThread;
 
@@ -77,37 +77,12 @@ public class PatchReconstructor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
-        if (request.isBaseline()) {
-            for (Frame singleFrame : request.frames) {
-                List<BoundingBox> frameBBResults = new ArrayList<>();
-                for (RoI roi : request.rois) {
-                    if (singleFrame.sourceIP.equals(roi.getSourceIP()) && singleFrame.frameIndex == roi.getFrameIndex()) {
-                        for (BoundingBox box : roi.boundingBoxes) {
-                            Rect newPosition = new Rect(
-                                    box.location.left + roi.position.left,
-                                    box.location.top + roi.position.top,
-                                    box.location.right + roi.position.left,
-                                    box.location.bottom + roi.position.top
-                            );
-                            frameBBResults.add(box.move(newPosition));
-                        }
-                    }
-                }
-                mCallback.drawInferenceResult(Utils.drawBoxes(singleFrame.bitmap,frameBBResults));
-                updateFPS(1);
-                String sourceIP = singleFrame.sourceIP;
-                int frameIndex = singleFrame.frameIndex;
-                synchronized (mFramesAndResults) {
-                    if (!mFramesAndResults.containsKey(sourceIP)) {
-                        mFramesAndResults.put(sourceIP, new HashMap<>());
-                    }
-                    log(singleFrame, frameBBResults);
-                    mFramesAndResults.get(sourceIP).put(frameIndex, new Pair<>(singleFrame.bitmap, frameBBResults));
-                    mFramesAndResults.notifyAll();
-                }
-            }
-        } else if (request.isFullFrame()) {
+        if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.FULL) {
             mCallback.drawInferenceResult(Utils.drawBoxes(request.frame.bitmap, results));
+        }
+        if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.PER_ROI) {
+            mResultsToReconstruct.add(new Pair<>(request, results));
+        } else if (request.type == InferenceRequest.Type.FULL) {
             updateFPS(1);
             String sourceIP = request.frame.sourceIP;
             int frameIndex = request.frame.frameIndex;
@@ -120,7 +95,7 @@ public class PatchReconstructor implements Runnable {
                 mFramesAndResults.notifyAll();
             }
         } else {
-            mMixedFrameResults.add(new Pair<>(request, results));
+            throw new IllegalArgumentException("Wrong request type! " + request.type);
         }
     }
 
@@ -130,36 +105,44 @@ public class PatchReconstructor implements Runnable {
         try {
             long startTime, endTime;
             while (true) {
-                Pair<InferenceRequest, List<BoundingBox>> batchResults = mMixedFrameResults.take();
+                Pair<InferenceRequest, List<BoundingBox>> batchResults = mResultsToReconstruct.take();
+                InferenceRequest request = batchResults.first;
+                List<BoundingBox> results = batchResults.second;
 
                 startTime = System.nanoTime();
-                Map<String, Map<Integer, List<BoundingBox>>> mixedFrameResults =
-                        reconstructResults(batchResults.first, batchResults.second);
+                Map<String, Map<Integer, List<BoundingBox>>> reconstructedFrameResults;
+                if (request.type == InferenceRequest.Type.MIXED) {
+                    reconstructedFrameResults = reconstructMixedFrameResults(request, results);
+                } else if (request.type == InferenceRequest.Type.PER_ROI) {
+                    reconstructedFrameResults = reconstructPerRoIInferenceResults(request, results);
+                } else {
+                    throw new IllegalArgumentException("Wrong request type! " + request.type);
+                }
                 endTime = System.nanoTime();
                 Log.v(TAG, "Reconstructing time (us): " + (endTime - startTime) / 1e3);
 
                 Map<Pair<String, Integer>, Frame> frameMap = new HashMap<>();
-                for (Frame frame : batchResults.first.frames) {
+                for (Frame frame : request.frames) {
                     frameMap.put(new Pair<>(frame.sourceIP, frame.frameIndex), frame);
                 }
 
                 synchronized (mFramesAndResults) {
-                    for (String sourceIP : mixedFrameResults.keySet()) {
+                    for (String sourceIP : reconstructedFrameResults.keySet()) {
                         if (mFramesAndResults.containsKey(sourceIP)) {
-                            Map<Integer, List<BoundingBox>> multiFrameResults = mixedFrameResults.get(sourceIP);
+                            Map<Integer, List<BoundingBox>> multiFrameResults = reconstructedFrameResults.get(sourceIP);
                             for (Integer frameIndex : multiFrameResults.keySet()) {
                                 Frame frame = frameMap.get(new Pair<>(sourceIP, frameIndex));
-                                List<BoundingBox> results = multiFrameResults.get(frameIndex);
-                                log(frame, results);
-                                mFramesAndResults.get(sourceIP).put(
-                                        frameIndex, new Pair<>(frame.bitmap, results));
+                                List<BoundingBox> frameResults = multiFrameResults.get(frameIndex);
+                                log(frame, frameResults);
+                                mFramesAndResults.get(sourceIP)
+                                        .put(frameIndex, new Pair<>(frame.bitmap, frameResults));
                             }
                         }
                     }
                     mFramesAndResults.notifyAll();
                 }
 
-                updateFPS(batchResults.first.frames.size());
+                updateFPS(request.frames.size());
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
@@ -198,16 +181,9 @@ public class PatchReconstructor implements Runnable {
         }
     }
 
-    private Map<String, Map<Integer, List<BoundingBox>>> reconstructResults(InferenceRequest request, List<BoundingBox> boxes) {
-        Map<String, Map<Integer, List<BoundingBox>>> mixedFrameResults = new HashMap<>();
-        for (Frame frame : request.frames) {
-            String sourceIP = frame.sourceIP;
-            int frameIndex = frame.frameIndex;
-            if (!mixedFrameResults.containsKey(sourceIP)) {
-                mixedFrameResults.put(sourceIP, new HashMap<>());
-            }
-            mixedFrameResults.get(sourceIP).put(frameIndex, new ArrayList<>());
-        }
+    private Map<String, Map<Integer, List<BoundingBox>>> reconstructMixedFrameResults(InferenceRequest request, List<BoundingBox> boxes) {
+        Map<String, Map<Integer, List<BoundingBox>>> mixedFrameResults =
+                createReconstructedResultHolder(request);
 
         List<RoI> rois = request.rois;
         for (BoundingBox box : boxes) {
@@ -246,6 +222,47 @@ public class PatchReconstructor implements Runnable {
             }
         }
         return mixedFrameResults;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private Map<String, Map<Integer, List<BoundingBox>>> reconstructPerRoIInferenceResults(InferenceRequest request, List<BoundingBox> boxes) {
+        Map<String, Map<Integer, List<BoundingBox>>> perRoIInferenceResults =
+                createReconstructedResultHolder(request);
+
+        for (Frame singleFrame : request.frames) {
+            List<RoI> frameRoIs = request.rois.stream()
+                    .filter(roi -> singleFrame.sourceIP.equals(roi.getSourceIP())
+                            && singleFrame.frameIndex == roi.getFrameIndex())
+                    .collect(Collectors.toList());
+            for (RoI roi : frameRoIs) {
+                for (BoundingBox box : roi.boundingBoxes) {
+                    Rect newPosition = new Rect(
+                            box.location.left + roi.position.left,
+                            box.location.top + roi.position.top,
+                            box.location.right + roi.position.left,
+                            box.location.bottom + roi.position.top
+                    );
+                    perRoIInferenceResults
+                            .get(singleFrame.sourceIP)
+                            .get(singleFrame.frameIndex)
+                            .add(box.move(newPosition));
+                }
+            }
+        }
+        return perRoIInferenceResults;
+    }
+
+    private Map<String, Map<Integer, List<BoundingBox>>> createReconstructedResultHolder(InferenceRequest request) {
+        Map<String, Map<Integer, List<BoundingBox>>> resultHolder = new HashMap<>();
+        for (Frame frame : request.frames) {
+            String sourceIP = frame.sourceIP;
+            int frameIndex = frame.frameIndex;
+            if (!resultHolder.containsKey(sourceIP)) {
+                resultHolder.put(sourceIP, new HashMap<>());
+            }
+            resultHolder.get(sourceIP).put(frameIndex, new ArrayList<>());
+        }
+        return resultHolder;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
