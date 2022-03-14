@@ -59,9 +59,7 @@ public class Config {
         if (jsonObject.has("is_baseline")) { // if is_baseline = true, BATCH_SIZE must be 1
             roIExtractorConfig.IS_BASELINE = jsonObject.getBoolean("is_baseline");
         }
-        if (roIExtractorConfig.IS_BASELINE) {
-            roIExtractorConfig.BATCH_SIZE = 1;
-        } else if (jsonObject.has("batch_size")) { // else, use "batch_size"
+        if (jsonObject.has("batch_size")) { // else, use "batch_size"
             roIExtractorConfig.BATCH_SIZE = jsonObject.getInt("batch_size");
         }
         if (jsonObject.has("max_queued_frames")) {

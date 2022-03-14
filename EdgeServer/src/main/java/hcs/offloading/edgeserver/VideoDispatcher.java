@@ -21,6 +21,8 @@ import hcs.offloading.network.webrtc.CustomCapturer;
 public class VideoDispatcher extends CustomCapturer {
     private static final String TAG = VideoDispatcher.class.getName();
 
+    private static final int NUM_RESULTS_FOR_FULL_INFERENCE = 80;
+
     private final DispatcherConfig.VideoConfig mConfig;
     private final int FULL_INFERENCE_INTERVAL;
 
@@ -71,6 +73,15 @@ public class VideoDispatcher extends CustomCapturer {
                 Frame frame = Frame.createSingleFrame(bitmap, mConfig.PATH, frameIndex);
                 if (frameIndex % FULL_INFERENCE_INTERVAL == 0) {
                     mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
+                    if (FULL_INFERENCE_INTERVAL == 1) {
+                        if (frameIndex >= NUM_RESULTS_FOR_FULL_INFERENCE) {
+                            try {
+                                mCallback.getFrameAndResults(mConfig.PATH, frameIndex - NUM_RESULTS_FOR_FULL_INFERENCE);
+                            } catch (InterruptedException e) {
+                                Log.e(TAG, e.getMessage());
+                            }
+                        }
+                    }
                 } else {
                     mCallback.enqueueFrame(frame);
                 }

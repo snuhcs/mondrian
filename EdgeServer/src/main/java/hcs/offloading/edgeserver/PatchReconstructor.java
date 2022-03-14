@@ -167,9 +167,13 @@ public class PatchReconstructor implements Runnable {
             }
             if (streamResults != null) {
                 result = streamResults.get(frameIndex);
-                int lastRemovedIndex = mLastRemovedIndex.getOrDefault(sourceIP, -1);
+                Integer lastRemovedIndexInteger = mLastRemovedIndex.get(sourceIP);
+                int lastRemovedIndex = lastRemovedIndexInteger != null ? lastRemovedIndexInteger : -1;
                 for (int i = lastRemovedIndex + 1; i < frameIndex; i++) {
-                    streamResults.get(i).first.recycle();
+                    Pair<Bitmap, List<BoundingBox>> resultToRemove = streamResults.get(i);
+                    if (resultToRemove != null) {
+                        resultToRemove.first.recycle();
+                    }
                     streamResults.remove(i);
                 }
                 streamResults.remove(frameIndex);
@@ -185,6 +189,7 @@ public class PatchReconstructor implements Runnable {
     public void removeStream(String sourceIP) {
         synchronized (mFramesAndResults) {
             mFramesAndResults.remove(sourceIP);
+            mFramesAndResults.notifyAll();
         }
     }
 

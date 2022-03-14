@@ -4,6 +4,7 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
+import android.util.Pair;
 
 import org.json.JSONException;
 import org.webrtc.MediaStream;
@@ -13,7 +14,10 @@ import org.webrtc.VideoFrame;
 import org.webrtc.VideoSink;
 import org.webrtc.VideoTrack;
 
+import java.util.List;
+
 import hcs.offloading.edgeserver.config.DispatcherConfig;
+import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.network.webrtc.WebRTCManager;
@@ -27,7 +31,11 @@ public class Dispatcher implements VideoSink {
 
     public interface Callback {
         void enqueueFrame(Frame frame);
+
         void enqueueInferenceRequest(InferenceRequest inferenceRequest);
+
+        Pair<Bitmap, List<BoundingBox>> getFrameAndResults(String sourceIP, int frameIndex) throws InterruptedException;
+
         void removeStream(String sourceIP);
     }
 

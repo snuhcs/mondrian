@@ -64,19 +64,20 @@ public class InferenceEngine {
                 mInferenceRequests.notifyAll();
             }
         } catch (InterruptedException e) {
-            Log.e(TAG, e.getMessage());
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
     }
 
     public InferenceRequest getRequest() throws InterruptedException {
+        InferenceRequest request;
         synchronized (mInferenceRequests) {
             while (mInferenceRequests.size() == 0) {
                 mInferenceRequests.wait();
             }
-            InferenceRequest request = mInferenceRequests.poll();
+            request = mInferenceRequests.poll();
             mInferenceRequests.notifyAll();
-            return request;
         }
+        return request;
     }
 
     public int getRequestQueueSize() {

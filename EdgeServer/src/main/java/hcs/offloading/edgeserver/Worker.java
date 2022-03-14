@@ -73,12 +73,12 @@ public class Worker implements Runnable {
                         startTime = System.nanoTime();
                         ByteBuffer processedBuffer = preprocess(input);
                         endTime = System.nanoTime();
-                        preprocessingTimeUs += (int)((endTime - startTime) / 1e3);
+                        preprocessingTimeUs += (int) ((endTime - startTime) / 1e3);
 
                         startTime = System.nanoTime();
                         List<BoundingBox> bbx = model.recognizeImage(processedBuffer, input);
                         endTime = System.nanoTime();
-                        inferenceTimeUs += (int)((endTime - startTime) / 1e3);
+                        inferenceTimeUs += (int) ((endTime - startTime) / 1e3);
                         bbx = Utils.filterPerson(bbx);
                         roi.setBoundingBoxes(bbx);
                         results.addAll(bbx);
