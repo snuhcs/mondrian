@@ -20,9 +20,9 @@ public class InferenceRequest {
         this.rois = null;
     }
 
-    private InferenceRequest(Frame frame, List<RoI> rois) {
-        this.frame = frame;
-        this.frames = null;
+    private InferenceRequest(List<Frame> frames, List<RoI> rois) {
+        this.frame = null;
+        this.frames = frames;
         this.rois = rois;
     }
 
@@ -36,8 +36,8 @@ public class InferenceRequest {
         return new InferenceRequest(frame);
     }
 
-    public static InferenceRequest createBaselineRequest(Frame frame, List<RoI> rois) {
-        return new InferenceRequest(frame, rois);
+    public static InferenceRequest createBaselineRequest(List<Frame> frames, List<RoI> rois) {
+        return new InferenceRequest(frames, rois);
     }
 
     public static InferenceRequest createMixedFrameRequest(Frame frame, List<Frame> frames, List<RoI> rois) {
@@ -54,6 +54,7 @@ public class InferenceRequest {
     }
 
     public boolean isBaseline() {
-        return frames == null && rois != null;
+        //return frames == null && rois != null;
+        return rois != null;
     }
 }

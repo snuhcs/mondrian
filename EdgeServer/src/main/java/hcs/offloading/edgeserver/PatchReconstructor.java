@@ -77,10 +77,31 @@ public class PatchReconstructor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
+        //if (request.isBaseline()) {
+        //    results = reconstructBaselineRequest(request);
+        //}
         if (request.isBaseline()) {
-            results = reconstructBaselineRequest(request);
+            for (Frame singleFrame : request.frames) {
+                List<BoundingBox> frameBBResults = new ArrayList<>();
+                for (RoI roi : request.rois) {
+                    if (singleFrame.sourceIP.equals(roi.getSourceIP()) && singleFrame.frameIndex == roi.getFrameIndex()) {
+                        for (BoundingBox box : roi.boundingBoxes) {
+                            Rect newPosition = new Rect(
+                                    box.location.left + roi.position.left,
+                                    box.location.top + roi.position.top,
+                                    box.location.right + roi.position.left,
+                                    box.location.bottom + roi.position.top
+                            );
+                            frameBBResults.add(box.move(newPosition));
+                        }
+                    }
+                }
+                mCallback.drawInferenceResult(Utils.drawBoxes(singleFrame.bitmap,frameBBResults));
+            }
         }
-        mCallback.drawInferenceResult(Utils.drawBoxes(request.frame.bitmap, results));
+        if (request.frame!=null) {
+            mCallback.drawInferenceResult(Utils.drawBoxes(request.frame.bitmap, results));
+        }
         if (!request.isMixed()) {
             updateFPS(1);
             String sourceIP = request.frame.sourceIP;
