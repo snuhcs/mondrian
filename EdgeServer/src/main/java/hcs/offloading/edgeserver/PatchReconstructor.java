@@ -28,7 +28,6 @@ public class PatchReconstructor implements Runnable {
 
     private final int MATCH_PADDING;
     private final float USE_IOU_THRESHOLD;
-    private final int MAX_QUEUED_RESULTS;
 
     private final ViewCallback mCallback;
 
@@ -45,7 +44,6 @@ public class PatchReconstructor implements Runnable {
     PatchReconstructor(PatchReconstructorConfig config, ViewCallback callback) {
         MATCH_PADDING = config.MATCH_PADDING;
         USE_IOU_THRESHOLD = config.USE_IOU_THRESHOLD;
-        MAX_QUEUED_RESULTS = config.MAX_QUEUED_RESULTS;
         if (config.LOG_PATH != null) {
             try {
                 logWriter = new FileWriter(config.LOG_PATH);
@@ -95,9 +93,6 @@ public class PatchReconstructor implements Runnable {
                 }
                 log(request.frame, results);
                 Map<Integer, Pair<Bitmap, List<BoundingBox>>> streamResults = mFramesAndResults.get(sourceIP);
-                while (streamResults.size() > MAX_QUEUED_RESULTS) {
-                    mFramesAndResults.wait();
-                }
                 streamResults.put(frameIndex, new Pair<>(request.frame.bitmap, results));
                 mFramesAndResults.notifyAll();
             }
@@ -183,7 +178,6 @@ public class PatchReconstructor implements Runnable {
                 streamResults.remove(frameIndex);
                 mLastRemovedIndex.put(sourceIP, frameIndex);
             }
-            mFramesAndResults.notifyAll();
         }
         //Log.v(TAG, "End getRemoveDrawResult(String sourceIP, int frameIndex)");
         if (result != null) {

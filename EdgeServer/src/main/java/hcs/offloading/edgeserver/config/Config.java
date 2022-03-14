@@ -114,9 +114,6 @@ public class Config {
         if (jsonObject.has("log_path")) {
             patchReconstructorConfig.LOG_PATH = jsonObject.getString("log_path");
         }
-        if (jsonObject.has("max_queued_results")) {
-            patchReconstructorConfig.MAX_QUEUED_RESULTS = jsonObject.getInt("max_queued_results");
-        }
 
         if (jsonObject.has("minimum_confidence")) {
             utilsConfig.MINIMUM_CONFIDENCE = (float) jsonObject.getDouble("minimum_confidence");
