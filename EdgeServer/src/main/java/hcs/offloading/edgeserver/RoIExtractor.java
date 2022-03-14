@@ -99,7 +99,7 @@ public class RoIExtractor implements Runnable {
     }
 
     public void enqueueFrame(Frame frame) {
-        // Log.v(TAG, "Start enqueueFrame(Frame frame)");
+        //Log.v(TAG, "Start enqueueFrame(Frame frame)");
         try {
             synchronized (mFrames) {
                 while (MAX_QUEUED_FRAMES > 0 && mFrames.size() > MAX_QUEUED_FRAMES) {
@@ -113,11 +113,11 @@ public class RoIExtractor implements Runnable {
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
-        // Log.v(TAG, "End enqueueFrame(Frame frame)");
+        //Log.v(TAG, "End enqueueFrame(Frame frame)");
     }
 
     private List<Frame> getFrameBatch() throws InterruptedException {
-        // Log.v(TAG, "Start getFrameBatch()");
+        //Log.v(TAG, "Start getFrameBatch()");
         List<Frame> frames = new ArrayList<>(BATCH_SIZE);
         synchronized (mFrames) {
             while (mFrames.size() < BATCH_SIZE) {
@@ -128,7 +128,7 @@ public class RoIExtractor implements Runnable {
             }
             mFrames.notifyAll();
         }
-        // Log.v(TAG, "End getFrameBatch() : " + frames.size());
+        //Log.v(TAG, "End getFrameBatch() : " + frames.size());
         return frames;
     }
 
@@ -143,20 +143,20 @@ public class RoIExtractor implements Runnable {
                 startTime = System.nanoTime();
                 List<RoI> rois = getRoIsFromMultipleSourceFrames(frames);
                 endTime = System.nanoTime();
-                // Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
+                //Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
 
                 if (!IS_BASELINE) {
                     startTime = System.nanoTime();
                     rois = resize(rois);
                     endTime = System.nanoTime();
-                    // Log.v(TAG, "Patch generation time (us)" + (endTime - startTime) / 1e3);
+                    //Log.v(TAG, "Patch generation time (us)" + (endTime - startTime) / 1e3);
 
                     startTime = System.nanoTime();
                     rois = sortByPriority(rois);
                     rois = PatchMixer.packRoIs(rois, MIXED_FRAME_SIZE);
                     Bitmap mixedFrame = PatchMixer.getMixedFrame(rois, MIXED_FRAME_SIZE);
                     endTime = System.nanoTime();
-                    // Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
+                    //Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
 
                     mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, rois));
                 } else {
@@ -202,7 +202,6 @@ public class RoIExtractor implements Runnable {
             Pair<Bitmap, List<BoundingBox>> prevFrameAndResults = mCallback.getFrameAndResults(sourceIP, prevLastIndex);
             if (prevFrameAndResults != null) {
                 rois.addAll(getRoIs(sameSourceFrames, prevFrameAndResults.first, prevFrameAndResults.second));
-                prevFrameAndResults.first.recycle();
             }
         }
         return rois;
@@ -347,12 +346,6 @@ public class RoIExtractor implements Runnable {
             }
         }
 
-        p0.release();
-        p1.release();
-        f1_gray.release();
-        f2_gray.release();
-        status.release();
-        err.release();
         return shifts;
     }
 
@@ -367,11 +360,6 @@ public class RoIExtractor implements Runnable {
         Mat hierarchy = new Mat();
         Imgproc.findContours(dilated, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
-        img_0_gray.release();
-        img_1_gray.release();
-        diff.release();
-        dilated.release();
-        hierarchy.release();
         return getRoIBitmapsFromContours(contours, f1);
     }
 
@@ -381,6 +369,7 @@ public class RoIExtractor implements Runnable {
         Utils.bitmapToMat(original, originalMat);
         Mat grayMat = new Mat();
         Imgproc.cvtColor(originalMat, grayMat, Imgproc.COLOR_BGR2GRAY);
+        originalMat.release();
         return grayMat;
     }
 
@@ -431,12 +420,10 @@ public class RoIExtractor implements Runnable {
             Bitmap croppedROIBitmap = Bitmap.createBitmap(rect.width, rect.height, Bitmap.Config.RGB_565);
             Utils.matToBitmap(croppedROI, croppedROIBitmap);
             roiList.add(location);
-            croppedROI.release();
         }
 
         laterMat.release();
         laterMatCopyForROIExtraction.release();
-
         return roiList;
     }
 }

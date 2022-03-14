@@ -28,6 +28,7 @@ public class PatchReconstructor implements Runnable {
 
     private final int MATCH_PADDING;
     private final float USE_IOU_THRESHOLD;
+    private final int MAX_QUEUED_RESULTS;
 
     private final ViewCallback mCallback;
 
@@ -44,6 +45,7 @@ public class PatchReconstructor implements Runnable {
     PatchReconstructor(PatchReconstructorConfig config, ViewCallback callback) {
         MATCH_PADDING = config.MATCH_PADDING;
         USE_IOU_THRESHOLD = config.USE_IOU_THRESHOLD;
+        MAX_QUEUED_RESULTS = config.MAX_QUEUED_RESULTS;
         if (config.LOG_PATH != null) {
             try {
                 logWriter = new FileWriter(config.LOG_PATH);
@@ -76,8 +78,8 @@ public class PatchReconstructor implements Runnable {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
-        // Log.v(TAG, "Start enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results)");
+    public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) throws InterruptedException {
+        //Log.v(TAG, "Start enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results)");
         if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.FULL) {
             mCallback.drawInferenceResult(Utils.drawBoxes(request.frame.bitmap, results));
         }
@@ -92,13 +94,17 @@ public class PatchReconstructor implements Runnable {
                     mFramesAndResults.put(sourceIP, new HashMap<>());
                 }
                 log(request.frame, results);
-                mFramesAndResults.get(sourceIP).put(frameIndex, new Pair<>(request.frame.bitmap, results));
+                Map<Integer, Pair<Bitmap, List<BoundingBox>>> streamResults = mFramesAndResults.get(sourceIP);
+                while (streamResults.size() > MAX_QUEUED_RESULTS) {
+                    mFramesAndResults.wait();
+                }
+                streamResults.put(frameIndex, new Pair<>(request.frame.bitmap, results));
                 mFramesAndResults.notifyAll();
             }
         } else {
             throw new IllegalArgumentException("Wrong request type! " + request.type);
         }
-        // Log.v(TAG, "End enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results)");
+        //Log.v(TAG, "End enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results)");
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -121,14 +127,14 @@ public class PatchReconstructor implements Runnable {
                     throw new IllegalArgumentException("Wrong request type! " + request.type);
                 }
                 endTime = System.nanoTime();
-                // Log.v(TAG, "Reconstructing time (us): " + (endTime - startTime) / 1e3);
+                //Log.v(TAG, "Reconstructing time (us): " + (endTime - startTime) / 1e3);
 
                 Map<Pair<String, Integer>, Frame> frameMap = new HashMap<>();
                 for (Frame frame : request.frames) {
                     frameMap.put(new Pair<>(frame.sourceIP, frame.frameIndex), frame);
                 }
 
-                // Log.v(TAG, "Start update results");
+                //Log.v(TAG, "Start update results");
                 synchronized (mFramesAndResults) {
                     for (String sourceIP : reconstructedFrameResults.keySet()) {
                         if (mFramesAndResults.containsKey(sourceIP)) {
@@ -144,7 +150,7 @@ public class PatchReconstructor implements Runnable {
                     }
                     mFramesAndResults.notifyAll();
                 }
-                // Log.v(TAG, "End update results");
+                //Log.v(TAG, "End update results");
 
                 updateFPS(request.frames.size());
             }
@@ -155,7 +161,7 @@ public class PatchReconstructor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public Pair<Bitmap, List<BoundingBox>> getRemoveDrawResult(String sourceIP, int frameIndex) throws InterruptedException {
-        // Log.v(TAG, "Start getRemoveDrawResult(String sourceIP, int frameIndex)");
+        //Log.v(TAG, "Start getRemoveDrawResult(String sourceIP, int frameIndex)");
         Pair<Bitmap, List<BoundingBox>> result = null;
         synchronized (mFramesAndResults) {
             Map<Integer, Pair<Bitmap, List<BoundingBox>>> streamResults = mFramesAndResults.get(sourceIP);
@@ -168,17 +174,18 @@ public class PatchReconstructor implements Runnable {
                 Integer lastRemovedIndexInteger = mLastRemovedIndex.get(sourceIP);
                 int lastRemovedIndex = lastRemovedIndexInteger != null ? lastRemovedIndexInteger : -1;
                 for (int i = lastRemovedIndex + 1; i < frameIndex; i++) {
-                    Pair<Bitmap, List<BoundingBox>> resultToRemove = streamResults.get(i);
-                    if (resultToRemove != null) {
-                        resultToRemove.first.recycle();
+                    Pair<Bitmap, List<BoundingBox>> frameResult = streamResults.get(i);
+                    if (frameResult != null) {
+                        frameResult.first.recycle();
                     }
                     streamResults.remove(i);
                 }
                 streamResults.remove(frameIndex);
                 mLastRemovedIndex.put(sourceIP, frameIndex);
             }
+            mFramesAndResults.notifyAll();
         }
-        // Log.v(TAG, "End getRemoveDrawResult(String sourceIP, int frameIndex)");
+        //Log.v(TAG, "End getRemoveDrawResult(String sourceIP, int frameIndex)");
         if (result != null) {
             mCallback.drawObjectDetectionResult(Utils.drawBoxes(result.first, result.second));
         }

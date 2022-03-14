@@ -55,7 +55,7 @@ public class InferenceEngine {
     }
 
     public void enqueueRequest(InferenceRequest inferenceRequest) {
-        // Log.v(TAG, "Start enqueueRequest(InferenceRequest inferenceRequest)");
+        //Log.v(TAG, "Start enqueueRequest(InferenceRequest inferenceRequest)");
         try {
             synchronized (mInferenceRequests) {
                 while (MAX_QUEUED_REQUESTS > 0 && mInferenceRequests.size() > MAX_QUEUED_REQUESTS) {
@@ -67,11 +67,11 @@ public class InferenceEngine {
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
-        // Log.v(TAG, "End enqueueRequest(InferenceRequest inferenceRequest)");
+        //Log.v(TAG, "End enqueueRequest(InferenceRequest inferenceRequest)");
     }
 
     public InferenceRequest getRequest() throws InterruptedException {
-        // Log.v(TAG, "Start getRequest()");
+        //Log.v(TAG, "Start getRequest()");
         InferenceRequest request;
         synchronized (mInferenceRequests) {
             while (mInferenceRequests.size() == 0) {
@@ -80,7 +80,7 @@ public class InferenceEngine {
             request = mInferenceRequests.poll();
             mInferenceRequests.notifyAll();
         }
-        // Log.v(TAG, "End getRequest()");
+        //Log.v(TAG, "End getRequest()");
         return request;
     }
 

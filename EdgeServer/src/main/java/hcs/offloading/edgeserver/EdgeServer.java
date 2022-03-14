@@ -232,7 +232,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
 
     // Worker.Callback
     @Override
-    public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
+    public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) throws InterruptedException {
         if (mPatchReconstructor != null) {
             mPatchReconstructor.enqueueInferenceResult(request, results);
         }
