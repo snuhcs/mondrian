@@ -77,6 +77,7 @@ public class PatchReconstructor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
+        Log.v(TAG, "Start enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results)");
         if (request.isBaseline()) {
             results = reconstructBaselineRequest(request);
         }
@@ -96,6 +97,7 @@ public class PatchReconstructor implements Runnable {
         } else {
             mMixedFrameResults.add(new Pair<>(request, results));
         }
+        Log.v(TAG, "End enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results)");
     }
 
     public List<BoundingBox> reconstructBaselineRequest(InferenceRequest request) {
@@ -133,6 +135,7 @@ public class PatchReconstructor implements Runnable {
                     frameMap.put(new Pair<>(frame.sourceIP, frame.frameIndex), frame);
                 }
 
+                Log.v(TAG, "Start update results");
                 synchronized (mFramesAndResults) {
                     for (String sourceIP : mixedFrameResults.keySet()) {
                         if (mFramesAndResults.containsKey(sourceIP)) {
@@ -148,6 +151,7 @@ public class PatchReconstructor implements Runnable {
                     }
                     mFramesAndResults.notifyAll();
                 }
+                Log.v(TAG, "End update results");
 
                 updateFPS(batchResults.first.frames.size());
             }
@@ -158,6 +162,7 @@ public class PatchReconstructor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public Pair<Bitmap, List<BoundingBox>> getRemoveDrawResult(String sourceIP, int frameIndex) throws InterruptedException {
+        Log.v(TAG, "Start getRemoveDrawResult(String sourceIP, int frameIndex)");
         Pair<Bitmap, List<BoundingBox>> result = null;
         synchronized (mFramesAndResults) {
             Map<Integer, Pair<Bitmap, List<BoundingBox>>> streamResults = mFramesAndResults.get(sourceIP);
@@ -180,6 +185,7 @@ public class PatchReconstructor implements Runnable {
                 mLastRemovedIndex.put(sourceIP, frameIndex);
             }
         }
+        Log.v(TAG, "End getRemoveDrawResult(String sourceIP, int frameIndex)");
         if (result != null) {
             mCallback.drawObjectDetectionResult(Utils.drawBoxes(result.first, result.second));
         }

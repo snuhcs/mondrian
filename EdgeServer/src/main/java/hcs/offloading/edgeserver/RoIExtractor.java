@@ -99,6 +99,7 @@ public class RoIExtractor implements Runnable {
     }
 
     public void enqueueFrame(Frame frame) {
+        Log.v(TAG, "Start enqueueFrame(Frame frame)");
         try {
             synchronized (mFrames) {
                 while (MAX_QUEUED_FRAMES > 0 && mFrames.size() > MAX_QUEUED_FRAMES) {
@@ -112,9 +113,11 @@ public class RoIExtractor implements Runnable {
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
+        Log.v(TAG, "End enqueueFrame(Frame frame)");
     }
 
     private List<Frame> getFrameBatch() throws InterruptedException {
+        Log.v(TAG, "Start getFrameBatch()");
         List<Frame> frames = new ArrayList<>(BATCH_SIZE);
         synchronized (mFrames) {
             while (mFrames.size() < BATCH_SIZE) {
@@ -125,6 +128,7 @@ public class RoIExtractor implements Runnable {
             }
             mFrames.notifyAll();
         }
+        Log.v(TAG, "End getFrameBatch() : " + frames.size());
         return frames;
     }
 
