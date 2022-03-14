@@ -142,10 +142,13 @@ public class RoIExtractor implements Runnable {
                 Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
 
                 if (!IS_BASELINE) {
+                    startTime = System.nanoTime();
                     rois = resize(rois);
-                    rois = sortByPriority(rois);
+                    endTime = System.nanoTime();
+                    Log.v(TAG, "Patch generation time (us)" + (endTime - startTime) / 1e3);
 
                     startTime = System.nanoTime();
+                    rois = sortByPriority(rois);
                     rois = PatchMixer.packRoIs(rois, MIXED_FRAME_SIZE);
                     Bitmap mixedFrame = PatchMixer.getMixedFrame(rois, MIXED_FRAME_SIZE);
                     endTime = System.nanoTime();

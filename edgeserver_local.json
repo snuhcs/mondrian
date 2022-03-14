@@ -14,11 +14,11 @@
             "fps": 10
         }
     ],
-    "is_baseline": false,
+    "is_baseline": true,
     "full_inference_interval": 120,
     "batch_size": 24,
     "max_queued_frames": 80,
-    "frame_size": 640,
+    "frame_size": 64,
     "merge_threshold": 0.5,
     "roi_padding": 0,
     "extraction_method": "combined",
