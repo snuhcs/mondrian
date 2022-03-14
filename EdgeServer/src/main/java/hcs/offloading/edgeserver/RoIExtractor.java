@@ -99,7 +99,7 @@ public class RoIExtractor implements Runnable {
     }
 
     public void enqueueFrame(Frame frame) {
-        Log.v(TAG, "Start enqueueFrame(Frame frame)");
+        // Log.v(TAG, "Start enqueueFrame(Frame frame)");
         try {
             synchronized (mFrames) {
                 while (MAX_QUEUED_FRAMES > 0 && mFrames.size() > MAX_QUEUED_FRAMES) {
@@ -113,11 +113,11 @@ public class RoIExtractor implements Runnable {
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
-        Log.v(TAG, "End enqueueFrame(Frame frame)");
+        // Log.v(TAG, "End enqueueFrame(Frame frame)");
     }
 
     private List<Frame> getFrameBatch() throws InterruptedException {
-        Log.v(TAG, "Start getFrameBatch()");
+        // Log.v(TAG, "Start getFrameBatch()");
         List<Frame> frames = new ArrayList<>(BATCH_SIZE);
         synchronized (mFrames) {
             while (mFrames.size() < BATCH_SIZE) {
@@ -128,7 +128,7 @@ public class RoIExtractor implements Runnable {
             }
             mFrames.notifyAll();
         }
-        Log.v(TAG, "End getFrameBatch() : " + frames.size());
+        // Log.v(TAG, "End getFrameBatch() : " + frames.size());
         return frames;
     }
 
@@ -143,20 +143,20 @@ public class RoIExtractor implements Runnable {
                 startTime = System.nanoTime();
                 List<RoI> rois = getRoIsFromMultipleSourceFrames(frames);
                 endTime = System.nanoTime();
-                Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
+                // Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
 
                 if (!IS_BASELINE) {
                     startTime = System.nanoTime();
                     rois = resize(rois);
                     endTime = System.nanoTime();
-                    Log.v(TAG, "Patch generation time (us)" + (endTime - startTime) / 1e3);
+                    // Log.v(TAG, "Patch generation time (us)" + (endTime - startTime) / 1e3);
 
                     startTime = System.nanoTime();
                     rois = sortByPriority(rois);
                     rois = PatchMixer.packRoIs(rois, MIXED_FRAME_SIZE);
                     Bitmap mixedFrame = PatchMixer.getMixedFrame(rois, MIXED_FRAME_SIZE);
                     endTime = System.nanoTime();
-                    Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
+                    // Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
 
                     mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, rois));
                 } else {
