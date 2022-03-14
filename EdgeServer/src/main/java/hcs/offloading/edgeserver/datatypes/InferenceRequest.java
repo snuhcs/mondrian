@@ -14,9 +14,9 @@ public class InferenceRequest {
     public int preprocessingTimeUs = -1;
     public int inferenceTimeUs = -1;
 
-    public boolean isFullFrame = false;
-    public boolean isBaseline = false;
-    public boolean isMixedFrame = false;
+    private boolean isFullFrame = false;
+    private boolean isBaseline = false;
+    private boolean isMixedFrame = false;
 
     private InferenceRequest(Frame frame) {
         this.frame = frame;

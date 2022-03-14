@@ -124,22 +124,6 @@ public class PatchReconstructor implements Runnable {
         }
     }
 
-    public List<BoundingBox> reconstructBaselineRequest(InferenceRequest request) {
-        List<BoundingBox> reconstructedBbx = new ArrayList<>();
-        for (RoI roi : request.rois) {
-            for (BoundingBox box : roi.boundingBoxes) {
-                Rect newPosition = new Rect(
-                        box.location.left + roi.position.left,
-                        box.location.top + roi.position.top,
-                        box.location.right + roi.position.left,
-                        box.location.bottom + roi.position.top
-                );
-                reconstructedBbx.add(box.move(newPosition));
-            }
-        }
-        return reconstructedBbx;
-    }
-
     @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     public void run() {
