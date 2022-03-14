@@ -103,6 +103,9 @@ public class Config {
         if (jsonObject.has("frame_size")) {
             inferenceEngineConfig.FRAME_SIZE = jsonObject.getInt("frame_size");
         }
+        if (jsonObject.has("max_queued_requests")) {
+            inferenceEngineConfig.MAX_QUEUED_REQUESTS = jsonObject.getInt("max_queued_requests");
+        }
 
         if (jsonObject.has("match_padding")) {
             patchReconstructorConfig.MATCH_PADDING = jsonObject.getInt("match_padding");
@@ -136,7 +139,7 @@ public class Config {
             throw new IllegalArgumentException("if is_baseline = true, roIExtractorConfig.BATCH_SIZE must be 1");
         }
         if (roIExtractorConfig.MAX_QUEUED_FRAMES != -1 && roIExtractorConfig.MAX_QUEUED_FRAMES <= roIExtractorConfig.BATCH_SIZE) {
-
+            throw new IllegalArgumentException("roIExtractorConfig.MAX_QUEUED_FRAMES should be larger then roIExtractorConfig.BATCH_SIZE");
         }
     }
 
