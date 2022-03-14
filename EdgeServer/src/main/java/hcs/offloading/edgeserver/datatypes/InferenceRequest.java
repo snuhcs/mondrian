@@ -14,22 +14,29 @@ public class InferenceRequest {
     public int preprocessingTimeUs = -1;
     public int inferenceTimeUs = -1;
 
+    public boolean isFullFrame = false;
+    public boolean isBaseline = false;
+    public boolean isMixedFrame = false;
+
     private InferenceRequest(Frame frame) {
         this.frame = frame;
         this.frames = null;
         this.rois = null;
+        this.isFullFrame = true;
     }
 
     private InferenceRequest(List<Frame> frames, List<RoI> rois) {
         this.frame = null;
         this.frames = frames;
         this.rois = rois;
+        this.isBaseline = true;
     }
 
     private InferenceRequest(Frame frame, List<Frame> frames, List<RoI> rois) {
         this.frame = frame;
         this.frames = frames;
         this.rois = rois;
+        this.isMixedFrame = true;
     }
 
     public static InferenceRequest createFullFrameRequest(Frame frame) {
@@ -44,17 +51,15 @@ public class InferenceRequest {
         return new InferenceRequest(frame, frames, rois);
     }
 
-    /*
-     * Full Frame : frames/rois == null
-     * Baseline Frame : frames == null, rois != null
-     * Mixed Frame : frames/rois != null
-     */
+    public boolean isFullFrame() {
+        return isFullFrame;
+    }
+
     public boolean isMixed() {
-        return frames != null && rois != null;
+        return isMixedFrame;
     }
 
     public boolean isBaseline() {
-        //return frames == null && rois != null;
-        return rois != null;
+        return isBaseline;
     }
 }
