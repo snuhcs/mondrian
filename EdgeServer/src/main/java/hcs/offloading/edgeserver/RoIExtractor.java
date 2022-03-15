@@ -24,6 +24,7 @@ import org.opencv.video.Video;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,7 @@ public class RoIExtractor implements Runnable {
 
     private final boolean IS_BASELINE;
     private final int BATCH_SIZE;
+    private final int FULL_INFERENCE_BATCH_INTERVAL;
     private final int MAX_QUEUED_FRAMES;
     private final int MIXED_FRAME_SIZE;
     private final float MERGE_THRESHOLD;
@@ -74,6 +76,7 @@ public class RoIExtractor implements Runnable {
     RoIExtractor(RoIExtractorConfig config, Callback callback) {
         IS_BASELINE = config.IS_BASELINE;
         BATCH_SIZE = config.BATCH_SIZE;
+        FULL_INFERENCE_BATCH_INTERVAL = config.FULL_INFERENCE_BATCH_INTERVAL;
         MAX_QUEUED_FRAMES = config.MAX_QUEUED_FRAMES;
         MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
@@ -132,35 +135,60 @@ public class RoIExtractor implements Runnable {
         return frames;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private List<Frame> getFullInferenceFrames() {
+        //Log.v(TAG, "Start getFullInferenceFrames()");
+        Map<String, Frame> fullInferenceFramePerSource = new HashMap<>();
+        synchronized (mFrames) {
+            Iterator<Frame> frameIterator = mFrames.iterator();
+            while (frameIterator.hasNext()) {
+                Frame frame = frameIterator.next();
+                if (!fullInferenceFramePerSource.containsKey(frame.sourceIP)) {
+                    fullInferenceFramePerSource.put(frame.sourceIP, frame);
+                    frameIterator.remove();
+                }
+            }
+            mFrames.notifyAll();
+        }
+        //Log.v(TAG, "End getFullInferenceFrames()");
+        return new ArrayList<>(fullInferenceFramePerSource.values());
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.P)
     @Override
     public void run() {
         try {
             long startTime, endTime;
             while (true) {
-                List<Frame> frames = getFrameBatch();
-
-                startTime = System.nanoTime();
-                List<RoI> rois = getRoIsFromMultipleSourceFrames(frames);
-                endTime = System.nanoTime();
-                //Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
-
-                if (!IS_BASELINE) {
-                    startTime = System.nanoTime();
-                    rois = resize(rois);
-                    endTime = System.nanoTime();
-                    //Log.v(TAG, "Patch generation time (us)" + (endTime - startTime) / 1e3);
+                for (int i = 0; i < FULL_INFERENCE_BATCH_INTERVAL; i++) {
+                    List<Frame> frames = getFrameBatch();
 
                     startTime = System.nanoTime();
-                    rois = sortByPriority(rois);
-                    rois = PatchMixer.packRoIs(rois, MIXED_FRAME_SIZE);
-                    Bitmap mixedFrame = PatchMixer.getMixedFrame(rois, MIXED_FRAME_SIZE);
+                    List<RoI> rois = getRoIsFromMultipleSourceFrames(frames);
                     endTime = System.nanoTime();
-                    //Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
+                    //Log.v(TAG, "RoI extraction time (us): " + (endTime - startTime) / 1e3);
 
-                    mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, rois));
-                } else {
-                    mCallback.enqueueInferenceRequest(InferenceRequest.createSingleRoIFrameRequest(frames, rois));
+                    if (!IS_BASELINE) {
+                        startTime = System.nanoTime();
+                        rois = resize(rois);
+                        endTime = System.nanoTime();
+                        //Log.v(TAG, "Patch generation time (us)" + (endTime - startTime) / 1e3);
+
+                        startTime = System.nanoTime();
+                        rois = sortByPriority(rois);
+                        rois = PatchMixer.packRoIs(rois, MIXED_FRAME_SIZE);
+                        Bitmap mixedFrame = PatchMixer.getMixedFrame(rois, MIXED_FRAME_SIZE);
+                        endTime = System.nanoTime();
+                        //Log.v(TAG, "RoI packing time (us): " + (endTime - startTime) / 1e3);
+
+                        mCallback.enqueueInferenceRequest(InferenceRequest.createMixedFrameRequest(Frame.createMixedFrame(mixedFrame), frames, rois));
+                    } else {
+                        mCallback.enqueueInferenceRequest(InferenceRequest.createSingleRoIFrameRequest(frames, rois));
+                    }
+                }
+                List<Frame> fullInferenceFrames = getFullInferenceFrames();
+                for (Frame frame : fullInferenceFrames) {
+                    mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
                 }
             }
         } catch (InterruptedException e) {

@@ -21,19 +21,15 @@ import hcs.offloading.network.webrtc.CustomCapturer;
 public class VideoDispatcher extends CustomCapturer {
     private static final String TAG = VideoDispatcher.class.getName();
 
-    private static final int NUM_RESULTS_FOR_FULL_INFERENCE = 80;
-
     private final DispatcherConfig.VideoConfig mConfig;
-    private final int FULL_INFERENCE_INTERVAL;
 
     private final Dispatcher.Callback mCallback;
 
     private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
 
-    VideoDispatcher(DispatcherConfig.VideoConfig config, Dispatcher.Callback callback, int fullInferenceInterval) {
+    VideoDispatcher(DispatcherConfig.VideoConfig config, Dispatcher.Callback callback) {
         Log.d(TAG, config.PATH + " videoDispatcher created");
         mConfig = config;
-        FULL_INFERENCE_INTERVAL = fullInferenceInterval;
         mCallback = callback;
 
         retriever.setDataSource(mConfig.PATH);
@@ -72,17 +68,8 @@ public class VideoDispatcher extends CustomCapturer {
                 });
 
                 Frame frame = Frame.createSingleFrame(bitmap, mConfig.PATH, frameIndex);
-                if (frameIndex % FULL_INFERENCE_INTERVAL == 0) {
+                if (frameIndex == 0) {
                     mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
-                    if (FULL_INFERENCE_INTERVAL == 1) {
-                        if (frameIndex >= NUM_RESULTS_FOR_FULL_INFERENCE) {
-                            try {
-                                mCallback.getFrameAndResults(mConfig.PATH, frameIndex - NUM_RESULTS_FOR_FULL_INFERENCE);
-                            } catch (InterruptedException e) {
-                                Log.e(TAG, e.getMessage());
-                            }
-                        }
-                    }
                 } else {
                     mCallback.enqueueFrame(frame);
                 }

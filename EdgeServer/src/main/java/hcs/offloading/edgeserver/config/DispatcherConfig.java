@@ -13,5 +13,4 @@ public class DispatcherConfig {
 
     public boolean USE_LOCAL_VIDEO = false;
     public List<VideoConfig> VIDEO_CONFIGS = new ArrayList<>();
-    public int FULL_INFERENCE_INTERVAL = 40;
 }

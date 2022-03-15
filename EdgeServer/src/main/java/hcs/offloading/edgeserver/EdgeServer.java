@@ -106,8 +106,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
         Log.d(TAG, "startVideoEdgeServer");
         startEdgeServer();
         for (DispatcherConfig.VideoConfig videoConfig : mConfig.dispatcherConfig.VIDEO_CONFIGS) {
-            VideoDispatcher videoDispatcher = new VideoDispatcher(videoConfig, this,
-                    mConfig.dispatcherConfig.FULL_INFERENCE_INTERVAL);
+            VideoDispatcher videoDispatcher = new VideoDispatcher(videoConfig, this);
 
             Pair<VideoCapturer, VideoTrack> capturerAndTrack = mWebRTCManager.createSavedVideoTrack(videoConfig.PATH, videoDispatcher);
             MediaStream mediaStream = mWebRTCManager.createMediaStream();
@@ -167,7 +166,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     private final PacketHandler webrtcTopicHandler = packet -> {
         if (mMqttManager.isLocalIP(packet.dstIp)) {
             if (packet.header.equals(WebRTCHeader.SDP.name())) {
-                mDispatchers.put(packet.srcIp, new Dispatcher(mConfig.dispatcherConfig, this,
+                mDispatchers.put(packet.srcIp, new Dispatcher(this,
                         packet.srcIp, mWebRTCManager, mInputView));
                 mDispatchers.get(packet.srcIp).handleSdpAndAnswer(packet.message);
             } else if (packet.header.equals(WebRTCHeader.ICE.name())) {

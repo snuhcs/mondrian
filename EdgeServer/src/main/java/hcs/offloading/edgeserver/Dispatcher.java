@@ -4,7 +4,6 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
-import android.util.Pair;
 
 import org.json.JSONException;
 import org.webrtc.MediaStream;
@@ -14,10 +13,6 @@ import org.webrtc.VideoFrame;
 import org.webrtc.VideoSink;
 import org.webrtc.VideoTrack;
 
-import java.util.List;
-
-import hcs.offloading.edgeserver.config.DispatcherConfig;
-import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.network.webrtc.WebRTCManager;
@@ -27,14 +22,10 @@ import hcs.offloading.network.webrtc.YuvFrame;
 public class Dispatcher implements VideoSink {
     private static final String TAG = Dispatcher.class.getName();
 
-    private final int FULL_INFERENCE_INTERVAL;
-
     public interface Callback {
         void enqueueFrame(Frame frame);
 
         void enqueueInferenceRequest(InferenceRequest inferenceRequest);
-
-        Pair<Bitmap, List<BoundingBox>> getFrameAndResults(String sourceIP, int frameIndex) throws InterruptedException;
 
         void removeStream(String sourceIP);
     }
@@ -51,9 +42,7 @@ public class Dispatcher implements VideoSink {
     private final PeerConnection mPeerConnection;
     private final WebRTCManager mWebRTCManager;
 
-    Dispatcher(DispatcherConfig config, Callback callback, String sourceIP, WebRTCManager webRTCManager, SurfaceViewRenderer inputView) {
-        FULL_INFERENCE_INTERVAL = config.FULL_INFERENCE_INTERVAL;
-
+    Dispatcher(Callback callback, String sourceIP, WebRTCManager webRTCManager, SurfaceViewRenderer inputView) {
         mCallback = callback;
 
         mSourceIP = sourceIP;
@@ -96,7 +85,7 @@ public class Dispatcher implements VideoSink {
         Bitmap bitmap = yuvFrame.getBitmap();
 
         Frame frame = Frame.createSingleFrame(bitmap, mSourceIP, mFrameIndex);
-        if (mFrameIndex % FULL_INFERENCE_INTERVAL == 0) {
+        if (mFrameIndex == 0) {
             mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
         } else {
             mCallback.enqueueFrame(frame);

@@ -52,9 +52,6 @@ public class Config {
                 }
             }
         }
-        if (jsonObject.has("full_inference_interval")) {
-            dispatcherConfig.FULL_INFERENCE_INTERVAL = jsonObject.getInt("full_inference_interval");
-        }
 
         if (jsonObject.has("is_baseline")) { // if is_baseline = true, BATCH_SIZE must be 1
             roIExtractorConfig.IS_BASELINE = jsonObject.getBoolean("is_baseline");
@@ -62,9 +59,10 @@ public class Config {
         if (jsonObject.has("batch_size")) { // else, use "batch_size"
             roIExtractorConfig.BATCH_SIZE = jsonObject.getInt("batch_size");
         }
-        if (jsonObject.has("max_queued_frames")) {
-            roIExtractorConfig.MAX_QUEUED_FRAMES = jsonObject.getInt("max_queued_frames");
+        if (jsonObject.has("full_inference_batch_interval")) {
+            roIExtractorConfig.FULL_INFERENCE_BATCH_INTERVAL = jsonObject.getInt("full_inference_batch_interval");
         }
+        roIExtractorConfig.MAX_QUEUED_FRAMES = roIExtractorConfig.BATCH_SIZE * 2;
         if (jsonObject.has("frame_size")) {
             roIExtractorConfig.MIXED_FRAME_SIZE = jsonObject.getInt("frame_size");
         }
@@ -101,9 +99,7 @@ public class Config {
         if (jsonObject.has("frame_size")) {
             inferenceEngineConfig.FRAME_SIZE = jsonObject.getInt("frame_size");
         }
-        if (jsonObject.has("max_queued_requests")) {
-            inferenceEngineConfig.MAX_QUEUED_REQUESTS = jsonObject.getInt("max_queued_requests");
-        }
+        inferenceEngineConfig.MAX_QUEUED_REQUESTS = inferenceEngineConfig.NUM_WORKERS * 2;
 
         if (jsonObject.has("match_padding")) {
             patchReconstructorConfig.MATCH_PADDING = jsonObject.getInt("match_padding");
