@@ -342,7 +342,9 @@ public class RoIExtractor implements Runnable {
                 if (newBottom > height) {
                     newBottom = height;
                 }
-                shiftedBoxes.add(boundingBoxes.get(boxIndex).move(new Rect(newLeft, newTop, newRight, newBottom)));
+                if (!(newLeft - newRight == 0) && !(newTop - newBottom == 0)) {
+                    shiftedBoxes.add(boundingBoxes.get(boxIndex).move(new Rect(newLeft, newTop, newRight, newBottom)));
+                }
             }
         }
         return shiftedBoxes;
