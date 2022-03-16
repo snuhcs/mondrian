@@ -50,7 +50,7 @@ public class VideoDispatcher extends CustomCapturer {
             TextureBufferImpl buffer = new TextureBufferImpl(width, height, VideoFrame.TextureBuffer.Type.RGB, textures[0], new Matrix(), surTexture.getHandler(), yuvConverter, null);
 
             int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
-            for (int frameIndex = 0; frameIndex < 600; frameIndex++) {
+            for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
                 Log.v(TAG, mConfig.PATH + " " + frameIndex + " loaded");
                 Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
