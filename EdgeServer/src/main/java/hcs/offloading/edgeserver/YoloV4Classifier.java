@@ -71,8 +71,8 @@ public class YoloV4Classifier {
         tfLite = new Interpreter(loadModelFile(assetManager, modelFilename), options);
     }
 
-    public List<BoundingBox> recognizeImage(ByteBuffer byteBuffer, Bitmap bitmap) {
-        ArrayList<BoundingBox> detections = getDetectionsForFull(byteBuffer, bitmap);
+    public List<BoundingBox> recognizeImage(ByteBuffer byteBuffer, int originalWidth, int originalHeight) {
+        ArrayList<BoundingBox> detections = getDetectionsForFull(byteBuffer, originalWidth, originalHeight);
         return nms(detections);
     }
 
@@ -91,7 +91,7 @@ public class YoloV4Classifier {
         return buffer;
     }
 
-    private ArrayList<BoundingBox> getDetectionsForFull(ByteBuffer byteBuffer, Bitmap bitmap) {
+    private ArrayList<BoundingBox> getDetectionsForFull(ByteBuffer byteBuffer, int originalWidth, int originalHeight) {
         ArrayList<BoundingBox> detections = new ArrayList<>();
         Map<Integer, Object> outputMap = new HashMap<>();
         outputMap.put(0, new float[1][OUTPUT_WIDTH][4]);
@@ -125,10 +125,10 @@ public class YoloV4Classifier {
                 final float w = bboxes[0][i][2];
                 final float h = bboxes[0][i][3];
                 final Rect rect = new Rect(
-                        (int) (Math.max(0, xPos - w / 2) * bitmap.getWidth() / INPUT_SIZE),
-                        (int) (Math.max(0, yPos - h / 2) * bitmap.getHeight() / INPUT_SIZE),
-                        (int) (Math.min(INPUT_SIZE - 1, xPos + w / 2) * bitmap.getWidth() / INPUT_SIZE),
-                        (int) (Math.min(INPUT_SIZE - 1, yPos + h / 2) * bitmap.getHeight() / INPUT_SIZE));
+                        (int) (Math.max(0, xPos - w / 2) * originalWidth / INPUT_SIZE),
+                        (int) (Math.max(0, yPos - h / 2) * originalHeight / INPUT_SIZE),
+                        (int) (Math.min(INPUT_SIZE - 1, xPos + w / 2) * originalWidth / INPUT_SIZE),
+                        (int) (Math.min(INPUT_SIZE - 1, yPos + h / 2) * originalHeight / INPUT_SIZE));
                 detections.add(new BoundingBox(rect, score, detectedClass, labels.get(detectedClass)));
             }
         }

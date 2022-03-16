@@ -39,7 +39,8 @@ public class InferenceEngine {
                     new ImageProcessor.Builder()
                             .add(new ResizeOp(FRAME_SIZE, FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
                             .add(new NormalizeOp(0.0f, 255.0f))
-                            .build()));
+                            .build(),
+                    config.PER_ROI_KEEP_RATIO));
         }
     }
 

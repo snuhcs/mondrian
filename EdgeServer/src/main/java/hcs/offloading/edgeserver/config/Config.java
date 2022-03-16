@@ -100,6 +100,9 @@ public class Config {
             inferenceEngineConfig.FRAME_SIZE = jsonObject.getInt("frame_size");
         }
         inferenceEngineConfig.MAX_QUEUED_REQUESTS = inferenceEngineConfig.NUM_WORKERS * 2;
+        if (jsonObject.has("per_roi_keep_ratio")) {
+            inferenceEngineConfig.PER_ROI_KEEP_RATIO = jsonObject.getBoolean("per_roi_keep_ratio");
+        }
 
         if (jsonObject.has("match_padding")) {
             patchReconstructorConfig.MATCH_PADDING = jsonObject.getInt("match_padding");

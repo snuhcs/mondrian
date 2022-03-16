@@ -1,6 +1,8 @@
 package hcs.offloading.edgeserver;
 
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
@@ -24,6 +26,8 @@ public class Worker implements Runnable {
         void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) throws InterruptedException;
     }
 
+    private final boolean PER_ROI_KEEP_RATIO;
+
     private final YoloV4Classifier model;
     private final ImageProcessor preprocessor;
     private final InferenceEngine engine;
@@ -31,8 +35,9 @@ public class Worker implements Runnable {
     private final Thread mWorkerThread;
     private final Callback mCallback;
 
-    public Worker(Callback callback, InferenceEngine engine, YoloV4Classifier model, ImageProcessor preprocessor) {
+    public Worker(Callback callback, InferenceEngine engine, YoloV4Classifier model, ImageProcessor preprocessor, boolean perRoIKeepRatio) {
         mCallback = callback;
+        PER_ROI_KEEP_RATIO = perRoIKeepRatio;
 
         this.engine = engine;
         this.model = model;
@@ -73,7 +78,7 @@ public class Worker implements Runnable {
                     request.preprocessingTimeUs = (int) ((endTime - startTime) / 1e3);
 
                     startTime = System.nanoTime();
-                    results = model.recognizeImage(processedBuffer, input);
+                    results = model.recognizeImage(processedBuffer, input.getWidth(), input.getHeight());
                     endTime = System.nanoTime();
                     request.inferenceTimeUs = (int) ((endTime - startTime) / 1e3);
 
@@ -83,14 +88,30 @@ public class Worker implements Runnable {
                     int inferenceTimeUs = 0;
 
                     for (RoI roi : request.rois) {
-                        Bitmap input = roi.getBitmap();
+                        Bitmap rawInput = roi.getBitmap();
+                        Bitmap input;
+                        int width = rawInput.getWidth();
+                        int height = rawInput.getHeight();
+                        if (!PER_ROI_KEEP_RATIO) {
+                            input = rawInput;
+                        } else {
+                            int largerEdge = Math.max(rawInput.getWidth(), rawInput.getHeight());
+                            width = largerEdge;
+                            height = largerEdge;
+                            input = Bitmap.createBitmap(largerEdge, largerEdge, Bitmap.Config.ARGB_8888);
+                            input.eraseColor(Color.BLACK);
+
+                            Canvas canvas = new Canvas(input);
+                            canvas.drawBitmap(rawInput, 0, 0, null);
+                        }
+
                         startTime = System.nanoTime();
                         ByteBuffer processedBuffer = preprocess(input);
                         endTime = System.nanoTime();
                         preprocessingTimeUs += (int) ((endTime - startTime) / 1e3);
 
                         startTime = System.nanoTime();
-                        List<BoundingBox> roiBoxes = model.recognizeImage(processedBuffer, input);
+                        List<BoundingBox> roiBoxes = model.recognizeImage(processedBuffer, width, height);
                         endTime = System.nanoTime();
                         inferenceTimeUs += (int) ((endTime - startTime) / 1e3);
                         roiBoxes = Utils.filterPerson(roiBoxes);
