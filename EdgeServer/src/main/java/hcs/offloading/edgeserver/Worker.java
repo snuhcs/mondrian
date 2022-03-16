@@ -62,7 +62,8 @@ public class Worker implements Runnable {
                 request.queueSize = engine.getRequestQueueSize();
 
                 List<BoundingBox> results = new ArrayList<>();
-                if (request.type == InferenceRequest.Type.MIXED ||
+                if (request.type == InferenceRequest.Type.MIXED && request.rois.isEmpty()) {
+                } else if (request.type == InferenceRequest.Type.MIXED ||
                         request.type == InferenceRequest.Type.FULL) {
                     Bitmap input = request.frame.bitmap;
 

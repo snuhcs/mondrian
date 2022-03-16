@@ -214,10 +214,10 @@ public class PatchReconstructor implements Runnable {
                 );
                 Rect boxPos = box.location;
                 Rect movedAndResizedBoxPos = new Rect(
-                        (int) ((boxPos.left - roi.packedLocation[0]) / roi.scale) + roi.position.left,
-                        (int) ((boxPos.top - roi.packedLocation[1]) / roi.scale) + roi.position.top,
-                        (int) ((boxPos.right - roi.packedLocation[0]) / roi.scale) + roi.position.left,
-                        (int) ((boxPos.bottom - roi.packedLocation[1]) / roi.scale) + roi.position.top
+                        (int) ((boxPos.left - roi.packedLocation[0]) / roi.widthScale) + roi.position.left,
+                        (int) ((boxPos.top - roi.packedLocation[1]) / roi.heightScale) + roi.position.top,
+                        (int) ((boxPos.right - roi.packedLocation[0]) / roi.widthScale) + roi.position.left,
+                        (int) ((boxPos.bottom - roi.packedLocation[1]) / roi.heightScale) + roi.position.top
                 );
                 float intersection = Utils.box_intersection(paddedRoIPos, movedAndResizedBoxPos);
                 float overlapRatio = Math.max(intersection / (movedAndResizedBoxPos.width() * movedAndResizedBoxPos.height()),
