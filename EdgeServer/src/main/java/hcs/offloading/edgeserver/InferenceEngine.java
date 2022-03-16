@@ -21,6 +21,7 @@ public class InferenceEngine {
     private final static String TAG = InferenceEngine.class.getName();
 
     public final int FRAME_SIZE;
+    public final int FULL_FRAME_SIZE;
     public final int NUM_WORKERS;
     public final int MAX_QUEUED_REQUESTS;
 
@@ -30,16 +31,32 @@ public class InferenceEngine {
     @RequiresApi(api = Build.VERSION_CODES.N)
     InferenceEngine(InferenceEngineConfig config, Worker.Callback callback, AssetManager assetManager) {
         FRAME_SIZE = config.FRAME_SIZE;
+        FULL_FRAME_SIZE = config.FULL_FRAME_SIZE;
         NUM_WORKERS = config.NUM_WORKERS;
         MAX_QUEUED_REQUESTS = config.MAX_QUEUED_REQUESTS;
 
+        YoloV4Classifier model = new YoloV4Classifier(assetManager, FRAME_SIZE);
+        ImageProcessor processor = new ImageProcessor.Builder()
+                .add(new ResizeOp(FRAME_SIZE, FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+                .add(new NormalizeOp(0.0f, 255.0f))
+                .build();
+
+        YoloV4Classifier fullModel;
+        ImageProcessor fullProcessor;
+        if (FRAME_SIZE != FULL_FRAME_SIZE) {
+            fullModel = new YoloV4Classifier(assetManager, FULL_FRAME_SIZE);
+            fullProcessor = new ImageProcessor.Builder()
+                    .add(new ResizeOp(FULL_FRAME_SIZE, FULL_FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+                    .add(new NormalizeOp(0.0f, 255.0f))
+                    .build();
+        } else {
+            fullModel = model;
+            fullProcessor = processor;
+        }
+
         for (int workerId = 0; workerId < NUM_WORKERS; workerId++) {
             mWorkers.add(new Worker(callback, this,
-                    new YoloV4Classifier(assetManager, FRAME_SIZE),
-                    new ImageProcessor.Builder()
-                            .add(new ResizeOp(FRAME_SIZE, FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
-                            .add(new NormalizeOp(0.0f, 255.0f))
-                            .build(),
+                    model, processor, fullModel, fullProcessor,
                     config.PER_ROI_KEEP_RATIO));
         }
     }

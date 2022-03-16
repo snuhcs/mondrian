@@ -30,18 +30,25 @@ public class Worker implements Runnable {
 
     private final YoloV4Classifier model;
     private final ImageProcessor preprocessor;
+    private final YoloV4Classifier fullModel;
+    private final ImageProcessor fullPreprocessor;
     private final InferenceEngine engine;
 
     private final Thread mWorkerThread;
     private final Callback mCallback;
 
-    public Worker(Callback callback, InferenceEngine engine, YoloV4Classifier model, ImageProcessor preprocessor, boolean perRoIKeepRatio) {
+    public Worker(Callback callback, InferenceEngine engine,
+                  YoloV4Classifier model, ImageProcessor preprocessor,
+                  YoloV4Classifier fullModel, ImageProcessor fullPreprocessor,
+                  boolean perRoIKeepRatio) {
         mCallback = callback;
         PER_ROI_KEEP_RATIO = perRoIKeepRatio;
 
         this.engine = engine;
         this.model = model;
         this.preprocessor = preprocessor;
+        this.fullModel = fullModel;
+        this.fullPreprocessor = fullPreprocessor;
 
         mWorkerThread = new Thread(this);
         mWorkerThread.start();
@@ -68,8 +75,7 @@ public class Worker implements Runnable {
 
                 List<BoundingBox> results = new ArrayList<>();
                 if (request.type == InferenceRequest.Type.MIXED && request.rois.isEmpty()) {
-                } else if (request.type == InferenceRequest.Type.MIXED ||
-                        request.type == InferenceRequest.Type.FULL) {
+                } else if (request.type == InferenceRequest.Type.MIXED) {
                     Bitmap input = request.frame.bitmap;
 
                     startTime = System.nanoTime();
@@ -79,6 +85,20 @@ public class Worker implements Runnable {
 
                     startTime = System.nanoTime();
                     results = model.recognizeImage(processedBuffer, input.getWidth(), input.getHeight());
+                    endTime = System.nanoTime();
+                    request.inferenceTimeUs = (int) ((endTime - startTime) / 1e3);
+
+                    results = Utils.filterPerson(results);
+                } else if (request.type == InferenceRequest.Type.FULL) {
+                    Bitmap input = request.frame.bitmap;
+
+                    startTime = System.nanoTime();
+                    ByteBuffer processedBuffer = fullPreprocess(input);
+                    endTime = System.nanoTime();
+                    request.preprocessingTimeUs = (int) ((endTime - startTime) / 1e3);
+
+                    startTime = System.nanoTime();
+                    results = fullModel.recognizeImage(processedBuffer, input.getWidth(), input.getHeight());
                     endTime = System.nanoTime();
                     request.inferenceTimeUs = (int) ((endTime - startTime) / 1e3);
 
@@ -138,6 +158,13 @@ public class Worker implements Runnable {
         TensorImage image = new TensorImage(DataType.UINT8);
         image.load(bitmap);
         TensorImage processedImage = preprocessor.process(image);
+        return processedImage.getBuffer();
+    }
+
+    private ByteBuffer fullPreprocess(Bitmap bitmap) {
+        TensorImage image = new TensorImage(DataType.UINT8);
+        image.load(bitmap);
+        TensorImage processedImage = fullPreprocessor.process(image);
         return processedImage.getBuffer();
     }
 }

@@ -99,6 +99,11 @@ public class Config {
         if (jsonObject.has("frame_size")) {
             inferenceEngineConfig.FRAME_SIZE = jsonObject.getInt("frame_size");
         }
+        if (jsonObject.has("full_frame_size")) {
+            inferenceEngineConfig.FULL_FRAME_SIZE = jsonObject.getInt("full_frame_size");
+        } else {
+            inferenceEngineConfig.FULL_FRAME_SIZE = inferenceEngineConfig.FRAME_SIZE;
+        }
         inferenceEngineConfig.MAX_QUEUED_REQUESTS = inferenceEngineConfig.NUM_WORKERS * 2;
         if (jsonObject.has("per_roi_keep_ratio")) {
             inferenceEngineConfig.PER_ROI_KEEP_RATIO = jsonObject.getBoolean("per_roi_keep_ratio");
