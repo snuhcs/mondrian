@@ -51,6 +51,18 @@ public class YoloV4Classifier {
                 modelFilename = "yolov4-160.tflite";
                 OUTPUT_WIDTH_FULL = new int[]{1575, 1575};
                 break;
+            case 224:
+                modelFilename = "yolov4-224.tflite";
+                OUTPUT_WIDTH_FULL = new int[]{3087, 3087};
+                break;
+            case 256:
+                modelFilename = "yolov4-256.tflite";
+                OUTPUT_WIDTH_FULL = new int[]{4032, 4032};
+                break;
+            case 288:
+                modelFilename = "yolov4-288.tflite";
+                OUTPUT_WIDTH_FULL = new int[]{5103, 5103};
+                break;
             case 320:
                 modelFilename = "yolov4-320.tflite";
                 OUTPUT_WIDTH_FULL = new int[]{6300, 6300};
