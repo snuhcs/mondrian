@@ -35,51 +35,15 @@ public class YoloV4Classifier {
     private static final Vector<String> labels = new Vector<>();
 
     public final int INPUT_SIZE;
-    private final int[] OUTPUT_WIDTH_FULL;
+    private final int OUTPUT_WIDTH;
 
     private final Interpreter tfLite;
 
     YoloV4Classifier(AssetManager assetManager, int size) {
+        assert size % 32 == 0;
         INPUT_SIZE = size;
-        String modelFilename;
-        switch (size) {
-            case 64:
-                modelFilename = "yolov4-64.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{252, 252};
-                break;
-            case 160:
-                modelFilename = "yolov4-160.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{1575, 1575};
-                break;
-            case 224:
-                modelFilename = "yolov4-224.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{3087, 3087};
-                break;
-            case 256:
-                modelFilename = "yolov4-256.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{4032, 4032};
-                break;
-            case 288:
-                modelFilename = "yolov4-288.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{5103, 5103};
-                break;
-            case 320:
-                modelFilename = "yolov4-320.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{6300, 6300};
-                break;
-            case 480:
-                modelFilename = "yolov4-480.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{14175, 14175};
-                break;
-            case 640:
-                modelFilename = "yolov4-640.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{25200, 25200};
-                break;
-            default:
-                modelFilename = null;
-                OUTPUT_WIDTH_FULL = new int[]{-1, -1};
-                Log.e(TAG, "Wrong size : " + size);
-        }
+        String modelFilename = "yolov4-" + size + ".tflite";
+        OUTPUT_WIDTH = (size / 32) * (size / 32) * 63;
 
         try {
             InputStream labelsInput = assetManager.open("coco.txt");
@@ -130,19 +94,18 @@ public class YoloV4Classifier {
     private ArrayList<BoundingBox> getDetectionsForFull(ByteBuffer byteBuffer, Bitmap bitmap) {
         ArrayList<BoundingBox> detections = new ArrayList<>();
         Map<Integer, Object> outputMap = new HashMap<>();
-        outputMap.put(0, new float[1][OUTPUT_WIDTH_FULL[0]][4]);
-        outputMap.put(1, new float[1][OUTPUT_WIDTH_FULL[1]][labels.size()]);
+        outputMap.put(0, new float[1][OUTPUT_WIDTH][4]);
+        outputMap.put(1, new float[1][OUTPUT_WIDTH][labels.size()]);
         Object[] inputArray = {byteBuffer};
         long start = System.nanoTime();
         tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
         long end = System.nanoTime();
         Log.v(TAG, "Inference time (us): " + (end - start) / 1000);
 
-        int gridWidth = OUTPUT_WIDTH_FULL[0];
         float[][][] bboxes = (float[][][]) outputMap.get(0);
         float[][][] out_score = (float[][][]) outputMap.get(1);
 
-        for (int i = 0; i < gridWidth; i++) {
+        for (int i = 0; i < OUTPUT_WIDTH; i++) {
             float maxClass = 0;
             int detectedClass = -1;
             final float[] classes = new float[labels.size()];
