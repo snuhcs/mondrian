@@ -96,6 +96,9 @@ public class Config {
         if (jsonObject.has("num_workers")) {
             inferenceEngineConfig.NUM_WORKERS = jsonObject.getInt("num_workers");
         }
+        if (jsonObject.has("is_tiny")) {
+            inferenceEngineConfig.IS_TINY = jsonObject.getBoolean("is_tiny");
+        }
         if (jsonObject.has("frame_size")) {
             inferenceEngineConfig.FRAME_SIZE = jsonObject.getInt("frame_size");
         }

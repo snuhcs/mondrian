@@ -2,7 +2,6 @@ package hcs.offloading.edgeserver;
 
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
-import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.util.Log;
 
@@ -39,11 +38,13 @@ public class YoloV4Classifier {
 
     private final Interpreter tfLite;
 
-    YoloV4Classifier(AssetManager assetManager, int size) {
+    YoloV4Classifier(AssetManager assetManager, int size, boolean isTiny) {
         assert size % 32 == 0;
         INPUT_SIZE = size;
-        String modelFilename = "yolov4-" + size + ".tflite";
-        OUTPUT_WIDTH = (size / 32) * (size / 32) * 63;
+        String modelFilename = isTiny ?
+                "yolov4-tiny-" + size + ".tflite" :
+                "yolov4-" + size + ".tflite";
+        OUTPUT_WIDTH = (size / 32) * (size / 32) * (isTiny ? 15 : 63);
 
         try {
             InputStream labelsInput = assetManager.open("coco.txt");
