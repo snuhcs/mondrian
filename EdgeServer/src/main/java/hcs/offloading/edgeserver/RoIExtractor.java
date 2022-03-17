@@ -273,42 +273,46 @@ public class RoIExtractor implements Runnable {
         Frame frame = rois.get(0).frame;
 
         while (true) {
-            Pair<Integer, Integer> indices = null;
+            RoI originalRoI0 = null;
+            RoI originalRoI1 = null;
+            RoI mergedRoI = null;
             for (int i = 0; i < rois.size(); i++) {
                 for (int j = i + 1; j < rois.size(); j++) {
                     RoI roi0 = rois.get(i);
                     RoI roi1 = rois.get(j);
                     float intersection = hcs.offloading.edgeserver.Utils.box_intersection(roi0.position, roi1.position);
                     if (intersection / roi0.getArea() > MERGE_THRESHOLD || intersection / roi1.getArea() > MERGE_THRESHOLD) {
-                        indices = new Pair<>(i, j);
+                        int newTop = Math.min(roi0.position.top, roi1.position.top);
+                        int newBottom = Math.max(roi0.position.bottom, roi1.position.bottom);
+                        int newRight = Math.max(roi0.position.right, roi1.position.right);
+                        int newLeft = Math.min(roi0.position.left, roi1.position.left);
+                        if (newLeft >= newRight || newTop >= newBottom) {
+                            continue;
+                        }
+                        originalRoI0 = roi0;
+                        originalRoI1 = roi1;
+                        Rect newPosition = new Rect(newLeft, newTop, newRight, newBottom);
+                        RoIType roiType = RoIType.PD;
+                        String roiLabel = null;
+                        if (roi0.type.equals(RoIType.OF) || roi1.type.equals(RoIType.OF)) {
+                            roiType = RoIType.OF;
+                            if (roi0.labelName != null && roi0.labelName.equals(roi1.labelName)) {
+                                roiLabel = roi0.labelName;
+                            }
+                        }
+                        mergedRoI = new RoI(frame, newPosition, roiType, roiLabel);
                         break;
                     }
                 }
-                if (indices != null) {
+                if (mergedRoI != null) {
                     break;
                 }
             }
-            if (indices == null) {
+            if (mergedRoI == null) {
                 break;
             }
-            RoI roi0 = rois.get(indices.first);
-            RoI roi1 = rois.get(indices.second);
-            int newTop = Math.min(roi0.position.top, roi1.position.top);
-            int newBottom = Math.max(roi0.position.bottom, roi1.position.bottom);
-            int newRight = Math.max(roi0.position.right, roi1.position.right);
-            int newLeft = Math.min(roi0.position.left, roi1.position.left);
-            Rect newPosition = new Rect(newLeft, newTop, newRight, newBottom);
-            RoIType roiType = RoIType.PD;
-            String roiLabel = null;
-            if (roi0.type.equals(RoIType.OF) || roi1.type.equals(RoIType.OF)) {
-                roiType = RoIType.OF;
-                if (roi0.labelName != null && roi0.labelName.equals(roi1.labelName)) {
-                    roiLabel = roi0.labelName;
-                }
-            }
-            RoI mergedRoI = new RoI(frame, newPosition, roiType, roiLabel);
-            rois.remove(roi0);
-            rois.remove(roi1);
+            rois.remove(originalRoI0);
+            rois.remove(originalRoI1);
             rois.add(mergedRoI);
         }
     }
@@ -342,7 +346,7 @@ public class RoIExtractor implements Runnable {
                 if (newBottom > height) {
                     newBottom = height;
                 }
-                if (!(newLeft - newRight == 0) && !(newTop - newBottom == 0)) {
+                if (newLeft < newRight && newTop < newBottom) {
                     shiftedBoxes.add(boundingBoxes.get(boxIndex).move(new Rect(newLeft, newTop, newRight, newBottom)));
                 }
             }
@@ -449,7 +453,9 @@ public class RoIExtractor implements Runnable {
             Mat croppedROI = new Mat(laterMatCopyForROIExtraction, rect);
             Bitmap croppedROIBitmap = Bitmap.createBitmap(rect.width, rect.height, Bitmap.Config.RGB_565);
             Utils.matToBitmap(croppedROI, croppedROIBitmap);
-            roiList.add(location);
+            if (location.left < location.right && location.top < location.bottom) {
+                roiList.add(location);
+            }
         }
 
         laterMat.release();
