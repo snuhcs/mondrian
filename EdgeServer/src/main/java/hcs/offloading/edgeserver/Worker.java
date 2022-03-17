@@ -18,6 +18,7 @@ import java.util.List;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.edgeserver.datatypes.RoI;
+import hcs.offloading.edgeserver.model.Classifier;
 
 public class Worker implements Runnable {
     private static final String TAG = Worker.class.getName();
@@ -28,9 +29,9 @@ public class Worker implements Runnable {
 
     private final boolean PER_ROI_KEEP_RATIO;
 
-    private final YoloV4Classifier model;
+    private final Classifier model;
     private final ImageProcessor preprocessor;
-    private final YoloV4Classifier fullModel;
+    private final Classifier fullModel;
     private final ImageProcessor fullPreprocessor;
     private final InferenceEngine engine;
 
@@ -38,8 +39,8 @@ public class Worker implements Runnable {
     private final Callback mCallback;
 
     public Worker(Callback callback, InferenceEngine engine,
-                  YoloV4Classifier model, ImageProcessor preprocessor,
-                  YoloV4Classifier fullModel, ImageProcessor fullPreprocessor,
+                  Classifier model, ImageProcessor preprocessor,
+                  Classifier fullModel, ImageProcessor fullPreprocessor,
                   boolean perRoIKeepRatio) {
         mCallback = callback;
         PER_ROI_KEEP_RATIO = perRoIKeepRatio;

@@ -20,7 +20,6 @@ public class Config {
     public final RoIExtractorConfig roIExtractorConfig = new RoIExtractorConfig();
     public final InferenceEngineConfig inferenceEngineConfig = new InferenceEngineConfig();
     public final PatchReconstructorConfig patchReconstructorConfig = new PatchReconstructorConfig();
-    public final UtilsConfig utilsConfig = new UtilsConfig();
 
     public Config(String jsonPath) throws IOException, JSONException {
         JSONObject jsonObject = new JSONObject(getStringFromFile(jsonPath));
@@ -93,11 +92,14 @@ public class Config {
             roIExtractorConfig.CLASS_AGNOSTIC_THRESHOLD = jsonObject.getInt("class_agnostic_threshold");
         }
 
+        if (jsonObject.has("use_yolo_v4")) {
+            inferenceEngineConfig.USE_YOLO_V4 = jsonObject.getBoolean("use_yolo_v4");
+        }
+        if (jsonObject.has("use_tiny")) {
+            inferenceEngineConfig.USE_TINY = jsonObject.getBoolean("use_tiny");
+        }
         if (jsonObject.has("num_workers")) {
             inferenceEngineConfig.NUM_WORKERS = jsonObject.getInt("num_workers");
-        }
-        if (jsonObject.has("is_tiny")) {
-            inferenceEngineConfig.IS_TINY = jsonObject.getBoolean("is_tiny");
         }
         if (jsonObject.has("frame_size")) {
             inferenceEngineConfig.FRAME_SIZE = jsonObject.getInt("frame_size");
@@ -121,9 +123,8 @@ public class Config {
         if (jsonObject.has("log_path")) {
             patchReconstructorConfig.LOG_PATH = jsonObject.getString("log_path");
         }
-
-        if (jsonObject.has("minimum_confidence")) {
-            utilsConfig.MINIMUM_CONFIDENCE = (float) jsonObject.getDouble("minimum_confidence");
+        if (jsonObject.has("draw_confidence")) {
+            patchReconstructorConfig.DRAW_CONFIDENCE = (float) jsonObject.getDouble("draw_confidence");
         }
 
         validate();

@@ -28,6 +28,7 @@ public class PatchReconstructor implements Runnable {
 
     private final int MATCH_PADDING;
     private final float USE_IOU_THRESHOLD;
+    private final float DRAW_CONFIDENCE;
 
     private final ViewCallback mCallback;
 
@@ -44,6 +45,7 @@ public class PatchReconstructor implements Runnable {
     PatchReconstructor(PatchReconstructorConfig config, ViewCallback callback) {
         MATCH_PADDING = config.MATCH_PADDING;
         USE_IOU_THRESHOLD = config.USE_IOU_THRESHOLD;
+        DRAW_CONFIDENCE = config.DRAW_CONFIDENCE;
         if (config.LOG_PATH != null) {
             try {
                 logWriter = new FileWriter(config.LOG_PATH);
@@ -79,7 +81,7 @@ public class PatchReconstructor implements Runnable {
     public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) throws InterruptedException {
         //Log.v(TAG, "Start enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results)");
         if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.FULL) {
-            mCallback.drawInferenceResult(Utils.drawBoxes(request.frame.bitmap, results));
+            mCallback.drawInferenceResult(Utils.drawBoxes(request.frame.bitmap, results, DRAW_CONFIDENCE));
         }
         if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.PER_ROI) {
             mResultsToReconstruct.add(new Pair<>(request, results));
@@ -181,7 +183,7 @@ public class PatchReconstructor implements Runnable {
         }
         //Log.v(TAG, "End getRemoveDrawResult(String sourceIP, int frameIndex)");
         if (result != null) {
-            mCallback.drawObjectDetectionResult(Utils.drawBoxes(result.first, result.second));
+            mCallback.drawObjectDetectionResult(Utils.drawBoxes(result.first, result.second, DRAW_CONFIDENCE));
         }
         return result;
     }

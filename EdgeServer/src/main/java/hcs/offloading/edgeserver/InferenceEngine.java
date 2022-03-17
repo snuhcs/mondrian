@@ -16,11 +16,13 @@ import java.util.Queue;
 
 import hcs.offloading.edgeserver.config.InferenceEngineConfig;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
+import hcs.offloading.edgeserver.model.Classifier;
+import hcs.offloading.edgeserver.model.YoloV4Classifier;
+import hcs.offloading.edgeserver.model.YoloV5Classifier;
 
 public class InferenceEngine {
     private final static String TAG = InferenceEngine.class.getName();
 
-    public final boolean IS_TINY;
     public final int FRAME_SIZE;
     public final int FULL_FRAME_SIZE;
     public final int NUM_WORKERS;
@@ -31,22 +33,25 @@ public class InferenceEngine {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     InferenceEngine(InferenceEngineConfig config, Worker.Callback callback, AssetManager assetManager) {
-        IS_TINY = config.IS_TINY;
         FRAME_SIZE = config.FRAME_SIZE;
         FULL_FRAME_SIZE = config.FULL_FRAME_SIZE;
         NUM_WORKERS = config.NUM_WORKERS;
         MAX_QUEUED_REQUESTS = config.MAX_QUEUED_REQUESTS;
 
-        YoloV4Classifier model = new YoloV4Classifier(assetManager, FRAME_SIZE, IS_TINY);
+        Classifier model = config.USE_YOLO_V4 ?
+                new YoloV4Classifier(assetManager, FRAME_SIZE, config.USE_TINY) :
+                new YoloV5Classifier(assetManager, FRAME_SIZE);
         ImageProcessor processor = new ImageProcessor.Builder()
                 .add(new ResizeOp(FRAME_SIZE, FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
                 .add(new NormalizeOp(0.0f, 255.0f))
                 .build();
 
-        YoloV4Classifier fullModel;
+        Classifier fullModel;
         ImageProcessor fullProcessor;
         if (FRAME_SIZE != FULL_FRAME_SIZE) {
-            fullModel = new YoloV4Classifier(assetManager, FULL_FRAME_SIZE, IS_TINY);
+            fullModel = config.USE_YOLO_V4 ?
+                    new YoloV4Classifier(assetManager, FULL_FRAME_SIZE, config.USE_TINY) :
+                    new YoloV5Classifier(assetManager, FULL_FRAME_SIZE);
             fullProcessor = new ImageProcessor.Builder()
                     .add(new ResizeOp(FULL_FRAME_SIZE, FULL_FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
                     .add(new NormalizeOp(0.0f, 255.0f))

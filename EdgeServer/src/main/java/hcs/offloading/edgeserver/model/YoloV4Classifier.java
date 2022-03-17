@@ -1,4 +1,4 @@
-package hcs.offloading.edgeserver;
+package hcs.offloading.edgeserver.model;
 
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
@@ -24,9 +24,10 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Vector;
 
+import hcs.offloading.edgeserver.Utils;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 
-public class YoloV4Classifier {
+public class YoloV4Classifier implements Classifier {
     private final static String TAG = YoloV4Classifier.class.getName();
 
     private static final float OBJ_THRESHOLD = 0.5f;
@@ -38,7 +39,7 @@ public class YoloV4Classifier {
 
     private final Interpreter tfLite;
 
-    YoloV4Classifier(AssetManager assetManager, int size, boolean isTiny) {
+    public YoloV4Classifier(AssetManager assetManager, int size, boolean isTiny) {
         assert size % 32 == 0;
         INPUT_SIZE = size;
         String modelFilename = isTiny ?
@@ -72,6 +73,7 @@ public class YoloV4Classifier {
         tfLite = new Interpreter(loadModelFile(assetManager, modelFilename), options);
     }
 
+    @Override
     public List<BoundingBox> recognizeImage(ByteBuffer byteBuffer, int originalWidth, int originalHeight) {
         ArrayList<BoundingBox> detections = getDetectionsForFull(byteBuffer, originalWidth, originalHeight);
         return nms(detections);
@@ -136,7 +138,7 @@ public class YoloV4Classifier {
         return detections;
     }
 
-    public static List<BoundingBox> nms(List<BoundingBox> list) {
+    private static List<BoundingBox> nms(List<BoundingBox> list) {
         ArrayList<BoundingBox> nmsList = new ArrayList<>();
 
         for (int k = 0; k < labels.size(); k++) {
