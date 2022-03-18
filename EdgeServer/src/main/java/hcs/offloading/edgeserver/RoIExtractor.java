@@ -69,13 +69,9 @@ public class RoIExtractor implements Runnable {
     private final Thread mRoIExtractorThread;
     private final Callback mCallback;
 
-<<<<<<< HEAD
     private final MockProfiles mMockProfiles;
 
 
-=======
-
->>>>>>> master
     @RequiresApi(api = Build.VERSION_CODES.P)
     RoIExtractor(RoIExtractorConfig config, Callback callback) {
         IS_BASELINE = config.IS_BASELINE;
