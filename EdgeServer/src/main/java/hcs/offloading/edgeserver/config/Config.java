@@ -28,7 +28,7 @@ public class Config {
         if (jsonObject.has("use_local_video")) {
             dispatcherConfig.USE_LOCAL_VIDEO = jsonObject.getBoolean("use_local_video");
             if (dispatcherConfig.USE_LOCAL_VIDEO) {
-                if (!jsonObject.has("video_configs")) {
+                if (!jsonObject.has("video_configs") || jsonObject.getJSONArray("video_configs").length() == 0) {
                     throw new IllegalArgumentException("Video configs should be specified");
                 }
                 JSONArray videoConfigs = jsonObject.getJSONArray("video_configs");
@@ -60,10 +60,6 @@ public class Config {
         }
         if (jsonObject.has("full_inference_batch_interval")) {
             roIExtractorConfig.FULL_INFERENCE_BATCH_INTERVAL = jsonObject.getInt("full_inference_batch_interval");
-        }
-        roIExtractorConfig.MAX_QUEUED_FRAMES = roIExtractorConfig.BATCH_SIZE * 2;
-        if (jsonObject.has("frame_size")) {
-            roIExtractorConfig.MIXED_FRAME_SIZE = jsonObject.getInt("frame_size");
         }
         if (jsonObject.has("merge_threshold")) {
             roIExtractorConfig.MERGE_THRESHOLD = (float) jsonObject.getDouble("merge_threshold");
@@ -109,7 +105,6 @@ public class Config {
         } else {
             inferenceEngineConfig.FULL_FRAME_SIZE = inferenceEngineConfig.FRAME_SIZE;
         }
-        inferenceEngineConfig.MAX_QUEUED_REQUESTS = inferenceEngineConfig.NUM_WORKERS * 2;
         if (jsonObject.has("per_roi_keep_ratio")) {
             inferenceEngineConfig.PER_ROI_KEEP_RATIO = jsonObject.getBoolean("per_roi_keep_ratio");
         }
@@ -125,24 +120,6 @@ public class Config {
         }
         if (jsonObject.has("draw_confidence")) {
             patchReconstructorConfig.DRAW_CONFIDENCE = (float) jsonObject.getDouble("draw_confidence");
-        }
-
-        validate();
-    }
-
-    private void validate() throws IllegalArgumentException {
-        if (dispatcherConfig.USE_LOCAL_VIDEO) {
-            for (DispatcherConfig.VideoConfig videoConfig : dispatcherConfig.VIDEO_CONFIGS) {
-                if (videoConfig.PATH == null) {
-                    throw new IllegalArgumentException("All video paths should be specified");
-                }
-            }
-        }
-        if (!roIExtractorConfig.IS_BASELINE && roIExtractorConfig.MIXED_FRAME_SIZE != inferenceEngineConfig.FRAME_SIZE) {
-            throw new IllegalArgumentException("roIExtractorConfig.MIXED_FRAME_SIZE and inferenceEngineConfig.MIXED_FRAME_SIZE must be same");
-        }
-        if (roIExtractorConfig.MAX_QUEUED_FRAMES != -1 && roIExtractorConfig.MAX_QUEUED_FRAMES <= roIExtractorConfig.BATCH_SIZE) {
-            throw new IllegalArgumentException("roIExtractorConfig.MAX_QUEUED_FRAMES should be larger then roIExtractorConfig.BATCH_SIZE");
         }
     }
 

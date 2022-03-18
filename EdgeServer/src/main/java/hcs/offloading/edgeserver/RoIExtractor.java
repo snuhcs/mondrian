@@ -45,11 +45,11 @@ public class RoIExtractor implements Runnable {
     private final boolean IS_BASELINE;
     private final int BATCH_SIZE;
     private final int FULL_INFERENCE_BATCH_INTERVAL;
-    private final int MAX_QUEUED_FRAMES;
     private final int MIXED_FRAME_SIZE;
     private final float MERGE_THRESHOLD;
     private final int ROI_PADDING;
     private final RoIExtractorConfig.Method EXTRACTION_METHOD;
+    private final int MAX_QUEUED_FRAMES;
 
     static {
         if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
@@ -71,12 +71,12 @@ public class RoIExtractor implements Runnable {
 
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    RoIExtractor(RoIExtractorConfig config, Callback callback) {
+    RoIExtractor(RoIExtractorConfig config, Callback callback, int mixedFrameSize) {
         IS_BASELINE = config.IS_BASELINE;
         BATCH_SIZE = config.BATCH_SIZE;
         FULL_INFERENCE_BATCH_INTERVAL = config.FULL_INFERENCE_BATCH_INTERVAL;
-        MAX_QUEUED_FRAMES = config.MAX_QUEUED_FRAMES;
-        MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
+        MAX_QUEUED_FRAMES = BATCH_SIZE * 2;
+        MIXED_FRAME_SIZE = mixedFrameSize;
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
         ROI_PADDING = config.ROI_PADDING;
         EXTRACTION_METHOD = config.EXTRACTION_METHOD;

@@ -36,7 +36,7 @@ public class InferenceEngine {
         FRAME_SIZE = config.FRAME_SIZE;
         FULL_FRAME_SIZE = config.FULL_FRAME_SIZE;
         NUM_WORKERS = config.NUM_WORKERS;
-        MAX_QUEUED_REQUESTS = config.MAX_QUEUED_REQUESTS;
+        MAX_QUEUED_REQUESTS = NUM_WORKERS * 2;
 
         Classifier model = config.USE_YOLO_V4 ?
                 new YoloV4Classifier(assetManager, FRAME_SIZE, config.USE_TINY) :

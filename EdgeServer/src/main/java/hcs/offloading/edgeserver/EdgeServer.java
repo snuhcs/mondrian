@@ -98,7 +98,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
         synchronized (this) {
             mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, mViewCallback);
             mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, this, mAssetManager);
-            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, this);
+            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, this, mConfig.inferenceEngineConfig.FRAME_SIZE);
         }
     }
 
