@@ -75,13 +75,13 @@ public class Config {
             String method = String.valueOf(jsonObject.get("extraction_method"));
             switch (method) {
                 case "combined":
-                    roIExtractorConfig.EXTRACTION_METHOD = ExtractionMethod.COMBINED;
+                    roIExtractorConfig.EXTRACTION_METHOD = RoIExtractorConfig.Method.COMBINED;
                     break;
                 case "of":
-                    roIExtractorConfig.EXTRACTION_METHOD = ExtractionMethod.OF;
+                    roIExtractorConfig.EXTRACTION_METHOD = RoIExtractorConfig.Method.OF;
                     break;
                 case "pd":
-                    roIExtractorConfig.EXTRACTION_METHOD = ExtractionMethod.PD;
+                    roIExtractorConfig.EXTRACTION_METHOD = RoIExtractorConfig.Method.PD;
                     break;
             }
         }

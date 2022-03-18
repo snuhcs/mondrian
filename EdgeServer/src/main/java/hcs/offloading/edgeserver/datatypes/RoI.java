@@ -6,6 +6,11 @@ import android.graphics.Rect;
 import java.util.List;
 
 public class RoI {
+    public enum Type {
+        OF,
+        PD
+    }
+
     public final Frame frame;
     public final Rect position;
 
@@ -13,12 +18,12 @@ public class RoI {
     public final float heightScale;
     public final int[] packedLocation;
 
-    public final RoIType type;
+    public final Type type;
     public final String labelName;
 
     public List<BoundingBox> boundingBoxes;
 
-    public RoI(Frame frame, Rect position, RoIType type, String labelName) {
+    public RoI(Frame frame, Rect position, Type type, String labelName) {
         this.frame = frame;
         this.position = position;
         this.widthScale = 1f;

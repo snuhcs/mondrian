@@ -32,14 +32,12 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
-import hcs.offloading.edgeserver.config.ExtractionMethod;
 import hcs.offloading.edgeserver.config.RoIExtractorConfig;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.edgeserver.datatypes.MockProfiles;
 import hcs.offloading.edgeserver.datatypes.RoI;
-import hcs.offloading.edgeserver.datatypes.RoIType;
 
 public class RoIExtractor implements Runnable {
     private static final String TAG = RoIExtractor.class.getName();
@@ -51,7 +49,7 @@ public class RoIExtractor implements Runnable {
     private final int MIXED_FRAME_SIZE;
     private final float MERGE_THRESHOLD;
     private final int ROI_PADDING;
-    private final ExtractionMethod EXTRACTION_METHOD;
+    private final RoIExtractorConfig.Method EXTRACTION_METHOD;
 
     static {
         if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
@@ -245,17 +243,17 @@ public class RoIExtractor implements Runnable {
                 prevBitmap = Bitmap.createScaledBitmap(prevBitmap, currBitmap.getWidth(), currBitmap.getHeight(), false);
             }
             List<RoI> frameRoIs = new ArrayList<>();
-            if (EXTRACTION_METHOD.equals(ExtractionMethod.COMBINED) || EXTRACTION_METHOD.equals(ExtractionMethod.OF)) {
+            if (EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.COMBINED) || EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.OF)) {
                 List<BoundingBox> currentBoxes = createRoIWithInferenceResult(prevBitmap, currBitmap, prevBoxes);
                 List<RoI> opticalFlowRoIs = currentBoxes.stream()
-                        .map(bbx -> new RoI(currentFrame, bbx.location, RoIType.OF, bbx.labelName))
+                        .map(bbx -> new RoI(currentFrame, bbx.location, RoI.Type.OF, bbx.labelName))
                         .collect(Collectors.toList());
                 frameRoIs.addAll(opticalFlowRoIs);
                 prevBoxes = currentBoxes;
             }
-            if (EXTRACTION_METHOD.equals(ExtractionMethod.COMBINED) || EXTRACTION_METHOD.equals(ExtractionMethod.PD)) {
+            if (EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.COMBINED) || EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.PD)) {
                 List<RoI> pixelDiffRoIs = createRoIsFromDiff(prevBitmap, currBitmap).stream()
-                        .map(rect -> new RoI(currentFrame, rect, RoIType.PD, null))
+                        .map(rect -> new RoI(currentFrame, rect, RoI.Type.PD, null))
                         .collect(Collectors.toList());
                 frameRoIs.addAll(pixelDiffRoIs);
             }
@@ -292,10 +290,10 @@ public class RoIExtractor implements Runnable {
                         originalRoI0 = roi0;
                         originalRoI1 = roi1;
                         Rect newPosition = new Rect(newLeft, newTop, newRight, newBottom);
-                        RoIType roiType = RoIType.PD;
+                        RoI.Type roiType = RoI.Type.PD;
                         String roiLabel = null;
-                        if (roi0.type.equals(RoIType.OF) || roi1.type.equals(RoIType.OF)) {
-                            roiType = RoIType.OF;
+                        if (roi0.type.equals(RoI.Type.OF) || roi1.type.equals(RoI.Type.OF)) {
+                            roiType = RoI.Type.OF;
                             if (roi0.labelName != null && roi0.labelName.equals(roi1.labelName)) {
                                 roiLabel = roi0.labelName;
                             }
