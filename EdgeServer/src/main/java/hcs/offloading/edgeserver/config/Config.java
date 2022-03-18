@@ -92,18 +92,22 @@ public class Config {
             roIExtractorConfig.CLASS_AGNOSTIC_THRESHOLD = jsonObject.getInt("class_agnostic_threshold");
         }
 
+<<<<<<< HEAD
         if (jsonObject.has("use_yolo_v4")) {
             inferenceEngineConfig.USE_YOLO_V4 = jsonObject.getBoolean("use_yolo_v4");
         }
         if (jsonObject.has("use_tiny")) {
             inferenceEngineConfig.USE_TINY = jsonObject.getBoolean("use_tiny");
         }
+=======
+>>>>>>> master
         if (jsonObject.has("num_workers")) {
             inferenceEngineConfig.NUM_WORKERS = jsonObject.getInt("num_workers");
         }
         if (jsonObject.has("frame_size")) {
             inferenceEngineConfig.FRAME_SIZE = jsonObject.getInt("frame_size");
         }
+<<<<<<< HEAD
         if (jsonObject.has("full_frame_size")) {
             inferenceEngineConfig.FULL_FRAME_SIZE = jsonObject.getInt("full_frame_size");
         } else {
@@ -113,6 +117,8 @@ public class Config {
         if (jsonObject.has("per_roi_keep_ratio")) {
             inferenceEngineConfig.PER_ROI_KEEP_RATIO = jsonObject.getBoolean("per_roi_keep_ratio");
         }
+=======
+>>>>>>> master
 
         if (jsonObject.has("match_padding")) {
             patchReconstructorConfig.MATCH_PADDING = jsonObject.getInt("match_padding");
@@ -120,17 +126,24 @@ public class Config {
         if (jsonObject.has("use_iou_threshold")) {
             patchReconstructorConfig.USE_IOU_THRESHOLD = (float) jsonObject.getDouble("use_iou_threshold");
         }
+<<<<<<< HEAD
         if (jsonObject.has("log_path")) {
             patchReconstructorConfig.LOG_PATH = jsonObject.getString("log_path");
         }
         if (jsonObject.has("draw_confidence")) {
             patchReconstructorConfig.DRAW_CONFIDENCE = (float) jsonObject.getDouble("draw_confidence");
+=======
+
+        if (jsonObject.has("minimum_confidence")) {
+            utilsConfig.MINIMUM_CONFIDENCE = (float) jsonObject.getDouble("minimum_confidence");
+>>>>>>> master
         }
 
         validate();
     }
 
     private void validate() throws IllegalArgumentException {
+<<<<<<< HEAD
         if (dispatcherConfig.USE_LOCAL_VIDEO) {
             for (DispatcherConfig.VideoConfig videoConfig : dispatcherConfig.VIDEO_CONFIGS) {
                 if (videoConfig.PATH == null) {
@@ -146,6 +159,13 @@ public class Config {
 //        }
         if (roIExtractorConfig.MAX_QUEUED_FRAMES != -1 && roIExtractorConfig.MAX_QUEUED_FRAMES <= roIExtractorConfig.BATCH_SIZE) {
             throw new IllegalArgumentException("roIExtractorConfig.MAX_QUEUED_FRAMES should be larger then roIExtractorConfig.BATCH_SIZE");
+=======
+        if (!roIExtractorConfig.IS_BASELINE && roIExtractorConfig.MIXED_FRAME_SIZE != inferenceEngineConfig.FRAME_SIZE) {
+            throw new IllegalArgumentException("roIExtractorConfig.MIXED_FRAME_SIZE and inferenceEngineConfig.MIXED_FRAME_SIZE must be same");
+        }
+        if (roIExtractorConfig.IS_BASELINE && roIExtractorConfig.BATCH_SIZE != 1) {
+            throw new IllegalArgumentException("if is_baseline = true, roIExtractorConfig.BATCH_SIZE must be 1");
+>>>>>>> master
         }
     }
 
