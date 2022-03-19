@@ -203,8 +203,13 @@ public class EdgeDevice implements WebRTCCallback, RoIExtractor.Callback, Worker
 
     // RoIExtractor.Callback
     @Override
-    public InferenceRequest tryMixingAndGetInferenceRequest(RoI roi) {
-        return mPatchMixer.tryPackRoI(roi);
+    public InferenceRequest tryMixingAndGetInferenceRequest(Pair<String, Integer> ipIndex, RoI roi) {
+        return mPatchMixer.tryPackRoI(ipIndex, roi);
+    }
+
+    @Override
+    public InferenceRequest getMixedFrameRequest() {
+        return mPatchMixer.getMixedFrameRequest();
     }
 
     @Override
@@ -216,7 +221,7 @@ public class EdgeDevice implements WebRTCCallback, RoIExtractor.Callback, Worker
 
     // Worker.Callback
     @Override
-    public void enqueueInferenceResults(InferenceRequest request, List<BoundingBox> results) throws InterruptedException {
+    public void enqueueInferenceResults(InferenceRequest request, List<BoundingBox> results) {
         if (mPatchReconstructor != null) {
             mPatchReconstructor.enqueueInferenceResults(request, results);
         }
@@ -224,7 +229,7 @@ public class EdgeDevice implements WebRTCCallback, RoIExtractor.Callback, Worker
 
     // PatchReconstructor.Callback
     @Override
-    public void enqueueResult(String ip, int frameIndex, List<BoundingBox> results) {
+    public void enqueueResults(String ip, int frameIndex, List<BoundingBox> results) {
         if (mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
             VideoDispatcher dispatcher = mVideoDispatchers.get(ip);
             if (dispatcher != null) {

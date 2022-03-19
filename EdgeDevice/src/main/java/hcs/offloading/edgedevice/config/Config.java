@@ -61,6 +61,9 @@ public class Config {
         if (jsonObject.has("merge_threshold")) {
             roIExtractorConfig.MERGE_THRESHOLD = (float) jsonObject.getDouble("merge_threshold");
         }
+        if (jsonObject.has("max_optical_flow_interval")) {
+            roIExtractorConfig.MAX_OPTICAL_FLOW_INTERVAL = jsonObject.getInt("max_optical_flow_interval");
+        }
         if (jsonObject.has("roi_padding")) {
             roIExtractorConfig.ROI_PADDING = jsonObject.getInt("roi_padding");
         }

@@ -10,8 +10,10 @@ import android.util.Log;
 import android.util.Pair;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 
 import hcs.offloading.edgedevice.datatypes.InferenceRequest;
 import hcs.offloading.edgedevice.datatypes.RoI;
@@ -22,6 +24,7 @@ public class PatchMixer {
 
     private final int MIXED_FRAME_SIZE;
 
+    private final Set<Pair<String, Integer>> mPackedFrames = new HashSet<>();
     private final List<RoI> mPackedRoIs = new ArrayList<>();
     private final List<Rect> mFreeRects = new ArrayList<>();
 
@@ -40,8 +43,9 @@ public class PatchMixer {
         mFreeRects.add(new Rect(0, 0, MIXED_FRAME_SIZE, MIXED_FRAME_SIZE));
     }
 
-    public InferenceRequest tryPackRoI(RoI roi) {
+    public InferenceRequest tryPackRoI(Pair<String, Integer> ipIndex, RoI roi) {
         Log.v(TAG, "Start tryPackRoI : " + roi.frame.sourceIP + ", " + roi.frame.frameIndex);
+        mPackedFrames.add(ipIndex);
         int[] WH = roi.getResizedWidthHeight();
         synchronized (this) {
             ListIterator<Rect> iter = mFreeRects.listIterator();
@@ -70,7 +74,7 @@ public class PatchMixer {
             canvas.drawBitmap(roi.getResizedBitmap(), packedLocation[0], packedLocation[1], null);
         }
         reset();
-        return InferenceRequest.createMixedFrameRequest(bitmap, mPackedRoIs);
+        return InferenceRequest.createMixedFrameRequest(bitmap, mPackedRoIs, mPackedFrames);
     }
 
     private static boolean canFit(int[] wh, Rect rect) {

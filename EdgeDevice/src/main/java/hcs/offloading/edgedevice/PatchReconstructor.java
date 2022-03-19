@@ -28,7 +28,7 @@ public class PatchReconstructor implements Runnable {
     private final float DRAW_CONFIDENCE;
 
     public interface Callback {
-        void enqueueResult(String sourceIP, int frameIndex, List<BoundingBox> result);
+        void enqueueResults(String sourceIP, int frameIndex, List<BoundingBox> result);
     }
 
     private final Callback mCallback;
@@ -83,7 +83,7 @@ public class PatchReconstructor implements Runnable {
         if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.PER_ROI) {
             mResultsToReconstruct.add(new Pair<>(request, results));
         } else if (request.type == InferenceRequest.Type.FULL) {
-            mCallback.enqueueResult(request.sourceIP, request.frameIndex, results);
+            mCallback.enqueueResults(request.sourceIP, request.frameIndex, results);
         } else {
             throw new IllegalArgumentException("Wrong request type! " + request.type);
         }
@@ -116,7 +116,7 @@ public class PatchReconstructor implements Runnable {
                 Log.v(TAG, "Reconstructing time (us): " + (endTime - startTime) / 1e3);
 
                 for (Pair<String, Integer> ipIndex : reconstructedFrameResults.keySet()) {
-                    mCallback.enqueueResult(ipIndex.first, ipIndex.second, reconstructedFrameResults.get(ipIndex));
+                    mCallback.enqueueResults(ipIndex.first, ipIndex.second, reconstructedFrameResults.get(ipIndex));
                 }
             }
         } catch (InterruptedException e) {
@@ -184,8 +184,8 @@ public class PatchReconstructor implements Runnable {
 
     private Map<Pair<String, Integer>, List<BoundingBox>> createReconstructedResultHolder(InferenceRequest request) {
         Map<Pair<String, Integer>, List<BoundingBox>> resultHolder = new HashMap<>();
-        for (RoI roi : request.rois) {
-            resultHolder.put(new Pair<>(roi.getSourceIP(), roi.getFrameIndex()), new ArrayList<>());
+        for (Pair<String, Integer> ipDevice : request.ipDevices) {
+            resultHolder.put(new Pair<>(ipDevice.first, ipDevice.second), new ArrayList<>());
         }
         return resultHolder;
     }

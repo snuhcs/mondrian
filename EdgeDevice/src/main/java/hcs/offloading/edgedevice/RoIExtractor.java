@@ -5,6 +5,7 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
+import android.util.Pair;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
@@ -26,6 +27,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import hcs.offloading.edgedevice.config.RoIExtractorConfig;
@@ -43,6 +45,7 @@ public class RoIExtractor implements Runnable {
     private final boolean PACKING;
     private final int FULL_INFERENCE_INTERVAL;
     private final float MERGE_THRESHOLD;
+    private final int MAX_OPTICAL_FLOW_INTERVAL;
     private final int ROI_PADDING;
     private final boolean NEED_OF_ROI;
     private final boolean NEED_PD_ROI;
@@ -54,7 +57,9 @@ public class RoIExtractor implements Runnable {
     }
 
     public interface Callback {
-        InferenceRequest tryMixingAndGetInferenceRequest(RoI roi);
+        InferenceRequest tryMixingAndGetInferenceRequest(Pair<String, Integer> ipIndex, RoI roi);
+
+        InferenceRequest getMixedFrameRequest();
 
         void enqueueInferenceRequest(InferenceRequest inferenceRequest);
     }
@@ -62,6 +67,7 @@ public class RoIExtractor implements Runnable {
     private final Queue<Frame> mFrames = new LinkedList<>();
     private final Map<Integer, List<BoundingBox>> mResults = new HashMap<>();
     private int mLastQueriedIndex = -1;
+    private int mCountFramesAfterFullInference = 0;
 
     private final Thread mRoIExtractorThread;
     private final Callback mCallback;
@@ -71,10 +77,11 @@ public class RoIExtractor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.P)
     RoIExtractor(RoIExtractorConfig config, Callback callback, String ip) {
-        TAG = RoIExtractor.class.getName() + " " + ip;
+        TAG = ip;
         PACKING = config.PACKING;
         FULL_INFERENCE_INTERVAL = config.FULL_INFERENCE_INTERVAL;
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
+        MAX_OPTICAL_FLOW_INTERVAL = config.MAX_OPTICAL_FLOW_INTERVAL;
         ROI_PADDING = config.ROI_PADDING;
         NEED_OF_ROI = config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.COMBINED) ||
                 config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.OF);
@@ -119,6 +126,7 @@ public class RoIExtractor implements Runnable {
 
     private Frame getFrame() throws InterruptedException {
         Log.v(TAG, "Start getFrame()");
+        mCountFramesAfterFullInference++;
         Frame frame;
         synchronized (mFrames) {
             while (mFrames.size() <= 0) {
@@ -140,6 +148,7 @@ public class RoIExtractor implements Runnable {
         Log.v(TAG, "End enqueueResults() : " + frameIndex);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     List<BoundingBox> getResults(int frameIndex) throws InterruptedException {
         mLastQueriedIndex = frameIndex;
         List<BoundingBox> results;
@@ -148,8 +157,12 @@ public class RoIExtractor implements Runnable {
                 mResults.wait();
             }
             results = mResults.get(frameIndex);
-            for (int removeIndex : mResults.keySet()) {
-                mResults.remove(removeIndex);
+            Set<Integer> removeIndices = mResults.keySet().stream()
+                    .filter(index -> index <= frameIndex).collect(Collectors.toSet());
+            for (int removeIndex : removeIndices) {
+                if (removeIndex <= frameIndex) {
+                    mResults.remove(removeIndex);
+                }
             }
             mResults.notifyAll();
         }
@@ -161,19 +174,35 @@ public class RoIExtractor implements Runnable {
     @Override
     public void run() {
         try {
-            int numInferencedFrames = 0;
+            int mCountMixedInference = FULL_INFERENCE_INTERVAL;
             List<BoundingBox> prevResult = null;
             Frame prevFrame = null;
             Frame currFrame = getFrame();
             while (true) {
                 Log.v(TAG, "Prev: " + (prevFrame != null ? prevFrame.frameIndex : -1) + " Curr: " + currFrame.frameIndex);
-                if (numInferencedFrames % (FULL_INFERENCE_INTERVAL + 1) == 0) {
-                    numInferencedFrames++;
+                if (mCountMixedInference >= FULL_INFERENCE_INTERVAL) {
+                    mCountMixedInference = 0;
+                    mCountFramesAfterFullInference = 0;
                     mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(currFrame));
                     prevFrame = currFrame;
                     currFrame = getFrame();
                     if (NEED_OF_ROI) {
                         Log.v(TAG, "Start getResults() FULL : " + prevFrame.frameIndex);
+                        prevResult = getResults(prevFrame.frameIndex);
+                    }
+                    continue;
+                }
+
+                if (mCountFramesAfterFullInference > MAX_OPTICAL_FLOW_INTERVAL) {
+                    mCountMixedInference = 0;
+                    mCountFramesAfterFullInference = 0;
+                    InferenceRequest request = mCallback.getMixedFrameRequest();
+                    mCallback.enqueueInferenceRequest(request);
+                    mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(currFrame));
+                    prevFrame = currFrame;
+                    currFrame = getFrame();
+                    if (NEED_OF_ROI) {
+                        Log.v(TAG, "Start getResults() FULL with Max OF : " + prevFrame.frameIndex);
                         prevResult = getResults(prevFrame.frameIndex);
                     }
                     continue;
@@ -203,7 +232,8 @@ public class RoIExtractor implements Runnable {
                 rois = resizeRoIs(rois);
                 InferenceRequest request = null;
                 for (RoI roi : rois) {
-                    request = mCallback.tryMixingAndGetInferenceRequest(roi);
+                    request = mCallback.tryMixingAndGetInferenceRequest(
+                            new Pair<>(currFrame.sourceIP, currFrame.frameIndex), roi);
                     if (request != null) {
                         break;
                     }
@@ -217,7 +247,8 @@ public class RoIExtractor implements Runnable {
                                 .collect(Collectors.toList());
                     }
                 } else {
-                    numInferencedFrames++;
+                    mCountMixedInference++;
+                    mCountFramesAfterFullInference = 0;
                     mCallback.enqueueInferenceRequest(request);
                     if (NEED_OF_ROI) {
                         if (prevFrame.frameIndex != mLastQueriedIndex) {

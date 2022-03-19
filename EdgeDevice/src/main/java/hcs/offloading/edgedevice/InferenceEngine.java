@@ -79,20 +79,20 @@ public class InferenceEngine {
         Log.d(TAG, "closed");
     }
 
-    public void enqueueRequest(InferenceRequest inferenceRequest) {
-        //Log.v(TAG, "Start enqueueRequest(InferenceRequest inferenceRequest)");
+    public void enqueueRequest(InferenceRequest request) {
+        Log.v(TAG, "Start enqueueRequest() : " + request.type);
         try {
             synchronized (mInferenceRequests) {
                 while (MAX_QUEUED_REQUESTS > 0 && mInferenceRequests.size() > MAX_QUEUED_REQUESTS) {
                     mInferenceRequests.wait();
                 }
-                mInferenceRequests.add(inferenceRequest);
+                mInferenceRequests.add(request);
                 mInferenceRequests.notifyAll();
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
-        //Log.v(TAG, "End enqueueRequest(InferenceRequest inferenceRequest)");
+        Log.v(TAG, "End enqueueRequest() : " + request.type);
     }
 
     public InferenceRequest getRequest() throws InterruptedException {
