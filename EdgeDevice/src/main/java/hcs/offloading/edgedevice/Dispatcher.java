@@ -14,6 +14,7 @@ import org.webrtc.VideoSink;
 import org.webrtc.VideoTrack;
 
 import java.util.List;
+import java.util.Map;
 
 import hcs.offloading.edgedevice.config.RoIExtractorConfig;
 import hcs.offloading.edgedevice.datatypes.BoundingBox;
@@ -83,8 +84,12 @@ public class Dispatcher implements VideoSink {
         mRoIExtractor.enqueueFrame(Frame.createSingleFrame(bitmap, mSourceIP, mFrameIndex++));
     }
 
-    void enqueueRequest(int frameIndex, List<BoundingBox> results) {
+    void enqueueResults(int frameIndex, List<BoundingBox> results) {
         mRoIExtractor.enqueueResults(frameIndex, results);
+    }
+
+    void enqueueResults(Map<Integer, List<BoundingBox>> results) {
+        mRoIExtractor.enqueueResults(results);
     }
 
     void handleSdpAndAnswer(String message) {

@@ -137,7 +137,6 @@ public class Worker implements Runnable {
                         inferenceTimeUs += (int) ((endTime - startTime) / 1e3);
                         roiBoxes = Utils.filterPerson(roiBoxes);
                         roi.setBoundingBoxes(roiBoxes);
-                        results.addAll(roiBoxes);
                     }
                     request.preprocessingTimeUs = preprocessingTimeUs;
                     request.inferenceTimeUs = inferenceTimeUs;

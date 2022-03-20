@@ -9,8 +9,8 @@ public class RoIExtractorConfig {
 
     public boolean PACKING = true;
     public int FULL_INFERENCE_INTERVAL = 4;
+    public float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.3f;
     public float MERGE_THRESHOLD = 0.5f;
-    public int MAX_OPTICAL_FLOW_INTERVAL = 30;
     public int ROI_PADDING = 3;
     public Method EXTRACTION_METHOD = Method.COMBINED;
     public int PERSON_THRESHOLD = 160;

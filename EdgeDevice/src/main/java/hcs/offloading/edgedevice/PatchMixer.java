@@ -10,11 +10,16 @@ import android.util.Log;
 import android.util.Pair;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+import hcs.offloading.edgedevice.config.PatchMixerConfig;
+import hcs.offloading.edgedevice.datatypes.Frame;
 import hcs.offloading.edgedevice.datatypes.InferenceRequest;
 import hcs.offloading.edgedevice.datatypes.RoI;
 
@@ -23,12 +28,15 @@ public class PatchMixer {
     private static final String TAG = PatchMixer.class.getName();
 
     private final int MIXED_FRAME_SIZE;
+    private final int MAX_OPTICAL_FLOW_INTERVAL;
 
-    private final Set<Pair<String, Integer>> mPackedFrames = new HashSet<>();
-    private final List<RoI> mPackedRoIs = new ArrayList<>();
-    private final List<Rect> mFreeRects = new ArrayList<>();
+    private Set<Frame> mPackedFrames;
+    private List<RoI> mPackedRoIs;
+    private List<Rect> mFreeRects;
+    private final Map<String, Integer> mPackStartFrameIndex = new HashMap<>();
 
-    public PatchMixer(int mixedFrameSize) {
+    public PatchMixer(PatchMixerConfig config, int mixedFrameSize) {
+        MAX_OPTICAL_FLOW_INTERVAL = config.MAX_OPTICAL_FLOW_INTERVAL;
         MIXED_FRAME_SIZE = mixedFrameSize;
         reset();
     }
@@ -38,34 +46,52 @@ public class PatchMixer {
     }
 
     private void reset() {
-        mPackedRoIs.clear();
-        mFreeRects.clear();
+        mPackedFrames = new HashSet<>();
+        mPackedRoIs = new ArrayList<>();
+        mFreeRects = new ArrayList<>();
         mFreeRects.add(new Rect(0, 0, MIXED_FRAME_SIZE, MIXED_FRAME_SIZE));
     }
 
-    public InferenceRequest tryPackRoI(Pair<String, Integer> ipIndex, RoI roi) {
-        Log.v(TAG, "Start tryPackRoI : " + roi.frame.sourceIP + ", " + roi.frame.frameIndex);
-        mPackedFrames.add(ipIndex);
-        int[] WH = roi.getResizedWidthHeight();
+    public InferenceRequest tryPackRoIs(Frame frame, List<RoI> rois) {
+        Log.v(TAG, "Start tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
         synchronized (this) {
-            ListIterator<Rect> iter = mFreeRects.listIterator();
-            while (iter.hasNext()) {
-                Rect freeRect = iter.next();
-                if (canFit(WH, freeRect)) {
-                    iter.remove();
-                    mPackedRoIs.add(roi.pack(new int[]{freeRect.left, freeRect.top}));
-                    Pair<Rect, Rect> newFreeRectPair = splitFreeRect(WH, freeRect);
-                    mFreeRects.add(newFreeRectPair.first);
-                    mFreeRects.add(newFreeRectPair.second);
-                    return null;
-                }
+            mPackedFrames.add(frame);
+            if (!mPackStartFrameIndex.containsKey(frame.sourceIP)) {
+                mPackStartFrameIndex.put(frame.sourceIP, frame.frameIndex);
             }
-            Log.v(TAG, "End tryPackRoI : " + roi.frame.sourceIP + ", " + roi.frame.frameIndex);
-            return getMixedFrameRequest();
+            int numPackedFrames = frame.frameIndex - mPackStartFrameIndex.get(frame.sourceIP) + 1;
+            boolean needInference = numPackedFrames >= MAX_OPTICAL_FLOW_INTERVAL;
+            boolean isAllPacked = true;
+            for (RoI roi : rois) {
+                int[] WH = roi.getResizedWidthHeight();
+                ListIterator<Rect> iter = mFreeRects.listIterator();
+                boolean isPacked = false;
+                while (iter.hasNext()) {
+                    Rect freeRect = iter.next();
+                    if (canFit(WH, freeRect)) {
+                        iter.remove();
+                        mPackedRoIs.add(roi.pack(new int[]{freeRect.left, freeRect.top}));
+                        Pair<Rect, Rect> newFreeRectPair = splitFreeRect(WH, freeRect);
+                        mFreeRects.add(newFreeRectPair.first);
+                        mFreeRects.add(newFreeRectPair.second);
+                        isPacked = true;
+                        break;
+                    }
+                }
+                isAllPacked &= isPacked;
+            }
+            Log.v(TAG, "End tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
+            if (!isAllPacked || needInference) {
+                mPackStartFrameIndex.remove(frame.sourceIP);
+                InferenceRequest request = getMixedFrameRequest();
+                reset();
+                return request;
+            }
         }
+        return null;
     }
 
-    public InferenceRequest getMixedFrameRequest() {
+    private InferenceRequest getMixedFrameRequest() {
         Bitmap bitmap = Bitmap.createBitmap(MIXED_FRAME_SIZE, MIXED_FRAME_SIZE, Bitmap.Config.ARGB_8888);
         bitmap.eraseColor(Color.BLACK);
         Canvas canvas = new Canvas(bitmap);
@@ -73,8 +99,7 @@ public class PatchMixer {
             int[] packedLocation = roi.packedLocation;
             canvas.drawBitmap(roi.getResizedBitmap(), packedLocation[0], packedLocation[1], null);
         }
-        reset();
-        return InferenceRequest.createMixedFrameRequest(bitmap, mPackedRoIs, mPackedFrames);
+        return InferenceRequest.createMixedFrameRequest(bitmap, mPackedFrames, mPackedRoIs);
     }
 
     private static boolean canFit(int[] wh, Rect rect) {

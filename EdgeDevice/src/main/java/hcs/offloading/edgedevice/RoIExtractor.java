@@ -44,8 +44,8 @@ public class RoIExtractor implements Runnable {
 
     private final boolean PACKING;
     private final int FULL_INFERENCE_INTERVAL;
+    private final float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD;
     private final float MERGE_THRESHOLD;
-    private final int MAX_OPTICAL_FLOW_INTERVAL;
     private final int ROI_PADDING;
     private final boolean NEED_OF_ROI;
     private final boolean NEED_PD_ROI;
@@ -57,9 +57,7 @@ public class RoIExtractor implements Runnable {
     }
 
     public interface Callback {
-        InferenceRequest tryMixingAndGetInferenceRequest(Pair<String, Integer> ipIndex, RoI roi);
-
-        InferenceRequest getMixedFrameRequest();
+        InferenceRequest tryMixingAndGetInferenceRequest(Frame frame, List<RoI> rois);
 
         void enqueueInferenceRequest(InferenceRequest inferenceRequest);
     }
@@ -67,7 +65,6 @@ public class RoIExtractor implements Runnable {
     private final Queue<Frame> mFrames = new LinkedList<>();
     private final Map<Integer, List<BoundingBox>> mResults = new HashMap<>();
     private int mLastQueriedIndex = -1;
-    private int mCountFramesAfterFullInference = 0;
 
     private final Thread mRoIExtractorThread;
     private final Callback mCallback;
@@ -80,15 +77,14 @@ public class RoIExtractor implements Runnable {
         TAG = ip;
         PACKING = config.PACKING;
         FULL_INFERENCE_INTERVAL = config.FULL_INFERENCE_INTERVAL;
+        OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = config.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD;
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
-        MAX_OPTICAL_FLOW_INTERVAL = config.MAX_OPTICAL_FLOW_INTERVAL;
         ROI_PADDING = config.ROI_PADDING;
         NEED_OF_ROI = config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.COMBINED) ||
                 config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.OF);
         NEED_PD_ROI = config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.COMBINED) ||
                 config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.PD);
         NEED_ROI_MERGING = config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.COMBINED);
-        assert !(!PACKING && NEED_OF_ROI); // if no packing, no optical flow
 
         mMockProfiles = new MockProfiles(config.PERSON_THRESHOLD, config.CLASS_AGNOSTIC_THRESHOLD);
 
@@ -126,7 +122,6 @@ public class RoIExtractor implements Runnable {
 
     private Frame getFrame() throws InterruptedException {
         Log.v(TAG, "Start getFrame()");
-        mCountFramesAfterFullInference++;
         Frame frame;
         synchronized (mFrames) {
             while (mFrames.size() <= 0) {
@@ -148,8 +143,20 @@ public class RoIExtractor implements Runnable {
         Log.v(TAG, "End enqueueResults() : " + frameIndex);
     }
 
+    void enqueueResults(Map<Integer, List<BoundingBox>> results) {
+        Log.v(TAG, "Start enqueueResults() : MIXED");
+        synchronized (mResults) {
+            for (Map.Entry<Integer, List<BoundingBox>> idxBoxes : results.entrySet()) {
+                mResults.put(idxBoxes.getKey(), idxBoxes.getValue());
+            }
+            mResults.notifyAll();
+        }
+        Log.v(TAG, "End enqueueResults() : MIXED");
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.N)
     List<BoundingBox> getResults(int frameIndex) throws InterruptedException {
+        Log.v(TAG, "Start getResults() : " + frameIndex);
         mLastQueriedIndex = frameIndex;
         List<BoundingBox> results;
         synchronized (mResults) {
@@ -174,89 +181,72 @@ public class RoIExtractor implements Runnable {
     @Override
     public void run() {
         try {
-            int mCountMixedInference = FULL_INFERENCE_INTERVAL;
-            List<BoundingBox> prevResult = null;
+            int mCountMixedFrameInference = FULL_INFERENCE_INTERVAL;
+            boolean updateFrame = true;
+            boolean useInferenceResults = false;
             Frame prevFrame = null;
-            Frame currFrame = getFrame();
+            Frame currFrame = null;
+            List<RoI> opticalFlowRoIs = null;
             while (true) {
+                /* Cases
+                 * 1. Full frame inference
+                 *   1.1. When mixed frame inference count > FULL_INFERENCE_INTERVAL
+                 * 2. Mixed frame inference
+                 *   2.1. When mixed frame is full
+                 *   2.2. When mixed frame count > MAX_OPTICAL_FLOW_INTERVAL
+                 */
+                if (updateFrame) {
+                    if (prevFrame != null) {
+                        prevFrame.bitmap.recycle();
+                    }
+                    prevFrame = currFrame != null ? currFrame.copy() : null;
+                    currFrame = getFrame();
+                }
+                updateFrame = true;
+
                 Log.v(TAG, "Prev: " + (prevFrame != null ? prevFrame.frameIndex : -1) + " Curr: " + currFrame.frameIndex);
-                if (mCountMixedInference >= FULL_INFERENCE_INTERVAL) {
-                    mCountMixedInference = 0;
-                    mCountFramesAfterFullInference = 0;
+                if (mCountMixedFrameInference >= FULL_INFERENCE_INTERVAL) {
                     mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(currFrame));
-                    prevFrame = currFrame;
-                    currFrame = getFrame();
-                    if (NEED_OF_ROI) {
-                        Log.v(TAG, "Start getResults() FULL : " + prevFrame.frameIndex);
-                        prevResult = getResults(prevFrame.frameIndex);
-                    }
-                    continue;
-                }
-
-                if (mCountFramesAfterFullInference > MAX_OPTICAL_FLOW_INTERVAL) {
-                    mCountMixedInference = 0;
-                    mCountFramesAfterFullInference = 0;
-                    InferenceRequest request = mCallback.getMixedFrameRequest();
-                    mCallback.enqueueInferenceRequest(request);
-                    mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(currFrame));
-                    prevFrame = currFrame;
-                    currFrame = getFrame();
-                    if (NEED_OF_ROI) {
-                        Log.v(TAG, "Start getResults() FULL with Max OF : " + prevFrame.frameIndex);
-                        prevResult = getResults(prevFrame.frameIndex);
-                    }
-                    continue;
-                }
-
-                List<RoI> rois = new ArrayList<>();
-                List<RoI> opticalFlowRoIs = null;
-                if (NEED_OF_ROI) {
-                    opticalFlowRoIs = createRoIWithInferenceResult(prevFrame, currFrame, prevResult);
-                    rois.addAll(opticalFlowRoIs);
-                }
-                if (NEED_PD_ROI) {
-                    List<RoI> pixelDiffRoIs = createRoIsFromDiff(prevFrame, currFrame);
-                    rois.addAll(pixelDiffRoIs);
-                }
-                if (NEED_ROI_MERGING) {
-                    mergeSingleFrameRoIs(rois);
-                }
-
-                if (!PACKING) {
-                    mCallback.enqueueInferenceRequest(InferenceRequest.createSingleRoIFrameRequest(rois));
-                    prevFrame = currFrame;
-                    currFrame = getFrame();
-                    continue;
-                }
-
-                rois = resizeRoIs(rois);
-                InferenceRequest request = null;
-                for (RoI roi : rois) {
-                    request = mCallback.tryMixingAndGetInferenceRequest(
-                            new Pair<>(currFrame.sourceIP, currFrame.frameIndex), roi);
-                    if (request != null) {
-                        break;
-                    }
-                }
-                if (request == null) {
-                    prevFrame = currFrame;
-                    currFrame = getFrame();
-                    if (NEED_OF_ROI) {
-                        prevResult = opticalFlowRoIs.stream()
-                                .map(roi -> new BoundingBox(roi.location, 0f, roi.labelName))
-                                .collect(Collectors.toList());
-                    }
+                    mCountMixedFrameInference = 0;
+                    useInferenceResults = true;
                 } else {
-                    mCountMixedInference++;
-                    mCountFramesAfterFullInference = 0;
-                    mCallback.enqueueInferenceRequest(request);
+                    List<RoI> rois = new ArrayList<>();
+
                     if (NEED_OF_ROI) {
-                        if (prevFrame.frameIndex != mLastQueriedIndex) {
-                            Log.v(TAG, "Start getResults() MIXED : " + prevFrame.frameIndex);
-                            prevResult = getResults(prevFrame.frameIndex);
+                        List<BoundingBox> prevResults;
+                        if (useInferenceResults) {
+                            prevResults = getResults(prevFrame.frameIndex).stream()
+                                    .filter(box -> box.confidence > OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD)
+                                    .collect(Collectors.toList());
                         } else {
-                            prevFrame = currFrame;
-                            currFrame = getFrame();
+                            prevResults = opticalFlowRoIs.stream()
+                                    .map(roi -> new BoundingBox(roi.location, 1f, roi.labelName))
+                                    .collect(Collectors.toList());
+                        }
+                        opticalFlowRoIs = createRoIWithInferenceResult(prevFrame, currFrame, prevResults);
+                        rois.addAll(opticalFlowRoIs);
+                    }
+                    if (NEED_PD_ROI) {
+                        List<RoI> pixelDiffRoIs = createRoIsFromDiff(prevFrame, currFrame);
+                        rois.addAll(pixelDiffRoIs);
+                    }
+                    if (NEED_ROI_MERGING) {
+                        mergeSingleFrameRoIs(rois);
+                    }
+
+                    if (!PACKING) {
+                        mCallback.enqueueInferenceRequest(InferenceRequest.createPerRoIInferenceRequest(rois));
+                    } else {
+                        rois = resizeRoIs(rois);
+                        InferenceRequest request = mCallback.tryMixingAndGetInferenceRequest(currFrame, rois);
+                        if (request == null) {
+                            useInferenceResults = false;
+                        } else {
+                            mCountMixedFrameInference++;
+                            mCallback.enqueueInferenceRequest(request);
+                            if (prevFrame.frameIndex != mLastQueriedIndex) {
+                                updateFrame = false;
+                            }
                         }
                     }
                 }
@@ -287,10 +277,10 @@ public class RoIExtractor implements Runnable {
                     RoI roi1 = rois.get(j);
                     float intersection = hcs.offloading.edgedevice.Utils.box_intersection(roi0.location, roi1.location);
                     if (intersection / roi0.getArea() > MERGE_THRESHOLD || intersection / roi1.getArea() > MERGE_THRESHOLD) {
-                        int newTop = Math.min(roi0.location.top, roi1.location.top);
-                        int newBottom = Math.max(roi0.location.bottom, roi1.location.bottom);
-                        int newRight = Math.max(roi0.location.right, roi1.location.right);
                         int newLeft = Math.min(roi0.location.left, roi1.location.left);
+                        int newTop = Math.min(roi0.location.top, roi1.location.top);
+                        int newRight = Math.max(roi0.location.right, roi1.location.right);
+                        int newBottom = Math.max(roi0.location.bottom, roi1.location.bottom);
                         if (newLeft >= newRight || newTop >= newBottom) {
                             continue;
                         }
@@ -327,7 +317,9 @@ public class RoIExtractor implements Runnable {
         final int width = currFrame.bitmap.getWidth();
         final int height = currFrame.bitmap.getHeight();
 
-        List<Rect> boundingRects = boundingBoxes.stream().map(bbx -> bbx.location).collect(Collectors.toList());
+        List<Rect> boundingRects = boundingBoxes.stream()
+                .map(bbx -> bbx.location)
+                .collect(Collectors.toList());
 
         List<RoI> opticalFlowRoIs = new ArrayList<>();
         if (!boundingBoxes.isEmpty()) {
@@ -351,15 +343,20 @@ public class RoIExtractor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private int[][] getOpticalFlowForBoundingBoxes(Bitmap f0, Bitmap f1, List<Rect> boundingBoxes) {
-        List<Point> centroids = boundingBoxes.stream().map(bbx -> new Point(bbx.centerX(), bbx.centerY())).collect(Collectors.toList());
-        MatOfPoint2f p0 = new MatOfPoint2f(), p1 = new MatOfPoint2f();
-        p0.fromList(centroids);
-        Mat f1_gray = convertBitmapToGrayMat(f0), f2_gray = convertBitmapToGrayMat(f1);
-
+        Mat f0_gray = new Mat();
+        Mat f1_gray = new Mat();
+        MatOfPoint2f p0 = new MatOfPoint2f();
+        MatOfPoint2f p1 = new MatOfPoint2f();
         MatOfByte status = new MatOfByte();
         MatOfFloat err = new MatOfFloat();
+
+        convertBitmapToGrayMat(f0, f0_gray);
+        convertBitmapToGrayMat(f1, f1_gray);
+
+        List<Point> centroids = boundingBoxes.stream().map(bbx -> new Point(bbx.centerX(), bbx.centerY())).collect(Collectors.toList());
+        p0.fromList(centroids);
         TermCriteria criteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 10, 0.03);
-        Video.calcOpticalFlowPyrLK(f1_gray, f2_gray, p0, p1, status, err, new Size(15, 15), 2, criteria);
+        Video.calcOpticalFlowPyrLK(f0_gray, f1_gray, p0, p1, status, err, new Size(15, 15), 2, criteria);
 
         byte[] StatusArr = status.toArray();
         Point[] p1Arr = p1.toArray();
@@ -375,54 +372,66 @@ public class RoIExtractor implements Runnable {
             }
         }
 
+        f0_gray.release();
+        f1_gray.release();
+        p0.release();
+        p1.release();
+        status.release();
+        err.release();
         return shifts;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private static List<RoI> createRoIsFromDiff(Frame prevFrame, Frame currFrame) {
-        Mat img_0_gray = convertBitmapToGrayMat(prevFrame.bitmap);
-        Mat img_1_gray = convertBitmapToGrayMat(currFrame.bitmap);
+        Mat img_0_gray = new Mat();
+        Mat img_1_gray = new Mat();
+        convertBitmapToGrayMat(prevFrame.bitmap, img_0_gray);
+        convertBitmapToGrayMat(currFrame.bitmap, img_1_gray);
 
-        Mat diff = calculateDiffAndThreshold(img_0_gray, img_1_gray);
-        Mat dilated = cannyEdgeDetection(diff);
+        Mat mat = img_1_gray.clone();
+        calculateDiffAndThreshold(img_0_gray, img_1_gray, mat);
+        cannyEdgeDetection(mat);
 
         ArrayList<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
-        Imgproc.findContours(dilated, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        List<Rect> locations = getBoxesFromContours(contours, currFrame.bitmap);
-        return locations.stream()
+        Imgproc.findContours(mat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        List<Rect> locations = getBoxesFromContours(contours);
+        List<RoI> rois = locations.stream()
                 .map(location -> new RoI(currFrame, location, RoI.Type.PD, null))
                 .collect(Collectors.toList());
+
+        img_0_gray.release();
+        img_1_gray.release();
+        hierarchy.release();
+        mat.release();
+        for (MatOfPoint contour : contours) {
+            contour.release();
+        }
+        return rois;
     }
 
-    private static Mat convertBitmapToGrayMat(Bitmap original) {
+    private static void convertBitmapToGrayMat(Bitmap original, Mat gray) {
         Mat originalMat = new Mat();
         Utils.bitmapToMat(original, originalMat);
-        Mat grayMat = new Mat();
-        Imgproc.cvtColor(originalMat, grayMat, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.cvtColor(originalMat, gray, Imgproc.COLOR_BGR2GRAY);
         originalMat.release();
-        return grayMat;
     }
 
-    private static Mat calculateDiffAndThreshold(Mat frame0, Mat frame1) {
-        Mat diff = frame1.clone();
+    private static void calculateDiffAndThreshold(Mat frame0, Mat frame1, Mat diff) {
         Core.absdiff(frame0, frame1, diff);
         for (int i = 0; i < 3; i++) {
             Imgproc.dilate(diff, diff, Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3, 3)), new Point(0, 0), i + 1);
         }
         Imgproc.threshold(diff, diff, 30, 255, Imgproc.THRESH_BINARY);
-        return diff;
     }
 
-    private static Mat cannyEdgeDetection(Mat diff) {
-        Imgproc.GaussianBlur(diff, diff, new Size(3, 3), 0);
-        Imgproc.Canny(diff, diff, 120, 255, 3, true);
-        Imgproc.dilate(diff, diff, Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5)), new Point(0, 0), 1);
-        return diff;
+    private static void cannyEdgeDetection(Mat mat) {
+        Imgproc.GaussianBlur(mat, mat, new Size(3, 3), 0);
+        Imgproc.Canny(mat, mat, 120, 255, 3, true);
+        Imgproc.dilate(mat, mat, Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5)), new Point(0, 0), 1);
     }
 
-    private static List<Rect> getBoxesFromContours(List<MatOfPoint> contours, Bitmap frame) {
+    private static List<Rect> getBoxesFromContours(List<MatOfPoint> contours) {
         List<Rect> boxes = new ArrayList<>();
         for (MatOfPoint contour : contours) {
             MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
@@ -438,6 +447,9 @@ public class RoIExtractor implements Runnable {
             if (location.left < location.right && location.top < location.bottom) {
                 boxes.add(location);
             }
+            contour2f.release();
+            approxCurve.release();
+            points.release();
         }
         return boxes;
     }

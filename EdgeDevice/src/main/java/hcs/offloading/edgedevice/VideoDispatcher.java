@@ -14,6 +14,7 @@ import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
 import java.util.List;
+import java.util.Map;
 
 import hcs.offloading.edgedevice.config.DispatcherConfig;
 import hcs.offloading.edgedevice.config.RoIExtractorConfig;
@@ -77,8 +78,12 @@ public class VideoDispatcher extends CustomCapturer {
         captureThread.start();
     }
 
-    void enqueueRequest(int frameIndex, List<BoundingBox> results) {
+    void enqueueResults(int frameIndex, List<BoundingBox> results) {
         mRoIExtractor.enqueueResults(frameIndex, results);
+    }
+
+    void enqueueResults(Map<Integer, List<BoundingBox>> results) {
+        mRoIExtractor.enqueueResults(results);
     }
 
     public void close() {

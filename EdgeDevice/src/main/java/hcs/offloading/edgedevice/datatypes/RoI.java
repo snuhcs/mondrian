@@ -14,8 +14,7 @@ public class RoI {
     public final Frame frame;
     public final Rect location;
 
-    public final float widthScale;
-    public final float heightScale;
+    public final float scale;
     public final int[] packedLocation;
 
     public final Type type;
@@ -26,18 +25,16 @@ public class RoI {
     public RoI(Frame frame, Rect location, Type type, String labelName) {
         this.frame = frame;
         this.location = location;
-        this.widthScale = 1f;
-        this.heightScale = 1f;
+        this.scale = 1f;
         this.packedLocation = null;
         this.type = type;
         this.labelName = labelName;
     }
 
-    private RoI(RoI roi, float widthScale, float heightScale) {
+    private RoI(RoI roi, float scale) {
         this.frame = roi.frame;
         this.location = roi.location;
-        this.widthScale = widthScale;
-        this.heightScale = heightScale;
+        this.scale = scale;
         this.packedLocation = roi.packedLocation;
         this.type = roi.type;
         this.labelName = roi.labelName;
@@ -46,8 +43,7 @@ public class RoI {
     private RoI(RoI roi, int[] packedLocation) {
         this.frame = roi.frame;
         this.location = roi.location;
-        this.widthScale = roi.widthScale;
-        this.heightScale = roi.heightScale;
+        this.scale = roi.scale;
         this.packedLocation = packedLocation;
         this.type = roi.type;
         this.labelName = roi.labelName;
@@ -57,17 +53,10 @@ public class RoI {
         return Bitmap.createBitmap(frame.bitmap, location.left, location.top, location.width(), location.height());
     }
 
-    public boolean isPacked() {
-        return packedLocation != null;
-    }
-
     public RoI resize(int lengthThreshold) {
-        float widthScale = Math.min(1f, (float) lengthThreshold / location.width());
-        float heightScale = Math.min(1f, (float) lengthThreshold / location.height());
-        widthScale = Math.min(widthScale, heightScale);
-        heightScale = widthScale;
-        if (widthScale != 1f || heightScale != 1f) {
-            return new RoI(this, widthScale, heightScale);
+        int maxWidthHeight = Math.max(location.width(), location.height());
+        if (maxWidthHeight > lengthThreshold) {
+            return new RoI(this, (float) lengthThreshold / maxWidthHeight);
         }
         return this;
     }
@@ -82,9 +71,8 @@ public class RoI {
 
     public int[] getResizedWidthHeight() {
         return new int[]{
-                (int) Math.max(1f, location.width() * widthScale),
-                (int) Math.max(1f, location.height() * heightScale)
-        };
+                Math.max(1, (int) (location.width() * scale)),
+                Math.max(1, (int) (location.height() * scale))};
     }
 
     public Bitmap getResizedBitmap() {

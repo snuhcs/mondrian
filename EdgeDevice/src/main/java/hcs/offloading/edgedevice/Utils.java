@@ -20,8 +20,7 @@ public class Utils {
     }
 
     public static Bitmap drawBoxes(Bitmap image, List<BoundingBox> boxes, float drawConfidence) {
-        Bitmap drawableBitmap = image.copy(image.getConfig(), true);
-        final Canvas canvas = new Canvas(drawableBitmap);
+        final Canvas canvas = new Canvas(image);
         final Paint paint = new Paint();
         paint.setColor(Color.HSVToColor(new float[]{120f, 1f, 1f}));
         paint.setStyle(Paint.Style.STROKE);
@@ -31,7 +30,7 @@ public class Utils {
                 canvas.drawRect(box.location, paint);
             }
         }
-        return drawableBitmap;
+        return image;
     }
 
     public static float box_iou(Rect a, Rect b) {

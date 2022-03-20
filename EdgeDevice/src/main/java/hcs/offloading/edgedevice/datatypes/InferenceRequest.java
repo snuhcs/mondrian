@@ -1,7 +1,6 @@
 package hcs.offloading.edgedevice.datatypes;
 
 import android.graphics.Bitmap;
-import android.util.Pair;
 
 import java.util.List;
 import java.util.Set;
@@ -17,8 +16,8 @@ public class InferenceRequest {
     public final Bitmap bitmap;
     public int frameIndex;
     public String sourceIP;
+    public final Set<Frame> frames;
     public final List<RoI> rois;
-    public final Set<Pair<String, Integer>> ipDevices;
 
     // Logs
     public int queueSize = -1;
@@ -30,8 +29,8 @@ public class InferenceRequest {
         this.bitmap = frame.bitmap;
         this.frameIndex = frame.frameIndex;
         this.sourceIP = frame.sourceIP;
+        this.frames = null;
         this.rois = null;
-        this.ipDevices = null;
     }
 
     private InferenceRequest(List<RoI> rois) {
@@ -39,28 +38,28 @@ public class InferenceRequest {
         this.bitmap = null;
         this.frameIndex = -1;
         this.sourceIP = null;
+        this.frames = null;
         this.rois = rois;
-        this.ipDevices = null;
     }
 
-    private InferenceRequest(Bitmap bitmap, List<RoI> rois, Set<Pair<String, Integer>> ipDevices) {
+    private InferenceRequest(Bitmap bitmap, Set<Frame> frames, List<RoI> rois) {
         this.type = Type.MIXED;
         this.bitmap = bitmap;
         this.frameIndex = -1;
         this.sourceIP = null;
+        this.frames = frames;
         this.rois = rois;
-        this.ipDevices = ipDevices;
     }
 
     public static InferenceRequest createFullFrameRequest(Frame frame) {
         return new InferenceRequest(frame);
     }
 
-    public static InferenceRequest createSingleRoIFrameRequest(List<RoI> rois) {
+    public static InferenceRequest createPerRoIInferenceRequest(List<RoI> rois) {
         return new InferenceRequest(rois);
     }
 
-    public static InferenceRequest createMixedFrameRequest(Bitmap bitmap, List<RoI> rois, Set<Pair<String, Integer>> ipDevices) {
-        return new InferenceRequest(bitmap, rois, ipDevices);
+    public static InferenceRequest createMixedFrameRequest(Bitmap bitmap, Set<Frame> frames, List<RoI> rois) {
+        return new InferenceRequest(bitmap, frames, rois);
     }
 }

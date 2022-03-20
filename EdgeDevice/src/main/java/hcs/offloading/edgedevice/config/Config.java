@@ -18,6 +18,7 @@ public class Config {
 
     public final DispatcherConfig dispatcherConfig = new DispatcherConfig();
     public final RoIExtractorConfig roIExtractorConfig = new RoIExtractorConfig();
+    public final PatchMixerConfig patchMixerConfig = new PatchMixerConfig();
     public final InferenceEngineConfig inferenceEngineConfig = new InferenceEngineConfig();
     public final PatchReconstructorConfig patchReconstructorConfig = new PatchReconstructorConfig();
 
@@ -58,11 +59,11 @@ public class Config {
         if (jsonObject.has("full_inference_interval")) {
             roIExtractorConfig.FULL_INFERENCE_INTERVAL = jsonObject.getInt("full_inference_interval");
         }
+        if (jsonObject.has("optical_flow_roi_confidence_threshold")) {
+            roIExtractorConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = (float) jsonObject.getDouble("optical_flow_roi_confidence_threshold");
+        }
         if (jsonObject.has("merge_threshold")) {
             roIExtractorConfig.MERGE_THRESHOLD = (float) jsonObject.getDouble("merge_threshold");
-        }
-        if (jsonObject.has("max_optical_flow_interval")) {
-            roIExtractorConfig.MAX_OPTICAL_FLOW_INTERVAL = jsonObject.getInt("max_optical_flow_interval");
         }
         if (jsonObject.has("roi_padding")) {
             roIExtractorConfig.ROI_PADDING = jsonObject.getInt("roi_padding");
@@ -86,6 +87,10 @@ public class Config {
         }
         if (jsonObject.has("class_agnostic_threshold")) {
             roIExtractorConfig.CLASS_AGNOSTIC_THRESHOLD = jsonObject.getInt("class_agnostic_threshold");
+        }
+
+        if (jsonObject.has("max_optical_flow_interval")) {
+            patchMixerConfig.MAX_OPTICAL_FLOW_INTERVAL = jsonObject.getInt("max_optical_flow_interval");
         }
 
         if (jsonObject.has("use_yolo_v4")) {

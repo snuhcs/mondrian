@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import hcs.offloading.edgedevice.config.Config;
 import hcs.offloading.edgedevice.config.DispatcherConfig;
 import hcs.offloading.edgedevice.datatypes.BoundingBox;
+import hcs.offloading.edgedevice.datatypes.Frame;
 import hcs.offloading.edgedevice.datatypes.InferenceRequest;
 import hcs.offloading.edgedevice.datatypes.RoI;
 import hcs.offloading.network.mqtt.DeviceMqttManager;
@@ -96,7 +97,7 @@ public class EdgeDevice implements WebRTCCallback, RoIExtractor.Callback, Worker
         synchronized (this) {
             mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, this, mViewCallback);
             mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, this, mAssetManager);
-            mPatchMixer = new PatchMixer(mConfig.inferenceEngineConfig.FRAME_SIZE);
+            mPatchMixer = new PatchMixer(mConfig.patchMixerConfig, mConfig.inferenceEngineConfig.FRAME_SIZE);
         }
     }
 
@@ -203,13 +204,8 @@ public class EdgeDevice implements WebRTCCallback, RoIExtractor.Callback, Worker
 
     // RoIExtractor.Callback
     @Override
-    public InferenceRequest tryMixingAndGetInferenceRequest(Pair<String, Integer> ipIndex, RoI roi) {
-        return mPatchMixer.tryPackRoI(ipIndex, roi);
-    }
-
-    @Override
-    public InferenceRequest getMixedFrameRequest() {
-        return mPatchMixer.getMixedFrameRequest();
+    public InferenceRequest tryMixingAndGetInferenceRequest(Frame frame, List<RoI> rois) {
+        return mPatchMixer.tryPackRoIs(frame, rois);
     }
 
     @Override
@@ -233,12 +229,29 @@ public class EdgeDevice implements WebRTCCallback, RoIExtractor.Callback, Worker
         if (mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
             VideoDispatcher dispatcher = mVideoDispatchers.get(ip);
             if (dispatcher != null) {
-                dispatcher.enqueueRequest(frameIndex, results);
+                dispatcher.enqueueResults(frameIndex, results);
             }
         } else {
             Dispatcher dispatcher = mDispatchers.get(ip);
             if (dispatcher != null) {
-                dispatcher.enqueueRequest(frameIndex, results);
+                dispatcher.enqueueResults(frameIndex, results);
+            }
+        }
+    }
+
+    @Override
+    public void enqueueResults(Map<String, Map<Integer, List<BoundingBox>>> reconstructedFrameResults) {
+        for (Map.Entry<String, Map<Integer, List<BoundingBox>>> entry : reconstructedFrameResults.entrySet()) {
+            if (mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
+                VideoDispatcher dispatcher = mVideoDispatchers.get(entry.getKey());
+                if (dispatcher != null) {
+                    dispatcher.enqueueResults(entry.getValue());
+                }
+            } else {
+                Dispatcher dispatcher = mDispatchers.get(entry.getKey());
+                if (dispatcher != null) {
+                    dispatcher.enqueueResults(entry.getValue());
+                }
             }
         }
     }
