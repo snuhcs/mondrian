@@ -121,6 +121,11 @@ public class PatchReconstructor implements Runnable {
                 endTime = System.nanoTime();
                 Log.v(TAG, "Reconstructing time (us): " + (endTime - startTime) / 1e3);
 
+                for (Map.Entry<String, Map<Integer, List<BoundingBox>>> e1 : reconstructedFrameResults.entrySet()) {
+                    for (Map.Entry<Integer, List<BoundingBox>> e2 : e1.getValue().entrySet()) {
+                        log(e1.getKey(), e2.getKey(), e2.getValue());
+                    }
+                }
                 mCallback.enqueueResults(reconstructedFrameResults);
 
                 request.rois.stream()
