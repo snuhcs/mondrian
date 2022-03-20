@@ -5,7 +5,6 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
-import android.util.Pair;
 
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
