@@ -30,18 +30,21 @@ import hcs.offloading.edgedevice.datatypes.BoundingBox;
 public class YoloV4Classifier implements Classifier {
     private final static String TAG = YoloV4Classifier.class.getName();
 
-    private static final float CONF_THRESHOLD = 0.1f;
-    private static final float IOU_THRESHOLD = 0.6f;
     private static final Vector<String> labels = new Vector<>();
 
     private static final int NUM_LABELS = 80;
     public final int INPUT_SIZE;
     private final int OUTPUT_WIDTH;
+    private final float CONF_THRESHOLD;
+    private final float IOU_THRESHOLD;
 
     private final Interpreter tfLite;
 
-    public YoloV4Classifier(AssetManager assetManager, int size, boolean isTiny) {
+    public YoloV4Classifier(AssetManager assetManager, int size,
+                            float confThreshold, float iouThreshold, boolean isTiny) {
         assert size % 32 == 0;
+        CONF_THRESHOLD = confThreshold;
+        IOU_THRESHOLD = iouThreshold;
         INPUT_SIZE = size;
         String modelFilename = isTiny ?
                 "yolov4-tiny-" + size + ".tflite" :
@@ -139,7 +142,7 @@ public class YoloV4Classifier implements Classifier {
         return detections;
     }
 
-    private static List<BoundingBox> nms(List<BoundingBox> boxes) {
+    private List<BoundingBox> nms(List<BoundingBox> boxes) {
         ArrayList<BoundingBox> nmsList = new ArrayList<>();
 
         for (int k = 0; k < NUM_LABELS; k++) {

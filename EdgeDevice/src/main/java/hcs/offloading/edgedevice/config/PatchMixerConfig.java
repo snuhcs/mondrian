@@ -8,7 +8,8 @@ import java.io.IOException;
 import hcs.offloading.edgedevice.Utils;
 
 public class PatchMixerConfig {
-    public int MAX_OPTICAL_FLOW_INTERVAL = 30;
+    public int MAX_PACKED_FRAMES = 30;
+    public int MIXED_FRAME_SIZE = 800;
 
     PatchMixerConfig() {
     }
@@ -18,8 +19,11 @@ public class PatchMixerConfig {
     }
 
     PatchMixerConfig(JSONObject jsonObject) throws JSONException {
-        if (jsonObject.has("max_optical_flow_interval")) {
-            MAX_OPTICAL_FLOW_INTERVAL = jsonObject.getInt("max_optical_flow_interval");
+        if (jsonObject.has("max_packed_frames")) {
+            MAX_PACKED_FRAMES = jsonObject.getInt("max_packed_frames");
+        }
+        if (jsonObject.has("frame_size")) {
+            MIXED_FRAME_SIZE = jsonObject.getInt("frame_size");
         }
     }
 }

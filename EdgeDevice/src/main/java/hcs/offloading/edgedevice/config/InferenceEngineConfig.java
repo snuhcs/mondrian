@@ -10,6 +10,8 @@ import hcs.offloading.edgedevice.Utils;
 public class InferenceEngineConfig {
     public boolean USE_YOLO_V4 = false;
     public boolean USE_TINY = false;
+    public float CONF_THRESHOLD = 0.1f;
+    public float IOU_THRESHOLD = 0.6f;
     public int NUM_WORKERS = 1;
     public int FRAME_SIZE = 800;
     public int FULL_FRAME_SIZE = 800;
@@ -28,6 +30,12 @@ public class InferenceEngineConfig {
         }
         if (jsonObject.has("use_tiny")) {
             USE_TINY = jsonObject.getBoolean("use_tiny");
+        }
+        if (jsonObject.has("conf_threshold")) {
+            CONF_THRESHOLD = (float) jsonObject.getDouble("conf_threshold");
+        }
+        if (jsonObject.has("iou_threshold")) {
+            IOU_THRESHOLD = (float) jsonObject.getDouble("iou_threshold");
         }
         if (jsonObject.has("num_workers")) {
             NUM_WORKERS = jsonObject.getInt("num_workers");

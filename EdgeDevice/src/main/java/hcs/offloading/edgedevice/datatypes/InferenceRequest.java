@@ -34,14 +34,12 @@ public class InferenceRequest {
         this.rois = null;
     }
 
-    private InferenceRequest(Frame frame, List<RoI> rois) {
+    private InferenceRequest(Set<Frame> frames, List<RoI> rois) {
         this.type = Type.PER_ROI;
         this.bitmap = null;
         this.frameIndex = -1;
         this.sourceIP = null;
-        this.frames = new HashSet<Frame>() {{
-            add(frame);
-        }};
+        this.frames = frames;
         this.rois = rois;
     }
 
@@ -58,8 +56,8 @@ public class InferenceRequest {
         return new InferenceRequest(frame);
     }
 
-    public static InferenceRequest createPerRoIInferenceRequest(Frame frame, List<RoI> rois) {
-        return new InferenceRequest(frame, rois);
+    public static InferenceRequest createPerRoIInferenceRequest(Set<Frame> frames, List<RoI> rois) {
+        return new InferenceRequest(frames, rois);
     }
 
     public static InferenceRequest createMixedFrameRequest(Bitmap bitmap, Set<Frame> frames, List<RoI> rois) {

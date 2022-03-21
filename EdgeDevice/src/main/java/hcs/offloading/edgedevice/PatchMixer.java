@@ -6,7 +6,6 @@ import android.graphics.Color;
 import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
-import android.util.Log;
 import android.util.Pair;
 
 import java.util.ArrayList;
@@ -34,9 +33,9 @@ public class PatchMixer {
     private List<Rect> mFreeRects;
     private final Map<String, Integer> mPackStartFrameIndex = new HashMap<>();
 
-    public PatchMixer(PatchMixerConfig config, int mixedFrameSize) {
-        MAX_OPTICAL_FLOW_INTERVAL = config.MAX_OPTICAL_FLOW_INTERVAL;
-        MIXED_FRAME_SIZE = mixedFrameSize;
+    public PatchMixer(PatchMixerConfig config) {
+        MAX_OPTICAL_FLOW_INTERVAL = config.MAX_PACKED_FRAMES;
+        MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
         reset();
     }
 
@@ -51,7 +50,7 @@ public class PatchMixer {
         mFreeRects.add(new Rect(0, 0, MIXED_FRAME_SIZE, MIXED_FRAME_SIZE));
     }
 
-    public InferenceRequest tryPackRoIs(Frame frame, List<RoI> rois) {
+    public InferenceRequest tryPackRoIs(Frame frame, List<RoI> rois, boolean needPacking) {
         //Log.v(TAG, "Start tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
         synchronized (this) {
             mPackedFrames.add(frame);
@@ -82,7 +81,9 @@ public class PatchMixer {
             //Log.v(TAG, "End tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
             if (!isAllPacked || needInference) {
                 mPackStartFrameIndex.clear();
-                InferenceRequest request = getMixedFrameRequest();
+                InferenceRequest request = needPacking
+                        ? InferenceRequest.createMixedFrameRequest(getMixedImage(), mPackedFrames, mPackedRoIs)
+                        : InferenceRequest.createPerRoIInferenceRequest(mPackedFrames, mPackedRoIs);
                 reset();
                 return request;
             } else {
@@ -91,7 +92,7 @@ public class PatchMixer {
         }
     }
 
-    private InferenceRequest getMixedFrameRequest() {
+    private Bitmap getMixedImage() {
         Bitmap bitmap = Bitmap.createBitmap(MIXED_FRAME_SIZE, MIXED_FRAME_SIZE, Bitmap.Config.ARGB_8888);
         bitmap.eraseColor(Color.BLACK);
         Canvas canvas = new Canvas(bitmap);
@@ -99,7 +100,7 @@ public class PatchMixer {
             int[] packedLocation = roi.packedLocation;
             canvas.drawBitmap(roi.getResizedBitmap(), packedLocation[0], packedLocation[1], null);
         }
-        return InferenceRequest.createMixedFrameRequest(bitmap, mPackedFrames, mPackedRoIs);
+        return bitmap;
     }
 
     private static boolean canFit(int[] wh, Rect rect) {

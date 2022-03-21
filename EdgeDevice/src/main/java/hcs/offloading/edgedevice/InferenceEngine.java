@@ -38,9 +38,9 @@ public class InferenceEngine {
         NUM_WORKERS = config.NUM_WORKERS;
         MAX_QUEUED_REQUESTS = NUM_WORKERS * 2;
 
-        Classifier model = config.USE_YOLO_V4 ?
-                new YoloV4Classifier(assetManager, FRAME_SIZE, config.USE_TINY) :
-                new YoloV5Classifier(assetManager, FRAME_SIZE);
+        Classifier model = config.USE_YOLO_V4
+                ? new YoloV4Classifier(assetManager, FRAME_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY)
+                : new YoloV5Classifier(assetManager, FRAME_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD);
         ImageProcessor processor = new ImageProcessor.Builder()
                 .add(new ResizeOp(FRAME_SIZE, FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
                 .add(new NormalizeOp(0.0f, 255.0f))
@@ -49,9 +49,9 @@ public class InferenceEngine {
         Classifier fullModel;
         ImageProcessor fullProcessor;
         if (FRAME_SIZE != FULL_FRAME_SIZE) {
-            fullModel = config.USE_YOLO_V4 ?
-                    new YoloV4Classifier(assetManager, FULL_FRAME_SIZE, config.USE_TINY) :
-                    new YoloV5Classifier(assetManager, FULL_FRAME_SIZE);
+            fullModel = config.USE_YOLO_V4
+                    ? new YoloV4Classifier(assetManager, FULL_FRAME_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY)
+                    : new YoloV5Classifier(assetManager, FULL_FRAME_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD);
             fullProcessor = new ImageProcessor.Builder()
                     .add(new ResizeOp(FULL_FRAME_SIZE, FULL_FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
                     .add(new NormalizeOp(0.0f, 255.0f))

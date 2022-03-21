@@ -97,7 +97,7 @@ public class EdgeDevice implements WebRTCCallback, RoIExtractor.Callback, Worker
         synchronized (this) {
             mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, this, mViewCallback);
             mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, this, mAssetManager);
-            mPatchMixer = new PatchMixer(mConfig.patchMixerConfig, mConfig.inferenceEngineConfig.FRAME_SIZE);
+            mPatchMixer = new PatchMixer(mConfig.patchMixerConfig);
         }
     }
 
@@ -204,8 +204,8 @@ public class EdgeDevice implements WebRTCCallback, RoIExtractor.Callback, Worker
 
     // RoIExtractor.Callback
     @Override
-    public InferenceRequest tryMixingAndGetInferenceRequest(Frame frame, List<RoI> rois) {
-        return mPatchMixer.tryPackRoIs(frame, rois);
+    public InferenceRequest tryMixingAndGetInferenceRequest(Frame frame, List<RoI> rois, boolean needPacking) {
+        return mPatchMixer.tryPackRoIs(frame, rois, needPacking);
     }
 
     @Override

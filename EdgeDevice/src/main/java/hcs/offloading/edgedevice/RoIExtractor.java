@@ -56,7 +56,7 @@ public class RoIExtractor implements Runnable {
     }
 
     public interface Callback {
-        InferenceRequest tryMixingAndGetInferenceRequest(Frame frame, List<RoI> rois);
+        InferenceRequest tryMixingAndGetInferenceRequest(Frame frame, List<RoI> rois, boolean needPacking);
 
         void enqueueInferenceRequest(InferenceRequest inferenceRequest);
     }
@@ -237,19 +237,15 @@ public class RoIExtractor implements Runnable {
                                     r0.location.width() * r0.location.height()))
                             .collect(Collectors.toList());
 
-                    if (!PACKING) {
-                        mCallback.enqueueInferenceRequest(InferenceRequest.createPerRoIInferenceRequest(currFrame, rois));
+                    rois = resizeRoIs(rois);
+                    InferenceRequest request = mCallback.tryMixingAndGetInferenceRequest(currFrame, rois, PACKING);
+                    if (request == null) {
+                        useInferenceResults = false;
                     } else {
-                        rois = resizeRoIs(rois);
-                        InferenceRequest request = mCallback.tryMixingAndGetInferenceRequest(currFrame, rois);
-                        if (request == null) {
-                            useInferenceResults = false;
-                        } else {
-                            mCountMixedFrameInference++;
-                            mCallback.enqueueInferenceRequest(request);
-                            if (prevFrame.frameIndex != mLastQueriedIndex) {
-                                updateFrame = false;
-                            }
+                        mCountMixedFrameInference++;
+                        mCallback.enqueueInferenceRequest(request);
+                        if (prevFrame.frameIndex != mLastQueriedIndex) {
+                            updateFrame = false;
                         }
                     }
                 }
