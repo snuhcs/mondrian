@@ -52,7 +52,7 @@ public class PatchMixer {
     }
 
     public InferenceRequest tryPackRoIs(Frame frame, List<RoI> rois) {
-        Log.v(TAG, "Start tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
+        //Log.v(TAG, "Start tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
         synchronized (this) {
             mPackedFrames.add(frame);
             if (!mPackStartFrameIndex.containsKey(frame.sourceIP)) {
@@ -79,7 +79,7 @@ public class PatchMixer {
                 }
                 isAllPacked &= isPacked;
             }
-            Log.v(TAG, "End tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
+            //Log.v(TAG, "End tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
             if (!isAllPacked || needInference) {
                 mPackStartFrameIndex.remove(frame.sourceIP);
                 InferenceRequest request = getMixedFrameRequest();

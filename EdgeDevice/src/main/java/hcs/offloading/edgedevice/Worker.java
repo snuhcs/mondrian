@@ -145,9 +145,9 @@ public class Worker implements Runnable {
                 }
                 mCallback.enqueueInferenceResults(request, results);
 
-                //Log.v(TAG, "InferenceEngine Queue Size: " + request.queueSize);
-                //Log.v(TAG, "Preprocessing time (us): " + request.preprocessingTimeUs);
-                //Log.v(TAG, "InferenceTime time (us): " + request.inferenceTimeUs);
+                ////Log.v(TAG, "InferenceEngine Queue Size: " + request.queueSize);
+                ////Log.v(TAG, "Preprocessing time (us): " + request.preprocessingTimeUs);
+                ////Log.v(TAG, "InferenceTime time (us): " + request.inferenceTimeUs);
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");

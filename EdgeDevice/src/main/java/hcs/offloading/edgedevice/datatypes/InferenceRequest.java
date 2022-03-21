@@ -2,6 +2,7 @@ package hcs.offloading.edgedevice.datatypes;
 
 import android.graphics.Bitmap;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -33,12 +34,14 @@ public class InferenceRequest {
         this.rois = null;
     }
 
-    private InferenceRequest(List<RoI> rois) {
+    private InferenceRequest(Frame frame, List<RoI> rois) {
         this.type = Type.PER_ROI;
         this.bitmap = null;
         this.frameIndex = -1;
         this.sourceIP = null;
-        this.frames = null;
+        this.frames = new HashSet<Frame>() {{
+            add(frame);
+        }};
         this.rois = rois;
     }
 
@@ -55,8 +58,8 @@ public class InferenceRequest {
         return new InferenceRequest(frame);
     }
 
-    public static InferenceRequest createPerRoIInferenceRequest(List<RoI> rois) {
-        return new InferenceRequest(rois);
+    public static InferenceRequest createPerRoIInferenceRequest(Frame frame, List<RoI> rois) {
+        return new InferenceRequest(frame, rois);
     }
 
     public static InferenceRequest createMixedFrameRequest(Bitmap bitmap, Set<Frame> frames, List<RoI> rois) {

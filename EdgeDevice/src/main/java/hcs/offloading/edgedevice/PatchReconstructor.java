@@ -1,5 +1,6 @@
 package hcs.offloading.edgedevice;
 
+import android.annotation.SuppressLint;
 import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
@@ -44,6 +45,7 @@ public class PatchReconstructor implements Runnable {
 
     private FileWriter logWriter;
     private final long mStartTimeNs = System.nanoTime();
+    private int mProcessedFrames = 0;
 
     PatchReconstructor(PatchReconstructorConfig config, Callback callback, ViewCallback viewCallback) {
         MATCH_PADDING = config.MATCH_PADDING;
@@ -83,20 +85,21 @@ public class PatchReconstructor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     public void enqueueInferenceResults(InferenceRequest request, List<BoundingBox> results) {
-        Log.v(TAG, "Start enqueueInferenceResults() : " + request.type);
+        //Log.v(TAG, "Start enqueueInferenceResults() : " + request.type);
         if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.PER_ROI) {
             mResultsToReconstruct.add(new Pair<>(request, results));
         } else if (request.type == InferenceRequest.Type.FULL) {
             log(request.sourceIP, request.frameIndex, results);
+            updateFPS(1);
             mCallback.enqueueResults(request.sourceIP, request.frameIndex, results);
         } else {
             throw new IllegalArgumentException("Wrong request type! " + request.type);
         }
         if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.FULL) {
             mViewCallback.drawInferenceResult(Utils.drawBoxes(request.bitmap.copy(request.bitmap.getConfig(), true), results, DRAW_CONFIDENCE));
+            request.bitmap.recycle();
         }
-        request.bitmap.recycle();
-        Log.v(TAG, "End enqueueInferenceResults() : " + request.type);
+        //Log.v(TAG, "End enqueueInferenceResults() : " + request.type);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -119,13 +122,14 @@ public class PatchReconstructor implements Runnable {
                     throw new IllegalArgumentException("Wrong request type! " + request.type);
                 }
                 endTime = System.nanoTime();
-                Log.v(TAG, "Reconstructing time (us): " + (endTime - startTime) / 1e3);
+                //Log.v(TAG, "Reconstructing time (us): " + (endTime - startTime) / 1e3);
 
                 for (Map.Entry<String, Map<Integer, List<BoundingBox>>> e1 : reconstructedFrameResults.entrySet()) {
                     for (Map.Entry<Integer, List<BoundingBox>> e2 : e1.getValue().entrySet()) {
                         log(e1.getKey(), e2.getKey(), e2.getValue());
                     }
                 }
+                updateFPS(request.frames.size());
                 mCallback.enqueueResults(reconstructedFrameResults);
 
                 request.rois.stream()
@@ -136,7 +140,7 @@ public class PatchReconstructor implements Runnable {
                             for (BoundingBox box : r) {
                                 str.append(box.location.left + "," + box.location.top + "," + box.location.right + "," + box.location.bottom + " ");
                             }
-                            Log.v(TAG, "Draw boxes: " + str);
+                            //Log.v(TAG, "Draw boxes: " + str);
                             mViewCallback.drawObjectDetectionResult(Utils.drawBoxes(
                                     lastRoI.frame.bitmap.copy(lastRoI.frame.bitmap.getConfig(), true),
                                     r,
@@ -217,6 +221,13 @@ public class PatchReconstructor implements Runnable {
             resultHolder.get(frame.sourceIP).put(frame.frameIndex, new ArrayList<>());
         }
         return resultHolder;
+    }
+
+    @SuppressLint("DefaultLocale")
+    private void updateFPS(int numInferencedFrame) {
+        mProcessedFrames += numInferencedFrame;
+        long timeStamp = System.nanoTime() - mStartTimeNs;
+        mViewCallback.drawFPS(String.format("%.3f", mProcessedFrames / (timeStamp / 1e9)));
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)

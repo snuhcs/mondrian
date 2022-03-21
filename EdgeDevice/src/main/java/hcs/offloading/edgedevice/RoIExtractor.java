@@ -104,7 +104,7 @@ public class RoIExtractor implements Runnable {
     }
 
     public void enqueueFrame(Frame frame) {
-        Log.v(TAG, "Start enqueueFrame() : " + frame.frameIndex);
+        //Log.v(TAG, "Start enqueueFrame() : " + frame.frameIndex);
         try {
             synchronized (mFrames) {
                 while (mFrames.size() > MAX_QUEUED_FRAMES) {
@@ -116,11 +116,11 @@ public class RoIExtractor implements Runnable {
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
-        Log.v(TAG, "End enqueueFrame() : " + frame.frameIndex);
+        //Log.v(TAG, "End enqueueFrame() : " + frame.frameIndex);
     }
 
     private Frame getFrame() throws InterruptedException {
-        Log.v(TAG, "Start getFrame()");
+        //Log.v(TAG, "Start getFrame()");
         Frame frame;
         synchronized (mFrames) {
             while (mFrames.size() <= 0) {
@@ -129,33 +129,33 @@ public class RoIExtractor implements Runnable {
             frame = mFrames.poll();
             mFrames.notifyAll();
         }
-        Log.v(TAG, "End getFrame() : " + frame.frameIndex);
+        //Log.v(TAG, "End getFrame() : " + frame.frameIndex);
         return frame;
     }
 
     void enqueueResults(int frameIndex, List<BoundingBox> results) {
-        Log.v(TAG, "Start enqueueResults() : " + frameIndex);
+        //Log.v(TAG, "Start enqueueResults() : " + frameIndex);
         synchronized (mResults) {
             mResults.put(frameIndex, results);
             mResults.notifyAll();
         }
-        Log.v(TAG, "End enqueueResults() : " + frameIndex);
+        //Log.v(TAG, "End enqueueResults() : " + frameIndex);
     }
 
     void enqueueResults(Map<Integer, List<BoundingBox>> results) {
-        Log.v(TAG, "Start enqueueResults() : MIXED");
+        //Log.v(TAG, "Start enqueueResults() : MIXED");
         synchronized (mResults) {
             for (Map.Entry<Integer, List<BoundingBox>> idxBoxes : results.entrySet()) {
                 mResults.put(idxBoxes.getKey(), idxBoxes.getValue());
             }
             mResults.notifyAll();
         }
-        Log.v(TAG, "End enqueueResults() : MIXED");
+        //Log.v(TAG, "End enqueueResults() : MIXED");
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     List<BoundingBox> getResults(int frameIndex) throws InterruptedException {
-        Log.v(TAG, "Start getResults() : " + frameIndex);
+        //Log.v(TAG, "Start getResults() : " + frameIndex);
         mLastQueriedIndex = frameIndex;
         List<BoundingBox> results;
         synchronized (mResults) {
@@ -172,7 +172,7 @@ public class RoIExtractor implements Runnable {
             }
             mResults.notifyAll();
         }
-        Log.v(TAG, "End getResults() : " + frameIndex);
+        //Log.v(TAG, "End getResults() : " + frameIndex);
         return results;
     }
 
@@ -203,7 +203,7 @@ public class RoIExtractor implements Runnable {
                 }
                 updateFrame = true;
 
-                Log.v(TAG, "Prev: " + (prevFrame != null ? prevFrame.frameIndex : -1) + " Curr: " + currFrame.frameIndex);
+                //Log.v(TAG, "Prev: " + (prevFrame != null ? prevFrame.frameIndex : -1) + " Curr: " + currFrame.frameIndex);
                 if (mCountMixedFrameInference >= FULL_INFERENCE_INTERVAL) {
                     mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(currFrame));
                     mCountMixedFrameInference = 0;
@@ -234,7 +234,7 @@ public class RoIExtractor implements Runnable {
                     }
 
                     if (!PACKING) {
-                        mCallback.enqueueInferenceRequest(InferenceRequest.createPerRoIInferenceRequest(rois));
+                        mCallback.enqueueInferenceRequest(InferenceRequest.createPerRoIInferenceRequest(currFrame, rois));
                     } else {
                         rois = resizeRoIs(rois);
                         InferenceRequest request = mCallback.tryMixingAndGetInferenceRequest(currFrame, rois);
