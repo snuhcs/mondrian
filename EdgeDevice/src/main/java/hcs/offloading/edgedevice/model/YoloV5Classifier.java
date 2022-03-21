@@ -30,7 +30,7 @@ import hcs.offloading.edgedevice.datatypes.BoundingBox;
 public class YoloV5Classifier implements Classifier {
     private final static String TAG = YoloV5Classifier.class.getName();
 
-    private static final float CONF_THRESHOLD = 0.001f;
+    private static final float CONF_THRESHOLD = 0.1f;
     private static final float IOU_THRESHOLD = 0.6f;
     private static final Vector<String> labels = new Vector<>();
 

@@ -81,13 +81,14 @@ public class PatchMixer {
             }
             //Log.v(TAG, "End tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
             if (!isAllPacked || needInference) {
-                mPackStartFrameIndex.remove(frame.sourceIP);
+                mPackStartFrameIndex.clear();
                 InferenceRequest request = getMixedFrameRequest();
                 reset();
                 return request;
+            } else {
+                return null;
             }
         }
-        return null;
     }
 
     private InferenceRequest getMixedFrameRequest() {

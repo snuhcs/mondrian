@@ -21,6 +21,7 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.video.Video;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -232,6 +233,12 @@ public class RoIExtractor implements Runnable {
                     if (NEED_ROI_MERGING) {
                         mergeSingleFrameRoIs(rois);
                     }
+
+                    rois = rois.stream()
+                            .sorted((r0, r1) -> Integer.compare(
+                                    r1.location.width() * r1.location.height(),
+                                    r0.location.width() * r0.location.height()))
+                            .collect(Collectors.toList());
 
                     if (!PACKING) {
                         mCallback.enqueueInferenceRequest(InferenceRequest.createPerRoIInferenceRequest(currFrame, rois));
