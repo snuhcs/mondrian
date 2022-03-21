@@ -21,7 +21,6 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.video.Video;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -47,9 +46,9 @@ public class RoIExtractor implements Runnable {
     private final float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD;
     private final float MERGE_THRESHOLD;
     private final int ROI_PADDING;
-    private final boolean NEED_OF_ROI;
-    private final boolean NEED_PD_ROI;
-    private final boolean NEED_ROI_MERGING;
+    private final boolean OF_ROI;
+    private final boolean PD_ROI;
+    private final boolean MERGE_ROI;
 
     static {
         if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
@@ -80,11 +79,9 @@ public class RoIExtractor implements Runnable {
         OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = config.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD;
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
         ROI_PADDING = config.ROI_PADDING;
-        NEED_OF_ROI = config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.COMBINED) ||
-                config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.OF);
-        NEED_PD_ROI = config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.COMBINED) ||
-                config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.PD);
-        NEED_ROI_MERGING = config.EXTRACTION_METHOD.equals(RoIExtractorConfig.Method.COMBINED);
+        OF_ROI = config.OF_ROI;
+        PD_ROI = config.PD_ROI;
+        MERGE_ROI = config.MERGE_ROI;
 
         mMockProfiles = new MockProfiles(config.PERSON_THRESHOLD, config.CLASS_AGNOSTIC_THRESHOLD);
 
@@ -212,7 +209,7 @@ public class RoIExtractor implements Runnable {
                 } else {
                     List<RoI> rois = new ArrayList<>();
 
-                    if (NEED_OF_ROI) {
+                    if (OF_ROI) {
                         List<BoundingBox> prevResults;
                         if (useInferenceResults) {
                             prevResults = getResults(prevFrame.frameIndex).stream()
@@ -226,11 +223,11 @@ public class RoIExtractor implements Runnable {
                         opticalFlowRoIs = createRoIWithInferenceResult(prevFrame, currFrame, prevResults);
                         rois.addAll(opticalFlowRoIs);
                     }
-                    if (NEED_PD_ROI) {
+                    if (PD_ROI) {
                         List<RoI> pixelDiffRoIs = createRoIsFromDiff(prevFrame, currFrame);
                         rois.addAll(pixelDiffRoIs);
                     }
-                    if (NEED_ROI_MERGING) {
+                    if (MERGE_ROI) {
                         mergeSingleFrameRoIs(rois);
                     }
 

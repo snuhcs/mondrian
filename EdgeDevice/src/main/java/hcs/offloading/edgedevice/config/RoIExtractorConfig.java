@@ -8,18 +8,14 @@ import java.io.IOException;
 import hcs.offloading.edgedevice.Utils;
 
 public class RoIExtractorConfig {
-    public enum Method {
-        COMBINED, // combined
-        OF, // pd (pixel diff)
-        PD, // of (optical flow)
-    }
-
     public boolean PACKING = true;
     public int FULL_INFERENCE_INTERVAL = 4;
     public float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.3f;
     public float MERGE_THRESHOLD = 0.5f;
     public int ROI_PADDING = 3;
-    public Method EXTRACTION_METHOD = Method.COMBINED;
+    public boolean OF_ROI = true;
+    public boolean PD_ROI = true;
+    public boolean MERGE_ROI = true;
     public int PERSON_THRESHOLD = 160;
     public int CLASS_AGNOSTIC_THRESHOLD = 160;
 
@@ -46,19 +42,14 @@ public class RoIExtractorConfig {
         if (jsonObject.has("roi_padding")) {
             ROI_PADDING = jsonObject.getInt("roi_padding");
         }
-        if (jsonObject.has("extraction_method")) {
-            String method = String.valueOf(jsonObject.get("extraction_method"));
-            switch (method) {
-                case "combined":
-                    EXTRACTION_METHOD = RoIExtractorConfig.Method.COMBINED;
-                    break;
-                case "of":
-                    EXTRACTION_METHOD = RoIExtractorConfig.Method.OF;
-                    break;
-                case "pd":
-                    EXTRACTION_METHOD = RoIExtractorConfig.Method.PD;
-                    break;
-            }
+        if (jsonObject.has("of_roi")) {
+            OF_ROI = jsonObject.getBoolean("of_roi");
+        }
+        if (jsonObject.has("pd_roi")) {
+            PD_ROI = jsonObject.getBoolean("pd_roi");
+        }
+        if (jsonObject.has("merge_roi")) {
+            MERGE_ROI = jsonObject.getBoolean("merge_roi");
         }
         if (jsonObject.has("person_threshold")) {
             PERSON_THRESHOLD = jsonObject.getInt("person_threshold");
