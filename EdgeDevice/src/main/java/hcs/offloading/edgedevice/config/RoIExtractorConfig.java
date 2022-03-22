@@ -21,6 +21,7 @@ public class RoIExtractorConfig {
     public int PERSON_THRESHOLD = 160;
     public int CLASS_AGNOSTIC_THRESHOLD = 160;
     public boolean FIT_RESIZE = false;
+    public boolean MERGED_RESIZE = false;
 
     RoIExtractorConfig() {
     }
@@ -68,6 +69,9 @@ public class RoIExtractorConfig {
         }
         if (jsonObject.has("fit_resize")) {
             FIT_RESIZE = jsonObject.getBoolean("fit_resize");
+        }
+        if (jsonObject.has("merged_resize")) {
+            MERGED_RESIZE = jsonObject.getBoolean("merged_resize");
         }
     }
 }

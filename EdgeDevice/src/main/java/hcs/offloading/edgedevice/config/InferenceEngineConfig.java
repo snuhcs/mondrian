@@ -8,7 +8,11 @@ import java.io.IOException;
 import hcs.offloading.edgedevice.Utils;
 
 public class InferenceEngineConfig {
-    public boolean USE_YOLO_V4 = false;
+    public enum Model {
+        YOLO_V4,
+        YOLO_V5,
+    }
+    public Model MODEL = Model.YOLO_V4;
     public boolean USE_TINY = false;
     public float CONF_THRESHOLD = 0.1f;
     public float IOU_THRESHOLD = 0.6f;
@@ -25,8 +29,8 @@ public class InferenceEngineConfig {
     }
 
     InferenceEngineConfig(JSONObject jsonObject) throws JSONException {
-        if (jsonObject.has("use_yolo_v4")) {
-            USE_YOLO_V4 = jsonObject.getBoolean("use_yolo_v4");
+        if (jsonObject.has("model")) {
+            MODEL = Model.valueOf(jsonObject.getString("model").toUpperCase());
         }
         if (jsonObject.has("use_tiny")) {
             USE_TINY = jsonObject.getBoolean("use_tiny");

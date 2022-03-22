@@ -52,6 +52,7 @@ public class RoIExtractor implements Runnable {
     private final boolean PD_ROI;
     private final boolean MERGE_ROI;
     private final boolean FIT_RESIZE;
+    private final boolean MERGED_RESIZE;
 
     static {
         if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
@@ -88,6 +89,7 @@ public class RoIExtractor implements Runnable {
         PD_ROI = config.PD_ROI;
         MERGE_ROI = config.MERGE_ROI;
         FIT_RESIZE = config.FIT_RESIZE;
+        MERGED_RESIZE = config.MERGED_RESIZE;
 
         mMockProfiles = new MockProfiles(config.PERSON_THRESHOLD, config.CLASS_AGNOSTIC_THRESHOLD);
 
@@ -270,7 +272,9 @@ public class RoIExtractor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private List<RoI> resizeRoIs(List<RoI> rois) {
-        return rois.stream().map(roi -> roi.resize(mMockProfiles.getProfile(roi.labelName), FIT_RESIZE)).collect(Collectors.toList());
+        return rois.stream()
+                .map(roi -> roi.resize(mMockProfiles.getProfile(roi.labelName), FIT_RESIZE, MERGED_RESIZE))
+                .collect(Collectors.toList());
     }
 
     public void mergeSingleFrameRoIs(List<RoI> rois) {

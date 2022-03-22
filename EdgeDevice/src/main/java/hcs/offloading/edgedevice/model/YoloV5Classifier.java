@@ -41,12 +41,12 @@ public class YoloV5Classifier implements Classifier {
     private final Interpreter tfLite;
 
     public YoloV5Classifier(AssetManager assetManager, int size,
-                            float confThreshold, float iouThreshold) {
+                            float confThreshold, float iouThreshold, boolean isTiny) {
         assert size % 32 == 0;
         CONF_THRESHOLD = confThreshold;
         IOU_THRESHOLD = iouThreshold;
         INPUT_SIZE = size;
-        String modelFilename = "yolov5m-" + size + "-fp16.tflite";
+        String modelFilename = "yolov5" + (isTiny ? "m" : "x") + "-" + size + "-fp16.tflite";
         OUTPUT_WIDTH = (size / 32) * (size / 32) * 63;
 
         try {
