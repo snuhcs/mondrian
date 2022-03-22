@@ -80,8 +80,10 @@ public class PatchMixer {
             }
             //Log.v(TAG, "End tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
             if (!isAllPacked || needInference) {
-                mPackedFrames.remove(frame);
-                mPackedRoIs = mPackedRoIs.stream().filter(r -> r.frame != frame).collect(Collectors.toList());
+                if (mPackedFrames.stream().filter(f -> f.sourceIP.equals(frame.sourceIP)).count() > 1) {
+                    mPackedFrames.remove(frame);
+                    mPackedRoIs = mPackedRoIs.stream().filter(r -> r.frame != frame).collect(Collectors.toList());
+                }
                 InferenceRequest request = needPacking
                         ? InferenceRequest.createMixedFrameRequest(
                         getMixedImage(mPackedRoIs), mPackedFrames, mPackedRoIs)
