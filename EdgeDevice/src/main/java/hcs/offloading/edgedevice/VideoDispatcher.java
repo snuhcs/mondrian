@@ -56,7 +56,7 @@ public class VideoDispatcher extends CustomCapturer {
 
             int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
             for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-                //Log.v(TAG, VIDEO_PATH + " " + frameIndex + " loaded");
+                Log.v(TAG, VIDEO_PATH + " " + frameIndex + " loaded");
                 Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
                 surTexture.getHandler().post(() -> {
