@@ -68,9 +68,10 @@ public class RoI {
     }
 
     public RoI resize(int lengthThreshold) {
-        int maxWidthHeight = minOriginMaxWidthHeight == -1
-                ? Math.max(location.width(), location.height())
-                : minOriginMaxWidthHeight;
+//        int maxWidthHeight = minOriginMaxWidthHeight == -1
+//                ? Math.max(location.width(), location.height())
+//                : minOriginMaxWidthHeight;
+        int maxWidthHeight = Math.max(location.width(), location.height());
         if (maxWidthHeight > lengthThreshold) {
             return new RoI(this, (float) lengthThreshold / maxWidthHeight);
         }
