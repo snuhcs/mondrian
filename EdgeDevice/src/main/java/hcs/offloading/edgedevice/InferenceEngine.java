@@ -80,7 +80,7 @@ public class InferenceEngine {
     }
 
     public void enqueueRequest(InferenceRequest request) {
-        //Log.v(TAG, "Start enqueueRequest() : " + request.type);
+        //Log.v(TAG, "Start enqueueRequest() : " + request.type + (request.type == InferenceRequest.Type.FULL ? (" " + request.frameIndex) : ""));
         try {
             synchronized (mInferenceRequests) {
                 while (MAX_QUEUED_REQUESTS > 0 && mInferenceRequests.size() > MAX_QUEUED_REQUESTS) {
@@ -92,7 +92,7 @@ public class InferenceEngine {
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
-        //Log.v(TAG, "End enqueueRequest() : " + request.type);
+        //Log.v(TAG, "End enqueueRequest() : " + request.type + (request.type == InferenceRequest.Type.FULL ? (" " + request.frameIndex) : ""));
     }
 
     public InferenceRequest getRequest() throws InterruptedException {

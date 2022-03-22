@@ -132,23 +132,23 @@ public class RoIExtractor implements Runnable {
     }
 
     void enqueueResults(int frameIndex, List<BoundingBox> results) {
-        //Log.v(TAG, "Start enqueueResults() : " + frameIndex);
+        //Log.v(TAG, "Start enqueueResults() : Single " + frameIndex);
         synchronized (mResults) {
             mResults.put(frameIndex, results);
             mResults.notifyAll();
         }
-        //Log.v(TAG, "End enqueueResults() : " + frameIndex);
+        //Log.v(TAG, "End enqueueResults() : Single " + frameIndex);
     }
 
     void enqueueResults(Map<Integer, List<BoundingBox>> results) {
-        //Log.v(TAG, "Start enqueueResults() : MIXED");
+        //Log.v(TAG, "Start enqueueResults() : Multiple");
         synchronized (mResults) {
             for (Map.Entry<Integer, List<BoundingBox>> idxBoxes : results.entrySet()) {
                 mResults.put(idxBoxes.getKey(), idxBoxes.getValue());
             }
             mResults.notifyAll();
         }
-        //Log.v(TAG, "End enqueueResults() : MIXED");
+        //Log.v(TAG, "End enqueueResults() : Multiple");
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -294,7 +294,9 @@ public class RoIExtractor implements Runnable {
                                 roiLabel = roi0.labelName;
                             }
                         }
-                        mergedRoI = new RoI(frame, newLocation, roiType, roiLabel);
+                        mergedRoI = new RoI(frame, newLocation, roiType, roiLabel,
+                                Math.min(Math.max(roi0.location.width(), roi0.location.height()),
+                                        Math.max(roi1.location.width(), roi1.location.height())));
                         break;
                     }
                 }

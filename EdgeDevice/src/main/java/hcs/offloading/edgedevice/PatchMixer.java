@@ -9,12 +9,12 @@ import android.support.annotation.RequiresApi;
 import android.util.Pair;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import hcs.offloading.edgedevice.config.PatchMixerConfig;
 import hcs.offloading.edgedevice.datatypes.Frame;
@@ -31,7 +31,6 @@ public class PatchMixer {
     private Set<Frame> mPackedFrames;
     private List<RoI> mPackedRoIs;
     private List<Rect> mFreeRects;
-    private final Map<String, Integer> mPackStartFrameIndex = new HashMap<>();
 
     public PatchMixer(PatchMixerConfig config) {
         MAX_OPTICAL_FLOW_INTERVAL = config.MAX_PACKED_FRAMES;
@@ -54,10 +53,11 @@ public class PatchMixer {
         //Log.v(TAG, "Start tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
         synchronized (this) {
             mPackedFrames.add(frame);
-            if (!mPackStartFrameIndex.containsKey(frame.sourceIP)) {
-                mPackStartFrameIndex.put(frame.sourceIP, frame.frameIndex);
-            }
-            int numPackedFrames = frame.frameIndex - mPackStartFrameIndex.get(frame.sourceIP) + 1;
+            int minPackedFrameIndex = mPackedFrames.stream()
+                    .filter(f -> f.sourceIP.equals(frame.sourceIP))
+                    .map(f -> f.frameIndex)
+                    .min(Comparator.comparingInt(i0 -> i0)).get();
+            int numPackedFrames = frame.frameIndex - minPackedFrameIndex + 1;
             boolean needInference = numPackedFrames >= MAX_OPTICAL_FLOW_INTERVAL;
             boolean isAllPacked = true;
             for (RoI roi : rois) {
@@ -80,9 +80,11 @@ public class PatchMixer {
             }
             //Log.v(TAG, "End tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
             if (!isAllPacked || needInference) {
-                mPackStartFrameIndex.clear();
+                mPackedFrames.remove(frame);
+                mPackedRoIs = mPackedRoIs.stream().filter(r -> r.frame != frame).collect(Collectors.toList());
                 InferenceRequest request = needPacking
-                        ? InferenceRequest.createMixedFrameRequest(getMixedImage(), mPackedFrames, mPackedRoIs)
+                        ? InferenceRequest.createMixedFrameRequest(
+                        getMixedImage(mPackedRoIs), mPackedFrames, mPackedRoIs)
                         : InferenceRequest.createPerRoIInferenceRequest(mPackedFrames, mPackedRoIs);
                 reset();
                 return request;
@@ -92,11 +94,11 @@ public class PatchMixer {
         }
     }
 
-    private Bitmap getMixedImage() {
+    private Bitmap getMixedImage(List<RoI> rois) {
         Bitmap bitmap = Bitmap.createBitmap(MIXED_FRAME_SIZE, MIXED_FRAME_SIZE, Bitmap.Config.ARGB_8888);
         bitmap.eraseColor(Color.BLACK);
         Canvas canvas = new Canvas(bitmap);
-        for (RoI roi : mPackedRoIs) {
+        for (RoI roi : rois) {
             int[] packedLocation = roi.packedLocation;
             canvas.drawBitmap(roi.getResizedBitmap(), packedLocation[0], packedLocation[1], null);
         }

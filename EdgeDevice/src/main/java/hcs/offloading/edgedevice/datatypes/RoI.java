@@ -14,6 +14,7 @@ public class RoI {
     public final Frame frame;
     public final Rect location;
 
+    public final int minOriginMaxWidthHeight;
     public final float scale;
     public final int[] packedLocation;
 
@@ -25,6 +26,17 @@ public class RoI {
     public RoI(Frame frame, Rect location, Type type, String labelName) {
         this.frame = frame;
         this.location = location;
+        this.minOriginMaxWidthHeight = -1;
+        this.scale = 1f;
+        this.packedLocation = null;
+        this.type = type;
+        this.labelName = labelName;
+    }
+
+    public RoI(Frame frame, Rect location, Type type, String labelName, int minOriginMaxWidthHeight) {
+        this.frame = frame;
+        this.location = location;
+        this.minOriginMaxWidthHeight = minOriginMaxWidthHeight;
         this.scale = 1f;
         this.packedLocation = null;
         this.type = type;
@@ -34,6 +46,7 @@ public class RoI {
     private RoI(RoI roi, float scale) {
         this.frame = roi.frame;
         this.location = roi.location;
+        this.minOriginMaxWidthHeight = -1;
         this.scale = scale;
         this.packedLocation = roi.packedLocation;
         this.type = roi.type;
@@ -43,6 +56,7 @@ public class RoI {
     private RoI(RoI roi, int[] packedLocation) {
         this.frame = roi.frame;
         this.location = roi.location;
+        this.minOriginMaxWidthHeight = -1;
         this.scale = roi.scale;
         this.packedLocation = packedLocation;
         this.type = roi.type;
@@ -54,7 +68,9 @@ public class RoI {
     }
 
     public RoI resize(int lengthThreshold) {
-        int maxWidthHeight = Math.max(location.width(), location.height());
+        int maxWidthHeight = minOriginMaxWidthHeight == -1
+                ? Math.max(location.width(), location.height())
+                : minOriginMaxWidthHeight;
         if (maxWidthHeight > lengthThreshold) {
             return new RoI(this, (float) lengthThreshold / maxWidthHeight);
         }
