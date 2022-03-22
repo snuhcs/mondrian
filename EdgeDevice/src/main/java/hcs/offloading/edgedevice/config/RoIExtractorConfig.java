@@ -10,6 +10,8 @@ import hcs.offloading.edgedevice.Utils;
 public class RoIExtractorConfig {
     public boolean PACKING = true;
     public int FULL_INFERENCE_INTERVAL = 4;
+    public int EXTRACTION_RESIZE_WIDTH = 192;
+    public int EXTRACTION_RESIZE_HEIGHT = 108;
     public float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.3f;
     public float MERGE_THRESHOLD = 0.5f;
     public int ROI_PADDING = 3;
@@ -32,6 +34,12 @@ public class RoIExtractorConfig {
         }
         if (jsonObject.has("full_inference_interval")) {
             FULL_INFERENCE_INTERVAL = jsonObject.getInt("full_inference_interval");
+        }
+        if (jsonObject.has("extraction_resize_width")) {
+            EXTRACTION_RESIZE_WIDTH = jsonObject.getInt("extraction_resize_width");
+        }
+        if (jsonObject.has("extraction_resize_height")) {
+            EXTRACTION_RESIZE_HEIGHT = jsonObject.getInt("extraction_resize_height");
         }
         if (jsonObject.has("optical_flow_roi_confidence_threshold")) {
             OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = (float) jsonObject.getDouble("optical_flow_roi_confidence_threshold");

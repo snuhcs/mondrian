@@ -43,6 +43,8 @@ public class RoIExtractor implements Runnable {
 
     private final boolean PACKING;
     private final int FULL_INFERENCE_INTERVAL;
+    private final int EXTRACTION_RESIZE_WIDTH;
+    private final int EXTRACTION_RESIZE_HEIGHT;
     private final float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD;
     private final float MERGE_THRESHOLD;
     private final int ROI_PADDING;
@@ -76,6 +78,8 @@ public class RoIExtractor implements Runnable {
         TAG = ip;
         PACKING = config.PACKING;
         FULL_INFERENCE_INTERVAL = config.FULL_INFERENCE_INTERVAL;
+        EXTRACTION_RESIZE_WIDTH = config.EXTRACTION_RESIZE_WIDTH;
+        EXTRACTION_RESIZE_HEIGHT = config.EXTRACTION_RESIZE_HEIGHT;
         OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = config.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD;
         MERGE_THRESHOLD = config.MERGE_THRESHOLD;
         ROI_PADDING = config.ROI_PADDING;
@@ -343,21 +347,32 @@ public class RoIExtractor implements Runnable {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private int[][] getOpticalFlowForBoundingBoxes(Bitmap f0, Bitmap f1, List<Rect> boundingBoxes) {
-        Mat f0_gray = new Mat();
-        Mat f1_gray = new Mat();
+    private int[][] getOpticalFlowForBoundingBoxes(Bitmap prevImage, Bitmap currImage, List<Rect> boundingBoxes) {
+        Mat prevMat = new Mat();
+        Mat currMat = new Mat();
+        Size targetSize = new Size(EXTRACTION_RESIZE_WIDTH, EXTRACTION_RESIZE_HEIGHT);
         MatOfPoint2f p0 = new MatOfPoint2f();
         MatOfPoint2f p1 = new MatOfPoint2f();
         MatOfByte status = new MatOfByte();
         MatOfFloat err = new MatOfFloat();
 
-        convertBitmapToGrayMat(f0, f0_gray);
-        convertBitmapToGrayMat(f1, f1_gray);
+        Utils.bitmapToMat(prevImage, prevMat);
+        Utils.bitmapToMat(currImage, currMat);
 
-        List<Point> centroids = boundingBoxes.stream().map(bbx -> new Point(bbx.centerX(), bbx.centerY())).collect(Collectors.toList());
+        Imgproc.cvtColor(prevMat, prevMat, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.cvtColor(currMat, currMat, Imgproc.COLOR_BGR2GRAY);
+
+        Imgproc.resize(prevMat, prevMat, targetSize);
+        Imgproc.resize(currMat, currMat, targetSize);
+
+        List<Point> centroids = boundingBoxes.stream()
+                .map(bbx -> new Point(
+                        (float) bbx.centerX() * EXTRACTION_RESIZE_WIDTH / currImage.getWidth(),
+                        (float) bbx.centerY() * EXTRACTION_RESIZE_HEIGHT / currImage.getHeight()))
+                .collect(Collectors.toList());
         p0.fromList(centroids);
         TermCriteria criteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 10, 0.03);
-        Video.calcOpticalFlowPyrLK(f0_gray, f1_gray, p0, p1, status, err, new Size(15, 15), 2, criteria);
+        Video.calcOpticalFlowPyrLK(prevMat, currMat, p0, p1, status, err, new Size(15, 15), 2, criteria);
 
         byte[] StatusArr = status.toArray();
         Point[] p1Arr = p1.toArray();
@@ -365,16 +380,16 @@ public class RoIExtractor implements Runnable {
         int[][] shifts = new int[centroids.size()][2];
         for (int pointIdx = 0; pointIdx < centroids.size(); pointIdx++) {
             if (StatusArr[pointIdx] == 1) {
-                shifts[pointIdx][0] = (int) ((float) p1Arr[pointIdx].x - (float) centroids.get(pointIdx).x);
-                shifts[pointIdx][1] = (int) ((float) p1Arr[pointIdx].y - (float) centroids.get(pointIdx).y);
+                shifts[pointIdx][0] = (int) ((p1Arr[pointIdx].x - centroids.get(pointIdx).x) * currImage.getWidth() / EXTRACTION_RESIZE_WIDTH);
+                shifts[pointIdx][1] = (int) ((p1Arr[pointIdx].y - centroids.get(pointIdx).y) * currImage.getHeight() / EXTRACTION_RESIZE_HEIGHT);
             } else {
                 shifts[pointIdx][0] = 0;
                 shifts[pointIdx][1] = 0;
             }
         }
 
-        f0_gray.release();
-        f1_gray.release();
+        prevMat.release();
+        currMat.release();
         p0.release();
         p1.release();
         status.release();
@@ -383,39 +398,40 @@ public class RoIExtractor implements Runnable {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private static List<RoI> createRoIsFromDiff(Frame prevFrame, Frame currFrame) {
-        Mat img_0_gray = new Mat();
-        Mat img_1_gray = new Mat();
-        convertBitmapToGrayMat(prevFrame.bitmap, img_0_gray);
-        convertBitmapToGrayMat(currFrame.bitmap, img_1_gray);
+    private List<RoI> createRoIsFromDiff(Frame prevFrame, Frame currFrame) {
+        Mat prevMat = new Mat();
+        Mat currMat = new Mat();
+        Size targetSize = new Size(EXTRACTION_RESIZE_WIDTH, EXTRACTION_RESIZE_HEIGHT);
 
-        Mat mat = img_1_gray.clone();
-        calculateDiffAndThreshold(img_0_gray, img_1_gray, mat);
+        Utils.bitmapToMat(prevFrame.bitmap, prevMat);
+        Utils.bitmapToMat(currFrame.bitmap, currMat);
+
+        Imgproc.cvtColor(prevMat, prevMat, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.cvtColor(currMat, currMat, Imgproc.COLOR_BGR2GRAY);
+
+        Imgproc.resize(prevMat, prevMat, targetSize);
+        Imgproc.resize(currMat, currMat, targetSize);
+
+        Mat mat = new Mat();
+        calculateDiffAndThreshold(prevMat, currMat, mat);
         cannyEdgeDetection(mat);
 
         ArrayList<MatOfPoint> contours = new ArrayList<>();
         Mat hierarchy = new Mat();
         Imgproc.findContours(mat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-        List<Rect> locations = getBoxesFromContours(contours);
+        List<Rect> locations = getBoxesFromContours(contours, currFrame.bitmap.getWidth(), currFrame.bitmap.getHeight());
         List<RoI> rois = locations.stream()
                 .map(location -> new RoI(currFrame, location, RoI.Type.PD, null))
                 .collect(Collectors.toList());
 
-        img_0_gray.release();
-        img_1_gray.release();
+        prevMat.release();
+        currMat.release();
         hierarchy.release();
         mat.release();
         for (MatOfPoint contour : contours) {
             contour.release();
         }
         return rois;
-    }
-
-    private static void convertBitmapToGrayMat(Bitmap original, Mat gray) {
-        Mat originalMat = new Mat();
-        Utils.bitmapToMat(original, originalMat);
-        Imgproc.cvtColor(originalMat, gray, Imgproc.COLOR_BGR2GRAY);
-        originalMat.release();
     }
 
     private static void calculateDiffAndThreshold(Mat frame0, Mat frame1, Mat diff) {
@@ -432,7 +448,7 @@ public class RoIExtractor implements Runnable {
         Imgproc.dilate(mat, mat, Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5)), new Point(0, 0), 1);
     }
 
-    private static List<Rect> getBoxesFromContours(List<MatOfPoint> contours) {
+    private List<Rect> getBoxesFromContours(List<MatOfPoint> contours, int originalWidth, int originalHeight) {
         List<Rect> boxes = new ArrayList<>();
         for (MatOfPoint contour : contours) {
             MatOfPoint2f contour2f = new MatOfPoint2f(contour.toArray());
@@ -441,10 +457,15 @@ public class RoIExtractor implements Runnable {
             Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
             MatOfPoint points = new MatOfPoint(approxCurve.toArray());
             org.opencv.core.Rect rect = Imgproc.boundingRect(points);
-            if (rect.height * rect.width < 10000) {
+            if (rect.width * rect.height < 10000 * EXTRACTION_RESIZE_WIDTH * EXTRACTION_RESIZE_HEIGHT / originalWidth / originalHeight) {
                 continue;
             }
-            Rect location = new Rect(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height);
+            Rect location = new Rect(
+                    rect.x * originalWidth / EXTRACTION_RESIZE_WIDTH,
+                    rect.y * originalHeight / EXTRACTION_RESIZE_HEIGHT,
+                    rect.x + rect.width * originalWidth / EXTRACTION_RESIZE_WIDTH,
+                    rect.y + rect.height * originalHeight / EXTRACTION_RESIZE_HEIGHT
+            );
             if (location.left < location.right && location.top < location.bottom) {
                 boxes.add(location);
             }
