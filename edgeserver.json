@@ -11,6 +11,6 @@
     "num_workers": 1,
     "match_padding": 40,
     "use_iou_threshold": 0.1,
-    "log_path": "/data/data/hcs.offloading.edgeserver/edgeserver.log",
+    "log_path": "/data/data/hcs.offloading.edgedevice/edgedevice.log",
     "minimum_confidence": 0.5
 }
