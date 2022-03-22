@@ -49,7 +49,7 @@ public class PatchMixer {
         mFreeRects.add(new Rect(0, 0, MIXED_FRAME_SIZE, MIXED_FRAME_SIZE));
     }
 
-    public InferenceRequest tryPackRoIs(Frame frame, List<RoI> rois, boolean needPacking) {
+    public InferenceRequest tryPackRoIs(Frame frame, List<RoI> rois, boolean packing) {
         //Log.v(TAG, "Start tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
         synchronized (this) {
             mPackedFrames.add(frame);
@@ -84,9 +84,9 @@ public class PatchMixer {
                     mPackedFrames.remove(frame);
                     mPackedRoIs = mPackedRoIs.stream().filter(r -> r.frame != frame).collect(Collectors.toList());
                 }
-                InferenceRequest request = needPacking
+                InferenceRequest request = packing
                         ? InferenceRequest.createMixedFrameRequest(
-                        getMixedImage(mPackedRoIs), mPackedFrames, mPackedRoIs)
+                                getMixedImage(mPackedRoIs), mPackedFrames, mPackedRoIs)
                         : InferenceRequest.createPerRoIInferenceRequest(mPackedFrames, mPackedRoIs);
                 reset();
                 return request;

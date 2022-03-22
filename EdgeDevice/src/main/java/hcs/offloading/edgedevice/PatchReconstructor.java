@@ -98,6 +98,11 @@ public class PatchReconstructor implements Runnable {
         if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.FULL) {
             mViewCallback.drawInferenceResult(Utils.drawBoxes(request.bitmap.copy(request.bitmap.getConfig(), true), results, DRAW_CONFIDENCE));
             request.bitmap.recycle();
+        } else {
+            if (request.rois != null && request.rois.size() > 0) {
+                RoI roi = request.rois.get(0);
+                mViewCallback.drawInferenceResult(Utils.drawBoxes(roi.getBitmap(), roi.boundingBoxes, DRAW_CONFIDENCE));
+            }
         }
         //Log.v(TAG, "End enqueueInferenceResults() : " + request.type);
     }
@@ -136,11 +141,6 @@ public class PatchReconstructor implements Runnable {
                         .max(Comparator.comparingInt(RoI::getFrameIndex))
                         .ifPresent(lastRoI -> {
                             List<BoundingBox> r = reconstructedFrameResults.get(lastRoI.frame.sourceIP).get(lastRoI.frame.frameIndex);
-                            StringBuffer str = new StringBuffer();
-                            for (BoundingBox box : r) {
-                                str.append(box.location.left + "," + box.location.top + "," + box.location.right + "," + box.location.bottom + " ");
-                            }
-                            //Log.v(TAG, "Draw boxes: " + str);
                             mViewCallback.drawObjectDetectionResult(Utils.drawBoxes(
                                     lastRoI.frame.bitmap.copy(lastRoI.frame.bitmap.getConfig(), true),
                                     r,
