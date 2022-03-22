@@ -25,7 +25,7 @@ import hcs.offloading.edgedevice.databinding.ActivityMainBinding;
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ViewCallback {
     private static final String TAG = MainActivity.class.getName();
 
-    private static final String CONFIG_FILEPATH = "/data/local/tmp/edgeserver.json";
+    private static final String CONFIG_FILEPATH = "/data/local/tmp/edgedevice.json";
 
     private EditText mIpInput;
     private EditText mPortInput;
