@@ -67,12 +67,9 @@ public class RoI {
         return Bitmap.createBitmap(frame.bitmap, location.left, location.top, location.width(), location.height());
     }
 
-    public RoI resize(int lengthThreshold) {
-//        int maxWidthHeight = minOriginMaxWidthHeight == -1
-//                ? Math.max(location.width(), location.height())
-//                : minOriginMaxWidthHeight;
+    public RoI resize(int lengthThreshold, boolean fitResize) {
         int maxWidthHeight = Math.max(location.width(), location.height());
-        if (maxWidthHeight > lengthThreshold) {
+        if (fitResize || maxWidthHeight > lengthThreshold) {
             return new RoI(this, (float) lengthThreshold / maxWidthHeight);
         }
         return this;

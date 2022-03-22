@@ -51,6 +51,7 @@ public class RoIExtractor implements Runnable {
     private final boolean OF_ROI;
     private final boolean PD_ROI;
     private final boolean MERGE_ROI;
+    private final boolean FIT_RESIZE;
 
     static {
         if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
@@ -86,6 +87,7 @@ public class RoIExtractor implements Runnable {
         OF_ROI = config.OF_ROI;
         PD_ROI = config.PD_ROI;
         MERGE_ROI = config.MERGE_ROI;
+        FIT_RESIZE = config.FIT_RESIZE;
 
         mMockProfiles = new MockProfiles(config.PERSON_THRESHOLD, config.CLASS_AGNOSTIC_THRESHOLD);
 
@@ -216,8 +218,15 @@ public class RoIExtractor implements Runnable {
                     if (OF_ROI) {
                         List<BoundingBox> prevResults;
                         if (useInferenceResults) {
+                            Frame finalCurrFrame = currFrame;
                             prevResults = getResults(prevFrame.frameIndex).stream()
                                     .filter(box -> box.confidence > OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD)
+                                    .map(box -> new BoundingBox(new Rect(
+                                            Math.max(0, box.location.left - ROI_PADDING),
+                                            Math.max(0, box.location.top - ROI_PADDING),
+                                            Math.min(finalCurrFrame.bitmap.getWidth() - 1, box.location.right + ROI_PADDING),
+                                            Math.min(finalCurrFrame.bitmap.getHeight() - 1, box.location.bottom + ROI_PADDING)
+                                    ), box.confidence, box.labelName))
                                     .collect(Collectors.toList());
                         } else {
                             prevResults = opticalFlowRoIs.stream()
@@ -261,7 +270,7 @@ public class RoIExtractor implements Runnable {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private List<RoI> resizeRoIs(List<RoI> rois) {
-        return rois.stream().map(roi -> roi.resize(mMockProfiles.getProfile(roi.labelName))).collect(Collectors.toList());
+        return rois.stream().map(roi -> roi.resize(mMockProfiles.getProfile(roi.labelName), FIT_RESIZE)).collect(Collectors.toList());
     }
 
     public void mergeSingleFrameRoIs(List<RoI> rois) {
@@ -333,10 +342,10 @@ public class RoIExtractor implements Runnable {
                 int[] shift = shifts[boxIndex];
                 BoundingBox box = boundingBoxes.get(boxIndex);
                 Rect loc = box.location;
-                int newLeft = Math.max(0, loc.left + shift[0] - ROI_PADDING);
-                int newTop = Math.max(0, loc.top + shift[1] - ROI_PADDING);
-                int newRight = Math.min(width, loc.right + shift[0] + ROI_PADDING);
-                int newBottom = Math.min(height, loc.bottom + shift[1] + ROI_PADDING);
+                int newLeft = Math.max(0, loc.left + shift[0]);
+                int newTop = Math.max(0, loc.top + shift[1]);
+                int newRight = Math.min(width, loc.right + shift[0]);
+                int newBottom = Math.min(height, loc.bottom + shift[1]);
                 if (newLeft < newRight && newTop < newBottom) {
                     opticalFlowRoIs.add(new RoI(
                             currFrame, new Rect(newLeft, newTop, newRight, newBottom), RoI.Type.OF, box.labelName));

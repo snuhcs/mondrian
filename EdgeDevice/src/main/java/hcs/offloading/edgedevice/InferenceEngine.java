@@ -96,7 +96,7 @@ public class InferenceEngine {
     }
 
     public InferenceRequest getRequest() throws InterruptedException {
-        ////Log.v(TAG, "Start getRequest()");
+        //Log.v(TAG, "Start getRequest()");
         InferenceRequest request;
         synchronized (mInferenceRequests) {
             while (mInferenceRequests.size() == 0) {
@@ -105,7 +105,7 @@ public class InferenceEngine {
             request = mInferenceRequests.poll();
             mInferenceRequests.notifyAll();
         }
-        ////Log.v(TAG, "End getRequest()");
+        //Log.v(TAG, "End getRequest()");
         return request;
     }
 
