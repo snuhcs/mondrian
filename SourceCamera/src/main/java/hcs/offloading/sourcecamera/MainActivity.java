@@ -24,7 +24,7 @@ import hcs.offloading.sourcecamera.databinding.ActivityMainBinding;
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener {
     private static final String TAG = MainActivity.class.getName();
 
-    private static final String CONFIG_FILEPATH = "/data/local/tmp/sensorapplication.json";
+    private static final String CONFIG_FILEPATH = "/data/local/tmp/sourcecamera.json";
 
     private EditText mIpInput;
     private EditText mPortInput;
