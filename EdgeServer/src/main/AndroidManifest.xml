@@ -21,7 +21,7 @@
         android:theme="@style/Theme.EdgeServer">
 
         <activity
-            android:name="hcs.offloading.edgeserver.MainActivity"
+            android:name=".MainActivity"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

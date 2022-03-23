@@ -17,7 +17,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SensorApplication">
         <activity
-            android:name="hcs.offloading.sensorapplication.MainActivity"
+            android:name=".MainActivity"
             android:screenOrientation="landscape" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
