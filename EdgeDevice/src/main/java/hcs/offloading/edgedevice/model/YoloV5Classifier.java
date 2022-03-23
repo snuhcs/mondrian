@@ -46,8 +46,20 @@ public class YoloV5Classifier implements Classifier {
         CONF_THRESHOLD = confThreshold;
         IOU_THRESHOLD = iouThreshold;
         INPUT_SIZE = size;
-        String modelFilename = "yolov5" + (isTiny ? "m" : "x") + "-" + size + "-fp16.tflite";
-        OUTPUT_WIDTH = (size / 32) * (size / 32) * 63;
+        String modelFilename = "yolov5" + (isTiny ? "m" : "x6") + "-" + size + "-fp16.tflite";
+        if (size == 896) {
+            OUTPUT_WIDTH = 49980;
+        } else if (size == 384) {
+            OUTPUT_WIDTH = 9180;
+        } else if (size == 192) {
+            OUTPUT_WIDTH = 2295;
+        } else if (size == 128) {
+            OUTPUT_WIDTH = 1020;
+        } else if (size == 64) {
+            OUTPUT_WIDTH = 255;
+        } else {
+            OUTPUT_WIDTH = (size / 32) * (size / 32) * 63;
+        }
 
         try {
             InputStream labelsInput = assetManager.open("coco.txt");
