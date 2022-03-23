@@ -259,6 +259,9 @@ public class RoIExtractor implements Runnable {
                     } else {
                         mCountMixedFrameInference++;
                         mCallback.enqueueInferenceRequest(request);
+                        // If prevFrame.frameIndex == mLastQueriedIndex,
+                        // it means that rois from single frame filled the mixed frame.
+                        // In that case, we have to continue processing.
                         if (prevFrame.frameIndex != mLastQueriedIndex) {
                             updateFrame = false;
                         }
