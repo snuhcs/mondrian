@@ -1,0 +1,77 @@
+package hcs.offloading.edgeserver.config;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+
+import hcs.offloading.edgeserver.Utils;
+
+public class RoIExtractorConfig {
+    public boolean PACKING = true;
+    public int FULL_INFERENCE_INTERVAL = 4;
+    public int EXTRACTION_RESIZE_WIDTH = 192;
+    public int EXTRACTION_RESIZE_HEIGHT = 108;
+    public float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.3f;
+    public float MERGE_THRESHOLD = 0.5f;
+    public int ROI_PADDING = 3;
+    public boolean OF_ROI = true;
+    public boolean PD_ROI = true;
+    public boolean MERGE_ROI = true;
+    public int PERSON_THRESHOLD = 160;
+    public int CLASS_AGNOSTIC_THRESHOLD = 160;
+    public boolean FIT_RESIZE = false;
+    public boolean MERGED_RESIZE = false;
+
+    RoIExtractorConfig() {
+    }
+
+    RoIExtractorConfig(String jsonPath) throws IOException, JSONException {
+        this(new JSONObject(Utils.getStringFromFile(jsonPath)));
+    }
+
+    RoIExtractorConfig(JSONObject jsonObject) throws JSONException {
+        if (jsonObject.has("packing")) {
+            PACKING = jsonObject.getBoolean("packing");
+        }
+        if (jsonObject.has("full_inference_interval")) {
+            FULL_INFERENCE_INTERVAL = jsonObject.getInt("full_inference_interval");
+        }
+        if (jsonObject.has("extraction_resize_width")) {
+            EXTRACTION_RESIZE_WIDTH = jsonObject.getInt("extraction_resize_width");
+        }
+        if (jsonObject.has("extraction_resize_height")) {
+            EXTRACTION_RESIZE_HEIGHT = jsonObject.getInt("extraction_resize_height");
+        }
+        if (jsonObject.has("optical_flow_roi_confidence_threshold")) {
+            OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = (float) jsonObject.getDouble("optical_flow_roi_confidence_threshold");
+        }
+        if (jsonObject.has("merge_threshold")) {
+            MERGE_THRESHOLD = (float) jsonObject.getDouble("merge_threshold");
+        }
+        if (jsonObject.has("roi_padding")) {
+            ROI_PADDING = jsonObject.getInt("roi_padding");
+        }
+        if (jsonObject.has("of_roi")) {
+            OF_ROI = jsonObject.getBoolean("of_roi");
+        }
+        if (jsonObject.has("pd_roi")) {
+            PD_ROI = jsonObject.getBoolean("pd_roi");
+        }
+        if (jsonObject.has("merge_roi")) {
+            MERGE_ROI = jsonObject.getBoolean("merge_roi");
+        }
+        if (jsonObject.has("person_threshold")) {
+            PERSON_THRESHOLD = jsonObject.getInt("person_threshold");
+        }
+        if (jsonObject.has("class_agnostic_threshold")) {
+            CLASS_AGNOSTIC_THRESHOLD = jsonObject.getInt("class_agnostic_threshold");
+        }
+        if (jsonObject.has("fit_resize")) {
+            FIT_RESIZE = jsonObject.getBoolean("fit_resize");
+        }
+        if (jsonObject.has("merged_resize")) {
+            MERGED_RESIZE = jsonObject.getBoolean("merged_resize");
+        }
+    }
+}

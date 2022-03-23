@@ -14,7 +14,7 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "OffloadingSystem"
-include ':EdgeDevice'
+include ':EdgeServer'
 include ':Network'
-include ':SourceCamera'
-include ':EdgeHub'
+include ':SensorApplication'
+include ':Scheduler'

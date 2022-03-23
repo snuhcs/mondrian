@@ -27,19 +27,19 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 
 ### Prerequisites
 1. Download MNN and TensorFlow Lite models from google drive.
-2. Put downloaded models in `EdgeDevice/src/main/assets` directory.
+2. Put downloaded models in `EdgeServer/src/main/assets` directory.
 
 ### Installation
 1. Download the Android Studio.
 2. Open this project with the Android Studio.
-3. Select each application to install. (`edgedevice`, `sourcecamera`, `edgehub`)
+3. Select each application to install. (`edgeserver`, `sensorapplication`, `scheduler`)
 4. Build the target application.
 
 ### How to Run
 1. Install applications to different mobile devices with the Android Studio.
-2. Upload `edgedevice.json` into `/data/local/tmp`. (`adb push edgedevice.json /data/local/tmp`)
-3. Upload `sourcecamera.json` into `/data/local/tmp`. (`adb push sourcecamera.json /data/local/tmp`)
-4. If local video file is to be sent from `SourceCamera`, upload video specified in `sourcecamera.json` into `/data/local/tmp`. (`adb push [video_file_path] /data/local/tmp`)
+2. Upload `edgeserver.json` into `/data/local/tmp`. (`adb push edgeserver.json /data/local/tmp`)
+3. Upload `sensorapplication.json` into `/data/local/tmp`. (`adb push sensorapplication.json /data/local/tmp`)
+4. If local video file is to be sent from `SensorApplication`, upload video specified in `sensorapplication.json` into `/data/local/tmp`. (`adb push [video_file_path] /data/local/tmp`)
 5. Run applications with the Android Studio.
 
 
