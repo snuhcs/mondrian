@@ -12,6 +12,7 @@ public class InferenceEngineConfig {
         YOLO_V4,
         YOLO_V5,
     }
+
     public Model MODEL = Model.YOLO_V4;
     public boolean USE_TINY = false;
     public float CONF_THRESHOLD = 0.1f;

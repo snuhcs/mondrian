@@ -85,8 +85,7 @@ public class PatchMixer {
                     mPackedRoIs = mPackedRoIs.stream().filter(r -> r.frame != frame).collect(Collectors.toList());
                 }
                 InferenceRequest request = packing
-                        ? InferenceRequest.createMixedFrameRequest(
-                                getMixedImage(mPackedRoIs), mPackedFrames, mPackedRoIs)
+                        ? InferenceRequest.createMixedFrameRequest(getMixedImage(mPackedRoIs), mPackedFrames, mPackedRoIs)
                         : InferenceRequest.createPerRoIInferenceRequest(mPackedFrames, mPackedRoIs);
                 reset();
                 return request;
