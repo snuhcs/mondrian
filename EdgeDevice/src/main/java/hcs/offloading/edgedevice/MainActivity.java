@@ -18,7 +18,7 @@ import org.webrtc.SurfaceViewRenderer;
 
 import java.io.IOException;
 
-import hcs.offloading.edgedevice.config.Config;
+import hcs.offloading.strm.config.Config;
 import hcs.offloading.edgedevice.databinding.ActivityMainBinding;
 
 @RequiresApi(api = Build.VERSION_CODES.P)

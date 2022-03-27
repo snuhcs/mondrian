@@ -16,9 +16,9 @@ import org.webrtc.VideoTrack;
 import java.util.List;
 import java.util.Map;
 
-import hcs.offloading.edgedevice.config.RoIExtractorConfig;
-import hcs.offloading.edgedevice.datatypes.BoundingBox;
-import hcs.offloading.edgedevice.datatypes.Frame;
+import hcs.offloading.strm.config.RoIExtractorConfig;
+import hcs.offloading.strm.datatypes.BoundingBox;
+import hcs.offloading.strm.datatypes.Frame;
 import hcs.offloading.network.webrtc.WebRTCManager;
 import hcs.offloading.network.webrtc.YuvFrame;
 
@@ -36,12 +36,8 @@ public class Dispatcher implements VideoSink {
     private final PeerConnection mPeerConnection;
     private final WebRTCManager mWebRTCManager;
 
-    private final RoIExtractor mRoIExtractor;
-
     @RequiresApi(api = Build.VERSION_CODES.P)
-    Dispatcher(String sourceIP, WebRTCManager webRTCManager, SurfaceViewRenderer inputView, RoIExtractorConfig config, RoIExtractor.Callback callback, int mixedFrameSize) {
-        mRoIExtractor = new RoIExtractor(config, callback, sourceIP);
-
+    Dispatcher(String sourceIP, WebRTCManager webRTCManager, SurfaceViewRenderer inputView, RoIExtractorConfig config, int mixedFrameSize) {
         mSourceIP = sourceIP;
         mWebRTCManager = webRTCManager;
         mInputView = inputView;
@@ -61,7 +57,6 @@ public class Dispatcher implements VideoSink {
     }
 
     public void close() {
-        mRoIExtractor.close();
         synchronized (mPeerConnection) {
             if (mMediaStream != null) {
                 mVideoTrack.removeSink(this);
@@ -80,16 +75,6 @@ public class Dispatcher implements VideoSink {
     public void onFrame(VideoFrame videoFrame) {
         YuvFrame yuvFrame = new YuvFrame(videoFrame);
         Bitmap bitmap = yuvFrame.getBitmap();
-
-        mRoIExtractor.enqueueFrame(Frame.createSingleFrame(bitmap, mSourceIP, mFrameIndex++));
-    }
-
-    void enqueueResults(int frameIndex, List<BoundingBox> results) {
-        mRoIExtractor.enqueueResults(frameIndex, results);
-    }
-
-    void enqueueResults(Map<Integer, List<BoundingBox>> results) {
-        mRoIExtractor.enqueueResults(results);
     }
 
     void handleSdpAndAnswer(String message) {

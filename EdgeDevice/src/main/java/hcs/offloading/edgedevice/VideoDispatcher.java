@@ -13,13 +13,7 @@ import org.webrtc.TextureBufferImpl;
 import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
-import java.util.List;
-import java.util.Map;
-
-import hcs.offloading.edgedevice.config.DispatcherConfig;
-import hcs.offloading.edgedevice.config.RoIExtractorConfig;
-import hcs.offloading.edgedevice.datatypes.BoundingBox;
-import hcs.offloading.edgedevice.datatypes.Frame;
+import hcs.offloading.strm.config.RoIExtractorConfig;
 import hcs.offloading.network.webrtc.CustomCapturer;
 
 public class VideoDispatcher extends CustomCapturer {
@@ -29,12 +23,8 @@ public class VideoDispatcher extends CustomCapturer {
 
     private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
 
-    private final RoIExtractor mRoIExtractor;
-
     @RequiresApi(api = Build.VERSION_CODES.P)
-    VideoDispatcher(DispatcherConfig.VideoConfig config, RoIExtractorConfig roiConfig, RoIExtractor.Callback roiCallback) {
-        mRoIExtractor = new RoIExtractor(roiConfig, roiCallback, config.PATH);
-
+    VideoDispatcher(DispatcherConfig.VideoConfig config, RoIExtractorConfig roiConfig) {
         VIDEO_PATH = config.PATH;
 
         retriever.setDataSource(VIDEO_PATH);
@@ -71,19 +61,9 @@ public class VideoDispatcher extends CustomCapturer {
                     capturerObs.onFrameCaptured(videoFrame);
                     i420Buf.release();
                 });
-
-                mRoIExtractor.enqueueFrame(Frame.createSingleFrame(bitmap, VIDEO_PATH, frameIndex));
             }
         });
         captureThread.start();
-    }
-
-    void enqueueResults(int frameIndex, List<BoundingBox> results) {
-        mRoIExtractor.enqueueResults(frameIndex, results);
-    }
-
-    void enqueueResults(Map<Integer, List<BoundingBox>> results) {
-        mRoIExtractor.enqueueResults(results);
     }
 
     public void close() {
@@ -93,7 +73,6 @@ public class VideoDispatcher extends CustomCapturer {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        mRoIExtractor.close();
         Log.d(TAG, "closed");
     }
 }
