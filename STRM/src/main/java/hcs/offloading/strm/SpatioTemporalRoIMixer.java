@@ -3,19 +3,16 @@ package hcs.offloading.strm;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
-import android.util.Log;
 
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import hcs.offloading.strm.config.STRMConfig;
 import hcs.offloading.strm.config.DispatcherConfig;
 import hcs.offloading.strm.config.RoIExtractorConfig;
-import hcs.offloading.strm.datatypes.BoundingBox;
+import hcs.offloading.strm.config.STRMConfig;
 import hcs.offloading.strm.datatypes.Frame;
 
 public class SpatioTemporalRoIMixer {
@@ -29,7 +26,7 @@ public class SpatioTemporalRoIMixer {
 
     private final PatchMixer mPatchMixer;
     private final PatchReconstructor mPatchReconstructor;
-    private final Map<Integer, Dispatcher> mDispatchers = new ConcurrentHashMap<>();
+    private final Map<String, Dispatcher> mDispatchers = new ConcurrentHashMap<>();
 
     private final DispatcherConfig mDispatcherConfig;
     private final RoIExtractorConfig mRoIExtractorConfig;
@@ -43,7 +40,6 @@ public class SpatioTemporalRoIMixer {
         mRoIPrioritizer = roIPrioritizer;
         mInferenceEngine = inferenceEngine;
 
-        mPatchMixer = new PatchMixer(config.patchMixerConfig);
         mPatchReconstructor = new PatchReconstructor(config.patchReconstructorConfig, mInferenceEngine,
                 mixedFrame -> mixedFrame.packedFrames.stream()
                         .collect(Collectors.groupingBy(f -> f.key)).entrySet()
@@ -52,19 +48,16 @@ public class SpatioTemporalRoIMixer {
                             if (dispatcher != null) {
                                 Frame lastFrame = kv.getValue().stream()
                                         .max(Comparator.comparingInt(f0 -> f0.frameIndex)).get();
-                                try {
-                                    dispatcher.setPrevResults(lastFrame.getResults(), false);
-                                } catch (InterruptedException e) {
-                                    Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
-                                }
+                                dispatcher.setPrevResults(lastFrame.getResults(), false);
                             }
                         }));
+        mPatchMixer = new PatchMixer(config.patchMixerConfig, mInferenceEngine, mPatchReconstructor);
 
         mDispatcherConfig = config.dispatcherConfig;
         mRoIExtractorConfig = config.roIExtractorConfig;
     }
 
-    public void enqueueImage(int key, int frameIndex, Bitmap bitmap) throws InterruptedException {
+    public void enqueueImage(String key, int frameIndex, Bitmap bitmap) throws InterruptedException {
         if (isClosed.get()) {
             return;
         }
@@ -74,7 +67,7 @@ public class SpatioTemporalRoIMixer {
         }
     }
 
-    public List<BoundingBox> getResults(int key, int frameIndex) throws InterruptedException {
+    public Frame getResults(String key, int frameIndex) throws InterruptedException {
         if (isClosed.get()) {
             return null;
         }
@@ -86,7 +79,7 @@ public class SpatioTemporalRoIMixer {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    public void addSource(int key) {
+    public void addSource(String key) {
         if (isClosed.get()) {
             return;
         }
@@ -98,7 +91,7 @@ public class SpatioTemporalRoIMixer {
         }
     }
 
-    public void removeSource(int key) {
+    public void removeSource(String key) {
         if (isClosed.get()) {
             return;
         }
@@ -110,7 +103,7 @@ public class SpatioTemporalRoIMixer {
 
     public void close() {
         isClosed.set(true);
-        for (int key : mDispatchers.keySet()) {
+        for (String key : mDispatchers.keySet()) {
             Dispatcher dispatcher = mDispatchers.remove(key);
             if (dispatcher != null) {
                 dispatcher.close();

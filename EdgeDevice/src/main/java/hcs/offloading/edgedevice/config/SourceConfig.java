@@ -17,6 +17,7 @@ public class SourceConfig {
 
     public boolean USE_LOCAL_VIDEO = false;
     public List<VideoConfig> VIDEO_CONFIGS = new ArrayList<>();
+    public float DRAW_CONFIDENCE = 0.1f;
 
     SourceConfig() {
     }
@@ -47,6 +48,9 @@ public class SourceConfig {
                     VIDEO_CONFIGS.add(videoConfig);
                 }
             }
+        }
+        if (jsonObject.has("draw_confidence")) {
+            DRAW_CONFIDENCE = (float) jsonObject.getDouble("draw_confidence");
         }
     }
 }

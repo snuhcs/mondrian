@@ -12,6 +12,7 @@ import hcs.offloading.strm.STRMUtils;
 public class Config {
     private static final String TAG = Config.class.getName();
 
+    public String LOG_PATH;
     public final SourceConfig sourceConfig;
     public final ResizeProfileConfig resizeProfileConfig;
     public final InferenceEngineConfig inferenceEngineConfig;
@@ -19,6 +20,12 @@ public class Config {
     public Config(String jsonPath) throws IOException, JSONException {
         JSONObject jsonObject = new JSONObject(STRMUtils.getStringFromFile(jsonPath));
         Log.d(TAG, "Parsed Config: " + jsonObject);
+
+        if (jsonObject.has("log_path")) {
+            LOG_PATH = jsonObject.getString("log_path");
+        } else {
+            LOG_PATH = null;
+        }
 
         if (jsonObject.has("source")) {
             sourceConfig = new SourceConfig(jsonObject.getJSONObject("source"));

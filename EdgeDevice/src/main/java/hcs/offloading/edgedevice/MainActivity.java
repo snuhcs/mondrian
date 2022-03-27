@@ -16,13 +16,17 @@ import android.widget.TextView;
 import org.json.JSONException;
 import org.webrtc.SurfaceViewRenderer;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 import hcs.offloading.edgedevice.config.Config;
 import hcs.offloading.edgedevice.databinding.ActivityMainBinding;
+import hcs.offloading.strm.datatypes.BoundingBox;
+import hcs.offloading.strm.datatypes.Frame;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
-public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ViewCallback {
+public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ResultCallback {
     private static final String TAG = MainActivity.class.getName();
 
     private static final String CONFIG_FILEPATH = "/data/local/tmp/edgedevice.json";
@@ -36,6 +40,8 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
     private Config mConfig;
     private EdgeDevice mEdgeDevice;
+    private FileWriter mLogWriter;
+    private final long mStartTime = System.nanoTime();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +58,10 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
         try {
             mConfig = new Config(CONFIG_FILEPATH);
+
+            if (mConfig.LOG_PATH != null) {
+                mLogWriter = new FileWriter(mConfig.LOG_PATH);
+            }
 
             Switch connectButton = findViewById(R.id.connectButton);
 
@@ -88,7 +98,8 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                     mConfig,
                     getApplicationContext(),
                     uri,
-                    mInputView);
+                    mInputView,
+                    this);
         } catch (IllegalArgumentException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
             mEdgeDevice = null;
@@ -102,6 +113,30 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
             if (mEdgeDevice != null) {
                 mEdgeDevice.close();
             }
+        }
+        if (mLogWriter != null) {
+            try {
+                mLogWriter.flush();
+                mLogWriter.close();
+            } catch (IOException e) {
+                Log.e(TAG, e.getMessage());
+            }
+        }
+    }
+
+    @Override
+    public void log(Frame frame) {
+        if (mLogWriter == null) {
+            return;
+        }
+        long timeStamp = System.nanoTime() - mStartTime;
+        try {
+            mLogWriter.write(frame.key + "," + frame.frameIndex + "," + timeStamp + "," + frame.getResults().stream()
+                    .map(box -> box.location.left + "," + box.location.top + "," + box.location.right + "," + box.location.bottom + "," + box.confidence + "," + box.labelName)
+                    .collect(Collectors.joining(",")) + "\n");
+            mLogWriter.flush();
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage());
         }
     }
 

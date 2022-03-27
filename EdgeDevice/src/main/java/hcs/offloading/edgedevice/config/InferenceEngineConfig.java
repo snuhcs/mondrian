@@ -15,6 +15,7 @@ public class InferenceEngineConfig {
     public float IOU_THRESHOLD = 0.6f;
     public int NUM_WORKERS = 1;
     public int INPUT_SIZE = 800;
+    public int FULL_FRAME_INPUT_SIZE = 800;
 
     InferenceEngineConfig() {
     }
@@ -37,6 +38,9 @@ public class InferenceEngineConfig {
         }
         if (jsonObject.has("input_size")) {
             INPUT_SIZE = jsonObject.getInt("input_size");
+        }
+        if (jsonObject.has("full_frame_input_size")) {
+            FULL_FRAME_INPUT_SIZE = jsonObject.getInt("full_frame_input_size");
         }
     }
 }

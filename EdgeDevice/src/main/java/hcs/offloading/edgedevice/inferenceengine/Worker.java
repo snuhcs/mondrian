@@ -4,6 +4,7 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
+import android.util.Pair;
 
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.support.image.ImageProcessor;
@@ -20,14 +21,20 @@ public class Worker implements Runnable {
 
     private final Classifier model;
     private final ImageProcessor preprocessor;
+    private final Classifier fullModel;
+    private final ImageProcessor fullPreprocessor;
     private final TFLiteInferenceEngine engine;
 
     private final Thread mWorkerThread;
 
-    Worker(TFLiteInferenceEngine engine, Classifier model, ImageProcessor preprocessor) {
+    Worker(TFLiteInferenceEngine engine,
+           Classifier model, ImageProcessor preprocessor,
+           Classifier fullModel, ImageProcessor fullPreprocessor) {
         this.engine = engine;
         this.model = model;
         this.preprocessor = preprocessor;
+        this.fullModel = fullModel;
+        this.fullPreprocessor = fullPreprocessor;
 
         mWorkerThread = new Thread(this);
         mWorkerThread.start();
@@ -47,17 +54,18 @@ public class Worker implements Runnable {
     @Override
     public void run() {
         while (true) {
-            Bitmap input = engine.getInput();
-            ByteBuffer processedBuffer = preprocess(input);
-            List<BoundingBox> results = model.recognizeImage(processedBuffer, input.getWidth(), input.getHeight());
-            engine.enqueueResults(input, results);
+            Pair<Bitmap, Boolean> input = engine.getInput();
+            Bitmap image = input.first;
+            boolean isFull = input.second;
+            ByteBuffer processedBuffer = preprocess(image.copy(image.getConfig(), image.isMutable()), isFull);
+            List<BoundingBox> results = (isFull ? fullModel : model).recognizeImage(processedBuffer, image.getWidth(), image.getHeight());
+            engine.enqueueResults(image, results);
         }
     }
 
-    private ByteBuffer preprocess(Bitmap bitmap) {
+    private ByteBuffer preprocess(Bitmap bitmap, boolean isFull) {
         TensorImage image = new TensorImage(DataType.UINT8);
         image.load(bitmap);
-        TensorImage processedImage = preprocessor.process(image);
-        return processedImage.getBuffer();
+        return (isFull ? fullPreprocessor : preprocessor).process(image).getBuffer();
     }
 }

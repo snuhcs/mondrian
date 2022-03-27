@@ -6,13 +6,14 @@ import android.graphics.Color;
 import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
-import android.util.Log;
 import android.util.Pair;
 
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import hcs.offloading.strm.config.PatchMixerConfig;
 import hcs.offloading.strm.datatypes.Frame;
@@ -25,11 +26,17 @@ public class PatchMixer {
 
     private final PatchMixerConfig mConfig;
 
+    private final Map<String, Integer> mLastPackedIndices = new HashMap<>();
     private List<Frame> mPackedFrames;
     private List<Rect> mFreeRects;
 
-    public PatchMixer(PatchMixerConfig config) {
+    private final InferenceEngine mInferenceEngine;
+    private final PatchReconstructor mPatchReconstructor;
+
+    public PatchMixer(PatchMixerConfig config, InferenceEngine inferenceEngine, PatchReconstructor patchReconstructor) {
         mConfig = config;
+        mInferenceEngine = inferenceEngine;
+        mPatchReconstructor = patchReconstructor;
         reset();
     }
 
@@ -39,8 +46,12 @@ public class PatchMixer {
         mFreeRects.add(new Rect(0, 0, mConfig.MIXED_FRAME_SIZE, mConfig.MIXED_FRAME_SIZE));
     }
 
-    public MixedFrame tryPackFrameRoIs(Frame frame) {
+    public int tryPackAndEnqueueMixedFrame(Frame frame) throws InterruptedException {
         synchronized (this) {
+            Integer lastIndex = mLastPackedIndices.remove(frame.key);
+            if (lastIndex != null) {
+                return lastIndex;
+            }
             boolean isAllPacked = true;
             for (RoI roi : frame.getRoIs()) {
                 int[] WH = roi.getResizedWidthHeight();
@@ -63,23 +74,36 @@ public class PatchMixer {
 
             mPackedFrames.add(frame);
             int minPackedFrameIndex = mPackedFrames.stream()
-                    .filter(f -> f.key == frame.key)
+                    .filter(f -> f.key.equals(frame.key))
                     .map(f -> f.frameIndex)
-                    .min(Comparator.comparingInt(i0 -> i0))
+                    .min(Integer::compare)
                     .get();
             int numPackedFrames = frame.frameIndex - minPackedFrameIndex + 1;
             if (!isAllPacked || numPackedFrames >= mConfig.MAX_PACKED_FRAMES) {
-                if (mPackedFrames.stream().filter(f -> f.key == frame.key).count() >= 2) {
+                if (mPackedFrames.stream().filter(f -> f.key.equals(frame.key)).count() >= 2) {
                     mPackedFrames.remove(frame);
                 }
-                Bitmap mixedImage = mConfig.PACKING
-                        ? getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE)
-                        : null;
-                MixedFrame mixedFrame = new MixedFrame(mixedImage, mPackedFrames);
+                mPackedFrames.stream()
+                        .collect(Collectors.groupingBy(f -> f.key)).entrySet()
+                        .forEach(kv -> mLastPackedIndices.put(kv.getKey(), kv.getValue().stream().map(f -> f.frameIndex).max(Integer::compare).get()));
+                if (mConfig.PACKING) {
+                    Bitmap mixedImage = getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE);
+                    MixedFrame mixedFrame = new MixedFrame(mixedImage, mPackedFrames);
+                    mixedFrame.setHandle(mInferenceEngine.enqueue(mixedImage, false));
+                    mPatchReconstructor.enqueue(mixedFrame);
+                } else {
+                    MixedFrame mixedFrame = new MixedFrame(null, mPackedFrames);
+                    for (Frame f : mixedFrame.packedFrames) {
+                        for (RoI roi : f.getRoIs()) {
+                            roi.setHandle(mInferenceEngine.enqueue(roi.getBitmap(), false));
+                        }
+                    }
+                    mPatchReconstructor.enqueue(mixedFrame);
+                }
                 reset();
-                return mixedFrame;
+                return mLastPackedIndices.remove(frame.key);
             } else {
-                return null;
+                return -1;
             }
         }
     }

@@ -2,7 +2,11 @@ package hcs.offloading.edgedevice;
 
 import android.graphics.Bitmap;
 
-public interface ViewCallback {
+import hcs.offloading.strm.datatypes.Frame;
+
+public interface ResultCallback {
+    void log(Frame frame);
+
     void drawInferenceResult(Bitmap bitmap);
 
     void drawObjectDetectionResult(Bitmap bitmap);

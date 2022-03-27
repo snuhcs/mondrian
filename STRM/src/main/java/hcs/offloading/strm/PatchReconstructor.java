@@ -31,7 +31,7 @@ public class PatchReconstructor extends Consumer<MixedFrame> {
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
-    public void process(MixedFrame mixedFrame) {
+    public void process(MixedFrame mixedFrame) throws InterruptedException {
         if (mixedFrame.packedBitmap != null) {
             mixedFrame.setResults(mInferenceEngine.getResults(mixedFrame.getHandle()));
             updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
@@ -57,6 +57,9 @@ public class PatchReconstructor extends Consumer<MixedFrame> {
             Frame maxFrame = null;
             for (Frame frame : mixedFrame.packedFrames) {
                 for (RoI roi : frame.getRoIs()) {
+                    if (!roi.isPacked()) {
+                        continue;
+                    }
                     Rect paddedRoIPos = new Rect(
                             Math.max(0, roi.location.left - matchPadding),
                             Math.max(0, roi.location.top - matchPadding),

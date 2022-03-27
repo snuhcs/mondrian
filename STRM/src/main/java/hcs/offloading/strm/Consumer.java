@@ -28,7 +28,9 @@ abstract class Consumer<T> implements Runnable {
         try {
             while (true) {
                 T item = mItems.take();
+                Log.v(TAG, "Start process(item)");
                 process(item);
+                Log.v(TAG, "End process(item)");
                 if (mConsumerCallback != null) {
                     mConsumerCallback.onProcessEnd(item);
                 }

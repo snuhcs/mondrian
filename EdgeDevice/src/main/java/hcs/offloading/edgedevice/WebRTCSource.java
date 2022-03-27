@@ -13,19 +13,24 @@ import org.webrtc.VideoFrame;
 import org.webrtc.VideoSink;
 import org.webrtc.VideoTrack;
 
-import hcs.offloading.strm.SpatioTemporalRoIMixer;
 import hcs.offloading.network.webrtc.WebRTCManager;
 import hcs.offloading.network.webrtc.YuvFrame;
+import hcs.offloading.strm.STRMUtils;
+import hcs.offloading.strm.SpatioTemporalRoIMixer;
+import hcs.offloading.strm.datatypes.Frame;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
-public class WebRTCSource implements VideoSink {
+public class WebRTCSource implements VideoSink, Runnable {
     private static final String TAG = WebRTCSource.class.getName();
 
     private final SurfaceViewRenderer mInputView;
 
     private int mFrameIndex = 0;
-    private final int key;
     private final SpatioTemporalRoIMixer strm;
+
+    private final Thread drawThread;
+    private final ResultCallback mResultCallback;
+    private final float DRAW_CONFIDENCE;
 
     private final String mSourceIP;
     private MediaStream mMediaStream;
@@ -34,15 +39,34 @@ public class WebRTCSource implements VideoSink {
     private final WebRTCManager mWebRTCManager;
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    WebRTCSource(String sourceIP, SpatioTemporalRoIMixer strm, WebRTCManager webRTCManager, SurfaceViewRenderer inputView) {
+    WebRTCSource(String sourceIP, SpatioTemporalRoIMixer strm, WebRTCManager webRTCManager,
+                 SurfaceViewRenderer inputView, ResultCallback resultCallback, float drawConfidence) {
         mSourceIP = sourceIP;
-        key = mSourceIP.hashCode();
         this.strm = strm;
-        this.strm.addSource(key);
+        this.strm.addSource(mSourceIP);
         mWebRTCManager = webRTCManager;
         mInputView = inputView;
+        mResultCallback = resultCallback;
+        DRAW_CONFIDENCE = drawConfidence;
 
         mPeerConnection = mWebRTCManager.createPeerConnection(sourceIP);
+
+        drawThread = new Thread(this);
+    }
+
+    @Override
+    public void run() {
+        int frameIndex = 0;
+        try {
+            while (true) {
+                Frame frame = strm.getResults(mSourceIP, frameIndex++);
+                mResultCallback.log(frame);
+//                mResultCallback.drawObjectDetectionResult(STRMUtils.drawBoxes(
+//                        frame.bitmap, frame.getResults(), DRAW_CONFIDENCE));
+            }
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+        }
     }
 
     void onAddStream(MediaStream mediaStream) {
@@ -68,6 +92,12 @@ public class WebRTCSource implements VideoSink {
                 mPeerConnection.close();
             }
         }
+        try {
+            drawThread.interrupt();
+            drawThread.join();
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+        }
         Log.d(TAG, "closed");
     }
 
@@ -76,7 +106,7 @@ public class WebRTCSource implements VideoSink {
         YuvFrame yuvFrame = new YuvFrame(videoFrame);
         Bitmap bitmap = yuvFrame.getBitmap();
         try {
-            strm.enqueueImage(key, mFrameIndex++, bitmap);
+            strm.enqueueImage(mSourceIP, mFrameIndex++, bitmap);
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }

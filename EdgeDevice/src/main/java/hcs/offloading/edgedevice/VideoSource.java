@@ -14,26 +14,51 @@ import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
 import hcs.offloading.edgedevice.config.SourceConfig;
-import hcs.offloading.strm.SpatioTemporalRoIMixer;
 import hcs.offloading.network.webrtc.CustomCapturer;
+import hcs.offloading.strm.SpatioTemporalRoIMixer;
+import hcs.offloading.strm.datatypes.Frame;
 
-public class VideoSource extends CustomCapturer {
+public class VideoSource extends CustomCapturer implements Runnable {
     private static final String TAG = VideoSource.class.getName();
 
+    private final int startIndex = 0;
     private final String VIDEO_PATH;
 
     private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
 
-    private final int key;
     private final SpatioTemporalRoIMixer strm;
 
+    private final Thread drawThread;
+    private final ResultCallback mResultCallback;
+    private final float DRAW_CONFIDENCE;
+
     @RequiresApi(api = Build.VERSION_CODES.P)
-    VideoSource(SourceConfig.VideoConfig config, SpatioTemporalRoIMixer strm) {
+    VideoSource(SourceConfig.VideoConfig config, SpatioTemporalRoIMixer strm, ResultCallback resultCallback, float drawConfidence) {
         VIDEO_PATH = config.PATH;
-        key = VIDEO_PATH.hashCode();
+        DRAW_CONFIDENCE = drawConfidence;
+        mResultCallback = resultCallback;
         this.strm = strm;
-        this.strm.addSource(key);
+        this.strm.addSource(VIDEO_PATH);
         retriever.setDataSource(VIDEO_PATH);
+
+        Log.v(TAG, "Start drawThread");
+        drawThread = new Thread(this);
+        drawThread.start();
+    }
+
+    @Override
+    public void run() {
+        int frameIndex = startIndex;
+        try {
+            while (true) {
+                Frame frame = strm.getResults(VIDEO_PATH, frameIndex++);
+                mResultCallback.log(frame);
+//                mResultCallback.drawObjectDetectionResult(STRMUtils.drawBoxes(
+//                        frame.bitmap, frame.getResults(), DRAW_CONFIDENCE));
+            }
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+        }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.P)
@@ -50,8 +75,9 @@ public class VideoSource extends CustomCapturer {
             YuvConverter yuvConverter = new YuvConverter();
             TextureBufferImpl buffer = new TextureBufferImpl(width, height, VideoFrame.TextureBuffer.Type.RGB, textures[0], new Matrix(), surTexture.getHandler(), yuvConverter, null);
 
-            int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
-            for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+//            int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
+            int frameCount = 600;
+            for (int frameIndex = startIndex; frameIndex < frameCount; frameIndex++) {
                 Log.v(TAG, VIDEO_PATH + " " + frameIndex + " loaded");
                 Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
@@ -69,7 +95,7 @@ public class VideoSource extends CustomCapturer {
                 });
 
                 try {
-                    strm.enqueueImage(key, frameIndex, bitmap);
+                    strm.enqueueImage(VIDEO_PATH, frameIndex, bitmap);
                 } catch (InterruptedException e) {
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                 }
@@ -79,10 +105,12 @@ public class VideoSource extends CustomCapturer {
     }
 
     public void close() {
-        strm.removeSource(key);
+        strm.removeSource(VIDEO_PATH);
         try {
             captureThread.interrupt();
             captureThread.join();
+            drawThread.interrupt();
+            drawThread.join();
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }

@@ -55,12 +55,12 @@ public class RoIExtractor {
     public void process(Pair<Pair<Frame, Frame>, List<BoundingBox>> item) {
         Frame prevFrame = item.first.first;
         Frame currFrame = item.first.second;
-        List<BoundingBox> prevResults = item.second.stream()
-                .filter(box -> box.confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD)
-                .collect(Collectors.toList());
 
         List<RoI> rois = new ArrayList<>();
         if (mConfig.OF_ROI) {
+            List<BoundingBox> prevResults = item.second.stream()
+                    .filter(box -> box.confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD)
+                    .collect(Collectors.toList());
             List<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame, prevResults, mTargetSize);
             currFrame.setOpticalFlowRoIs(opticalFlowRoIs);
             rois.addAll(opticalFlowRoIs);
@@ -80,10 +80,10 @@ public class RoIExtractor {
             RoI originalRoI0 = null;
             RoI originalRoI1 = null;
             RoI mergedRoI = null;
-            for (int i = 0; i < rois.size(); i++) {
-                for (int j = i + 1; j < rois.size(); j++) {
-                    RoI roi0 = rois.get(i);
-                    RoI roi1 = rois.get(j);
+            for (int i = 0; i < mergedRoIs.size(); i++) {
+                for (int j = i + 1; j < mergedRoIs.size(); j++) {
+                    RoI roi0 = mergedRoIs.get(i);
+                    RoI roi1 = mergedRoIs.get(j);
                     float intersection = STRMUtils.box_intersection(roi0.location, roi1.location);
                     if (intersection / roi0.getArea() < mergeThreshold
                             && intersection / roi1.getArea() < mergeThreshold) {

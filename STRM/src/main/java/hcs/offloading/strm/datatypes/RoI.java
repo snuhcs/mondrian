@@ -82,6 +82,10 @@ public class RoI {
         return packedLocation;
     }
 
+    public boolean isPacked() {
+        return packedLocation != null;
+    }
+
     public int getArea() {
         return location.width() * location.height();
     }
@@ -95,10 +99,6 @@ public class RoI {
     public Bitmap getResizedBitmap() {
         int[] wh = getResizedWidthHeight();
         return Bitmap.createScaledBitmap(getBitmap(), wh[0], wh[1], false);
-    }
-
-    public int getFrameIndex() {
-        return frame.frameIndex;
     }
 
     public void setResults(List<BoundingBox> boxes) {

@@ -3,6 +3,7 @@ package hcs.offloading.strm;
 import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
+import android.util.Log;
 import android.util.Pair;
 
 import java.util.Comparator;
@@ -15,13 +16,12 @@ import hcs.offloading.strm.config.DispatcherConfig;
 import hcs.offloading.strm.config.RoIExtractorConfig;
 import hcs.offloading.strm.datatypes.BoundingBox;
 import hcs.offloading.strm.datatypes.Frame;
-import hcs.offloading.strm.datatypes.MixedFrame;
-import hcs.offloading.strm.datatypes.RoI;
 
 public class Dispatcher extends Consumer<Frame> {
     private static final String TAG = Dispatcher.class.getName();
 
-    private int mCountMixedFrameInference;
+    private final int mLastPackedFrameIndex = -1;
+    private int mCountMixedFrameInference = Integer.MAX_VALUE;
     private Frame mPrevFrame;
     private List<BoundingBox> mPrevResults;
 
@@ -46,7 +46,6 @@ public class Dispatcher extends Consumer<Frame> {
                PatchReconstructor patchReconstructor) {
         super(TAG, config.MAX_QUEUE_SIZE, null);
         mConfig = config;
-        mCountMixedFrameInference = mConfig.FULL_INFERENCE_INTERVAL;
         mRoIExtractor = new RoIExtractor(roIExtractorConfig);
         mRoIPrioritizer = roIPrioritizer;
         mResizeProfile = resizeProfile;
@@ -68,32 +67,36 @@ public class Dispatcher extends Consumer<Frame> {
          */
         synchronized (mFrames) {
             mFrames.put(currFrame.frameIndex, currFrame);
+            mFrames.notifyAll();
         }
+//        Log.v(TAG, "Start Process " + currFrame.key + ", " + currFrame.frameIndex);
         if (mCountMixedFrameInference >= mConfig.FULL_INFERENCE_INTERVAL) {
             mCountMixedFrameInference = 0;
-            List<BoundingBox> results = mInferenceEngine.getResults(mInferenceEngine.enqueue(currFrame.bitmap));
+//            Log.v(TAG, "Start Full    " + currFrame.key + ", " + currFrame.frameIndex);
+            List<BoundingBox> results = mInferenceEngine.getResults(mInferenceEngine.enqueue(currFrame.bitmap.copy(currFrame.bitmap.getConfig(), false), true));
+//            Log.v(TAG, "End   Full    " + currFrame.key + ", " + currFrame.frameIndex);
             currFrame.setResults(results);
             setPrevResults(results, false);
         } else {
-            mRoIExtractor.process(new Pair<>(new Pair<>(mPrevFrame, currFrame), getPrevResults()));
+//            Log.v(TAG, "getPrevResults");
+            List<BoundingBox> prevResults = getPrevResults();
+//            Log.v(TAG, "Start RoIExtraction " + currFrame.key + ", " + currFrame.frameIndex + ", " + prevResults);
+            mRoIExtractor.process(new Pair<>(new Pair<>(mPrevFrame, currFrame), prevResults));
+//            Log.v(TAG, "End   RoIExtraction " + currFrame.key + ", " + currFrame.frameIndex);
             currFrame.sortRoIs(Comparator.comparingInt(mRoIPrioritizer::priority));
             currFrame.getRoIs().forEach(roi -> roi.resize(
                     mResizeProfile.getScale(roi.labelName, roi.location.width(), roi.location.height(), roi.minOriginLength)));
-            MixedFrame mixedFrame = mPatchMixer.tryPackFrameRoIs(currFrame);
-            if (mixedFrame != null) {
+            int lastEnqueuedFrameIndex = mPatchMixer.tryPackAndEnqueueMixedFrame(currFrame);
+//            Log.v(TAG, "MixedFrame    " + currFrame.key + ", " + currFrame.frameIndex + ", " + lastEnqueuedFrameIndex);
+            if (lastEnqueuedFrameIndex != -1) {
                 mCountMixedFrameInference++;
-                if (mixedFrame.packedBitmap != null) { // PACKING = true, Mixed Frame inference
-                    mixedFrame.setHandle(mInferenceEngine.enqueue(mixedFrame.packedBitmap));
-                } else { // PACKING = false, RoI-wise inference
-                    for (Frame frame : mixedFrame.packedFrames) {
-                        for (RoI roi : frame.getRoIs()) {
-                            roi.setHandle(mInferenceEngine.enqueue(roi.getBitmap()));
-                        }
-                    }
-                }
-                mPatchReconstructor.enqueue(mixedFrame);
-                if (!mixedFrame.packedFrames.contains(currFrame)) { // 2.2.
+                if (lastEnqueuedFrameIndex == currFrame.frameIndex) { // 2.1.
+//                    Log.v(TAG, "NoAgainFrame  " + currFrame.key + ", " + currFrame.frameIndex);
+                } else if (lastEnqueuedFrameIndex == currFrame.frameIndex - 1) { // 2.2.
+//                    Log.v(TAG, "AgainFrame    " + currFrame.key + ", " + currFrame.frameIndex);
                     process(currFrame);
+                } else {
+                    Log.e(TAG, "Wrong last index of mixed frame");
                 }
             } else {
                 setPrevResults(currFrame.getOpticalFlowRoIs().stream()
@@ -124,9 +127,10 @@ public class Dispatcher extends Consumer<Frame> {
     }
 
     private List<BoundingBox> getPrevResults() throws InterruptedException {
-        if (mRoIExtractor.useOpticalFlowRoIs()) {
+        if (!mRoIExtractor.useOpticalFlowRoIs()) {
             return null;
         }
+//        Log.v(TAG, "getPrevResults: " + mPrevFrame.frameIndex + ", " + mPrevResults);
         synchronized (this) {
             while (mPrevResults == null) {
                 wait();
@@ -137,18 +141,25 @@ public class Dispatcher extends Consumer<Frame> {
         }
     }
 
-    public List<BoundingBox> getResults(int frameIndex) throws InterruptedException {
+    public Frame getResults(int frameIndex) throws InterruptedException {
+        Frame frame;
         synchronized (mFrames) {
-            Frame frame = mFrames.remove(frameIndex);
+            frame = mFrames.remove(frameIndex);
+//            Log.v(TAG, "getResults() " + frameIndex + ", " + frame);
             while (!isClosed() && frame == null) {
                 mFrames.wait();
                 frame = mFrames.remove(frameIndex);
+//                Log.v(TAG, "getResults() " + frameIndex + ", " + frame);
             }
-            if (frame == null) {
-                return null;
-            } else {
-                return frame.getResults();
-            }
+//            Log.v(TAG, "getResults() Loop Out " + frameIndex + ", " + frame);
+        }
+        if (frame == null) {
+            return null;
+        } else {
+//            Log.v(TAG, "frame.waitForResults() Start " + frame.key + ", " + frame.frameIndex);
+            frame.waitForResults();
+//            Log.v(TAG, "frame.waitForResults() End   " + frame.key + ", " + frame.frameIndex);
+            return frame;
         }
     }
 

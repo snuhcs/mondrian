@@ -4,14 +4,13 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class Frame {
     public final Bitmap bitmap;
-    public final int key;
+    public final String key;
     public final int frameIndex;
 
     /**
@@ -27,7 +26,7 @@ public class Frame {
      */
     private List<BoundingBox> boxes;
 
-    public Frame(Bitmap bitmap, int key, int frameIndex) {
+    public Frame(Bitmap bitmap, String key, int frameIndex) {
         this.bitmap = bitmap;
         this.key = key;
         this.frameIndex = frameIndex;
@@ -35,6 +34,7 @@ public class Frame {
 
     /**
      * Sort RoIs with given comparator
+     *
      * @param roiPrioritizer Set priority of each roi.
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -65,12 +65,15 @@ public class Frame {
         }
     }
 
-    public List<BoundingBox> getResults() throws InterruptedException {
+    public List<BoundingBox> getResults() {
+        return boxes;
+    }
+
+    public void waitForResults() throws InterruptedException {
         synchronized (this) {
             while (boxes == null) {
                 wait();
             }
-            return boxes;
         }
     }
 }
