@@ -20,7 +20,7 @@ import hcs.offloading.edgedevice.inferenceengine.model.Classifier;
 import hcs.offloading.edgedevice.inferenceengine.model.YoloV4Classifier;
 import hcs.offloading.edgedevice.inferenceengine.model.YoloV5Classifier;
 import hcs.offloading.strm.InferenceEngine;
-import hcs.offloading.edgedevice.InferenceEngineConfig;
+import hcs.offloading.edgedevice.config.InferenceEngineConfig;
 import hcs.offloading.strm.datatypes.BoundingBox;
 
 public class TFLiteInferenceEngine implements InferenceEngine {
@@ -31,17 +31,17 @@ public class TFLiteInferenceEngine implements InferenceEngine {
     private final List<Worker> mWorkers = new ArrayList<>();
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public TFLiteInferenceEngine(InferenceEngineConfig config, int frameSize, AssetManager assetManager) {
+    public TFLiteInferenceEngine(InferenceEngineConfig config, AssetManager assetManager) {
         Classifier model;
         if (config.MODEL == InferenceEngineConfig.Model.YOLO_V4) {
-            model = new YoloV4Classifier(assetManager, frameSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+            model = new YoloV4Classifier(assetManager, config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
         } else if (config.MODEL == InferenceEngineConfig.Model.YOLO_V5) {
-            model = new YoloV5Classifier(assetManager, frameSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+            model = new YoloV5Classifier(assetManager, config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
         } else {
             throw new IllegalArgumentException("Wrong model type: " + config.MODEL);
         }
         ImageProcessor processor = new ImageProcessor.Builder()
-                .add(new ResizeOp(frameSize, frameSize, ResizeOp.ResizeMethod.BILINEAR))
+                .add(new ResizeOp(config.INPUT_SIZE, config.INPUT_SIZE, ResizeOp.ResizeMethod.BILINEAR))
                 .add(new NormalizeOp(0.0f, 255.0f))
                 .build();
 

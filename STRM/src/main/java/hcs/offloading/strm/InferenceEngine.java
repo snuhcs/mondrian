@@ -9,5 +9,7 @@ import hcs.offloading.strm.datatypes.BoundingBox;
 public interface InferenceEngine {
     int enqueue(Bitmap bitmap);
 
-    List<BoundingBox> getResults(int key);
+    List<BoundingBox> getResults(int handle);
+
+    void close();
 }

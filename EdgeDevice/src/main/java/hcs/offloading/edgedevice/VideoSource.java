@@ -13,20 +13,26 @@ import org.webrtc.TextureBufferImpl;
 import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
-import hcs.offloading.strm.config.RoIExtractorConfig;
+import hcs.offloading.edgedevice.config.SourceConfig;
+import hcs.offloading.strm.SpatioTemporalRoIMixer;
 import hcs.offloading.network.webrtc.CustomCapturer;
 
-public class VideoDispatcher extends CustomCapturer {
-    private static final String TAG = VideoDispatcher.class.getName();
+public class VideoSource extends CustomCapturer {
+    private static final String TAG = VideoSource.class.getName();
 
     private final String VIDEO_PATH;
 
     private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
-    VideoDispatcher(DispatcherConfig.VideoConfig config, RoIExtractorConfig roiConfig) {
-        VIDEO_PATH = config.PATH;
+    private final int key;
+    private final SpatioTemporalRoIMixer strm;
 
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    VideoSource(SourceConfig.VideoConfig config, SpatioTemporalRoIMixer strm) {
+        VIDEO_PATH = config.PATH;
+        key = VIDEO_PATH.hashCode();
+        this.strm = strm;
+        this.strm.addSource(key);
         retriever.setDataSource(VIDEO_PATH);
     }
 
@@ -61,17 +67,24 @@ public class VideoDispatcher extends CustomCapturer {
                     capturerObs.onFrameCaptured(videoFrame);
                     i420Buf.release();
                 });
+
+                try {
+                    strm.enqueueImage(key, frameIndex, bitmap);
+                } catch (InterruptedException e) {
+                    Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+                }
             }
         });
         captureThread.start();
     }
 
     public void close() {
+        strm.removeSource(key);
         try {
             captureThread.interrupt();
             captureThread.join();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
         Log.d(TAG, "closed");
     }

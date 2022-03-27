@@ -18,8 +18,8 @@ public class PatchMixerConfig {
         if (jsonObject.has("max_packed_frames")) {
             MAX_PACKED_FRAMES = jsonObject.getInt("max_packed_frames");
         }
-        if (jsonObject.has("frame_size")) {
-            MIXED_FRAME_SIZE = jsonObject.getInt("frame_size");
+        if (jsonObject.has("mixed_frame_size")) {
+            MIXED_FRAME_SIZE = jsonObject.getInt("mixed_frame_size");
         }
     }
 }

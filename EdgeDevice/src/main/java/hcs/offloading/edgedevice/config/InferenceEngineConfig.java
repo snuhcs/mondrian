@@ -1,4 +1,4 @@
-package hcs.offloading.edgedevice;
+package hcs.offloading.edgedevice.config;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -14,6 +14,7 @@ public class InferenceEngineConfig {
     public float CONF_THRESHOLD = 0.1f;
     public float IOU_THRESHOLD = 0.6f;
     public int NUM_WORKERS = 1;
+    public int INPUT_SIZE = 800;
 
     InferenceEngineConfig() {
     }
@@ -33,6 +34,9 @@ public class InferenceEngineConfig {
         }
         if (jsonObject.has("num_workers")) {
             NUM_WORKERS = jsonObject.getInt("num_workers");
+        }
+        if (jsonObject.has("input_size")) {
+            INPUT_SIZE = jsonObject.getInt("input_size");
         }
     }
 }

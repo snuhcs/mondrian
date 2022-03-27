@@ -1,5 +1,5 @@
 package hcs.offloading.strm;
 
-public interface ConsumerCallback<V> {
-    void onProcessEnd(V result);
+public interface ConsumerCallback<T> {
+    void onProcessEnd(T result);
 }

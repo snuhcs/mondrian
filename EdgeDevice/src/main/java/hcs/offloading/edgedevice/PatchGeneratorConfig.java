@@ -1,4 +1,4 @@
-package hcs.offloading.strm.config;
+package hcs.offloading.edgedevice;
 
 import org.json.JSONException;
 import org.json.JSONObject;

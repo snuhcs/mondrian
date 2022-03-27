@@ -40,7 +40,6 @@ public class PatchMixer {
     }
 
     public MixedFrame tryPackFrameRoIs(Frame frame) {
-        //Log.v(TAG, "Start tryPackRoI : " + frame.key + " " + frame.frameIndex);
         synchronized (this) {
             boolean isAllPacked = true;
             for (RoI roi : frame.getRoIs()) {
@@ -61,7 +60,6 @@ public class PatchMixer {
                 }
                 isAllPacked &= isPacked;
             }
-            Log.v(TAG, "End tryPackRoI : " + frame.key + " " + frame.frameIndex);
 
             mPackedFrames.add(frame);
             int minPackedFrameIndex = mPackedFrames.stream()
@@ -74,7 +72,9 @@ public class PatchMixer {
                 if (mPackedFrames.stream().filter(f -> f.key == frame.key).count() >= 2) {
                     mPackedFrames.remove(frame);
                 }
-                Bitmap mixedImage = mConfig.PACKING ? getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE) : null;
+                Bitmap mixedImage = mConfig.PACKING
+                        ? getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE)
+                        : null;
                 MixedFrame mixedFrame = new MixedFrame(mixedImage, mPackedFrames);
                 reset();
                 return mixedFrame;

@@ -3,15 +3,17 @@ package hcs.offloading.strm;
 import android.util.Log;
 
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-abstract class Consumer<T, V> implements Runnable {
-    protected final String TAG;
+abstract class Consumer<T> implements Runnable {
+    private final String TAG;
 
-    protected Thread mThread;
-    protected ConsumerCallback<V> mConsumerCallback;
-    protected LinkedBlockingQueue<T> mItems;
+    private final AtomicBoolean isClosed = new AtomicBoolean(false);
+    private final Thread mThread;
+    private final ConsumerCallback<T> mConsumerCallback;
+    private final LinkedBlockingQueue<T> mItems;
 
-    protected Consumer(String tag, int maxNumItems, ConsumerCallback<V> consumerCallback) {
+    protected Consumer(String tag, int maxNumItems, ConsumerCallback<T> consumerCallback) {
         TAG = tag;
         mItems = new LinkedBlockingQueue<>(maxNumItems);
         mConsumerCallback = consumerCallback;
@@ -19,16 +21,16 @@ abstract class Consumer<T, V> implements Runnable {
         mThread.start();
     }
 
-    public abstract V process(T item);
+    public abstract void process(T item) throws InterruptedException;
 
     @Override
     public void run() {
         try {
             while (true) {
                 T item = mItems.take();
-                V result = process(item);
+                process(item);
                 if (mConsumerCallback != null) {
-                    mConsumerCallback.onProcessEnd(result);
+                    mConsumerCallback.onProcessEnd(item);
                 }
             }
         } catch (InterruptedException e) {
@@ -36,20 +38,24 @@ abstract class Consumer<T, V> implements Runnable {
         }
     }
 
-    public void enqueue(T item) {
-        try {
-            mItems.put(item);
-        } catch (InterruptedException e) {
-            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+    public void enqueue(T item) throws InterruptedException {
+        if (isClosed.get()) {
+            return;
         }
+        mItems.put(item);
     }
 
     public void close() {
         try {
+            isClosed.set(true);
             mThread.interrupt();
             mThread.join();
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
+    }
+
+    protected boolean isClosed() {
+        return isClosed.get();
     }
 }

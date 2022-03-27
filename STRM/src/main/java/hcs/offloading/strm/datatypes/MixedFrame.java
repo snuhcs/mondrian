@@ -5,13 +5,24 @@ import android.graphics.Bitmap;
 import java.util.List;
 
 public class MixedFrame {
-    public final Bitmap bitmap;
-    public final List<Frame> frames;
+    public final Bitmap packedBitmap;
+    public final List<Frame> packedFrames;
+
+    /**
+     * Results of mixed frame inference.
+     * Will not be used for single frame inference and single roi inference.
+     */
     private List<BoundingBox> boxes;
 
-    public MixedFrame(Bitmap bitmap, List<Frame> frames) {
-        this.bitmap = bitmap;
-        this.frames = frames;
+    /**
+     * Handle of InferenceEngine.
+     * Used for asynchronous mixed frame inference.
+     */
+    private int handle;
+
+    public MixedFrame(Bitmap packedBitmap, List<Frame> packedFrames) {
+        this.packedBitmap = packedBitmap;
+        this.packedFrames = packedFrames;
     }
 
     public void setResults(List<BoundingBox> boxes) {
@@ -20,5 +31,13 @@ public class MixedFrame {
 
     public List<BoundingBox> getResults() {
         return boxes;
+    }
+
+    public void setHandle(int handle) {
+        this.handle = handle;
+    }
+
+    public int getHandle() {
+        return handle;
     }
 }

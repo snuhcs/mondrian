@@ -9,16 +9,15 @@ import java.io.IOException;
 
 import hcs.offloading.strm.STRMUtils;
 
-public class Config {
-    private static final String TAG = Config.class.getName();
+public class STRMConfig {
+    private static final String TAG = STRMConfig.class.getName();
 
     public final DispatcherConfig dispatcherConfig;
     public final RoIExtractorConfig roIExtractorConfig;
-    public final PatchGeneratorConfig patchGeneratorConfig;
     public final PatchMixerConfig patchMixerConfig;
     public final PatchReconstructorConfig patchReconstructorConfig;
 
-    public Config(String jsonPath) throws IOException, JSONException {
+    public STRMConfig(String jsonPath) throws IOException, JSONException {
         JSONObject jsonObject = new JSONObject(STRMUtils.getStringFromFile(jsonPath));
         Log.d(TAG, "Parsed Config: " + jsonObject);
 
@@ -32,12 +31,6 @@ public class Config {
             roIExtractorConfig = new RoIExtractorConfig(jsonObject.getJSONObject("roi_extractor"));
         } else {
             roIExtractorConfig = new RoIExtractorConfig();
-        }
-
-        if (jsonObject.has("patch_generator")) {
-            patchGeneratorConfig = new PatchGeneratorConfig(jsonObject.getJSONObject("patch_generator"));
-        } else {
-            patchGeneratorConfig = new PatchGeneratorConfig();
         }
 
         if (jsonObject.has("patch_mixer")) {

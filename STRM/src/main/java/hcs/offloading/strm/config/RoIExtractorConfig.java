@@ -7,6 +7,7 @@ public class RoIExtractorConfig {
     public int MAX_QUEUE_SIZE = 2;
     public int EXTRACTION_RESIZE_WIDTH = 640;
     public int EXTRACTION_RESIZE_HEIGHT = 360;
+    public float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.3f;
     public float MERGE_THRESHOLD = 0.5f;
     public boolean OF_ROI = true;
     public boolean PD_ROI = true;
@@ -24,6 +25,9 @@ public class RoIExtractorConfig {
         }
         if (jsonObject.has("extraction_resize_height")) {
             EXTRACTION_RESIZE_HEIGHT = jsonObject.getInt("extraction_resize_height");
+        }
+        if (jsonObject.has("optical_flow_roi_confidence_threshold")) {
+            OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = (float) jsonObject.getDouble("optical_flow_roi_confidence_threshold");
         }
         if (jsonObject.has("merge_threshold")) {
             MERGE_THRESHOLD = (float) jsonObject.getDouble("merge_threshold");

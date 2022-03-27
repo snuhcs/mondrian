@@ -4,7 +4,10 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import hcs.offloading.strm.config.PatchReconstructorConfig;
 import hcs.offloading.strm.datatypes.BoundingBox;
@@ -12,35 +15,47 @@ import hcs.offloading.strm.datatypes.Frame;
 import hcs.offloading.strm.datatypes.MixedFrame;
 import hcs.offloading.strm.datatypes.RoI;
 
-public class PatchReconstructor extends Consumer<MixedFrame, List<Frame>> {
+public class PatchReconstructor extends Consumer<MixedFrame> {
     private static final String TAG = PatchReconstructor.class.getName();
 
     private final PatchReconstructorConfig mConfig;
 
-    public PatchReconstructor(PatchReconstructorConfig config,
-                              ConsumerCallback<List<Frame>> consumerCallback) {
+    private final InferenceEngine mInferenceEngine;
+
+    public PatchReconstructor(PatchReconstructorConfig config, InferenceEngine inferenceEngine,
+                              ConsumerCallback<MixedFrame> consumerCallback) {
         super(TAG, config.MAX_QUEUE_SIZE, consumerCallback);
         mConfig = config;
+        mInferenceEngine = inferenceEngine;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
-    public List<Frame> process(MixedFrame mixedFrame) {
-        if (mixedFrame.bitmap != null) {
+    public void process(MixedFrame mixedFrame) {
+        if (mixedFrame.packedBitmap != null) {
+            mixedFrame.setResults(mInferenceEngine.getResults(mixedFrame.getHandle()));
             updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
         } else {
+            for (Frame frame : mixedFrame.packedFrames) {
+                for (RoI roi : frame.getRoIs()) {
+                    roi.setResults(mInferenceEngine.getResults(roi.getHandle()));
+                }
+            }
             updateRoIInferenceResults(mixedFrame);
         }
-        return mixedFrame.frames;
     }
 
     private static void updateMixedFrameInferenceResults(
             MixedFrame mixedFrame, int matchPadding, float useIoUThreshold) {
+        Map<Frame, List<BoundingBox>> frameBoxes = new HashMap<>();
+        for (Frame frame : mixedFrame.packedFrames) {
+            frameBoxes.put(frame, new ArrayList<>());
+        }
         for (BoundingBox box : mixedFrame.getResults()) {
             float maxOverlap = -1f;
             Rect maxBoxPos = null;
             Frame maxFrame = null;
-            for (Frame frame : mixedFrame.frames) {
+            for (Frame frame : mixedFrame.packedFrames) {
                 for (RoI roi : frame.getRoIs()) {
                     Rect paddedRoIPos = new Rect(
                             Math.max(0, roi.location.left - matchPadding),
@@ -67,15 +82,19 @@ public class PatchReconstructor extends Consumer<MixedFrame, List<Frame>> {
                 }
             }
             if (maxFrame != null && maxOverlap > useIoUThreshold) {
-                maxFrame.addResult(new BoundingBox(
+                frameBoxes.get(maxFrame).add(new BoundingBox(
                         maxBoxPos, box.confidence, box.labelName));
             }
+        }
+        for (Frame frame : frameBoxes.keySet()) {
+            frame.setResults(frameBoxes.get(frame));
         }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private static void updateRoIInferenceResults(MixedFrame mixedFrame) {
-        for (Frame frame : mixedFrame.frames) {
+        for (Frame frame : mixedFrame.packedFrames) {
+            List<BoundingBox> boxes = new ArrayList<>();
             for (RoI roi : frame.getRoIs()) {
                 for (BoundingBox box : roi.getResults()) {
                     Rect newLocation = new Rect(
@@ -84,9 +103,10 @@ public class PatchReconstructor extends Consumer<MixedFrame, List<Frame>> {
                             box.location.right + roi.location.left,
                             box.location.bottom + roi.location.top
                     );
-                    frame.addResult(new BoundingBox(newLocation, box.confidence, box.labelName));
+                    boxes.add(new BoundingBox(newLocation, box.confidence, box.labelName));
                 }
             }
+            frame.setResults(boxes);
         }
     }
 }

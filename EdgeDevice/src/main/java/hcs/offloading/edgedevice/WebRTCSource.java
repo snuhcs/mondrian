@@ -13,22 +13,19 @@ import org.webrtc.VideoFrame;
 import org.webrtc.VideoSink;
 import org.webrtc.VideoTrack;
 
-import java.util.List;
-import java.util.Map;
-
-import hcs.offloading.strm.config.RoIExtractorConfig;
-import hcs.offloading.strm.datatypes.BoundingBox;
-import hcs.offloading.strm.datatypes.Frame;
+import hcs.offloading.strm.SpatioTemporalRoIMixer;
 import hcs.offloading.network.webrtc.WebRTCManager;
 import hcs.offloading.network.webrtc.YuvFrame;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
-public class Dispatcher implements VideoSink {
-    private static final String TAG = Dispatcher.class.getName();
+public class WebRTCSource implements VideoSink {
+    private static final String TAG = WebRTCSource.class.getName();
 
     private final SurfaceViewRenderer mInputView;
 
     private int mFrameIndex = 0;
+    private final int key;
+    private final SpatioTemporalRoIMixer strm;
 
     private final String mSourceIP;
     private MediaStream mMediaStream;
@@ -37,8 +34,11 @@ public class Dispatcher implements VideoSink {
     private final WebRTCManager mWebRTCManager;
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    Dispatcher(String sourceIP, WebRTCManager webRTCManager, SurfaceViewRenderer inputView, RoIExtractorConfig config, int mixedFrameSize) {
+    WebRTCSource(String sourceIP, SpatioTemporalRoIMixer strm, WebRTCManager webRTCManager, SurfaceViewRenderer inputView) {
         mSourceIP = sourceIP;
+        key = mSourceIP.hashCode();
+        this.strm = strm;
+        this.strm.addSource(key);
         mWebRTCManager = webRTCManager;
         mInputView = inputView;
 
@@ -75,6 +75,11 @@ public class Dispatcher implements VideoSink {
     public void onFrame(VideoFrame videoFrame) {
         YuvFrame yuvFrame = new YuvFrame(videoFrame);
         Bitmap bitmap = yuvFrame.getBitmap();
+        try {
+            strm.enqueueImage(key, mFrameIndex++, bitmap);
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+        }
     }
 
     void handleSdpAndAnswer(String message) {

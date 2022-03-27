@@ -1,16 +1,13 @@
-package hcs.offloading.edgedevice;
+package hcs.offloading.edgedevice.config;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import hcs.offloading.edgedevice.Utils;
-
-public class DispatcherConfig {
+public class SourceConfig {
     public static class VideoConfig {
         public String PATH = null;
         public int WIDTH = 1920;
@@ -21,14 +18,10 @@ public class DispatcherConfig {
     public boolean USE_LOCAL_VIDEO = false;
     public List<VideoConfig> VIDEO_CONFIGS = new ArrayList<>();
 
-    DispatcherConfig() {
+    SourceConfig() {
     }
 
-    DispatcherConfig(String jsonPath) throws IOException, JSONException {
-        this(new JSONObject(Utils.getStringFromFile(jsonPath)));
-    }
-
-    DispatcherConfig(JSONObject jsonObject) throws JSONException {
+    SourceConfig(JSONObject jsonObject) throws JSONException {
         if (jsonObject.has("use_local_video")) {
             USE_LOCAL_VIDEO = jsonObject.getBoolean("use_local_video");
             if (USE_LOCAL_VIDEO) {
@@ -37,7 +30,7 @@ public class DispatcherConfig {
                 }
                 JSONArray videoConfigs = jsonObject.getJSONArray("video_configs");
                 for (int i = 0; i < videoConfigs.length(); i++) {
-                    DispatcherConfig.VideoConfig videoConfig = new DispatcherConfig.VideoConfig();
+                    SourceConfig.VideoConfig videoConfig = new SourceConfig.VideoConfig();
                     JSONObject jsonVideoConfig = videoConfigs.getJSONObject(i);
                     if (jsonVideoConfig.has("path")) {
                         videoConfig.PATH = jsonVideoConfig.getString("path");

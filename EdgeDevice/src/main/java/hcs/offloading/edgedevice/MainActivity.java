@@ -18,7 +18,7 @@ import org.webrtc.SurfaceViewRenderer;
 
 import java.io.IOException;
 
-import hcs.offloading.strm.config.Config;
+import hcs.offloading.edgedevice.config.Config;
 import hcs.offloading.edgedevice.databinding.ActivityMainBinding;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
             Switch connectButton = findViewById(R.id.connectButton);
 
-            if (!mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
+            if (!mConfig.sourceConfig.USE_LOCAL_VIDEO) {
                 connectButton.setOnCheckedChangeListener(this);
             } else {
                 connectButton.setVisibility(View.INVISIBLE);
@@ -88,8 +88,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
                     mConfig,
                     getApplicationContext(),
                     uri,
-                    mInputView,
-                    this);
+                    mInputView);
         } catch (IllegalArgumentException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
             mEdgeDevice = null;

@@ -1,21 +1,45 @@
 package hcs.offloading.strm.datatypes;
 
 import android.graphics.Bitmap;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Frame {
     public final Bitmap bitmap;
     public final int key;
     public final int frameIndex;
+
+    /**
+     * All RoIs / Optical Flow RoIs of the frame.
+     * For all types of inference, final results will be saved.
+     */
     private List<RoI> rois;
-    private final List<BoundingBox> boxes = new ArrayList<>();
+    private List<RoI> opticalFlowRoIs;
+
+    /**
+     * Results of the frame.
+     * For all types of inference, final results will be saved.
+     */
+    private List<BoundingBox> boxes;
 
     public Frame(Bitmap bitmap, int key, int frameIndex) {
         this.bitmap = bitmap;
         this.key = key;
         this.frameIndex = frameIndex;
+    }
+
+    /**
+     * Sort RoIs with given comparator
+     * @param roiPrioritizer Set priority of each roi.
+     */
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public void sortRoIs(Comparator<RoI> roiPrioritizer) {
+        rois = rois.stream().sorted(roiPrioritizer).collect(Collectors.toList());
     }
 
     public void setRoIs(List<RoI> rois) {
@@ -26,11 +50,27 @@ public class Frame {
         return rois;
     }
 
-    public void addResult(BoundingBox box) {
-        boxes.add(box);
+    public void setOpticalFlowRoIs(List<RoI> opticalFlowRoIs) {
+        this.opticalFlowRoIs = opticalFlowRoIs;
     }
 
-    public List<BoundingBox> getResults() {
-        return boxes;
+    public List<RoI> getOpticalFlowRoIs() {
+        return opticalFlowRoIs;
+    }
+
+    public void setResults(List<BoundingBox> boxes) {
+        synchronized (this) {
+            this.boxes = boxes;
+            notifyAll();
+        }
+    }
+
+    public List<BoundingBox> getResults() throws InterruptedException {
+        synchronized (this) {
+            while (boxes == null) {
+                wait();
+            }
+            return boxes;
+        }
     }
 }

@@ -13,10 +13,21 @@ public class RoI {
 
     public final Frame frame;
     public final Rect location;
+
+    /**
+     * Results of RoI inference.
+     * Will not be used for single frame inference and mixed frame inference.
+     */
     private List<BoundingBox> boxes;
 
+    /**
+     * Handle of InferenceEngine.
+     * Used for asynchronous RoI frame inference.
+     */
+    private int handle;
+
     public final int minOriginLength;
-    private final float scale;
+    private float scale;
     private int[] packedLocation;
 
     public final Type type;
@@ -43,22 +54,20 @@ public class RoI {
         this.labelName = labelName;
     }
 
-    private RoI(RoI roi, float scale) {
-        this.frame = roi.frame;
-        this.location = roi.location;
-        this.minOriginLength = -1;
-        this.scale = scale;
-        this.packedLocation = roi.packedLocation;
-        this.type = roi.type;
-        this.labelName = roi.labelName;
-    }
-
     public Bitmap getBitmap() {
         return Bitmap.createBitmap(frame.bitmap, location.left, location.top, location.width(), location.height());
     }
 
-    public RoI resize(float scale) {
-        return new RoI(this, scale);
+    public void setHandle(int handle) {
+        this.handle = handle;
+    }
+
+    public int getHandle() {
+        return handle;
+    }
+
+    public void resize(float scale) {
+        this.scale = scale;
     }
 
     public float getScale() {

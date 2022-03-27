@@ -1,13 +1,14 @@
 package hcs.offloading.strm;
 
-import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Pair;
 
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import hcs.offloading.strm.config.DispatcherConfig;
@@ -17,19 +18,18 @@ import hcs.offloading.strm.datatypes.Frame;
 import hcs.offloading.strm.datatypes.MixedFrame;
 import hcs.offloading.strm.datatypes.RoI;
 
-public class Dispatcher extends Consumer<Frame, Object> {
+public class Dispatcher extends Consumer<Frame> {
     private static final String TAG = Dispatcher.class.getName();
 
-    private Frame prevFrame;
-    private int mCountMixedFrameInference = 0;
-    private boolean closed = false;
-    private final int mKey;
-    private final boolean OF_ROI;
+    private int mCountMixedFrameInference;
+    private Frame mPrevFrame;
+    private List<BoundingBox> mPrevResults;
+
     private final DispatcherConfig mConfig;
-    private final Map<Integer, List<BoundingBox>> mResultsForRoIExtraction = new ConcurrentHashMap<>();
-    private final Map<Integer, List<BoundingBox>> mResults = new ConcurrentHashMap<>();
+    private final Map<Integer, Frame> mFrames = new HashMap<>();
 
     private final RoIExtractor mRoIExtractor;
+    private final RoIPrioritizer mRoIPrioritizer;
     private final ResizeProfile mResizeProfile;
     private final InferenceEngine mInferenceEngine;
 
@@ -37,8 +37,7 @@ public class Dispatcher extends Consumer<Frame, Object> {
     private final PatchReconstructor mPatchReconstructor;
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    Dispatcher(int key,
-               DispatcherConfig config,
+    Dispatcher(DispatcherConfig config,
                RoIExtractorConfig roIExtractorConfig,
                ResizeProfile resizeProfile,
                RoIPrioritizer roIPrioritizer,
@@ -46,129 +45,118 @@ public class Dispatcher extends Consumer<Frame, Object> {
                PatchMixer patchMixer,
                PatchReconstructor patchReconstructor) {
         super(TAG, config.MAX_QUEUE_SIZE, null);
-        mKey = key;
-        OF_ROI = roIExtractorConfig.OF_ROI;
         mConfig = config;
-        mRoIExtractor = new RoIExtractor(roIExtractorConfig, roIPrioritizer);
+        mCountMixedFrameInference = mConfig.FULL_INFERENCE_INTERVAL;
+        mRoIExtractor = new RoIExtractor(roIExtractorConfig);
+        mRoIPrioritizer = roIPrioritizer;
         mResizeProfile = resizeProfile;
         mInferenceEngine = inferenceEngine;
         mPatchMixer = patchMixer;
         mPatchReconstructor = patchReconstructor;
     }
 
-    public void enqueueImage(int frameIndex, Bitmap bitmap) throws InterruptedException {
-        Frame currFrame = new Frame(bitmap, mKey, frameIndex);
-
-        //Log.v(TAG, "Prev: " + (prevFrame != null ? prevFrame.frameIndex : -1) + " Curr: " + currFrame.frameIndex);
-        if (mCountMixedFrameInference >= mConfig.FULL_INFERENCE_INTERVAL) {
-            int key = mInferenceEngine.enqueue(bitmap);
-            List<BoundingBox> results = mInferenceEngine.getResults(key);
-            mCountMixedFrameInference = 0;
-        } else {
-            List<BoundingBox> prevResults;
-            if (OF_ROI) {
-                if (useInferenceResults) {
-                    Frame finalCurrFrame = currFrame;
-                    prevResults = getResults(prevFrame.frameIndex).stream()
-                            .filter(box -> box.confidence > OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD)
-                            .map(box -> new BoundingBox(new Rect(
-                                    Math.max(0, box.location.left - ROI_PADDING),
-                                    Math.max(0, box.location.top - ROI_PADDING),
-                                    Math.min(finalCurrFrame.bitmap.getWidth() - 1, box.location.right + ROI_PADDING),
-                                    Math.min(finalCurrFrame.bitmap.getHeight() - 1, box.location.bottom + ROI_PADDING)
-                            ), box.confidence, box.labelName))
-                            .collect(Collectors.toList());
-                } else {
-                    prevResults = opticalFlowRoIs.stream()
-                            .map(roi -> new BoundingBox(roi.location, 1f, roi.labelName))
-                            .collect(Collectors.toList());
-                }
-                opticalFlowRoIs = createRoIWithInferenceResult(prevFrame, currFrame, prevResults);
-                rois.addAll(opticalFlowRoIs);
-            }
-
-            Frame frame = mRoIExtractor.process(null);
-            List<RoI> rois =
-            if (PD_ROI) {
-                List<RoI> pixelDiffRoIs = createRoIsFromDiff(prevFrame, currFrame);
-                rois.addAll(pixelDiffRoIs);
-            }
-            if (MERGE_ROI) {
-                mergeSingleFrameRoIs(rois);
-            }
-
-            rois = rois.stream()
-                    .sorted((r0, r1) -> Integer.compare(
-                            r1.location.width() * r1.location.height(),
-                            r0.location.width() * r0.location.height()))
-                    .collect(Collectors.toList());
-
-            rois = resizeRoIs(rois);
-            InferenceRequest request = mCallback.tryMixingAndGetInferenceRequest(currFrame, rois, PACKING);
-            if (request == null) {
-                useInferenceResults = false;
-            } else {
-                mCountMixedFrameInference++;
-                mCallback.enqueueInferenceRequest(request);
-                // If prevFrame.frameIndex == mLastQueriedIndex,
-                // it means that rois from single frame filled the mixed frame.
-                // In that case, we have to continue processing.
-                if (prevFrame.frameIndex != mLastQueriedIndex) {
-                    updateFrame = false;
-                }
-            }
-        }
-    }
-
     @RequiresApi(api = Build.VERSION_CODES.P)
     @Override
-    public boolean onProcessEnd(Frame frame) {  // RoIExtraction End
-        List<RoI> resizedRoIs = frame.getRoIs().stream()
-                .map(roi -> roi.resize(mResizeProfile.getScale(
-                        roi.labelName, roi.location.width(), roi.location.height(), roi.minOriginLength)))
-                .collect(Collectors.toList());
-        frame.setRoIs(resizedRoIs);
-        MixedFrame mixedFrame = mPatchMixer.tryPackFrameRoIs(frame);
-        if (mixedFrame != null) {
-            mMixedFrameCount++;
-            int key = mInferenceEngine.enqueue(mixedFrame.bitmap);
-            mixedFrame.setResults(mInferenceEngine.getResults(key));
-            mPatchReconstructor.enqueue(mixedFrame);
-            return false;
+    public void process(Frame currFrame) throws InterruptedException {
+        assert mPrevFrame == null || mPrevFrame.frameIndex + 1 == currFrame.frameIndex;
+        /* Cases
+         * 1. Full frame inference
+         * 2. Mixed frame inference
+         *   2.1. If only single frame packed into mixed frame, use inference result of the packed frame.
+         *   2.2. Else if multiple frames packed into mixed frame, exclude the last packed frame
+         *        and re-pack the frame into next mixed frame.
+         */
+        synchronized (mFrames) {
+            mFrames.put(currFrame.frameIndex, currFrame);
+        }
+        if (mCountMixedFrameInference >= mConfig.FULL_INFERENCE_INTERVAL) {
+            mCountMixedFrameInference = 0;
+            List<BoundingBox> results = mInferenceEngine.getResults(mInferenceEngine.enqueue(currFrame.bitmap));
+            currFrame.setResults(results);
+            setPrevResults(results, false);
         } else {
-            return true;
+            mRoIExtractor.process(new Pair<>(new Pair<>(mPrevFrame, currFrame), getPrevResults()));
+            currFrame.sortRoIs(Comparator.comparingInt(mRoIPrioritizer::priority));
+            currFrame.getRoIs().forEach(roi -> roi.resize(
+                    mResizeProfile.getScale(roi.labelName, roi.location.width(), roi.location.height(), roi.minOriginLength)));
+            MixedFrame mixedFrame = mPatchMixer.tryPackFrameRoIs(currFrame);
+            if (mixedFrame != null) {
+                mCountMixedFrameInference++;
+                if (mixedFrame.packedBitmap != null) { // PACKING = true, Mixed Frame inference
+                    mixedFrame.setHandle(mInferenceEngine.enqueue(mixedFrame.packedBitmap));
+                } else { // PACKING = false, RoI-wise inference
+                    for (Frame frame : mixedFrame.packedFrames) {
+                        for (RoI roi : frame.getRoIs()) {
+                            roi.setHandle(mInferenceEngine.enqueue(roi.getBitmap()));
+                        }
+                    }
+                }
+                mPatchReconstructor.enqueue(mixedFrame);
+                if (!mixedFrame.packedFrames.contains(currFrame)) { // 2.2.
+                    process(currFrame);
+                }
+            } else {
+                setPrevResults(currFrame.getOpticalFlowRoIs().stream()
+                        .map(roi -> new BoundingBox(roi.location, 1f, roi.labelName))
+                        .collect(Collectors.toList()), true);
+            }
+        }
+        mPrevFrame = currFrame;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    void setPrevResults(List<BoundingBox> results, boolean isRoI) {
+        synchronized (this) {
+            if (isRoI) { // Optical Flow RoIs
+                mPrevResults = results;
+            } else { // Inference Results
+                mPrevResults = results.stream()
+                        .map(box -> new BoundingBox(new Rect(
+                                box.location.left - mConfig.ROI_PADDING,
+                                box.location.top - mConfig.ROI_PADDING,
+                                box.location.right + mConfig.ROI_PADDING,
+                                box.location.bottom + mConfig.ROI_PADDING),
+                                box.confidence, box.labelName))
+                        .collect(Collectors.toList());
+            }
+            notifyAll();
         }
     }
 
-    public void updateResults(List<Frame> frames) {
-        synchronized (mResults) {
-
+    private List<BoundingBox> getPrevResults() throws InterruptedException {
+        if (mRoIExtractor.useOpticalFlowRoIs()) {
+            return null;
+        }
+        synchronized (this) {
+            while (mPrevResults == null) {
+                wait();
+            }
+            List<BoundingBox> prevResults = mPrevResults;
+            mPrevResults = null;
+            return prevResults;
         }
     }
 
     public List<BoundingBox> getResults(int frameIndex) throws InterruptedException {
-        synchronized (mResults) {
-            while (!closed && !mResults.containsKey(frameIndex)) {
-                mResults.wait();
+        synchronized (mFrames) {
+            Frame frame = mFrames.remove(frameIndex);
+            while (!isClosed() && frame == null) {
+                mFrames.wait();
+                frame = mFrames.remove(frameIndex);
             }
-            if (closed) {
+            if (frame == null) {
                 return null;
             } else {
-                return mResults.get(frameIndex);
+                return frame.getResults();
             }
         }
     }
 
     @Override
-    public Object process(Frame item) {
-        return null;
-    }
-
     public void close() {
-        synchronized (mResults) {
-            closed = true;
-            mRoIExtractor.notifyAll();
+        super.close();
+        synchronized (mFrames) {
+            mFrames.notifyAll();
         }
-        mRoIExtractor.close();
     }
 }

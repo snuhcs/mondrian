@@ -22,7 +22,6 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.video.Video;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,25 +39,31 @@ public class RoIExtractor {
     }
 
     private final RoIExtractorConfig mConfig;
-    private final RoIPrioritizer mRoIPrioritizer;
     private final Size mTargetSize;
 
     @RequiresApi(api = Build.VERSION_CODES.P)
-    public RoIExtractor(RoIExtractorConfig config, RoIPrioritizer roIPrioritizer) {
+    public RoIExtractor(RoIExtractorConfig config) {
         mConfig = config;
-        mRoIPrioritizer = roIPrioritizer;
         mTargetSize = new Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT);
     }
 
+    public boolean useOpticalFlowRoIs() {
+        return mConfig.OF_ROI;
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public Frame process(Pair<Pair<Frame, Frame>, List<BoundingBox>> item) {
+    public void process(Pair<Pair<Frame, Frame>, List<BoundingBox>> item) {
         Frame prevFrame = item.first.first;
         Frame currFrame = item.first.second;
-        List<BoundingBox> prevResults = item.second;
+        List<BoundingBox> prevResults = item.second.stream()
+                .filter(box -> box.confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD)
+                .collect(Collectors.toList());
 
         List<RoI> rois = new ArrayList<>();
         if (mConfig.OF_ROI) {
-            rois.addAll(getOpticalFlowRoIs(prevFrame, currFrame, prevResults, mTargetSize));
+            List<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame, prevResults, mTargetSize);
+            currFrame.setOpticalFlowRoIs(opticalFlowRoIs);
+            rois.addAll(opticalFlowRoIs);
         }
         if (mConfig.PD_ROI) {
             rois.addAll(getPixelDiffRoIs(prevFrame, currFrame, mTargetSize));
@@ -66,11 +71,7 @@ public class RoIExtractor {
         if (mConfig.MERGE_ROI) {
             rois = mergeSingleFrameRoIs(currFrame, rois, mConfig.MERGE_THRESHOLD);
         }
-        rois = rois.stream()
-                .sorted(Comparator.comparingInt(mRoIPrioritizer::priority))
-                .collect(Collectors.toList());
         currFrame.setRoIs(rois);
-        return currFrame;
     }
 
     private static List<RoI> mergeSingleFrameRoIs(Frame frame, List<RoI> rois, float mergeThreshold) {
