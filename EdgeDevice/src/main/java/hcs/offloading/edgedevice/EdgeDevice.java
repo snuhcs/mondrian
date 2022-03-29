@@ -1,8 +1,6 @@
 package hcs.offloading.edgedevice;
 
 import android.content.Context;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
@@ -13,7 +11,6 @@ import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoCapturer;
 import org.webrtc.VideoTrack;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
@@ -33,7 +30,6 @@ import hcs.offloading.network.webrtc.WebRTCManager;
 import hcs.offloading.strm.SpatioTemporalRoIMixer;
 import hcs.offloading.strm.config.STRMConfig;
 
-@RequiresApi(api = Build.VERSION_CODES.P)
 public class EdgeDevice implements WebRTCCallback {
     private static final String TAG = EdgeDevice.class.getName();
 

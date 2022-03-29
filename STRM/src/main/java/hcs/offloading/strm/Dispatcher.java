@@ -1,8 +1,6 @@
 package hcs.offloading.strm;
 
 import android.graphics.Rect;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
@@ -36,7 +34,6 @@ public class Dispatcher extends Consumer<Frame> {
     private final PatchMixer mPatchMixer;
     private final PatchReconstructor mPatchReconstructor;
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     Dispatcher(DispatcherConfig config,
                RoIExtractorConfig roIExtractorConfig,
                ResizeProfile resizeProfile,
@@ -54,7 +51,6 @@ public class Dispatcher extends Consumer<Frame> {
         mPatchReconstructor = patchReconstructor;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     @Override
     public void process(Frame currFrame) throws InterruptedException {
         assert mPrevFrame == null || mPrevFrame.frameIndex + 1 == currFrame.frameIndex;
@@ -107,7 +103,6 @@ public class Dispatcher extends Consumer<Frame> {
         mPrevFrame = currFrame;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     void setPrevResults(List<BoundingBox> results, boolean isRoI) {
         synchronized (this) {
             if (isRoI) { // Optical Flow RoIs

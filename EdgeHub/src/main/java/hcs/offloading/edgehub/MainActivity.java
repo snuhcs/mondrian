@@ -1,8 +1,6 @@
 package hcs.offloading.edgehub;
 
-import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.CompoundButton;
 import android.widget.EditText;
@@ -10,7 +8,6 @@ import android.widget.Switch;
 
 import hcs.offloading.edgehub.databinding.ActivityMainBinding;
 
-@RequiresApi(api = Build.VERSION_CODES.N)
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener {
     private EditText mIpInput;
     private EditText mPortInput;

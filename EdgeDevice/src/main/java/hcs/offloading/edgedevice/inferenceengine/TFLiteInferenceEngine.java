@@ -2,8 +2,6 @@ package hcs.offloading.edgedevice.inferenceengine;
 
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
@@ -36,7 +34,6 @@ public class TFLiteInferenceEngine implements InferenceEngine {
 
     private final ResultCallback mResultCallback;
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     public TFLiteInferenceEngine(InferenceEngineConfig config, AssetManager assetManager, ResultCallback resultCallback) {
         mResultCallback = resultCallback;
         Classifier model = getModel(config.MODEL, assetManager, config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
@@ -98,7 +95,6 @@ public class TFLiteInferenceEngine implements InferenceEngine {
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     public List<BoundingBox> getResults(int key) throws InterruptedException {
         List<BoundingBox> results;

@@ -2,8 +2,6 @@ package hcs.offloading.strm;
 
 import android.graphics.Bitmap;
 import android.graphics.Rect;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
@@ -41,7 +39,6 @@ public class RoIExtractor {
     private final RoIExtractorConfig mConfig;
     private final Size mTargetSize;
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     public RoIExtractor(RoIExtractorConfig config) {
         mConfig = config;
         mTargetSize = new Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT);
@@ -51,7 +48,6 @@ public class RoIExtractor {
         return mConfig.OF_ROI;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     public void process(Pair<Pair<Frame, Frame>, List<BoundingBox>> item) {
         Frame prevFrame = item.first.first;
         Frame currFrame = item.first.second;
@@ -124,7 +120,6 @@ public class RoIExtractor {
         return mergedRoIs;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     private static List<RoI> getOpticalFlowRoIs(
             Frame prevFrame, Frame currFrame, List<BoundingBox> boundingBoxes, Size targetSize) {
         final int width = currFrame.bitmap.getWidth();
@@ -156,7 +151,6 @@ public class RoIExtractor {
         return opticalFlowRoIs;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     private static int[][] getBoundingBoxShifts(
             Bitmap prevImage, Bitmap currImage, List<Rect> boundingBoxes, Size targetSize) {
         Mat prevMat = new Mat();
@@ -209,7 +203,6 @@ public class RoIExtractor {
         return shifts;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     private static List<RoI> getPixelDiffRoIs(Frame prevFrame, Frame currFrame, Size targetSize) {
         Mat prevMat = new Mat();
         Mat currMat = new Mat();

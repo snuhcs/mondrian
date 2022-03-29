@@ -5,8 +5,6 @@ import android.graphics.Matrix;
 import android.media.MediaMetadataRetriever;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import org.webrtc.TextureBufferImpl;
@@ -32,7 +30,6 @@ public class VideoSource extends CustomCapturer implements Runnable {
     private final ResultCallback mResultCallback;
     private final float DRAW_CONFIDENCE;
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     VideoSource(SourceConfig.VideoConfig config, SpatioTemporalRoIMixer strm, ResultCallback resultCallback, float drawConfidence) {
         VIDEO_PATH = config.PATH;
         DRAW_CONFIDENCE = drawConfidence;
@@ -61,7 +58,6 @@ public class VideoSource extends CustomCapturer implements Runnable {
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     @Override
     public void startCapture(int width, int height, int fps) {
         Log.d(TAG, "startCapture");

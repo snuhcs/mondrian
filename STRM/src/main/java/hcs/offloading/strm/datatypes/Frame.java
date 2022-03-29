@@ -1,8 +1,6 @@
 package hcs.offloading.strm.datatypes;
 
 import android.graphics.Bitmap;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 
 import java.util.Comparator;
 import java.util.List;
@@ -37,7 +35,6 @@ public class Frame {
      *
      * @param roiPrioritizer Set priority of each roi.
      */
-    @RequiresApi(api = Build.VERSION_CODES.N)
     public void sortRoIs(Comparator<RoI> roiPrioritizer) {
         rois = rois.stream().sorted(roiPrioritizer).collect(Collectors.toList());
     }

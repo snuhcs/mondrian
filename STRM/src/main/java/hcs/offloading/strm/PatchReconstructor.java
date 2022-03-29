@@ -1,8 +1,6 @@
 package hcs.offloading.strm;
 
 import android.graphics.Rect;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,7 +27,6 @@ public class PatchReconstructor extends Consumer<MixedFrame> {
         mInferenceEngine = inferenceEngine;
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     public void process(MixedFrame mixedFrame) throws InterruptedException {
         if (mixedFrame.packedBitmap != null) {
@@ -94,7 +91,6 @@ public class PatchReconstructor extends Consumer<MixedFrame> {
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
     private static void updateRoIInferenceResults(MixedFrame mixedFrame) {
         for (Frame frame : mixedFrame.packedFrames) {
             List<BoundingBox> boxes = new ArrayList<>();

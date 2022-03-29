@@ -1,9 +1,7 @@
 package hcs.offloading.edgedevice;
 
 import android.graphics.Bitmap;
-import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -22,10 +20,8 @@ import java.util.stream.Collectors;
 
 import hcs.offloading.edgedevice.config.Config;
 import hcs.offloading.edgedevice.databinding.ActivityMainBinding;
-import hcs.offloading.strm.datatypes.BoundingBox;
 import hcs.offloading.strm.datatypes.Frame;
 
-@RequiresApi(api = Build.VERSION_CODES.P)
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ResultCallback {
     private static final String TAG = MainActivity.class.getName();
 

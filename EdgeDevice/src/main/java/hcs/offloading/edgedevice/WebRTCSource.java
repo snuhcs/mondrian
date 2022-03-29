@@ -1,8 +1,6 @@
 package hcs.offloading.edgedevice;
 
 import android.graphics.Bitmap;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import org.json.JSONException;
@@ -15,11 +13,9 @@ import org.webrtc.VideoTrack;
 
 import hcs.offloading.network.webrtc.WebRTCManager;
 import hcs.offloading.network.webrtc.YuvFrame;
-import hcs.offloading.strm.STRMUtils;
 import hcs.offloading.strm.SpatioTemporalRoIMixer;
 import hcs.offloading.strm.datatypes.Frame;
 
-@RequiresApi(api = Build.VERSION_CODES.N)
 public class WebRTCSource implements VideoSink, Runnable {
     private static final String TAG = WebRTCSource.class.getName();
 
@@ -38,7 +34,6 @@ public class WebRTCSource implements VideoSink, Runnable {
     private final PeerConnection mPeerConnection;
     private final WebRTCManager mWebRTCManager;
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     WebRTCSource(String sourceIP, SpatioTemporalRoIMixer strm, WebRTCManager webRTCManager,
                  SurfaceViewRenderer inputView, ResultCallback resultCallback, float drawConfidence) {
         mSourceIP = sourceIP;

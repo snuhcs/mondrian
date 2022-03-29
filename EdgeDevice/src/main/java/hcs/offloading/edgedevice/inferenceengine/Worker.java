@@ -1,8 +1,6 @@
 package hcs.offloading.edgedevice.inferenceengine;
 
 import android.graphics.Bitmap;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
@@ -50,7 +48,6 @@ public class Worker implements Runnable {
         Log.d(TAG, "closed");
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     @Override
     public void run() {
         while (true) {

@@ -1,8 +1,6 @@
 package hcs.offloading.network.webrtc;
 
 import android.content.Context;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
@@ -172,7 +170,6 @@ public class WebRTCManager {
         return mPeerConnectionFactory.createLocalMediaStream("102");
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     public Pair<VideoCapturer, VideoTrack> createSavedVideoTrack(String videoFilePath, CustomCapturer videoCapturer) {
         SurfaceTextureHelper surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", mEglBase.getEglBaseContext());
         if (videoCapturer == null) {

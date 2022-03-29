@@ -5,8 +5,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -20,7 +18,6 @@ import java.util.stream.Collectors;
 import hcs.offloading.strm.datatypes.BoundingBox;
 
 public class STRMUtils {
-    @RequiresApi(api = Build.VERSION_CODES.N)
     public static List<BoundingBox> filterPerson(List<BoundingBox> results) {
         return results.stream().filter(result -> result.labelName.equals("person")).collect(Collectors.toList());
     }

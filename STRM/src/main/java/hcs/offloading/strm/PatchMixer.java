@@ -4,8 +4,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Pair;
 
 import java.util.ArrayList;
@@ -20,7 +18,6 @@ import hcs.offloading.strm.datatypes.Frame;
 import hcs.offloading.strm.datatypes.MixedFrame;
 import hcs.offloading.strm.datatypes.RoI;
 
-@RequiresApi(api = Build.VERSION_CODES.P)
 public class PatchMixer {
     private static final String TAG = PatchMixer.class.getName();
 
