@@ -99,12 +99,15 @@ public class TFLiteInferenceEngine implements InferenceEngine {
     public List<BoundingBox> getResults(int key) throws InterruptedException {
         List<BoundingBox> results;
         synchronized (mResults) {
-            while (!mResults.containsKey(key)) {
-                mResults.wait();
-            }
             results = mResults.get(key);
+            while (results == null) {
+                mResults.wait();
+                results = mResults.get(key);
+            }
         }
-        return results.stream().filter(box -> box.labelName.equals("person")).collect(Collectors.toList());
+        return results.stream()
+                .filter(box -> box.labelName.equals("person"))
+                .collect(Collectors.toList());
     }
 
     public void close() {

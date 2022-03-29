@@ -13,15 +13,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import hcs.offloading.strm.datatypes.BoundingBox;
 
 public class STRMUtils {
-    public static List<BoundingBox> filterPerson(List<BoundingBox> results) {
-        return results.stream().filter(result -> result.labelName.equals("person")).collect(Collectors.toList());
-    }
-
     public static Bitmap drawBoxes(Bitmap image, List<BoundingBox> boxes, float drawConfidence) {
         final Canvas canvas = new Canvas(image);
         final Paint paint = new Paint();

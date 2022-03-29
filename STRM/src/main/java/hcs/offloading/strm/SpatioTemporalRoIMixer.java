@@ -47,16 +47,22 @@ public class SpatioTemporalRoIMixer {
         mRoIExtractorConfig = config.roIExtractorConfig;
     }
 
-    private final ConsumerCallback<MixedFrame> mOnPatchReconstructionEnd = mixedFrame -> mixedFrame.packedFrames.stream()
-            .collect(Collectors.groupingBy(f -> f.key))
-            .forEach((key, frames) -> {
-                Dispatcher dispatcher = mDispatchers.get(key);
-                if (dispatcher != null) {
-                    Frame lastFrame = frames.stream()
-                            .max(Comparator.comparingInt(f0 -> f0.frameIndex)).get();
-                    dispatcher.setPrevResults(lastFrame.getResults(), false);
-                }
-            });
+    private final ConsumerCallback<MixedFrame> mOnPatchReconstructionEnd = mixedFrame -> {
+        if (isClosed.get()) {
+            return;
+        }
+        mixedFrame.packedFrames.stream()
+                .collect(Collectors.groupingBy(f -> f.key))
+                .forEach((key, frames) -> {
+                    Dispatcher dispatcher = mDispatchers.get(key);
+                    if (dispatcher != null) {
+                        Frame lastFrame = frames.stream()
+                                .max(Comparator.comparingInt(f0 -> f0.frameIndex))
+                                .orElseThrow(() -> new ArrayIndexOutOfBoundsException("No frames with given index"));
+                        dispatcher.setPrevBoxesForOpticalFlowRoI(lastFrame.getResults(), false);
+                    }
+                });
+    };
 
     public void enqueueImage(String key, int frameIndex, Bitmap bitmap) throws InterruptedException {
         if (isClosed.get()) {
@@ -87,7 +93,7 @@ public class SpatioTemporalRoIMixer {
             mDispatchers.put(key, new Dispatcher(
                     mDispatcherConfig, mRoIExtractorConfig,
                     mResizeProfile, mRoIPrioritizer, mInferenceEngine,
-                    mPatchMixer, mPatchReconstructor));
+                    mPatchMixer));
         }
     }
 

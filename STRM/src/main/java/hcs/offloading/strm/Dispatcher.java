@@ -1,7 +1,9 @@
 package hcs.offloading.strm;
 
+import static hcs.offloading.strm.PatchMixer.CONTINUE_PACKING;
+
+import android.graphics.Bitmap;
 import android.graphics.Rect;
-import android.util.Log;
 import android.util.Pair;
 
 import java.util.Comparator;
@@ -18,7 +20,6 @@ import hcs.offloading.strm.datatypes.Frame;
 public class Dispatcher extends Consumer<Frame> {
     private static final String TAG = Dispatcher.class.getName();
 
-    private final int mLastPackedFrameIndex = -1;
     private int mCountMixedFrameInference = Integer.MAX_VALUE;
     private Frame mPrevFrame;
     private List<BoundingBox> mPrevResults;
@@ -30,17 +31,14 @@ public class Dispatcher extends Consumer<Frame> {
     private final RoIPrioritizer mRoIPrioritizer;
     private final ResizeProfile mResizeProfile;
     private final InferenceEngine mInferenceEngine;
-
     private final PatchMixer mPatchMixer;
-    private final PatchReconstructor mPatchReconstructor;
 
     Dispatcher(DispatcherConfig config,
                RoIExtractorConfig roIExtractorConfig,
                ResizeProfile resizeProfile,
                RoIPrioritizer roIPrioritizer,
                InferenceEngine inferenceEngine,
-               PatchMixer patchMixer,
-               PatchReconstructor patchReconstructor) {
+               PatchMixer patchMixer) {
         super(TAG, config.MAX_QUEUE_SIZE, null);
         mConfig = config;
         mRoIExtractor = new RoIExtractor(roIExtractorConfig);
@@ -48,7 +46,6 @@ public class Dispatcher extends Consumer<Frame> {
         mResizeProfile = resizeProfile;
         mInferenceEngine = inferenceEngine;
         mPatchMixer = patchMixer;
-        mPatchReconstructor = patchReconstructor;
     }
 
     @Override
@@ -65,50 +62,41 @@ public class Dispatcher extends Consumer<Frame> {
             mFrames.put(currFrame.frameIndex, currFrame);
             mFrames.notifyAll();
         }
-//        Log.v(TAG, "Start Process " + currFrame.key + ", " + currFrame.frameIndex);
         if (mCountMixedFrameInference >= mConfig.FULL_INFERENCE_INTERVAL) {
             mCountMixedFrameInference = 0;
-//            Log.v(TAG, "Start Full    " + currFrame.key + ", " + currFrame.frameIndex);
-            List<BoundingBox> results = mInferenceEngine.getResults(mInferenceEngine.enqueue(currFrame.bitmap.copy(currFrame.bitmap.getConfig(), false), true));
-//            Log.v(TAG, "End   Full    " + currFrame.key + ", " + currFrame.frameIndex);
+            Bitmap copiedBitmap = currFrame.bitmap.copy(currFrame.bitmap.getConfig(), false);
+            int handle = mInferenceEngine.enqueue(copiedBitmap, true);
+            List<BoundingBox> results = mInferenceEngine.getResults(handle);
             currFrame.setResults(results);
-            setPrevResults(results, false);
+            setPrevBoxesForOpticalFlowRoI(results, false);
         } else {
-//            Log.v(TAG, "getPrevResults");
             List<BoundingBox> prevResults = getPrevResults();
-//            Log.v(TAG, "Start RoIExtraction " + currFrame.key + ", " + currFrame.frameIndex + ", " + prevResults);
             mRoIExtractor.process(new Pair<>(new Pair<>(mPrevFrame, currFrame), prevResults));
-//            Log.v(TAG, "End   RoIExtraction " + currFrame.key + ", " + currFrame.frameIndex);
             currFrame.sortRoIs(Comparator.comparingInt(mRoIPrioritizer::priority));
             currFrame.getRoIs().forEach(roi -> roi.resize(
                     mResizeProfile.getScale(roi.labelName, roi.location.width(), roi.location.height(), roi.minOriginLength)));
-            int lastEnqueuedFrameIndex = mPatchMixer.tryPackAndEnqueueMixedFrame(currFrame);
-//            Log.v(TAG, "MixedFrame    " + currFrame.key + ", " + currFrame.frameIndex + ", " + lastEnqueuedFrameIndex);
-            if (lastEnqueuedFrameIndex != -1) {
-                mCountMixedFrameInference++;
-                if (lastEnqueuedFrameIndex == currFrame.frameIndex) { // 2.1.
-//                    Log.v(TAG, "NoAgainFrame  " + currFrame.key + ", " + currFrame.frameIndex);
-                } else if (lastEnqueuedFrameIndex == currFrame.frameIndex - 1) { // 2.2.
-//                    Log.v(TAG, "AgainFrame    " + currFrame.key + ", " + currFrame.frameIndex);
-                    process(currFrame);
-                } else {
-                    Log.e(TAG, "Wrong last index of mixed frame");
-                }
-            } else {
-                setPrevResults(currFrame.getOpticalFlowRoIs().stream()
+            int lastPackedIndex = mPatchMixer.tryPackAndEnqueueMixedFrame(currFrame);
+            if (lastPackedIndex == CONTINUE_PACKING) {
+                setPrevBoxesForOpticalFlowRoI(currFrame.getOpticalFlowRoIs().stream()
                         .map(roi -> new BoundingBox(roi.location, 1f, roi.labelName))
                         .collect(Collectors.toList()), true);
+            } else {
+                mCountMixedFrameInference++;
+                boolean isCurrFrameExcludedFromMixedFrame = lastPackedIndex == currFrame.frameIndex - 1;
+                if (isCurrFrameExcludedFromMixedFrame) {
+                    process(currFrame);
+                }
             }
         }
         mPrevFrame = currFrame;
     }
 
-    void setPrevResults(List<BoundingBox> results, boolean isRoI) {
+    void setPrevBoxesForOpticalFlowRoI(List<BoundingBox> prevBoxes, boolean isRoI) {
         synchronized (this) {
             if (isRoI) { // Optical Flow RoIs
-                mPrevResults = results;
+                mPrevResults = prevBoxes;
             } else { // Inference Results
-                mPrevResults = results.stream()
+                mPrevResults = prevBoxes.stream()
                         .map(box -> new BoundingBox(new Rect(
                                 box.location.left - mConfig.ROI_PADDING,
                                 box.location.top - mConfig.ROI_PADDING,
@@ -125,7 +113,6 @@ public class Dispatcher extends Consumer<Frame> {
         if (!mRoIExtractor.useOpticalFlowRoIs()) {
             return null;
         }
-//        Log.v(TAG, "getPrevResults: " + mPrevFrame.frameIndex + ", " + mPrevResults);
         synchronized (this) {
             while (mPrevResults == null) {
                 wait();
@@ -140,20 +127,15 @@ public class Dispatcher extends Consumer<Frame> {
         Frame frame;
         synchronized (mFrames) {
             frame = mFrames.remove(frameIndex);
-//            Log.v(TAG, "getResults() " + frameIndex + ", " + frame);
             while (!isClosed() && frame == null) {
                 mFrames.wait();
                 frame = mFrames.remove(frameIndex);
-//                Log.v(TAG, "getResults() " + frameIndex + ", " + frame);
             }
-//            Log.v(TAG, "getResults() Loop Out " + frameIndex + ", " + frame);
         }
         if (frame == null) {
             return null;
         } else {
-//            Log.v(TAG, "frame.waitForResults() Start " + frame.key + ", " + frame.frameIndex);
             frame.waitForResults();
-//            Log.v(TAG, "frame.waitForResults() End   " + frame.key + ", " + frame.frameIndex);
             return frame;
         }
     }
