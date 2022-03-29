@@ -2,11 +2,6 @@ package hcs.offloading.strm;
 
 import android.graphics.Rect;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import hcs.offloading.strm.config.PatchReconstructorConfig;
 import hcs.offloading.strm.datatypes.BoundingBox;
 import hcs.offloading.strm.datatypes.Frame;
@@ -44,10 +39,6 @@ public class PatchReconstructor extends Consumer<MixedFrame> {
 
     private static void updateMixedFrameInferenceResults(
             MixedFrame mixedFrame, int matchPadding, float useIoUThreshold) {
-        Map<Frame, List<BoundingBox>> frameBoxes = new HashMap<>();
-        for (Frame frame : mixedFrame.packedFrames) {
-            frameBoxes.put(frame, new ArrayList<>());
-        }
         for (BoundingBox box : mixedFrame.getResults()) {
             float maxOverlap = -1f;
             Rect maxBoxPos = null;
@@ -82,18 +73,14 @@ public class PatchReconstructor extends Consumer<MixedFrame> {
                 }
             }
             if (maxFrame != null && maxOverlap > useIoUThreshold) {
-                frameBoxes.get(maxFrame).add(new BoundingBox(
+                maxFrame.addResult(new BoundingBox(
                         maxBoxPos, box.confidence, box.labelName));
             }
-        }
-        for (Frame frame : frameBoxes.keySet()) {
-            frame.setResults(frameBoxes.get(frame));
         }
     }
 
     private static void updateRoIInferenceResults(MixedFrame mixedFrame) {
         for (Frame frame : mixedFrame.packedFrames) {
-            List<BoundingBox> boxes = new ArrayList<>();
             for (RoI roi : frame.getRoIs()) {
                 for (BoundingBox box : roi.getResults()) {
                     Rect newLocation = new Rect(
@@ -102,10 +89,9 @@ public class PatchReconstructor extends Consumer<MixedFrame> {
                             box.location.right + roi.location.left,
                             box.location.bottom + roi.location.top
                     );
-                    boxes.add(new BoundingBox(newLocation, box.confidence, box.labelName));
+                    frame.addResult(new BoundingBox(newLocation, box.confidence, box.labelName));
                 }
             }
-            frame.setResults(boxes);
         }
     }
 }

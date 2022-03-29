@@ -1,7 +1,5 @@
 package hcs.offloading.strm;
 
-import static hcs.offloading.strm.PatchMixer.CONTINUE_PACKING;
-
 import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.util.Pair;
@@ -25,7 +23,7 @@ public class Dispatcher extends Consumer<Frame> {
     private List<BoundingBox> mPrevResults;
 
     private final DispatcherConfig mConfig;
-    private final Map<Integer, Frame> mFrames = new HashMap<>();
+    private final Map<Integer, List<BoundingBox>> mResults = new HashMap<>();
 
     private final RoIExtractor mRoIExtractor;
     private final RoIPrioritizer mRoIPrioritizer;
@@ -54,62 +52,51 @@ public class Dispatcher extends Consumer<Frame> {
         /* Cases
          * 1. Full frame inference
          * 2. Mixed frame inference
-         *   2.1. If only single frame packed into mixed frame, use inference result of the packed frame.
-         *   2.2. Else if multiple frames packed into mixed frame, exclude the last packed frame
-         *        and re-pack the frame into next mixed frame.
+         *   2.1. If multiple frames from the source stream packed into mixed frame,
+         *        PatchMixer will exclude the last packed frame from the packed frames.
+         *        We have to re-pack the frame into next mixed frame.
+         *   2.2. Else wait for mixed frame result and continue to process next frame.
          */
-        synchronized (mFrames) {
-            mFrames.put(currFrame.frameIndex, currFrame);
-            mFrames.notifyAll();
-        }
         if (mCountMixedFrameInference >= mConfig.FULL_INFERENCE_INTERVAL) {
             mCountMixedFrameInference = 0;
             Bitmap copiedBitmap = currFrame.bitmap.copy(currFrame.bitmap.getConfig(), false);
             int handle = mInferenceEngine.enqueue(copiedBitmap, true);
             List<BoundingBox> results = mInferenceEngine.getResults(handle);
-            currFrame.setResults(results);
-            setPrevBoxesForOpticalFlowRoI(results, false);
+            currFrame.addResults(results);
+            setResults(currFrame);
         } else {
-            List<BoundingBox> prevResults = getPrevResults();
+            List<BoundingBox> prevResults = getPrevBoxes();
             mRoIExtractor.process(new Pair<>(new Pair<>(mPrevFrame, currFrame), prevResults));
             currFrame.sortRoIs(Comparator.comparingInt(mRoIPrioritizer::priority));
             currFrame.getRoIs().forEach(roi -> roi.resize(
                     mResizeProfile.getScale(roi.labelName, roi.location.width(), roi.location.height(), roi.minOriginLength)));
-            int lastPackedIndex = mPatchMixer.tryPackAndEnqueueMixedFrame(currFrame);
-            if (lastPackedIndex == CONTINUE_PACKING) {
-                setPrevBoxesForOpticalFlowRoI(currFrame.getOpticalFlowRoIs().stream()
+            PatchMixer.Status status = mPatchMixer.tryPackAndEnqueueMixedFrame(currFrame);
+            if (status == PatchMixer.Status.CONTINUE_PACKING) {
+                setPrevBoxesWithRoIs(currFrame.getOpticalFlowRoIs().stream()
                         .map(roi -> new BoundingBox(roi.location, 1f, roi.labelName))
-                        .collect(Collectors.toList()), true);
-            } else {
+                        .collect(Collectors.toList()));
+            } else if (status == PatchMixer.Status.FINISHED) {
+                // 2.2. Last packed frame in included
                 mCountMixedFrameInference++;
-                boolean isCurrFrameExcludedFromMixedFrame = lastPackedIndex == currFrame.frameIndex - 1;
-                if (isCurrFrameExcludedFromMixedFrame) {
-                    process(currFrame);
-                }
+            } else if (status == PatchMixer.Status.FINISHED_AND_PROCESS_LAST_FRAME_AGAIN) {
+                // 2.1. Last packed frame is excluded
+                mCountMixedFrameInference++;
+                process(currFrame);
+            } else {
+                throw new IllegalArgumentException("Wrong PactchMixer.Status: " + status);
             }
         }
         mPrevFrame = currFrame;
     }
 
-    void setPrevBoxesForOpticalFlowRoI(List<BoundingBox> prevBoxes, boolean isRoI) {
+    void setPrevBoxesWithRoIs(List<BoundingBox> prevBoxes) {
         synchronized (this) {
-            if (isRoI) { // Optical Flow RoIs
-                mPrevResults = prevBoxes;
-            } else { // Inference Results
-                mPrevResults = prevBoxes.stream()
-                        .map(box -> new BoundingBox(new Rect(
-                                box.location.left - mConfig.ROI_PADDING,
-                                box.location.top - mConfig.ROI_PADDING,
-                                box.location.right + mConfig.ROI_PADDING,
-                                box.location.bottom + mConfig.ROI_PADDING),
-                                box.confidence, box.labelName))
-                        .collect(Collectors.toList());
-            }
+            mPrevResults = prevBoxes;
             notifyAll();
         }
     }
 
-    private List<BoundingBox> getPrevResults() throws InterruptedException {
+    private List<BoundingBox> getPrevBoxes() throws InterruptedException {
         if (!mRoIExtractor.useOpticalFlowRoIs()) {
             return null;
         }
@@ -123,28 +110,64 @@ public class Dispatcher extends Consumer<Frame> {
         }
     }
 
-    public Frame getResults(int frameIndex) throws InterruptedException {
-        Frame frame;
-        synchronized (mFrames) {
-            frame = mFrames.remove(frameIndex);
-            while (!isClosed() && frame == null) {
-                mFrames.wait();
-                frame = mFrames.remove(frameIndex);
+    public void setResults(Frame fullFrame) {
+        synchronized (this) {
+            mPrevResults = fullFrame.getResults().stream()
+                    .map(box -> new BoundingBox(new Rect(
+                            box.location.left - mConfig.ROI_PADDING,
+                            box.location.top - mConfig.ROI_PADDING,
+                            box.location.right + mConfig.ROI_PADDING,
+                            box.location.bottom + mConfig.ROI_PADDING),
+                            box.confidence, box.labelName))
+                    .collect(Collectors.toList());
+            notifyAll();
+        }
+        synchronized (mResults) {
+            mResults.put(fullFrame.frameIndex, fullFrame.getResults());
+            mResults.notifyAll();
+        }
+    }
+
+    public void setResults(List<Frame> packedFrames) {
+        Frame lastFrame = packedFrames.stream()
+                .max(Comparator.comparingInt(f0 -> f0.frameIndex))
+                .orElseThrow(() -> new ArrayIndexOutOfBoundsException("No frames with given index"));
+        synchronized (this) {
+            mPrevResults = lastFrame.getResults().stream()
+                    .map(box -> new BoundingBox(new Rect(
+                            box.location.left - mConfig.ROI_PADDING,
+                            box.location.top - mConfig.ROI_PADDING,
+                            box.location.right + mConfig.ROI_PADDING,
+                            box.location.bottom + mConfig.ROI_PADDING),
+                            box.confidence, box.labelName))
+                    .collect(Collectors.toList());
+            notifyAll();
+        }
+        synchronized (mResults) {
+            for (Frame frame : packedFrames) {
+                mResults.put(frame.frameIndex, frame.getResults());
+            }
+            mResults.notifyAll();
+        }
+    }
+
+    public List<BoundingBox> getResults(int frameIndex) throws InterruptedException {
+        List<BoundingBox> results;
+        synchronized (mResults) {
+            results = mResults.remove(frameIndex);
+            while (!isClosed() && results == null) {
+                mResults.wait();
+                results = mResults.remove(frameIndex);
             }
         }
-        if (frame == null) {
-            return null;
-        } else {
-            frame.waitForResults();
-            return frame;
-        }
+        return results;
     }
 
     @Override
     public void close() {
         super.close();
-        synchronized (mFrames) {
-            mFrames.notifyAll();
+        synchronized (mResults) {
+            mResults.notifyAll();
         }
     }
 }

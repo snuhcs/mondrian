@@ -7,10 +7,9 @@ import android.graphics.Rect;
 import android.util.Pair;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import hcs.offloading.strm.config.PatchMixerConfig;
@@ -21,11 +20,15 @@ import hcs.offloading.strm.datatypes.RoI;
 public class PatchMixer {
     private static final String TAG = PatchMixer.class.getName();
 
-    public static final int CONTINUE_PACKING = -1;
+    public enum Status {
+        CONTINUE_PACKING,
+        FINISHED,
+        FINISHED_AND_PROCESS_LAST_FRAME_AGAIN,
+    }
 
     private final PatchMixerConfig mConfig;
 
-    private final Map<String, Integer> mLastPackedIndices = new HashMap<>();
+    private Set<String> mFinishedKeys;
     private List<Frame> mPackedFrames;
     private List<Rect> mFreeRects;
 
@@ -45,11 +48,11 @@ public class PatchMixer {
         mFreeRects.add(new Rect(0, 0, mConfig.MIXED_FRAME_SIZE, mConfig.MIXED_FRAME_SIZE));
     }
 
-    public int tryPackAndEnqueueMixedFrame(Frame frame) throws InterruptedException {
+    public Status tryPackAndEnqueueMixedFrame(Frame frame) throws InterruptedException {
         synchronized (this) {
-            Integer lastIndex = mLastPackedIndices.remove(frame.key);
-            if (lastIndex != null) {
-                return lastIndex;
+            if (mFinishedKeys != null && mFinishedKeys.contains(frame.key)) {
+                mFinishedKeys.remove(frame.key);
+                return Status.FINISHED;
             }
             boolean isAllPacked = true;
             for (RoI roi : frame.getRoIs()) {
@@ -79,16 +82,11 @@ public class PatchMixer {
                     .orElseThrow(() -> new ArrayIndexOutOfBoundsException("No frames with given index"));
             int numPackedFrames = frame.frameIndex - minPackedFrameIndex + 1;
             if (!isAllPacked || numPackedFrames >= mConfig.MAX_PACKED_FRAMES) {
+                Status status = Status.FINISHED;
                 if (mPackedFrames.stream().filter(f -> f.key.equals(frame.key)).count() >= 2) {
                     mPackedFrames.remove(frame);
+                    status = Status.FINISHED_AND_PROCESS_LAST_FRAME_AGAIN;
                 }
-                mPackedFrames.stream()
-                        .collect(Collectors.groupingBy(f -> f.key))
-                        .forEach((key, frames) -> mLastPackedIndices.put(
-                                key, frames.stream()
-                                        .map(f -> f.frameIndex)
-                                        .max(Integer::compare)
-                                        .orElseThrow(() -> new ArrayIndexOutOfBoundsException("No frames with given index"))));
                 if (mConfig.PACKING) {
                     Bitmap mixedImage = getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE);
                     MixedFrame mixedFrame = new MixedFrame(mixedImage, mPackedFrames);
@@ -103,10 +101,14 @@ public class PatchMixer {
                     }
                     mPatchReconstructor.enqueue(mixedFrame);
                 }
+                mFinishedKeys = mPackedFrames.stream()
+                        .map(f -> f.key)
+                        .collect(Collectors.toSet());
+                mFinishedKeys.remove(frame.key);
                 reset();
-                return mLastPackedIndices.remove(frame.key);
+                return status;
             } else {
-                return CONTINUE_PACKING;
+                return Status.CONTINUE_PACKING;
             }
         }
     }

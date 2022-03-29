@@ -11,10 +11,12 @@ import org.webrtc.TextureBufferImpl;
 import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
+import java.util.List;
+
 import hcs.offloading.edgedevice.config.SourceConfig;
 import hcs.offloading.network.webrtc.CustomCapturer;
 import hcs.offloading.strm.SpatioTemporalRoIMixer;
-import hcs.offloading.strm.datatypes.Frame;
+import hcs.offloading.strm.datatypes.BoundingBox;
 
 public class VideoSource extends CustomCapturer implements Runnable {
     private static final String TAG = VideoSource.class.getName();
@@ -48,10 +50,9 @@ public class VideoSource extends CustomCapturer implements Runnable {
         int frameIndex = startIndex;
         try {
             while (true) {
-                Frame frame = strm.getResults(VIDEO_PATH, frameIndex++);
-                mResultCallback.log(frame);
-//                mResultCallback.drawObjectDetectionResult(STRMUtils.drawBoxes(
-//                        frame.bitmap, frame.getResults(), DRAW_CONFIDENCE));
+                List<BoundingBox> results = strm.getResults(VIDEO_PATH, frameIndex);
+                mResultCallback.log(VIDEO_PATH, frameIndex, results);
+                frameIndex++;
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");

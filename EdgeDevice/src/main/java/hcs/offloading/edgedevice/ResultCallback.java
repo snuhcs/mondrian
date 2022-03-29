@@ -2,10 +2,12 @@ package hcs.offloading.edgedevice;
 
 import android.graphics.Bitmap;
 
-import hcs.offloading.strm.datatypes.Frame;
+import java.util.List;
+
+import hcs.offloading.strm.datatypes.BoundingBox;
 
 public interface ResultCallback {
-    void log(Frame frame);
+    void log(String key, int frameIndex, List<BoundingBox> results);
 
     void drawInferenceResult(Bitmap bitmap);
 

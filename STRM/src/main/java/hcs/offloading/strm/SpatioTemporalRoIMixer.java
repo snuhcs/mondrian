@@ -2,7 +2,7 @@ package hcs.offloading.strm;
 
 import android.graphics.Bitmap;
 
-import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import hcs.offloading.strm.config.DispatcherConfig;
 import hcs.offloading.strm.config.RoIExtractorConfig;
 import hcs.offloading.strm.config.STRMConfig;
+import hcs.offloading.strm.datatypes.BoundingBox;
 import hcs.offloading.strm.datatypes.Frame;
 import hcs.offloading.strm.datatypes.MixedFrame;
 
@@ -56,10 +57,7 @@ public class SpatioTemporalRoIMixer {
                 .forEach((key, frames) -> {
                     Dispatcher dispatcher = mDispatchers.get(key);
                     if (dispatcher != null) {
-                        Frame lastFrame = frames.stream()
-                                .max(Comparator.comparingInt(f0 -> f0.frameIndex))
-                                .orElseThrow(() -> new ArrayIndexOutOfBoundsException("No frames with given index"));
-                        dispatcher.setPrevBoxesForOpticalFlowRoI(lastFrame.getResults(), false);
+                        dispatcher.setResults(frames);
                     }
                 });
     };
@@ -74,7 +72,7 @@ public class SpatioTemporalRoIMixer {
         }
     }
 
-    public Frame getResults(String key, int frameIndex) throws InterruptedException {
+    public List<BoundingBox> getResults(String key, int frameIndex) throws InterruptedException {
         if (isClosed.get()) {
             return null;
         }

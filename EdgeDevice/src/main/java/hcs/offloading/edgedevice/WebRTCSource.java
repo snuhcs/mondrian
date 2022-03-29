@@ -11,10 +11,12 @@ import org.webrtc.VideoFrame;
 import org.webrtc.VideoSink;
 import org.webrtc.VideoTrack;
 
+import java.util.List;
+
 import hcs.offloading.network.webrtc.WebRTCManager;
 import hcs.offloading.network.webrtc.YuvFrame;
 import hcs.offloading.strm.SpatioTemporalRoIMixer;
-import hcs.offloading.strm.datatypes.Frame;
+import hcs.offloading.strm.datatypes.BoundingBox;
 
 public class WebRTCSource implements VideoSink, Runnable {
     private static final String TAG = WebRTCSource.class.getName();
@@ -54,10 +56,9 @@ public class WebRTCSource implements VideoSink, Runnable {
         int frameIndex = 0;
         try {
             while (true) {
-                Frame frame = strm.getResults(mSourceIP, frameIndex++);
-                mResultCallback.log(frame);
-//                mResultCallback.drawObjectDetectionResult(STRMUtils.drawBoxes(
-//                        frame.bitmap, frame.getResults(), DRAW_CONFIDENCE));
+                List<BoundingBox> results = strm.getResults(mSourceIP, frameIndex);
+                mResultCallback.log(mSourceIP, frameIndex, results);
+                frameIndex++;
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");

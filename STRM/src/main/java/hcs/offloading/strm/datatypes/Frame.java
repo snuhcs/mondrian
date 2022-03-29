@@ -2,6 +2,7 @@ package hcs.offloading.strm.datatypes;
 
 import android.graphics.Bitmap;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,7 +23,7 @@ public class Frame {
      * Results of the frame.
      * For all types of inference, final results will be saved.
      */
-    private List<BoundingBox> boxes;
+    private final List<BoundingBox> boxes = new ArrayList<>();
 
     public Frame(Bitmap bitmap, String key, int frameIndex) {
         this.bitmap = bitmap;
@@ -55,22 +56,15 @@ public class Frame {
         return opticalFlowRoIs;
     }
 
-    public void setResults(List<BoundingBox> boxes) {
-        synchronized (this) {
-            this.boxes = boxes;
-            notifyAll();
-        }
+    public void addResult(BoundingBox box) {
+        boxes.add(box);
+    }
+
+    public void addResults(List<BoundingBox> boxes) {
+        this.boxes.addAll(boxes);
     }
 
     public List<BoundingBox> getResults() {
         return boxes;
-    }
-
-    public void waitForResults() throws InterruptedException {
-        synchronized (this) {
-            while (boxes == null) {
-                wait();
-            }
-        }
     }
 }

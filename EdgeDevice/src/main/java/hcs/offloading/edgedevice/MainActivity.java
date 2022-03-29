@@ -16,11 +16,12 @@ import org.webrtc.SurfaceViewRenderer;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import hcs.offloading.edgedevice.config.Config;
 import hcs.offloading.edgedevice.databinding.ActivityMainBinding;
-import hcs.offloading.strm.datatypes.Frame;
+import hcs.offloading.strm.datatypes.BoundingBox;
 
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ResultCallback {
     private static final String TAG = MainActivity.class.getName();
@@ -121,13 +122,13 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     }
 
     @Override
-    public void log(Frame frame) {
+    public void log(String key, int frameIndex, List<BoundingBox> results) {
         if (mLogWriter == null) {
             return;
         }
         long timeStamp = System.nanoTime() - mStartTime;
         try {
-            mLogWriter.write(frame.key + "," + frame.frameIndex + "," + timeStamp + "," + frame.getResults().stream()
+            mLogWriter.write(key + "," + frameIndex + "," + timeStamp + "," + results.stream()
                     .map(box -> box.location.left + "," + box.location.top + "," + box.location.right + "," + box.location.bottom + "," + box.confidence + "," + box.labelName)
                     .collect(Collectors.joining(",")) + "\n");
             mLogWriter.flush();
