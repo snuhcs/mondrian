@@ -1,7 +1,6 @@
 package hcs.offloading.strm;
 
 import android.graphics.Rect;
-import android.util.Log;
 import android.util.Pair;
 
 import java.util.Comparator;
