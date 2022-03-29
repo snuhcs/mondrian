@@ -57,7 +57,6 @@ public class Dispatcher extends Consumer<Frame> {
          *        We have to re-pack the frame into next mixed frame.
          *   2.2. Else wait for mixed frame result and continue to process next frame.
          */
-        Log.d(TAG, "process: " + currFrame.mat.width() + ", " + currFrame.mat.height() + ", " + currFrame.mat.channels() + ", " + currFrame.mat.type());
         if (mCountMixedFrameInference >= mConfig.FULL_INFERENCE_INTERVAL) {
             mCountMixedFrameInference = 0;
             int handle = mInferenceEngine.enqueue(currFrame.mat.clone(), true);
