@@ -5,7 +5,6 @@ import android.content.res.AssetManager;
 import android.graphics.Rect;
 import android.util.Log;
 
-import org.opencv.core.Mat;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.gpu.CompatibilityList;
 import org.tensorflow.lite.gpu.GpuDelegate;
@@ -15,6 +14,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -77,8 +77,8 @@ public class YoloV5Classifier implements Classifier {
     }
 
     @Override
-    public List<BoundingBox> recognizeImage(Mat mat, int originalWidth, int originalHeight) {
-        ArrayList<BoundingBox> detections = getDetectionsForFull(mat, originalWidth, originalHeight);
+    public List<BoundingBox> recognizeImage(ByteBuffer byteBuffer, int originalWidth, int originalHeight) {
+        ArrayList<BoundingBox> detections = getDetectionsForFull(byteBuffer, originalWidth, originalHeight);
         return nms(detections);
     }
 
@@ -97,13 +97,11 @@ public class YoloV5Classifier implements Classifier {
         return buffer;
     }
 
-    private ArrayList<BoundingBox> getDetectionsForFull(Mat mat, int originalWidth, int originalHeight) {
+    private ArrayList<BoundingBox> getDetectionsForFull(ByteBuffer byteBuffer, int originalWidth, int originalHeight) {
         ArrayList<BoundingBox> detections = new ArrayList<>();
         Map<Integer, Object> outputMap = new HashMap<>();
         outputMap.put(0, new float[1][OUTPUT_WIDTH][5 + NUM_LABELS]); // Box + Obj Confidence + Cls Confidences
-        float[] buffer = new float[(int) (mat.width() * mat.height() * mat.channels())];
-        mat.get(0, 0, buffer);
-        Object[] inputArray = {buffer};
+        Object[] inputArray = {byteBuffer};
         long start = System.nanoTime();
         tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
         long end = System.nanoTime();

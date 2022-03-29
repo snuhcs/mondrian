@@ -5,7 +5,9 @@ import android.util.Log;
 import android.util.Pair;
 
 import org.opencv.core.Mat;
+import org.tensorflow.lite.support.common.ops.NormalizeOp;
 import org.tensorflow.lite.support.image.ImageProcessor;
+import org.tensorflow.lite.support.image.ops.ResizeOp;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,18 +37,27 @@ public class TFLiteInferenceEngine implements InferenceEngine {
     public TFLiteInferenceEngine(InferenceEngineConfig config, AssetManager assetManager, ResultCallback resultCallback) {
         mResultCallback = resultCallback;
         Classifier model = getModel(config.MODEL, assetManager, config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+        ImageProcessor preprocessor = new ImageProcessor.Builder()
+                .add(new ResizeOp(config.INPUT_SIZE, config.INPUT_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+                .add(new NormalizeOp(0.0f, 255.0f))
+                .build();
 
         Classifier fullModel;
         ImageProcessor fullPreprocessor;
         if (config.FULL_FRAME_INPUT_SIZE == config.INPUT_SIZE) {
             fullModel = model;
+            fullPreprocessor = preprocessor;
         } else {
             fullModel = getModel(config.MODEL, assetManager, config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+            fullPreprocessor = new ImageProcessor.Builder()
+                    .add(new ResizeOp(config.FULL_FRAME_INPUT_SIZE, config.FULL_FRAME_INPUT_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+                    .add(new NormalizeOp(0.0f, 255.0f))
+                    .build();
         }
 
         mInputs = new LinkedBlockingQueue<>(config.NUM_WORKERS * 2);
         for (int workerId = 0; workerId < config.NUM_WORKERS; workerId++) {
-            mWorkers.add(new Worker(this, model, config.INPUT_SIZE, fullModel, config.FULL_FRAME_INPUT_SIZE));
+            mWorkers.add(new Worker(this, model, preprocessor, fullModel, fullPreprocessor));
         }
     }
 

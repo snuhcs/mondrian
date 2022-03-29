@@ -95,11 +95,6 @@ public class VideoSource extends CustomCapturer implements Runnable {
 
                 Mat mat = new Mat();
                 Utils.bitmapToMat(bitmap, mat);
-                Log.d(TAG, "Bitmap type  : " + mat.type());
-                Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGRA2BGR);
-                Log.d(TAG, "Bitmap type  : " + mat.type());
-//                Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2RGB);
-                Log.d(TAG, "Bitmap to Mat: " + mat.width() + ", " + mat.height() + ", " + mat.channels() + ", " + mat.type());
                 try {
                     strm.enqueueImage(VIDEO_PATH, frameIndex, mat);
                 } catch (InterruptedException e) {
