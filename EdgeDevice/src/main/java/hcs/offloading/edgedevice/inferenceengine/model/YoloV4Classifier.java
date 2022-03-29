@@ -109,9 +109,8 @@ public class YoloV4Classifier implements Classifier {
         Log.d(TAG, "float[]   : " + buffer[0] + ", " + buffer[1] + ", " + buffer[2]);
         ByteBuffer byteBuffer = ByteBuffer.allocate(4 * mat.width() * mat.height() * mat.channels());
         byteBuffer.asFloatBuffer().put(buffer);
-        Log.d(TAG, "byteBuffer: " + byteBuffer.asFloatBuffer().get(0) + ", " + byteBuffer.asFloatBuffer().get(1) + ", " + byteBuffer.asFloatBuffer().get(2));
+        Log.d(TAG, "Input: " + byteBuffer.asFloatBuffer().get(0) + ", " + byteBuffer.asFloatBuffer().get(1) + ", " + byteBuffer.asFloatBuffer().get(2));
         int v = mat.width() * mat.height() * mat.channels();
-        Log.d(TAG, "byteBuffer: " + byteBuffer.asFloatBuffer().get(v - 3) + ", " + byteBuffer.asFloatBuffer().get(v - 2) + ", " + byteBuffer.asFloatBuffer().get(v - 1));
         Object[] inputArray = {byteBuffer};
         long start = System.nanoTime();
         tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
@@ -120,6 +119,8 @@ public class YoloV4Classifier implements Classifier {
 
         float[][][] bboxes = (float[][][]) outputMap.get(0);
         float[][][] out_score = (float[][][]) outputMap.get(1);
+        Log.d(TAG, "Output: " + bboxes[0][0][0] + ", " + bboxes[0][0][1] + ", " + bboxes[0][0][2]);
+        Log.d(TAG, "Output: " + out_score[0][0][0] + ", " + out_score[0][0][1] + ", " + out_score[0][0][2]);
 
         for (int i = 0; i < OUTPUT_WIDTH; i++) {
             float maxClass = 0;
