@@ -1,6 +1,7 @@
 package hcs.offloading.strm;
 
 import android.graphics.Rect;
+import android.util.Log;
 import android.util.Pair;
 
 import org.opencv.core.CvType;
@@ -114,15 +115,14 @@ public class PatchMixer {
     }
 
     private static Mat getMixedImage(List<Frame> frames, int mixedFrameSize) {
-        Mat mat = Mat.zeros(mixedFrameSize, mixedFrameSize, CvType.CV_8UC3);
+        Mat mat = Mat.zeros(mixedFrameSize, mixedFrameSize, CvType.CV_8UC4);
         for (Frame frame : frames) {
             for (RoI roi : frame.getRoIs()) {
                 int[] packedLoc = roi.getPackedLocation();
                 if (packedLoc != null) {
                     Mat resizedRoI = roi.getResizedMat();
-                    resizedRoI.copyTo(mat.submat(
-                            packedLoc[0], packedLoc[0] + resizedRoI.width(),
-                            packedLoc[1], packedLoc[1] + resizedRoI.height()));
+                    resizedRoI.copyTo(mat.submat(packedLoc[1], packedLoc[1] + resizedRoI.height(),
+                            packedLoc[0], packedLoc[0] + resizedRoI.width()));
                 }
             }
         }
