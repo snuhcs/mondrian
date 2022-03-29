@@ -7,6 +7,9 @@ import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.util.Log;
 
+import org.opencv.android.Utils;
+import org.opencv.core.Mat;
+import org.opencv.imgproc.Imgproc;
 import org.webrtc.TextureBufferImpl;
 import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
@@ -90,8 +93,15 @@ public class VideoSource extends CustomCapturer implements Runnable {
                     i420Buf.release();
                 });
 
+                Mat mat = new Mat();
+                Utils.bitmapToMat(bitmap, mat);
+                Log.d(TAG, "Bitmap type  : " + mat.type());
+                Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2RGB);
+                Log.d(TAG, "Bitmap type  : " + mat.type());
+//                Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2RGB);
+                Log.d(TAG, "Bitmap to Mat: " + mat.width() + ", " + mat.height() + ", " + mat.channels() + ", " + mat.type());
                 try {
-                    strm.enqueueImage(VIDEO_PATH, frameIndex, bitmap);
+                    strm.enqueueImage(VIDEO_PATH, frameIndex, mat);
                 } catch (InterruptedException e) {
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                 }

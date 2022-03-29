@@ -1,7 +1,7 @@
 package hcs.offloading.strm;
 
-import android.graphics.Bitmap;
 import android.graphics.Rect;
+import android.util.Log;
 import android.util.Pair;
 
 import java.util.Comparator;
@@ -57,10 +57,10 @@ public class Dispatcher extends Consumer<Frame> {
          *        We have to re-pack the frame into next mixed frame.
          *   2.2. Else wait for mixed frame result and continue to process next frame.
          */
+        Log.d(TAG, "process: " + currFrame.mat.width() + ", " + currFrame.mat.height() + ", " + currFrame.mat.channels() + ", " + currFrame.mat.type());
         if (mCountMixedFrameInference >= mConfig.FULL_INFERENCE_INTERVAL) {
             mCountMixedFrameInference = 0;
-            Bitmap copiedBitmap = currFrame.bitmap.copy(currFrame.bitmap.getConfig(), false);
-            int handle = mInferenceEngine.enqueue(copiedBitmap, true);
+            int handle = mInferenceEngine.enqueue(currFrame.mat.clone(), true);
             List<BoundingBox> results = mInferenceEngine.getResults(handle);
             currFrame.addResults(results);
             setResults(currFrame);

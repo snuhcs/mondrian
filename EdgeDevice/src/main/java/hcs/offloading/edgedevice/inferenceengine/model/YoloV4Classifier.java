@@ -5,6 +5,7 @@ import android.content.res.AssetManager;
 import android.graphics.Rect;
 import android.util.Log;
 
+import org.opencv.core.Mat;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.gpu.CompatibilityList;
 import org.tensorflow.lite.gpu.GpuDelegate;
@@ -78,8 +79,8 @@ public class YoloV4Classifier implements Classifier {
     }
 
     @Override
-    public List<BoundingBox> recognizeImage(ByteBuffer byteBuffer, int originalWidth, int originalHeight) {
-        ArrayList<BoundingBox> detections = getDetectionsForFull(byteBuffer, originalWidth, originalHeight);
+    public List<BoundingBox> recognizeImage(Mat mat, int originalWidth, int originalHeight) {
+        ArrayList<BoundingBox> detections = getDetectionsForFull(mat, originalWidth, originalHeight);
         return nms(detections);
     }
 
@@ -98,11 +99,19 @@ public class YoloV4Classifier implements Classifier {
         return buffer;
     }
 
-    private ArrayList<BoundingBox> getDetectionsForFull(ByteBuffer byteBuffer, int originalWidth, int originalHeight) {
+    private ArrayList<BoundingBox> getDetectionsForFull(Mat mat, int originalWidth, int originalHeight) {
         ArrayList<BoundingBox> detections = new ArrayList<>();
         Map<Integer, Object> outputMap = new HashMap<>();
         outputMap.put(0, new float[1][OUTPUT_WIDTH][4]);
         outputMap.put(1, new float[1][OUTPUT_WIDTH][labels.size()]);
+        float[] buffer = new float[(int) (mat.width() * mat.height() * mat.channels())];
+        mat.get(0, 0, buffer);
+        Log.d(TAG, "float[]   : " + buffer[0] + ", " + buffer[1] + ", " + buffer[2]);
+        ByteBuffer byteBuffer = ByteBuffer.allocate(4 * mat.width() * mat.height() * mat.channels());
+        byteBuffer.asFloatBuffer().put(buffer);
+        Log.d(TAG, "byteBuffer: " + byteBuffer.asFloatBuffer().get(0) + ", " + byteBuffer.asFloatBuffer().get(1) + ", " + byteBuffer.asFloatBuffer().get(2));
+        int v = mat.width() * mat.height() * mat.channels();
+        Log.d(TAG, "byteBuffer: " + byteBuffer.asFloatBuffer().get(v - 3) + ", " + byteBuffer.asFloatBuffer().get(v - 2) + ", " + byteBuffer.asFloatBuffer().get(v - 1));
         Object[] inputArray = {byteBuffer};
         long start = System.nanoTime();
         tfLite.runForMultipleInputsOutputs(inputArray, outputMap);

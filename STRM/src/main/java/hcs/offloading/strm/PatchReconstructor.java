@@ -24,7 +24,7 @@ public class PatchReconstructor extends Consumer<MixedFrame> {
 
     @Override
     public void process(MixedFrame mixedFrame) throws InterruptedException {
-        if (mixedFrame.packedBitmap != null) {
+        if (mixedFrame.packedMat != null) {
             mixedFrame.setResults(mInferenceEngine.getResults(mixedFrame.getHandle()));
             updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
         } else {
@@ -51,15 +51,15 @@ public class PatchReconstructor extends Consumer<MixedFrame> {
                     Rect paddedRoIPos = new Rect(
                             Math.max(0, roi.location.left - matchPadding),
                             Math.max(0, roi.location.top - matchPadding),
-                            Math.min(roi.frame.bitmap.getWidth(), roi.location.right + matchPadding),
-                            Math.min(roi.frame.bitmap.getHeight(), roi.location.bottom + matchPadding)
+                            Math.min(roi.frame.mat.width(), roi.location.right + matchPadding),
+                            Math.min(roi.frame.mat.height(), roi.location.bottom + matchPadding)
                     );
                     Rect boxPos = box.location;
                     Rect movedAndResizedBoxPos = new Rect(
                             Math.max(0, (int) ((boxPos.left - roi.getPackedLocation()[0]) / roi.getScale()) + roi.location.left),
                             Math.max(0, (int) ((boxPos.top - roi.getPackedLocation()[1]) / roi.getScale()) + roi.location.top),
-                            Math.min(roi.frame.bitmap.getWidth(), (int) ((boxPos.right - roi.getPackedLocation()[0]) / roi.getScale()) + roi.location.left),
-                            Math.min(roi.frame.bitmap.getHeight(), (int) ((boxPos.bottom - roi.getPackedLocation()[1]) / roi.getScale()) + roi.location.top)
+                            Math.min(roi.frame.mat.width(), (int) ((boxPos.right - roi.getPackedLocation()[0]) / roi.getScale()) + roi.location.left),
+                            Math.min(roi.frame.mat.height(), (int) ((boxPos.bottom - roi.getPackedLocation()[1]) / roi.getScale()) + roi.location.top)
                     );
                     float intersection = STRMUtils.box_intersection(paddedRoIPos, movedAndResizedBoxPos);
                     float overlapRatio = Math.max(
