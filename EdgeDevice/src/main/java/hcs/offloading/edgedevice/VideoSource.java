@@ -38,7 +38,7 @@ public class VideoSource extends CustomCapturer implements Runnable {
         this.strm.addSource(VIDEO_PATH);
         retriever.setDataSource(VIDEO_PATH);
 
-        Log.v(TAG, "Start drawThread");
+        Log.d(TAG, "Start drawThread");
         drawThread = new Thread(this);
         drawThread.start();
     }
