@@ -13,24 +13,18 @@ import org.webrtc.VideoFrame;
 import org.webrtc.VideoSink;
 import org.webrtc.VideoTrack;
 
+import java.util.List;
+import java.util.Map;
+
+import hcs.offloading.edgeserver.config.RoIExtractorConfig;
+import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
-import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.network.webrtc.WebRTCManager;
 import hcs.offloading.network.webrtc.YuvFrame;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
 public class Dispatcher implements VideoSink {
     private static final String TAG = Dispatcher.class.getName();
-
-    public interface Callback {
-        void enqueueFrame(Frame frame);
-
-        void enqueueInferenceRequest(InferenceRequest inferenceRequest);
-
-        void removeStream(String sourceIP);
-    }
-
-    private final Callback mCallback;
 
     private final SurfaceViewRenderer mInputView;
 
@@ -42,8 +36,11 @@ public class Dispatcher implements VideoSink {
     private final PeerConnection mPeerConnection;
     private final WebRTCManager mWebRTCManager;
 
-    Dispatcher(Callback callback, String sourceIP, WebRTCManager webRTCManager, SurfaceViewRenderer inputView) {
-        mCallback = callback;
+    private final RoIExtractor mRoIExtractor;
+
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    Dispatcher(String sourceIP, WebRTCManager webRTCManager, SurfaceViewRenderer inputView, RoIExtractorConfig config, RoIExtractor.Callback callback, int mixedFrameSize) {
+        mRoIExtractor = new RoIExtractor(config, callback, sourceIP);
 
         mSourceIP = sourceIP;
         mWebRTCManager = webRTCManager;
@@ -64,6 +61,7 @@ public class Dispatcher implements VideoSink {
     }
 
     public void close() {
+        mRoIExtractor.close();
         synchronized (mPeerConnection) {
             if (mMediaStream != null) {
                 mVideoTrack.removeSink(this);
@@ -75,7 +73,6 @@ public class Dispatcher implements VideoSink {
                 mPeerConnection.close();
             }
         }
-        mCallback.removeStream(mSourceIP);
         Log.d(TAG, "closed");
     }
 
@@ -84,13 +81,15 @@ public class Dispatcher implements VideoSink {
         YuvFrame yuvFrame = new YuvFrame(videoFrame);
         Bitmap bitmap = yuvFrame.getBitmap();
 
-        Frame frame = Frame.createSingleFrame(bitmap, mSourceIP, mFrameIndex);
-        if (mFrameIndex == 0) {
-            mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
-        } else {
-            mCallback.enqueueFrame(frame);
-        }
-        mFrameIndex++;
+        mRoIExtractor.enqueueFrame(Frame.createSingleFrame(bitmap, mSourceIP, mFrameIndex++));
+    }
+
+    void enqueueResults(int frameIndex, List<BoundingBox> results) {
+        mRoIExtractor.enqueueResults(frameIndex, results);
+    }
+
+    void enqueueResults(Map<Integer, List<BoundingBox>> results) {
+        mRoIExtractor.enqueueResults(results);
     }
 
     void handleSdpAndAnswer(String message) {

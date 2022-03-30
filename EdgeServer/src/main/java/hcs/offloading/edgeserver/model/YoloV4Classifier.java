@@ -30,17 +30,21 @@ import hcs.offloading.edgeserver.datatypes.BoundingBox;
 public class YoloV4Classifier implements Classifier {
     private final static String TAG = YoloV4Classifier.class.getName();
 
-    private static final float OBJ_THRESHOLD = 0.5f;
-    private static final float NMS_THRESHOLD = 0.6f;
     private static final Vector<String> labels = new Vector<>();
 
+    private static final int NUM_LABELS = 80;
     public final int INPUT_SIZE;
     private final int OUTPUT_WIDTH;
+    private final float CONF_THRESHOLD;
+    private final float IOU_THRESHOLD;
 
     private final Interpreter tfLite;
 
-    public YoloV4Classifier(AssetManager assetManager, int size, boolean isTiny) {
+    public YoloV4Classifier(AssetManager assetManager, int size,
+                            float confThreshold, float iouThreshold, boolean isTiny) {
         assert size % 32 == 0;
+        CONF_THRESHOLD = confThreshold;
+        IOU_THRESHOLD = iouThreshold;
         INPUT_SIZE = size;
         String modelFilename = isTiny ?
                 "yolov4-tiny-" + size + ".tflite" :
@@ -121,7 +125,7 @@ public class YoloV4Classifier implements Classifier {
                 }
             }
             final float score = maxClass;
-            if (score > OBJ_THRESHOLD) {
+            if (score > CONF_THRESHOLD) {
                 assert bboxes != null;
                 final float xPos = bboxes[0][i][0];
                 final float yPos = bboxes[0][i][1];
@@ -132,22 +136,23 @@ public class YoloV4Classifier implements Classifier {
                         (int) (Math.max(0, yPos - h / 2) * originalHeight / INPUT_SIZE),
                         (int) (Math.min(INPUT_SIZE - 1, xPos + w / 2) * originalWidth / INPUT_SIZE),
                         (int) (Math.min(INPUT_SIZE - 1, yPos + h / 2) * originalHeight / INPUT_SIZE));
-                detections.add(new BoundingBox(rect, score, detectedClass, labels.get(detectedClass)));
+                detections.add(new BoundingBox(rect, score, labels.get(detectedClass)));
             }
         }
         return detections;
     }
 
-    private static List<BoundingBox> nms(List<BoundingBox> list) {
+    private List<BoundingBox> nms(List<BoundingBox> boxes) {
         ArrayList<BoundingBox> nmsList = new ArrayList<>();
 
-        for (int k = 0; k < labels.size(); k++) {
+        for (int k = 0; k < NUM_LABELS; k++) {
+            String label = labels.get(k);
             PriorityQueue<BoundingBox> pq = new PriorityQueue<>(
                     50, (lhs, rhs) -> Float.compare(rhs.confidence, lhs.confidence));
 
-            for (int i = 0; i < list.size(); ++i) {
-                if (list.get(i).label == k) {
-                    pq.add(list.get(i));
+            for (BoundingBox box : boxes) {
+                if (box.labelName.equals(label)) {
+                    pq.add(box);
                 }
             }
 
@@ -161,7 +166,7 @@ public class YoloV4Classifier implements Classifier {
                 for (int j = 1; j < detections.length; j++) {
                     BoundingBox detection = detections[j];
                     Rect b = detection.location;
-                    if (Utils.box_iou(max.location, b) < NMS_THRESHOLD) {
+                    if (Utils.box_iou(max.location, b) < IOU_THRESHOLD) {
                         pq.add(detection);
                     }
                 }

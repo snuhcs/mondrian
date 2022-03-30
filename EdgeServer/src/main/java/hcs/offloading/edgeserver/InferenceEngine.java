@@ -38,9 +38,14 @@ public class InferenceEngine {
         NUM_WORKERS = config.NUM_WORKERS;
         MAX_QUEUED_REQUESTS = NUM_WORKERS * 2;
 
-        Classifier model = config.USE_YOLO_V4 ?
-                new YoloV4Classifier(assetManager, FRAME_SIZE, config.USE_TINY) :
-                new YoloV5Classifier(assetManager, FRAME_SIZE);
+        Classifier model;
+        if (config.MODEL == InferenceEngineConfig.Model.YOLO_V4) {
+            model = new YoloV4Classifier(assetManager, FRAME_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+        } else if (config.MODEL == InferenceEngineConfig.Model.YOLO_V5) {
+            model = new YoloV5Classifier(assetManager, FRAME_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+        } else {
+            throw new IllegalArgumentException("Wrong model type: " + config.MODEL);
+        }
         ImageProcessor processor = new ImageProcessor.Builder()
                 .add(new ResizeOp(FRAME_SIZE, FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
                 .add(new NormalizeOp(0.0f, 255.0f))
@@ -48,17 +53,21 @@ public class InferenceEngine {
 
         Classifier fullModel;
         ImageProcessor fullProcessor;
-        if (FRAME_SIZE != FULL_FRAME_SIZE) {
-            fullModel = config.USE_YOLO_V4 ?
-                    new YoloV4Classifier(assetManager, FULL_FRAME_SIZE, config.USE_TINY) :
-                    new YoloV5Classifier(assetManager, FULL_FRAME_SIZE);
+        if (FRAME_SIZE == FULL_FRAME_SIZE) {
+            fullModel = model;
+            fullProcessor = processor;
+        } else {
+            if (config.MODEL == InferenceEngineConfig.Model.YOLO_V4) {
+                fullModel = new YoloV4Classifier(assetManager, FULL_FRAME_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+            } else if (config.MODEL == InferenceEngineConfig.Model.YOLO_V5) {
+                fullModel = new YoloV5Classifier(assetManager, FULL_FRAME_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+            } else {
+                throw new IllegalArgumentException("Wrong model type: " + config.MODEL);
+            }
             fullProcessor = new ImageProcessor.Builder()
                     .add(new ResizeOp(FULL_FRAME_SIZE, FULL_FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
                     .add(new NormalizeOp(0.0f, 255.0f))
                     .build();
-        } else {
-            fullModel = model;
-            fullProcessor = processor;
         }
 
         for (int workerId = 0; workerId < NUM_WORKERS; workerId++) {
@@ -79,20 +88,20 @@ public class InferenceEngine {
         Log.d(TAG, "closed");
     }
 
-    public void enqueueRequest(InferenceRequest inferenceRequest) {
-        //Log.v(TAG, "Start enqueueRequest(InferenceRequest inferenceRequest)");
+    public void enqueueRequest(InferenceRequest request) {
+        //Log.v(TAG, "Start enqueueRequest() : " + request.type + (request.type == InferenceRequest.Type.FULL ? (" " + request.frameIndex) : ""));
         try {
             synchronized (mInferenceRequests) {
                 while (MAX_QUEUED_REQUESTS > 0 && mInferenceRequests.size() > MAX_QUEUED_REQUESTS) {
                     mInferenceRequests.wait();
                 }
-                mInferenceRequests.add(inferenceRequest);
+                mInferenceRequests.add(request);
                 mInferenceRequests.notifyAll();
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
-        //Log.v(TAG, "End enqueueRequest(InferenceRequest inferenceRequest)");
+        //Log.v(TAG, "End enqueueRequest() : " + request.type + (request.type == InferenceRequest.Type.FULL ? (" " + request.frameIndex) : ""));
     }
 
     public InferenceRequest getRequest() throws InterruptedException {

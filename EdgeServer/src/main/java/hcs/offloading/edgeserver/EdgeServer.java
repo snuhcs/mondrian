@@ -2,7 +2,6 @@ package hcs.offloading.edgeserver;
 
 import android.content.Context;
 import android.content.res.AssetManager;
-import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
@@ -14,7 +13,6 @@ import org.webrtc.SurfaceViewRenderer;
 import org.webrtc.VideoCapturer;
 import org.webrtc.VideoTrack;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +23,7 @@ import hcs.offloading.edgeserver.config.DispatcherConfig;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
+import hcs.offloading.edgeserver.datatypes.RoI;
 import hcs.offloading.network.mqtt.DeviceMqttManager;
 import hcs.offloading.network.mqtt.datatypes.Device;
 import hcs.offloading.network.mqtt.datatypes.PacketHandler;
@@ -33,7 +32,7 @@ import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
-public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtractor.Callback, Worker.Callback {
+public class EdgeServer implements WebRTCCallback, RoIExtractor.Callback, Worker.Callback, PatchReconstructor.Callback {
     private static final String TAG = EdgeServer.class.getName();
 
     private Config mConfig;
@@ -49,9 +48,9 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
 
     private Thread mVideoEdgeServerThread;
 
-    private final List<VideoDispatcher> mVideoDispatchers = new ArrayList<>();
+    private final Map<String, VideoDispatcher> mVideoDispatchers = new ConcurrentHashMap<>();
     private final Map<String, Dispatcher> mDispatchers = new ConcurrentHashMap<>();
-    private RoIExtractor mRoIExtractor;
+    private PatchMixer mPatchMixer;
     private InferenceEngine mInferenceEngine;
     private PatchReconstructor mPatchReconstructor;
 
@@ -83,7 +82,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
             } catch (InterruptedException e) {
                 Log.e(TAG, e.getMessage());
             }
-            for (VideoDispatcher videoDispatcher : mVideoDispatchers) {
+            for (VideoDispatcher videoDispatcher : mVideoDispatchers.values()) {
                 videoDispatcher.stopCapture();
             }
         }
@@ -96,9 +95,9 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     private void startEdgeServer() {
         Log.d(TAG, "startEdgeServer");
         synchronized (this) {
-            mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, mViewCallback);
+            mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, this, mViewCallback);
             mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, this, mAssetManager);
-            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, this, mConfig.inferenceEngineConfig.FRAME_SIZE);
+            mPatchMixer = new PatchMixer(mConfig.patchMixerConfig);
         }
     }
 
@@ -106,7 +105,8 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
         Log.d(TAG, "startVideoEdgeServer");
         startEdgeServer();
         for (DispatcherConfig.VideoConfig videoConfig : mConfig.dispatcherConfig.VIDEO_CONFIGS) {
-            VideoDispatcher videoDispatcher = new VideoDispatcher(videoConfig, this);
+            VideoDispatcher videoDispatcher = new VideoDispatcher(videoConfig,
+                    mConfig.roIExtractorConfig, this);
 
             Pair<VideoCapturer, VideoTrack> capturerAndTrack = mWebRTCManager.createSavedVideoTrack(videoConfig.PATH, videoDispatcher);
             MediaStream mediaStream = mWebRTCManager.createMediaStream();
@@ -116,7 +116,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
             mediaStream.addTrack(videoTrack);
             videoCapturer.startCapture(videoConfig.WIDTH, videoConfig.HEIGHT, videoConfig.FPS);
 
-            mVideoDispatchers.add(videoDispatcher);
+            mVideoDispatchers.put(videoConfig.PATH, videoDispatcher);
         }
     }
 
@@ -130,14 +130,18 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
                 }
             }
         } else {
-            for (VideoDispatcher videoDispatcher : mVideoDispatchers) {
-                videoDispatcher.stopCapture();
+            Set<String> IPs = mVideoDispatchers.keySet();
+            for (String ip : IPs) {
+                VideoDispatcher dispatcher = mVideoDispatchers.remove(ip);
+                if (dispatcher != null) {
+                    dispatcher.close();
+                }
             }
         }
         synchronized (this) {
-            if (mRoIExtractor != null) {
-                mRoIExtractor.close();
-                mRoIExtractor = null;
+            if (mPatchMixer != null) {
+                mPatchMixer.close();
+                mPatchMixer = null;
             }
             if (mInferenceEngine != null) {
                 mInferenceEngine.close();
@@ -166,8 +170,9 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     private final PacketHandler webrtcTopicHandler = packet -> {
         if (mMqttManager.isLocalIP(packet.dstIp)) {
             if (packet.header.equals(WebRTCHeader.SDP.name())) {
-                mDispatchers.put(packet.srcIp, new Dispatcher(this,
-                        packet.srcIp, mWebRTCManager, mInputView));
+                mDispatchers.put(packet.srcIp, new Dispatcher(
+                        packet.srcIp, mWebRTCManager, mInputView,
+                        mConfig.roIExtractorConfig, this, mConfig.inferenceEngineConfig.FRAME_SIZE));
                 mDispatchers.get(packet.srcIp).handleSdpAndAnswer(packet.message);
             } else if (packet.header.equals(WebRTCHeader.ICE.name())) {
                 mDispatchers.get(packet.srcIp).handleIceMessage(packet.message);
@@ -197,29 +202,10 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
         }
     }
 
-    // Dispatcher.Callback
-    @Override
-    public void enqueueFrame(Frame frame) {
-        if (mRoIExtractor != null) {
-            mRoIExtractor.enqueueFrame(frame);
-        }
-    }
-
-    @Override
-    public void removeStream(String sourceIP) {
-        if (mPatchReconstructor != null) {
-            mPatchReconstructor.removeStream(sourceIP);
-        }
-    }
-
     // RoIExtractor.Callback
     @Override
-    public Pair<Bitmap, List<BoundingBox>> getFrameAndResults(String sourceIP, int frameIndex) throws InterruptedException {
-        if (mPatchReconstructor != null) {
-            return mPatchReconstructor.getRemoveDrawResult(sourceIP, frameIndex);
-        } else {
-            return null;
-        }
+    public InferenceRequest tryMixingAndGetInferenceRequest(Frame frame, List<RoI> rois, boolean needPacking) {
+        return mPatchMixer.tryPackRoIs(frame, rois, needPacking);
     }
 
     @Override
@@ -231,9 +217,42 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
 
     // Worker.Callback
     @Override
-    public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) throws InterruptedException {
+    public void enqueueInferenceResults(InferenceRequest request, List<BoundingBox> results) {
         if (mPatchReconstructor != null) {
-            mPatchReconstructor.enqueueInferenceResult(request, results);
+            mPatchReconstructor.enqueueInferenceResults(request, results);
+        }
+    }
+
+    // PatchReconstructor.Callback
+    @Override
+    public void enqueueResults(String ip, int frameIndex, List<BoundingBox> results) {
+        if (mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
+            VideoDispatcher dispatcher = mVideoDispatchers.get(ip);
+            if (dispatcher != null) {
+                dispatcher.enqueueResults(frameIndex, results);
+            }
+        } else {
+            Dispatcher dispatcher = mDispatchers.get(ip);
+            if (dispatcher != null) {
+                dispatcher.enqueueResults(frameIndex, results);
+            }
+        }
+    }
+
+    @Override
+    public void enqueueResults(Map<String, Map<Integer, List<BoundingBox>>> reconstructedFrameResults) {
+        for (Map.Entry<String, Map<Integer, List<BoundingBox>>> entry : reconstructedFrameResults.entrySet()) {
+            if (mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
+                VideoDispatcher dispatcher = mVideoDispatchers.get(entry.getKey());
+                if (dispatcher != null) {
+                    dispatcher.enqueueResults(entry.getValue());
+                }
+            } else {
+                Dispatcher dispatcher = mDispatchers.get(entry.getKey());
+                if (dispatcher != null) {
+                    dispatcher.enqueueResults(entry.getValue());
+                }
+            }
         }
     }
 }

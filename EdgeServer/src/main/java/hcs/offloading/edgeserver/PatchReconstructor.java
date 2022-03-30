@@ -1,7 +1,6 @@
 package hcs.offloading.edgeserver;
 
 import android.annotation.SuppressLint;
-import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
@@ -11,6 +10,7 @@ import android.util.Pair;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,19 +30,24 @@ public class PatchReconstructor implements Runnable {
     private final float USE_IOU_THRESHOLD;
     private final float DRAW_CONFIDENCE;
 
-    private final ViewCallback mCallback;
+    public interface Callback {
+        void enqueueResults(String sourceIP, int frameIndex, List<BoundingBox> result);
 
-    private final Map<String, Integer> mLastRemovedIndex = new HashMap<>();
-    private final Map<String, Map<Integer, Pair<Bitmap, List<BoundingBox>>>> mFramesAndResults = new HashMap<>();
+        void enqueueResults(Map<String, Map<Integer, List<BoundingBox>>> reconstructedFrameResults);
+    }
+
+    private final Callback mCallback;
+    private final ViewCallback mViewCallback;
+
     private final LinkedBlockingQueue<Pair<InferenceRequest, List<BoundingBox>>> mResultsToReconstruct = new LinkedBlockingQueue<>();
 
     private final Thread mPatchReconstructorThread;
 
     private FileWriter logWriter;
-    private int mNumProcessedFrames = 0;
     private final long mStartTimeNs = System.nanoTime();
+    private int mProcessedFrames = 0;
 
-    PatchReconstructor(PatchReconstructorConfig config, ViewCallback callback) {
+    PatchReconstructor(PatchReconstructorConfig config, Callback callback, ViewCallback viewCallback) {
         MATCH_PADDING = config.MATCH_PADDING;
         USE_IOU_THRESHOLD = config.USE_IOU_THRESHOLD;
         DRAW_CONFIDENCE = config.DRAW_CONFIDENCE;
@@ -54,6 +59,7 @@ public class PatchReconstructor implements Runnable {
             }
         }
         mCallback = callback;
+        mViewCallback = viewCallback;
 
         mPatchReconstructorThread = new Thread(this);
         mPatchReconstructorThread.start();
@@ -78,30 +84,27 @@ public class PatchReconstructor implements Runnable {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) throws InterruptedException {
-        //Log.v(TAG, "Start enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results)");
-        if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.FULL) {
-            mCallback.drawInferenceResult(Utils.drawBoxes(request.frame.bitmap, results, DRAW_CONFIDENCE));
-        }
+    public void enqueueInferenceResults(InferenceRequest request, List<BoundingBox> results) {
+        //Log.v(TAG, "Start enqueueInferenceResults() : " + request.type);
         if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.PER_ROI) {
             mResultsToReconstruct.add(new Pair<>(request, results));
         } else if (request.type == InferenceRequest.Type.FULL) {
+            log(request.sourceIP, request.frameIndex, results);
             updateFPS(1);
-            String sourceIP = request.frame.sourceIP;
-            int frameIndex = request.frame.frameIndex;
-            synchronized (mFramesAndResults) {
-                if (!mFramesAndResults.containsKey(sourceIP)) {
-                    mFramesAndResults.put(sourceIP, new HashMap<>());
-                }
-                log(request.frame, results);
-                Map<Integer, Pair<Bitmap, List<BoundingBox>>> streamResults = mFramesAndResults.get(sourceIP);
-                streamResults.put(frameIndex, new Pair<>(request.frame.bitmap, results));
-                mFramesAndResults.notifyAll();
-            }
+            mCallback.enqueueResults(request.sourceIP, request.frameIndex, results);
         } else {
             throw new IllegalArgumentException("Wrong request type! " + request.type);
         }
-        //Log.v(TAG, "End enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results)");
+        if (request.type == InferenceRequest.Type.MIXED || request.type == InferenceRequest.Type.FULL) {
+            mViewCallback.drawInferenceResult(Utils.drawBoxes(request.bitmap.copy(request.bitmap.getConfig(), true), results, DRAW_CONFIDENCE));
+            request.bitmap.recycle();
+        } else {
+            if (request.rois != null && request.rois.size() > 0) {
+                RoI roi = request.rois.get(0);
+                mViewCallback.drawInferenceResult(Utils.drawBoxes(roi.getBitmap(), roi.boundingBoxes, DRAW_CONFIDENCE));
+            }
+        }
+        //Log.v(TAG, "End enqueueInferenceResults() : " + request.type);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -119,85 +122,38 @@ public class PatchReconstructor implements Runnable {
                 if (request.type == InferenceRequest.Type.MIXED) {
                     reconstructedFrameResults = reconstructMixedFrameResults(request, results);
                 } else if (request.type == InferenceRequest.Type.PER_ROI) {
-                    reconstructedFrameResults = reconstructPerRoIInferenceResults(request, results);
+                    reconstructedFrameResults = reconstructPerRoIInferenceResults(request);
                 } else {
                     throw new IllegalArgumentException("Wrong request type! " + request.type);
                 }
                 endTime = System.nanoTime();
                 //Log.v(TAG, "Reconstructing time (us): " + (endTime - startTime) / 1e3);
 
-                Map<Pair<String, Integer>, Frame> frameMap = new HashMap<>();
-                for (Frame frame : request.frames) {
-                    frameMap.put(new Pair<>(frame.sourceIP, frame.frameIndex), frame);
-                }
-
-                //Log.v(TAG, "Start update results");
-                synchronized (mFramesAndResults) {
-                    for (String sourceIP : reconstructedFrameResults.keySet()) {
-                        if (mFramesAndResults.containsKey(sourceIP)) {
-                            Map<Integer, List<BoundingBox>> multiFrameResults = reconstructedFrameResults.get(sourceIP);
-                            for (Integer frameIndex : multiFrameResults.keySet()) {
-                                Frame frame = frameMap.get(new Pair<>(sourceIP, frameIndex));
-                                List<BoundingBox> frameResults = multiFrameResults.get(frameIndex);
-                                log(frame, frameResults);
-                                mFramesAndResults.get(sourceIP)
-                                        .put(frameIndex, new Pair<>(frame.bitmap, frameResults));
-                            }
-                        }
+                for (Map.Entry<String, Map<Integer, List<BoundingBox>>> e1 : reconstructedFrameResults.entrySet()) {
+                    for (Map.Entry<Integer, List<BoundingBox>> e2 : e1.getValue().entrySet()) {
+                        log(e1.getKey(), e2.getKey(), e2.getValue());
                     }
-                    mFramesAndResults.notifyAll();
                 }
-                //Log.v(TAG, "End update results");
-
                 updateFPS(request.frames.size());
+                mCallback.enqueueResults(reconstructedFrameResults);
+
+                request.rois.stream()
+                        .max(Comparator.comparingInt(RoI::getFrameIndex))
+                        .ifPresent(lastRoI -> {
+                            List<BoundingBox> r = reconstructedFrameResults.get(lastRoI.frame.sourceIP).get(lastRoI.frame.frameIndex);
+                            mViewCallback.drawObjectDetectionResult(Utils.drawBoxes(
+                                    lastRoI.frame.bitmap.copy(lastRoI.frame.bitmap.getConfig(), true),
+                                    r,
+                                    DRAW_CONFIDENCE));
+                        });
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    public Pair<Bitmap, List<BoundingBox>> getRemoveDrawResult(String sourceIP, int frameIndex) throws InterruptedException {
-        //Log.v(TAG, "Start getRemoveDrawResult(String sourceIP, int frameIndex)");
-        Pair<Bitmap, List<BoundingBox>> result = null;
-        synchronized (mFramesAndResults) {
-            Map<Integer, Pair<Bitmap, List<BoundingBox>>> streamResults = mFramesAndResults.get(sourceIP);
-            while (streamResults != null && !streamResults.containsKey(frameIndex)) {
-                mFramesAndResults.wait();
-                streamResults = mFramesAndResults.get(sourceIP);
-            }
-            if (streamResults != null) {
-                result = streamResults.get(frameIndex);
-                Integer lastRemovedIndexInteger = mLastRemovedIndex.get(sourceIP);
-                int lastRemovedIndex = lastRemovedIndexInteger != null ? lastRemovedIndexInteger : -1;
-                for (int i = lastRemovedIndex + 1; i < frameIndex; i++) {
-                    Pair<Bitmap, List<BoundingBox>> frameResult = streamResults.get(i);
-                    if (frameResult != null) {
-                        frameResult.first.recycle();
-                    }
-                    streamResults.remove(i);
-                }
-                streamResults.remove(frameIndex);
-                mLastRemovedIndex.put(sourceIP, frameIndex);
-            }
-        }
-        //Log.v(TAG, "End getRemoveDrawResult(String sourceIP, int frameIndex)");
-        if (result != null) {
-            mCallback.drawObjectDetectionResult(Utils.drawBoxes(result.first, result.second, DRAW_CONFIDENCE));
-        }
-        return result;
-    }
-
-    public void removeStream(String sourceIP) {
-        synchronized (mFramesAndResults) {
-            mFramesAndResults.remove(sourceIP);
-            mFramesAndResults.notifyAll();
-        }
-    }
-
     private Map<String, Map<Integer, List<BoundingBox>>> reconstructMixedFrameResults(InferenceRequest request, List<BoundingBox> boxes) {
-        Map<String, Map<Integer, List<BoundingBox>>> mixedFrameResults =
-                createReconstructedResultHolder(request);
+        Map<String, Map<Integer, List<BoundingBox>>> mixedFrameResults = createReconstructedResultHolder(request);
 
         List<RoI> rois = request.rois;
         for (BoundingBox box : boxes) {
@@ -205,24 +161,22 @@ public class PatchReconstructor implements Runnable {
             RoI maxRoI = null;
             Rect maxBoxPos = null;
             for (RoI roi : rois) {
-                if (!roi.isPacked()) {
-                    continue;
-                }
                 Rect paddedRoIPos = new Rect(
-                        roi.position.left - MATCH_PADDING,
-                        roi.position.top - MATCH_PADDING,
-                        roi.position.right + MATCH_PADDING,
-                        roi.position.bottom + MATCH_PADDING
+                        Math.max(0, roi.location.left - MATCH_PADDING),
+                        Math.max(0, roi.location.top - MATCH_PADDING),
+                        Math.min(roi.frame.bitmap.getWidth(), roi.location.right + MATCH_PADDING),
+                        Math.min(roi.frame.bitmap.getHeight(), roi.location.bottom + MATCH_PADDING)
                 );
                 Rect boxPos = box.location;
                 Rect movedAndResizedBoxPos = new Rect(
-                        (int) ((boxPos.left - roi.packedLocation[0]) / roi.widthScale) + roi.position.left,
-                        (int) ((boxPos.top - roi.packedLocation[1]) / roi.heightScale) + roi.position.top,
-                        (int) ((boxPos.right - roi.packedLocation[0]) / roi.widthScale) + roi.position.left,
-                        (int) ((boxPos.bottom - roi.packedLocation[1]) / roi.heightScale) + roi.position.top
+                        Math.max(0, (int) ((boxPos.left - roi.packedLocation[0]) / roi.scale) + roi.location.left),
+                        Math.max(0, (int) ((boxPos.top - roi.packedLocation[1]) / roi.scale) + roi.location.top),
+                        Math.min(roi.frame.bitmap.getWidth(), (int) ((boxPos.right - roi.packedLocation[0]) / roi.scale) + roi.location.left),
+                        Math.min(roi.frame.bitmap.getHeight(), (int) ((boxPos.bottom - roi.packedLocation[1]) / roi.scale) + roi.location.top)
                 );
                 float intersection = Utils.box_intersection(paddedRoIPos, movedAndResizedBoxPos);
-                float overlapRatio = Math.max(intersection / (movedAndResizedBoxPos.width() * movedAndResizedBoxPos.height()),
+                float overlapRatio = Math.max(
+                        intersection / (movedAndResizedBoxPos.width() * movedAndResizedBoxPos.height()),
                         intersection / (paddedRoIPos.width() * paddedRoIPos.height()));
                 if (maxRoI == null || maxOverlap < overlapRatio) {
                     maxOverlap = overlapRatio;
@@ -231,36 +185,28 @@ public class PatchReconstructor implements Runnable {
                 }
             }
             if (maxRoI != null && maxOverlap > USE_IOU_THRESHOLD) {
-                box = box.move(maxBoxPos);
-                mixedFrameResults.get(maxRoI.getSourceIP()).get(maxRoI.getFrameIndex()).add(box);
+                mixedFrameResults
+                        .get(maxRoI.frame.sourceIP)
+                        .get(maxRoI.frame.frameIndex)
+                        .add(box.move(maxBoxPos));
             }
         }
         return mixedFrameResults;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private Map<String, Map<Integer, List<BoundingBox>>> reconstructPerRoIInferenceResults(InferenceRequest request, List<BoundingBox> boxes) {
+    private Map<String, Map<Integer, List<BoundingBox>>> reconstructPerRoIInferenceResults(InferenceRequest request) {
         Map<String, Map<Integer, List<BoundingBox>>> perRoIInferenceResults =
                 createReconstructedResultHolder(request);
-
-        for (Frame singleFrame : request.frames) {
-            List<RoI> frameRoIs = request.rois.stream()
-                    .filter(roi -> singleFrame.sourceIP.equals(roi.getSourceIP())
-                            && singleFrame.frameIndex == roi.getFrameIndex())
-                    .collect(Collectors.toList());
-            for (RoI roi : frameRoIs) {
-                for (BoundingBox box : roi.boundingBoxes) {
-                    Rect newPosition = new Rect(
-                            box.location.left + roi.position.left,
-                            box.location.top + roi.position.top,
-                            box.location.right + roi.position.left,
-                            box.location.bottom + roi.position.top
-                    );
-                    perRoIInferenceResults
-                            .get(singleFrame.sourceIP)
-                            .get(singleFrame.frameIndex)
-                            .add(box.move(newPosition));
-                }
+        for (RoI roi : request.rois) {
+            for (BoundingBox box : roi.boundingBoxes) {
+                Rect newLocation = new Rect(
+                        box.location.left + roi.location.left,
+                        box.location.top + roi.location.top,
+                        box.location.right + roi.location.left,
+                        box.location.bottom + roi.location.top
+                );
+                perRoIInferenceResults.get(roi.frame.sourceIP).get(roi.frame.frameIndex).add(box.move(newLocation));
             }
         }
         return perRoIInferenceResults;
@@ -269,33 +215,31 @@ public class PatchReconstructor implements Runnable {
     private Map<String, Map<Integer, List<BoundingBox>>> createReconstructedResultHolder(InferenceRequest request) {
         Map<String, Map<Integer, List<BoundingBox>>> resultHolder = new HashMap<>();
         for (Frame frame : request.frames) {
-            String sourceIP = frame.sourceIP;
-            int frameIndex = frame.frameIndex;
-            if (!resultHolder.containsKey(sourceIP)) {
-                resultHolder.put(sourceIP, new HashMap<>());
+            if (!resultHolder.containsKey(frame.sourceIP)) {
+                resultHolder.put(frame.sourceIP, new HashMap<>());
             }
-            resultHolder.get(sourceIP).put(frameIndex, new ArrayList<>());
+            resultHolder.get(frame.sourceIP).put(frame.frameIndex, new ArrayList<>());
         }
         return resultHolder;
     }
 
+    @SuppressLint("DefaultLocale")
+    private void updateFPS(int numInferencedFrame) {
+        mProcessedFrames += numInferencedFrame;
+        long timeStamp = System.nanoTime() - mStartTimeNs;
+        mViewCallback.drawFPS(String.format("%.3f", mProcessedFrames / (timeStamp / 1e9)));
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private void log(Frame frame, List<BoundingBox> boxes) {
+    private void log(String sourceIP, int frameIndex, List<BoundingBox> boxes) {
         if (logWriter != null) {
             try {
                 long timeStamp = System.nanoTime() - mStartTimeNs;
-                logWriter.write(frame.sourceIP + "," + frame.frameIndex + "," + timeStamp + "," + boxes.stream().map(BoundingBox::toString).collect(Collectors.joining(",")) + "\n");
+                logWriter.write(sourceIP + "," + frameIndex + "," + timeStamp + "," + boxes.stream().map(BoundingBox::toString).collect(Collectors.joining(",")) + "\n");
                 logWriter.flush();
             } catch (IOException e) {
                 Log.e(TAG, e.getMessage());
             }
         }
-    }
-
-    @SuppressLint("DefaultLocale")
-    private void updateFPS(int numProcessedFrames) {
-        mNumProcessedFrames += numProcessedFrames;
-        float fps = mNumProcessedFrames / ((System.nanoTime() - mStartTimeNs) / 1e9f);
-        mCallback.drawFPS(String.format("%.3f", fps));
     }
 }

@@ -23,7 +23,7 @@ public class Frame {
         return new Frame(bitmap, sourceIP, frameIndex);
     }
 
-    public static Frame createMixedFrame(Bitmap bitmap) {
-        return new Frame(bitmap);
+    public Frame copy() {
+        return new Frame(bitmap.copy(bitmap.getConfig(), false), sourceIP, frameIndex);
     }
 }

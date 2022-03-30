@@ -30,21 +30,24 @@ import hcs.offloading.edgeserver.datatypes.BoundingBox;
 public class YoloV5Classifier implements Classifier {
     private final static String TAG = YoloV5Classifier.class.getName();
 
-    private static final float CONF_THRESHOLD = 0.001f;
-    private static final float IOU_THRESHOLD = 0.6f;
     private static final Vector<String> labels = new Vector<>();
 
     private static final int NUM_LABELS = 80;
     public final int INPUT_SIZE;
     private final int OUTPUT_WIDTH;
+    private final float CONF_THRESHOLD;
+    private final float IOU_THRESHOLD;
 
     private final Interpreter tfLite;
 
-    public YoloV5Classifier(AssetManager assetManager, int size) {
-        assert size % 32 == 0;
+    public YoloV5Classifier(AssetManager assetManager, int size,
+                            float confThreshold, float iouThreshold, boolean isTiny) {
+        assert size % 64 == 0;
+        CONF_THRESHOLD = confThreshold;
+        IOU_THRESHOLD = iouThreshold;
         INPUT_SIZE = size;
-        String modelFilename = "yolov5m-" + size + "-fp16.tflite";
-        OUTPUT_WIDTH = (size / 32) * (size / 32) * 63;
+        String modelFilename = "yolov5" + (isTiny ? "m" : "x6") + "-" + size + "-fp16.tflite";
+        OUTPUT_WIDTH = (size / 64) * (size / 64) * 255;
 
         try {
             InputStream labelsInput = assetManager.open("coco.txt");
@@ -134,22 +137,23 @@ public class YoloV5Classifier implements Classifier {
                     Math.min(originalWidth - 1, (int) ((xPos + w / 2) * originalWidth)),
                     Math.min(originalHeight - 1, (int) ((yPos + h / 2) * originalHeight)));
             if (rect.left < rect.right && rect.top < rect.bottom) {
-                detections.add(new BoundingBox(rect, maxConf, maxLabel, labels.get(maxLabel)));
+                detections.add(new BoundingBox(rect, maxConf, labels.get(maxLabel)));
             }
         }
         return detections;
     }
 
-    private static List<BoundingBox> nms(List<BoundingBox> list) {
+    private List<BoundingBox> nms(List<BoundingBox> boxes) {
         ArrayList<BoundingBox> nmsList = new ArrayList<>();
 
         for (int k = 0; k < NUM_LABELS; k++) {
+            String label = labels.get(k);
             PriorityQueue<BoundingBox> pq = new PriorityQueue<>(
                     50, (lhs, rhs) -> Float.compare(rhs.confidence, lhs.confidence));
 
-            for (int i = 0; i < list.size(); ++i) {
-                if (list.get(i).label == k) {
-                    pq.add(list.get(i));
+            for (BoundingBox box : boxes) {
+                if (box.labelName.equals(label)) {
+                    pq.add(box);
                 }
             }
 
