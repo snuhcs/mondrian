@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">SourceCamera</string>
+    <string name="ip">IP</string>
+    <string name="port">Port</string>
+    <string name="default_ip">147.46.219.55</string>
+    <string name="default_port">1883</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="no_inference">No inference</string>
+    <string name="object_detection">Object Detection</string>
+    <string name="face_detection">Face Detection</string>
+</resources>
