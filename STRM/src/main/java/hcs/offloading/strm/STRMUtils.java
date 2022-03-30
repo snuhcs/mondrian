@@ -6,6 +6,9 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 
+import org.opencv.android.Utils;
+import org.opencv.core.Mat;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -17,8 +20,10 @@ import java.util.List;
 import hcs.offloading.strm.datatypes.BoundingBox;
 
 public class STRMUtils {
-    public static Bitmap drawBoxes(Bitmap image, List<BoundingBox> boxes, float drawConfidence) {
-        final Canvas canvas = new Canvas(image);
+    public static Bitmap drawBoxes(Mat mat, List<BoundingBox> boxes, float drawConfidence) {
+        Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(mat, bitmap);
+        final Canvas canvas = new Canvas(bitmap);
         final Paint paint = new Paint();
         paint.setColor(Color.HSVToColor(new float[]{120f, 1f, 1f}));
         paint.setStyle(Paint.Style.STROKE);
@@ -28,7 +33,7 @@ public class STRMUtils {
                 canvas.drawRect(box.location, paint);
             }
         }
-        return image;
+        return bitmap;
     }
 
     public static float box_iou(Rect a, Rect b) {

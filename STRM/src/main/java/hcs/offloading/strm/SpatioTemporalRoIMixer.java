@@ -1,6 +1,6 @@
 package hcs.offloading.strm;
 
-import android.graphics.Bitmap;
+import org.opencv.core.Mat;
 
 import java.util.List;
 import java.util.Map;
@@ -62,13 +62,13 @@ public class SpatioTemporalRoIMixer {
                 });
     };
 
-    public void enqueueImage(String key, int frameIndex, Bitmap bitmap) throws InterruptedException {
+    public void enqueueImage(String key, int frameIndex, Mat mat) throws InterruptedException {
         if (isClosed.get()) {
             return;
         }
         Dispatcher dispatcher = mDispatchers.get(key);
         if (dispatcher != null) {
-            dispatcher.enqueue(new Frame(bitmap, key, frameIndex));
+            dispatcher.enqueue(new Frame(mat, key, frameIndex));
         }
     }
 

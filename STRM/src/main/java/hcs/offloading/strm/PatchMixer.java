@@ -1,10 +1,10 @@
 package hcs.offloading.strm;
 
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Rect;
 import android.util.Pair;
+
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -88,7 +88,7 @@ public class PatchMixer {
                     status = Status.FINISHED_AND_PROCESS_LAST_FRAME_AGAIN;
                 }
                 if (mConfig.PACKING) {
-                    Bitmap mixedImage = getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE);
+                    Mat mixedImage = getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE);
                     MixedFrame mixedFrame = new MixedFrame(mixedImage, mPackedFrames);
                     mixedFrame.setHandle(mInferenceEngine.enqueue(mixedImage, false));
                     mPatchReconstructor.enqueue(mixedFrame);
@@ -96,7 +96,7 @@ public class PatchMixer {
                     MixedFrame mixedFrame = new MixedFrame(null, mPackedFrames);
                     for (Frame f : mixedFrame.packedFrames) {
                         for (RoI roi : f.getRoIs()) {
-                            roi.setHandle(mInferenceEngine.enqueue(roi.getBitmap(), false));
+                            roi.setHandle(mInferenceEngine.enqueue(roi.getMat(), false));
                         }
                     }
                     mPatchReconstructor.enqueue(mixedFrame);
@@ -113,19 +113,19 @@ public class PatchMixer {
         }
     }
 
-    private static Bitmap getMixedImage(List<Frame> frames, int mixedFrameSize) {
-        Bitmap bitmap = Bitmap.createBitmap(mixedFrameSize, mixedFrameSize, Bitmap.Config.ARGB_8888);
-        bitmap.eraseColor(Color.BLACK);
-        Canvas canvas = new Canvas(bitmap);
+    private static Mat getMixedImage(List<Frame> frames, int mixedFrameSize) {
+        Mat mat = Mat.zeros(mixedFrameSize, mixedFrameSize, CvType.CV_8UC4);
         for (Frame frame : frames) {
             for (RoI roi : frame.getRoIs()) {
-                int[] packedLocation = roi.getPackedLocation();
-                if (packedLocation != null) {
-                    canvas.drawBitmap(roi.getResizedBitmap(), packedLocation[0], packedLocation[1], null);
+                int[] packedLoc = roi.getPackedLocation();
+                if (packedLoc != null) {
+                    Mat resizedRoI = roi.getResizedMat();
+                    resizedRoI.copyTo(mat.submat(packedLoc[1], packedLoc[1] + resizedRoI.height(),
+                            packedLoc[0], packedLoc[0] + resizedRoI.width()));
                 }
             }
         }
-        return bitmap;
+        return mat;
     }
 
     private static boolean canFit(int[] wh, Rect rect) {

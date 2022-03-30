@@ -1,12 +1,10 @@
 package hcs.offloading.strm;
 
-import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.util.Log;
 import android.util.Pair;
 
 import org.opencv.android.OpenCVLoader;
-import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
@@ -122,8 +120,8 @@ public class RoIExtractor {
 
     private static List<RoI> getOpticalFlowRoIs(
             Frame prevFrame, Frame currFrame, List<BoundingBox> boundingBoxes, Size targetSize) {
-        final int width = currFrame.bitmap.getWidth();
-        final int height = currFrame.bitmap.getHeight();
+        final int width = currFrame.mat.width();
+        final int height = currFrame.mat.height();
 
         List<Rect> boundingRects = boundingBoxes.stream()
                 .map(bbx -> bbx.location)
@@ -132,7 +130,7 @@ public class RoIExtractor {
         List<RoI> opticalFlowRoIs = new ArrayList<>();
         if (!boundingBoxes.isEmpty()) {
             int[][] shifts = getBoundingBoxShifts(
-                    prevFrame.bitmap, currFrame.bitmap, boundingRects, targetSize);
+                    prevFrame.mat, currFrame.mat, boundingRects, targetSize);
             for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
                 int[] shift = shifts[boxIndex];
                 BoundingBox box = boundingBoxes.get(boxIndex);
@@ -152,16 +150,13 @@ public class RoIExtractor {
     }
 
     private static int[][] getBoundingBoxShifts(
-            Bitmap prevImage, Bitmap currImage, List<Rect> boundingBoxes, Size targetSize) {
-        Mat prevMat = new Mat();
-        Mat currMat = new Mat();
+            Mat prevImage, Mat currImage, List<Rect> boundingBoxes, Size targetSize) {
+        Mat prevMat = prevImage.clone();
+        Mat currMat = currImage.clone();
         MatOfPoint2f p0 = new MatOfPoint2f();
         MatOfPoint2f p1 = new MatOfPoint2f();
         MatOfByte status = new MatOfByte();
         MatOfFloat err = new MatOfFloat();
-
-        Utils.bitmapToMat(prevImage, prevMat);
-        Utils.bitmapToMat(currImage, currMat);
 
         Imgproc.cvtColor(prevMat, prevMat, Imgproc.COLOR_BGR2GRAY);
         Imgproc.cvtColor(currMat, currMat, Imgproc.COLOR_BGR2GRAY);
@@ -171,8 +166,8 @@ public class RoIExtractor {
 
         List<Point> centroids = boundingBoxes.stream()
                 .map(bbx -> new Point(
-                        (float) bbx.centerX() * targetSize.width / currImage.getWidth(),
-                        (float) bbx.centerY() * targetSize.height / currImage.getHeight()))
+                        (float) bbx.centerX() * targetSize.width / currImage.width(),
+                        (float) bbx.centerY() * targetSize.height / currImage.height()))
                 .collect(Collectors.toList());
         p0.fromList(centroids);
         TermCriteria criteria = new TermCriteria(TermCriteria.COUNT + TermCriteria.EPS, 10, 0.03);
@@ -185,9 +180,9 @@ public class RoIExtractor {
         for (int pointIdx = 0; pointIdx < centroids.size(); pointIdx++) {
             if (StatusArr[pointIdx] == 1) {
                 shifts[pointIdx][0] = (int) ((p1Arr[pointIdx].x - centroids.get(pointIdx).x)
-                        * currImage.getWidth() / targetSize.width);
+                        * currImage.width() / targetSize.width);
                 shifts[pointIdx][1] = (int) ((p1Arr[pointIdx].y - centroids.get(pointIdx).y)
-                        * currImage.getHeight() / targetSize.height);
+                        * currImage.height() / targetSize.height);
             } else {
                 shifts[pointIdx][0] = 0;
                 shifts[pointIdx][1] = 0;
@@ -204,11 +199,8 @@ public class RoIExtractor {
     }
 
     private static List<RoI> getPixelDiffRoIs(Frame prevFrame, Frame currFrame, Size targetSize) {
-        Mat prevMat = new Mat();
-        Mat currMat = new Mat();
-
-        Utils.bitmapToMat(prevFrame.bitmap, prevMat);
-        Utils.bitmapToMat(currFrame.bitmap, currMat);
+        Mat prevMat = prevFrame.mat.clone();
+        Mat currMat = currFrame.mat.clone();
 
         Imgproc.cvtColor(prevMat, prevMat, Imgproc.COLOR_BGR2GRAY);
         Imgproc.cvtColor(currMat, currMat, Imgproc.COLOR_BGR2GRAY);
@@ -224,7 +216,7 @@ public class RoIExtractor {
         Mat hierarchy = new Mat();
         Imgproc.findContours(mat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
         List<Rect> locations = getBoxesFromContours(contours,
-                currFrame.bitmap.getWidth(), currFrame.bitmap.getHeight(),
+                currFrame.mat.width(), currFrame.mat.height(),
                 (int) targetSize.width, (int) targetSize.height);
         List<RoI> rois = locations.stream()
                 .map(location -> new RoI(currFrame, location, RoI.Type.PD, null))
