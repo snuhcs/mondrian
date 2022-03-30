@@ -37,7 +37,7 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 
 ### How to Run
 1. Install applications to different mobile devices with the Android Studio.
-2. Upload `edgedevice.json` into `/data/local/tmp`. (`adb push edgedevice.json /data/local/tmp`)
+2. Upload `edgedevice.json` and `strm.json` into `/data/local/tmp`. (`adb push edgedevice.json /data/local/tmp` and `adb push strm.json /data/local/tmp`)
 3. Upload `sourcecamera.json` into `/data/local/tmp`. (`adb push sourcecamera.json /data/local/tmp`)
 4. If local video file is to be sent from `SourceCamera`, upload video specified in `sourcecamera.json` into `/data/local/tmp`. (`adb push [video_file_path] /data/local/tmp`)
 5. Run applications with the Android Studio.

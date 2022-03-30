@@ -1,9 +1,7 @@
 package hcs.offloading.edgedevice;
 
 import android.graphics.Bitmap;
-import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -16,13 +14,16 @@ import android.widget.TextView;
 import org.json.JSONException;
 import org.webrtc.SurfaceViewRenderer;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import hcs.offloading.edgedevice.config.Config;
 import hcs.offloading.edgedevice.databinding.ActivityMainBinding;
+import hcs.offloading.strm.datatypes.BoundingBox;
 
-@RequiresApi(api = Build.VERSION_CODES.P)
-public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ViewCallback {
+public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ResultCallback {
     private static final String TAG = MainActivity.class.getName();
 
     private static final String CONFIG_FILEPATH = "/data/local/tmp/edgedevice.json";
@@ -36,6 +37,8 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
     private Config mConfig;
     private EdgeDevice mEdgeDevice;
+    private FileWriter mLogWriter;
+    private final long mStartTime = System.nanoTime();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,9 +56,13 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         try {
             mConfig = new Config(CONFIG_FILEPATH);
 
+            if (mConfig.LOG_PATH != null) {
+                mLogWriter = new FileWriter(mConfig.LOG_PATH);
+            }
+
             Switch connectButton = findViewById(R.id.connectButton);
 
-            if (!mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
+            if (!mConfig.sourceConfig.USE_LOCAL_VIDEO) {
                 connectButton.setOnCheckedChangeListener(this);
             } else {
                 connectButton.setVisibility(View.INVISIBLE);
@@ -103,6 +110,30 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
             if (mEdgeDevice != null) {
                 mEdgeDevice.close();
             }
+        }
+        if (mLogWriter != null) {
+            try {
+                mLogWriter.flush();
+                mLogWriter.close();
+            } catch (IOException e) {
+                Log.e(TAG, e.getMessage());
+            }
+        }
+    }
+
+    @Override
+    public void log(String key, int frameIndex, List<BoundingBox> results) {
+        if (mLogWriter == null) {
+            return;
+        }
+        long timeStamp = System.nanoTime() - mStartTime;
+        try {
+            mLogWriter.write(key + "," + frameIndex + "," + timeStamp + "," + results.stream()
+                    .map(box -> box.location.left + "," + box.location.top + "," + box.location.right + "," + box.location.bottom + "," + box.confidence + "," + box.labelName)
+                    .collect(Collectors.joining(",")) + "\n");
+            mLogWriter.flush();
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage());
         }
     }
 

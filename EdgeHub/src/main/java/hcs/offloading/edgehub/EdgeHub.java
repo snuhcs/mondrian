@@ -1,8 +1,6 @@
 package hcs.offloading.edgehub;
 
 import android.content.Context;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.view.View;
 import android.widget.RadioButton;
@@ -18,7 +16,6 @@ import java.util.Random;
 import hcs.offloading.network.mqtt.HubMqttManager;
 import hcs.offloading.network.mqtt.datatypes.Device;
 
-@RequiresApi(api = Build.VERSION_CODES.N)
 public class EdgeHub implements Runnable {
     private static final String TAG = EdgeHub.class.getName();
 

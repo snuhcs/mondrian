@@ -1,8 +1,6 @@
 package hcs.offloading.network.mqtt;
 
 import android.content.Context;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -16,7 +14,6 @@ import hcs.offloading.network.mqtt.datatypes.PacketHandler;
 import hcs.offloading.network.mqtt.datatypes.RegisterHeader;
 import hcs.offloading.network.mqtt.datatypes.Topic;
 
-@RequiresApi(api = Build.VERSION_CODES.N)
 public class HubMqttManager extends MqttManager implements Runnable {
     private static final String TAG = HubMqttManager.class.getName();
 

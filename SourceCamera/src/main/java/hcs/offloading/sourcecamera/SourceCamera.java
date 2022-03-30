@@ -1,8 +1,6 @@
 package hcs.offloading.sourcecamera;
 
 import android.content.Context;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.util.Pair;
 
@@ -38,7 +36,6 @@ public class SourceCamera implements WebRTCCallback {
     private PeerConnection mPeerConnection;
     private boolean isClosed = false;
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     SourceCamera(Config config, Context context, EglBase eglBase, String uri, SurfaceViewRenderer inputView) {
         mConfig = config;
 
