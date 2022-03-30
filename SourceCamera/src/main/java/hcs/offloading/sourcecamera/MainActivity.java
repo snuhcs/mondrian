@@ -2,9 +2,7 @@ package hcs.offloading.sourcecamera;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -52,7 +50,6 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         connectButton.setOnCheckedChangeListener(this);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     @Override
     public void onCheckedChanged(CompoundButton button, boolean isChecked) {
         synchronized (this) {

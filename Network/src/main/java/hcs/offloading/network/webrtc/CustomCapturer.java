@@ -6,8 +6,6 @@ import android.graphics.Matrix;
 import android.media.MediaMetadataRetriever;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import org.webrtc.CapturerObserver;
@@ -35,7 +33,6 @@ public class CustomCapturer implements VideoCapturer {
         retriever.setDataSource(videoFilePath);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.P)
     @Override
     public void startCapture(int width, int height, int fps) {
         Log.d(TAG, "startCapture");

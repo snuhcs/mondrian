@@ -7,49 +7,42 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 
-import hcs.offloading.edgedevice.Utils;
+import hcs.offloading.strm.STRMUtils;
 
 public class Config {
     private static final String TAG = Config.class.getName();
 
-    public final DispatcherConfig dispatcherConfig;
-    public final RoIExtractorConfig roIExtractorConfig;
-    public final PatchMixerConfig patchMixerConfig;
+    public String LOG_PATH;
+    public final SourceConfig sourceConfig;
+    public final ResizeProfileConfig resizeProfileConfig;
     public final InferenceEngineConfig inferenceEngineConfig;
-    public final PatchReconstructorConfig patchReconstructorConfig;
 
     public Config(String jsonPath) throws IOException, JSONException {
-        JSONObject jsonObject = new JSONObject(Utils.getStringFromFile(jsonPath));
+        JSONObject jsonObject = new JSONObject(STRMUtils.getStringFromFile(jsonPath));
         Log.d(TAG, "Parsed Config: " + jsonObject);
 
-        if (jsonObject.has("dispatcher")) {
-            dispatcherConfig = new DispatcherConfig(jsonObject.getJSONObject("dispatcher"));
+        if (jsonObject.has("log_path")) {
+            LOG_PATH = jsonObject.getString("log_path");
         } else {
-            dispatcherConfig = new DispatcherConfig();
+            LOG_PATH = null;
         }
 
-        if (jsonObject.has("roi_extractor")) {
-            roIExtractorConfig = new RoIExtractorConfig(jsonObject.getJSONObject("roi_extractor"));
+        if (jsonObject.has("source")) {
+            sourceConfig = new SourceConfig(jsonObject.getJSONObject("source"));
         } else {
-            roIExtractorConfig = new RoIExtractorConfig();
+            sourceConfig = new SourceConfig();
         }
 
-        if (jsonObject.has("patch_mixer")) {
-            patchMixerConfig = new PatchMixerConfig(jsonObject.getJSONObject("patch_mixer"));
+        if (jsonObject.has("resize_profile")) {
+            resizeProfileConfig = new ResizeProfileConfig(jsonObject.getJSONObject("resize_profile"));
         } else {
-            patchMixerConfig = new PatchMixerConfig();
+            resizeProfileConfig = new ResizeProfileConfig();
         }
 
         if (jsonObject.has("inference_engine")) {
             inferenceEngineConfig = new InferenceEngineConfig(jsonObject.getJSONObject("inference_engine"));
         } else {
             inferenceEngineConfig = new InferenceEngineConfig();
-        }
-
-        if (jsonObject.has("patch_reconstructor")) {
-            patchReconstructorConfig = new PatchReconstructorConfig(jsonObject.getJSONObject("patch_reconstructor"));
-        } else {
-            patchReconstructorConfig = new PatchReconstructorConfig();
         }
     }
 }
