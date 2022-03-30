@@ -1,0 +1,27 @@
+{
+    "dispatcher": {
+        "max_queue_size": 2,
+        "full_inference_interval": 4,
+        "roi_padding": 10
+    },
+    "roi_extractor": {
+        "max_queue_size": 2,
+        "extraction_resize_width": 640,
+        "extraction_resize_height": 360,
+        "optical_flow_roi_confidence_threshold": 0.1,
+        "merge_threshold": 0.5,
+        "of_roi": true,
+        "pd_roi": true,
+        "merge_roi": true
+    },
+    "patch_mixer": {
+        "packing": true,
+        "max_packed_frames": 30,
+        "mixed_frame_size": 960
+    },
+    "patch_reconstructor": {
+        "max_queue_size": 2,
+        "match_padding": 40,
+        "use_iou_threshold": 0.1
+    }
+}
