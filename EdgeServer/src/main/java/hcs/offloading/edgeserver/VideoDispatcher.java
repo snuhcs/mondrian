@@ -13,26 +13,31 @@ import org.webrtc.TextureBufferImpl;
 import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
+import java.util.List;
+import java.util.Map;
+
 import hcs.offloading.edgeserver.config.DispatcherConfig;
+import hcs.offloading.edgeserver.config.RoIExtractorConfig;
+import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
-import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.network.webrtc.CustomCapturer;
 
 public class VideoDispatcher extends CustomCapturer {
     private static final String TAG = VideoDispatcher.class.getName();
 
-    private final DispatcherConfig.VideoConfig mConfig;
-
-    private final Dispatcher.Callback mCallback;
+    private final String VIDEO_PATH;
 
     private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
 
-    VideoDispatcher(DispatcherConfig.VideoConfig config, Dispatcher.Callback callback) {
-        Log.d(TAG, config.PATH + " videoDispatcher created");
-        mConfig = config;
-        mCallback = callback;
+    private final RoIExtractor mRoIExtractor;
 
-        retriever.setDataSource(mConfig.PATH);
+    @RequiresApi(api = Build.VERSION_CODES.P)
+    VideoDispatcher(DispatcherConfig.VideoConfig config, RoIExtractorConfig roiConfig, RoIExtractor.Callback roiCallback) {
+        mRoIExtractor = new RoIExtractor(roiConfig, roiCallback, config.PATH);
+
+        VIDEO_PATH = config.PATH;
+
+        retriever.setDataSource(VIDEO_PATH);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.P)
@@ -51,7 +56,7 @@ public class VideoDispatcher extends CustomCapturer {
 
             int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
             for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-                Log.v(TAG, mConfig.PATH + " " + frameIndex + " loaded");
+                Log.v(TAG, VIDEO_PATH + " " + frameIndex + " loaded");
                 Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
                 surTexture.getHandler().post(() -> {
@@ -67,14 +72,28 @@ public class VideoDispatcher extends CustomCapturer {
                     i420Buf.release();
                 });
 
-                Frame frame = Frame.createSingleFrame(bitmap, mConfig.PATH, frameIndex);
-                if (frameIndex == 0) {
-                    mCallback.enqueueInferenceRequest(InferenceRequest.createFullFrameRequest(frame));
-                } else {
-                    mCallback.enqueueFrame(frame);
-                }
+                mRoIExtractor.enqueueFrame(Frame.createSingleFrame(bitmap, VIDEO_PATH, frameIndex));
             }
         });
         captureThread.start();
+    }
+
+    void enqueueResults(int frameIndex, List<BoundingBox> results) {
+        mRoIExtractor.enqueueResults(frameIndex, results);
+    }
+
+    void enqueueResults(Map<Integer, List<BoundingBox>> results) {
+        mRoIExtractor.enqueueResults(results);
+    }
+
+    public void close() {
+        try {
+            captureThread.interrupt();
+            captureThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        mRoIExtractor.close();
+        Log.d(TAG, "closed");
     }
 }

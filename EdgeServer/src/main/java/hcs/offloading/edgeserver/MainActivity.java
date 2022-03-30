@@ -26,7 +26,6 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     private static final String TAG = MainActivity.class.getName();
 
     private static final String CONFIG_FILEPATH = "/data/local/tmp/edgeserver.json";
-    private static final boolean AUTO_START = true;
 
     private EditText mIpInput;
     private EditText mPortInput;
@@ -35,6 +34,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     private ImageView mInferenceOutputView;
     private TextView mFpsView;
 
+    private Config mConfig;
     private EdgeServer mEdgeServer;
 
     @Override
@@ -50,12 +50,19 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         mInferenceOutputView = findViewById(R.id.inferenceOutputView);
         mFpsView = findViewById(R.id.FPS);
 
-        Switch connectButton = findViewById(R.id.connectButton);
-        connectButton.setOnCheckedChangeListener(this);
+        try {
+            mConfig = new Config(CONFIG_FILEPATH);
 
-        if (AUTO_START) {
-            connectButton.setVisibility(View.INVISIBLE);
-            startEdgeServer();
+            Switch connectButton = findViewById(R.id.connectButton);
+
+            if (!mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
+                connectButton.setOnCheckedChangeListener(this);
+            } else {
+                connectButton.setVisibility(View.INVISIBLE);
+                startEdgeServer();
+            }
+        } catch (IOException | JSONException e) {
+            Log.e(TAG, e.getMessage());
         }
     }
 
@@ -78,12 +85,12 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         String uri = "tcp://" + ip + ":" + port;
         try {
             mEdgeServer = new EdgeServer(
-                    new Config(CONFIG_FILEPATH),
+                    mConfig,
                     getApplicationContext(),
                     uri,
                     mInputView,
                     this);
-        } catch (JSONException | IOException | IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
             mEdgeServer = null;
         }

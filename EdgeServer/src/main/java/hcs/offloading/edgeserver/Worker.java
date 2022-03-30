@@ -24,7 +24,7 @@ public class Worker implements Runnable {
     private static final String TAG = Worker.class.getName();
 
     public interface Callback {
-        void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) throws InterruptedException;
+        void enqueueInferenceResults(InferenceRequest request, List<BoundingBox> results) throws InterruptedException;
     }
 
     private final boolean PER_ROI_KEEP_RATIO;
@@ -77,7 +77,7 @@ public class Worker implements Runnable {
                 List<BoundingBox> results = new ArrayList<>();
                 if (request.type == InferenceRequest.Type.MIXED && request.rois.isEmpty()) {
                 } else if (request.type == InferenceRequest.Type.MIXED) {
-                    Bitmap input = request.frame.bitmap;
+                    Bitmap input = request.bitmap;
 
                     startTime = System.nanoTime();
                     ByteBuffer processedBuffer = preprocess(input);
@@ -91,7 +91,7 @@ public class Worker implements Runnable {
 
                     results = Utils.filterPerson(results);
                 } else if (request.type == InferenceRequest.Type.FULL) {
-                    Bitmap input = request.frame.bitmap;
+                    Bitmap input = request.bitmap;
 
                     startTime = System.nanoTime();
                     ByteBuffer processedBuffer = fullPreprocess(input);
@@ -137,14 +137,13 @@ public class Worker implements Runnable {
                         inferenceTimeUs += (int) ((endTime - startTime) / 1e3);
                         roiBoxes = Utils.filterPerson(roiBoxes);
                         roi.setBoundingBoxes(roiBoxes);
-                        results.addAll(roiBoxes);
                     }
                     request.preprocessingTimeUs = preprocessingTimeUs;
                     request.inferenceTimeUs = inferenceTimeUs;
                 } else {
                     throw new IllegalArgumentException("Wrong request type! " + request.type);
                 }
-                mCallback.enqueueInferenceResult(request, results);
+                mCallback.enqueueInferenceResults(request, results);
 
                 //Log.v(TAG, "InferenceEngine Queue Size: " + request.queueSize);
                 //Log.v(TAG, "Preprocessing time (us): " + request.preprocessingTimeUs);

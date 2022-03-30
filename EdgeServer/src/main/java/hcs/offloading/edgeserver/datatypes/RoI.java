@@ -12,10 +12,10 @@ public class RoI {
     }
 
     public final Frame frame;
-    public final Rect position;
+    public final Rect location;
 
-    public final float widthScale;
-    public final float heightScale;
+    public final int minOriginMaxWidthHeight;
+    public final float scale;
     public final int[] packedLocation;
 
     public final Type type;
@@ -23,21 +23,31 @@ public class RoI {
 
     public List<BoundingBox> boundingBoxes;
 
-    public RoI(Frame frame, Rect position, Type type, String labelName) {
+    public RoI(Frame frame, Rect location, Type type, String labelName) {
         this.frame = frame;
-        this.position = position;
-        this.widthScale = 1f;
-        this.heightScale = 1f;
+        this.location = location;
+        this.minOriginMaxWidthHeight = -1;
+        this.scale = 1f;
         this.packedLocation = null;
         this.type = type;
         this.labelName = labelName;
     }
 
-    private RoI(RoI roi, float widthScale, float heightScale) {
+    public RoI(Frame frame, Rect location, Type type, String labelName, int minOriginMaxWidthHeight) {
+        this.frame = frame;
+        this.location = location;
+        this.minOriginMaxWidthHeight = minOriginMaxWidthHeight;
+        this.scale = 1f;
+        this.packedLocation = null;
+        this.type = type;
+        this.labelName = labelName;
+    }
+
+    private RoI(RoI roi, float scale) {
         this.frame = roi.frame;
-        this.position = roi.position;
-        this.widthScale = widthScale;
-        this.heightScale = heightScale;
+        this.location = roi.location;
+        this.minOriginMaxWidthHeight = -1;
+        this.scale = scale;
         this.packedLocation = roi.packedLocation;
         this.type = roi.type;
         this.labelName = roi.labelName;
@@ -45,29 +55,24 @@ public class RoI {
 
     private RoI(RoI roi, int[] packedLocation) {
         this.frame = roi.frame;
-        this.position = roi.position;
-        this.widthScale = roi.widthScale;
-        this.heightScale = roi.heightScale;
+        this.location = roi.location;
+        this.minOriginMaxWidthHeight = -1;
+        this.scale = roi.scale;
         this.packedLocation = packedLocation;
         this.type = roi.type;
         this.labelName = roi.labelName;
     }
 
     public Bitmap getBitmap() {
-        return Bitmap.createBitmap(frame.bitmap, position.left, position.top, position.width(), position.height());
+        return Bitmap.createBitmap(frame.bitmap, location.left, location.top, location.width(), location.height());
     }
 
-    public boolean isPacked() {
-        return packedLocation != null;
-    }
-
-    public RoI resize(int lengthThreshold) {
-        float widthScale = Math.min(1f, (float) lengthThreshold / position.width());
-        float heightScale = Math.min(1f, (float) lengthThreshold / position.height());
-        widthScale = Math.min(widthScale, heightScale);
-        heightScale = widthScale;
-        if (widthScale != 1f || heightScale != 1f) {
-            return new RoI(this, widthScale, heightScale);
+    public RoI resize(int lengthThreshold, boolean fitResize, boolean mergedResize) {
+        int maxWidthHeight = mergedResize
+                ? minOriginMaxWidthHeight
+                : Math.max(location.width(), location.height());
+        if (fitResize || maxWidthHeight > lengthThreshold) {
+            return new RoI(this, (float) lengthThreshold / maxWidthHeight);
         }
         return this;
     }
@@ -77,14 +82,13 @@ public class RoI {
     }
 
     public int getArea() {
-        return position.width() * position.height();
+        return location.width() * location.height();
     }
 
     public int[] getResizedWidthHeight() {
         return new int[]{
-                (int) Math.max(1f, position.width() * widthScale),
-                (int) Math.max(1f, position.height() * heightScale)
-        };
+                Math.max(1, (int) (location.width() * scale)),
+                Math.max(1, (int) (location.height() * scale))};
     }
 
     public Bitmap getResizedBitmap() {
@@ -106,7 +110,7 @@ public class RoI {
 
     @Override
     public String toString() {
-        String result = "RoI " + frame.frameIndex + ": " + position.toString();
+        String result = "RoI " + frame.frameIndex + ": " + location.toString();
         return result.trim();
     }
 }

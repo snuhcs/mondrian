@@ -1,6 +1,9 @@
 package hcs.offloading.edgeserver.datatypes;
 
+import android.graphics.Bitmap;
+
 import java.util.List;
+import java.util.Set;
 
 public class InferenceRequest {
     public enum Type {
@@ -9,11 +12,11 @@ public class InferenceRequest {
         MIXED
     }
 
-    public final Frame frame;
     public final Type type;
-
-    // For SINGLE_ROI_FRAME / MIXED_FRAME
-    public final List<Frame> frames;
+    public final Bitmap bitmap;
+    public int frameIndex;
+    public String sourceIP;
+    public final Set<Frame> frames;
     public final List<RoI> rois;
 
     // Logs
@@ -21,22 +24,42 @@ public class InferenceRequest {
     public int preprocessingTimeUs = -1;
     public int inferenceTimeUs = -1;
 
-    private InferenceRequest(Frame frame, Type type, List<Frame> frames, List<RoI> rois) {
-        this.frame = frame;
-        this.type = type;
+    private InferenceRequest(Frame frame) {
+        this.type = Type.FULL;
+        this.bitmap = frame.bitmap;
+        this.frameIndex = frame.frameIndex;
+        this.sourceIP = frame.sourceIP;
+        this.frames = null;
+        this.rois = null;
+    }
+
+    private InferenceRequest(Set<Frame> frames, List<RoI> rois) {
+        this.type = Type.PER_ROI;
+        this.bitmap = null;
+        this.frameIndex = -1;
+        this.sourceIP = null;
+        this.frames = frames;
+        this.rois = rois;
+    }
+
+    private InferenceRequest(Bitmap bitmap, Set<Frame> frames, List<RoI> rois) {
+        this.type = Type.MIXED;
+        this.bitmap = bitmap;
+        this.frameIndex = -1;
+        this.sourceIP = null;
         this.frames = frames;
         this.rois = rois;
     }
 
     public static InferenceRequest createFullFrameRequest(Frame frame) {
-        return new InferenceRequest(frame, Type.FULL, null, null);
+        return new InferenceRequest(frame);
     }
 
-    public static InferenceRequest createSingleRoIFrameRequest(List<Frame> frames, List<RoI> rois) {
-        return new InferenceRequest(null, Type.PER_ROI, frames, rois);
+    public static InferenceRequest createPerRoIInferenceRequest(Set<Frame> frames, List<RoI> rois) {
+        return new InferenceRequest(frames, rois);
     }
 
-    public static InferenceRequest createMixedFrameRequest(Frame frame, List<Frame> frames, List<RoI> rois) {
-        return new InferenceRequest(frame, Type.MIXED, frames, rois);
+    public static InferenceRequest createMixedFrameRequest(Bitmap bitmap, Set<Frame> frames, List<RoI> rois) {
+        return new InferenceRequest(bitmap, frames, rois);
     }
 }

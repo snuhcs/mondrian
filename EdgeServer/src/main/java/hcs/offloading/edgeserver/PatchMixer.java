@@ -9,47 +9,100 @@ import android.support.annotation.RequiresApi;
 import android.util.Pair;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import hcs.offloading.edgeserver.config.PatchMixerConfig;
+import hcs.offloading.edgeserver.datatypes.Frame;
+import hcs.offloading.edgeserver.datatypes.InferenceRequest;
 import hcs.offloading.edgeserver.datatypes.RoI;
 
 @RequiresApi(api = Build.VERSION_CODES.P)
 public class PatchMixer {
-    public static List<RoI> packRoIs(List<RoI> rois, int targetSize) {
-        List<RoI> packedRoIs = new ArrayList<>();
+    private static final String TAG = PatchMixer.class.getName();
 
-        List<Rect> freeRectList = new ArrayList<>();
-        freeRectList.add(new Rect(0, 0, targetSize, targetSize));
+    private final int MIXED_FRAME_SIZE;
+    private final int MAX_OPTICAL_FLOW_INTERVAL;
 
-        for (RoI roi : rois) {
-            int[] WH = roi.getResizedWidthHeight();
-            ListIterator<Rect> iter = freeRectList.listIterator();
-            while (iter.hasNext()) {
-                Rect freeRect = iter.next();
-                if (canFit(WH, freeRect)) {
-                    iter.remove();
-                    packedRoIs.add(roi.pack(new int[]{freeRect.left, freeRect.top}));
-                    Pair<Rect, Rect> newFreeRectPair = splitFreeRect(WH, freeRect);
-                    freeRectList.add(newFreeRectPair.first);
-                    freeRectList.add(newFreeRectPair.second);
-                    break;
-                }
-            }
-        }
-        return packedRoIs;
+    private Set<Frame> mPackedFrames;
+    private List<RoI> mPackedRoIs;
+    private List<Rect> mFreeRects;
+
+    public PatchMixer(PatchMixerConfig config) {
+        MAX_OPTICAL_FLOW_INTERVAL = config.MAX_PACKED_FRAMES;
+        MIXED_FRAME_SIZE = config.MIXED_FRAME_SIZE;
+        reset();
     }
 
-    public static Bitmap getMixedFrame(List<RoI> rois, int targetSize) {
-        Bitmap bitmap = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888);
-        bitmap.eraseColor(Color.BLACK);
+    public void close() {
+        reset();
+    }
 
+    private void reset() {
+        mPackedFrames = new HashSet<>();
+        mPackedRoIs = new ArrayList<>();
+        mFreeRects = new ArrayList<>();
+        mFreeRects.add(new Rect(0, 0, MIXED_FRAME_SIZE, MIXED_FRAME_SIZE));
+    }
+
+    public InferenceRequest tryPackRoIs(Frame frame, List<RoI> rois, boolean packing) {
+        //Log.v(TAG, "Start tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
+        synchronized (this) {
+            mPackedFrames.add(frame);
+            int minPackedFrameIndex = mPackedFrames.stream()
+                    .filter(f -> f.sourceIP.equals(frame.sourceIP))
+                    .map(f -> f.frameIndex)
+                    .min(Comparator.comparingInt(i0 -> i0)).get();
+            int numPackedFrames = frame.frameIndex - minPackedFrameIndex + 1;
+            boolean needInference = numPackedFrames >= MAX_OPTICAL_FLOW_INTERVAL;
+            boolean isAllPacked = true;
+            for (RoI roi : rois) {
+                int[] WH = roi.getResizedWidthHeight();
+                ListIterator<Rect> iter = mFreeRects.listIterator();
+                boolean isPacked = false;
+                while (iter.hasNext()) {
+                    Rect freeRect = iter.next();
+                    if (canFit(WH, freeRect)) {
+                        iter.remove();
+                        mPackedRoIs.add(roi.pack(new int[]{freeRect.left, freeRect.top}));
+                        Pair<Rect, Rect> newFreeRectPair = splitFreeRect(WH, freeRect);
+                        mFreeRects.add(newFreeRectPair.first);
+                        mFreeRects.add(newFreeRectPair.second);
+                        isPacked = true;
+                        break;
+                    }
+                }
+                isAllPacked &= isPacked;
+            }
+            //Log.v(TAG, "End tryPackRoI : " + frame.sourceIP + " " + frame.frameIndex);
+            if (!isAllPacked || needInference) {
+                if (mPackedFrames.stream().filter(f -> f.sourceIP.equals(frame.sourceIP)).count() > 1) {
+                    mPackedFrames.remove(frame);
+                    mPackedRoIs = mPackedRoIs.stream().filter(r -> r.frame != frame).collect(Collectors.toList());
+                }
+                InferenceRequest request = packing
+                        ? InferenceRequest.createMixedFrameRequest(getMixedImage(mPackedRoIs), mPackedFrames, mPackedRoIs)
+                        : InferenceRequest.createPerRoIInferenceRequest(mPackedFrames, mPackedRoIs);
+                reset();
+                return request;
+            } else {
+                return null;
+            }
+        }
+    }
+
+    private Bitmap getMixedImage(List<RoI> rois) {
+        Bitmap bitmap = Bitmap.createBitmap(MIXED_FRAME_SIZE, MIXED_FRAME_SIZE, Bitmap.Config.ARGB_8888);
+        bitmap.eraseColor(Color.BLACK);
         Canvas canvas = new Canvas(bitmap);
         for (RoI roi : rois) {
             int[] packedLocation = roi.packedLocation;
             canvas.drawBitmap(roi.getResizedBitmap(), packedLocation[0], packedLocation[1], null);
         }
-
         return bitmap;
     }
 

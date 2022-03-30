@@ -8,6 +8,12 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,8 +26,7 @@ public class Utils {
     }
 
     public static Bitmap drawBoxes(Bitmap image, List<BoundingBox> boxes, float drawConfidence) {
-        Bitmap drawableBitmap = image.copy(image.getConfig(), true);
-        final Canvas canvas = new Canvas(drawableBitmap);
+        final Canvas canvas = new Canvas(image);
         final Paint paint = new Paint();
         paint.setColor(Color.HSVToColor(new float[]{120f, 1f, 1f}));
         paint.setStyle(Paint.Style.STROKE);
@@ -31,7 +36,7 @@ public class Utils {
                 canvas.drawRect(box.location, paint);
             }
         }
-        return drawableBitmap;
+        return image;
     }
 
     public static float box_iou(Rect a, Rect b) {
@@ -60,5 +65,25 @@ public class Utils {
         float r2 = x2 + w2 / 2;
         float right = Math.min(r1, r2);
         return right - left;
+    }
+
+
+    private static String convertStreamToString(InputStream is) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line).append("\n");
+        }
+        reader.close();
+        return sb.toString();
+    }
+
+    public static String getStringFromFile(String filePath) throws IOException {
+        File fl = new File(filePath);
+        FileInputStream fin = new FileInputStream(fl);
+        String ret = convertStreamToString(fin);
+        fin.close();
+        return ret;
     }
 }
