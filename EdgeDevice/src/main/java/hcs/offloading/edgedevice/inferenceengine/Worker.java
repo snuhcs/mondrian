@@ -4,6 +4,8 @@ import android.graphics.Bitmap;
 import android.util.Log;
 import android.util.Pair;
 
+import org.opencv.android.Utils;
+import org.opencv.core.Mat;
 import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.support.image.ImageProcessor;
 import org.tensorflow.lite.support.image.TensorImage;
@@ -51,16 +53,18 @@ public class Worker implements Runnable {
     @Override
     public void run() {
         while (true) {
-            Pair<Bitmap, Boolean> input = engine.getInput();
-            Bitmap image = input.first;
+            Pair<Mat, Boolean> input = engine.getInput();
+            Mat image = input.first;
             boolean isFull = input.second;
-            ByteBuffer processedBuffer = preprocess(image.copy(image.getConfig(), image.isMutable()), isFull);
-            List<BoundingBox> results = (isFull ? fullModel : model).recognizeImage(processedBuffer, image.getWidth(), image.getHeight());
+            ByteBuffer processedBuffer = preprocess(image.clone(), isFull);
+            List<BoundingBox> results = (isFull ? fullModel : model).recognizeImage(processedBuffer, image.width(), image.height());
             engine.enqueueResults(image, results);
         }
     }
 
-    private ByteBuffer preprocess(Bitmap bitmap, boolean isFull) {
+    private ByteBuffer preprocess(Mat mat, boolean isFull) {
+        Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(mat, bitmap);
         TensorImage image = new TensorImage(DataType.UINT8);
         image.load(bitmap);
         return (isFull ? fullPreprocessor : preprocessor).process(image).getBuffer();

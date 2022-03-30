@@ -1,7 +1,10 @@
 package hcs.offloading.strm.datatypes;
 
-import android.graphics.Bitmap;
 import android.graphics.Rect;
+
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
 
 import java.util.List;
 
@@ -54,8 +57,9 @@ public class RoI {
         this.labelName = labelName;
     }
 
-    public Bitmap getBitmap() {
-        return Bitmap.createBitmap(frame.bitmap, location.left, location.top, location.width(), location.height());
+    public Mat getMat() {
+        return new Mat(frame.mat, new org.opencv.core.Rect(
+                location.left, location.top, location.width(), location.height()));
     }
 
     public void setHandle(int handle) {
@@ -96,9 +100,11 @@ public class RoI {
                 Math.max(1, (int) (location.height() * scale))};
     }
 
-    public Bitmap getResizedBitmap() {
+    public Mat getResizedMat() {
         int[] wh = getResizedWidthHeight();
-        return Bitmap.createScaledBitmap(getBitmap(), wh[0], wh[1], false);
+        Mat roi = getMat();
+        Imgproc.resize(roi, roi, new Size(wh[0], wh[1]));
+        return roi;
     }
 
     public void setResults(List<BoundingBox> boxes) {

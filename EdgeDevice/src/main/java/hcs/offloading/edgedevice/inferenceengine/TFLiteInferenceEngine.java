@@ -1,10 +1,10 @@
 package hcs.offloading.edgedevice.inferenceengine;
 
 import android.content.res.AssetManager;
-import android.graphics.Bitmap;
 import android.util.Log;
 import android.util.Pair;
 
+import org.opencv.core.Mat;
 import org.tensorflow.lite.support.common.ops.NormalizeOp;
 import org.tensorflow.lite.support.image.ImageProcessor;
 import org.tensorflow.lite.support.image.ops.ResizeOp;
@@ -28,7 +28,7 @@ import hcs.offloading.strm.datatypes.BoundingBox;
 public class TFLiteInferenceEngine implements InferenceEngine {
     private final static String TAG = TFLiteInferenceEngine.class.getName();
 
-    private final LinkedBlockingQueue<Pair<Bitmap, Boolean>> mInputs;
+    private final LinkedBlockingQueue<Pair<Mat, Boolean>> mInputs;
     private final Map<Integer, List<BoundingBox>> mResults = new HashMap<>();
     private final List<Worker> mWorkers = new ArrayList<>();
 
@@ -72,13 +72,13 @@ public class TFLiteInferenceEngine implements InferenceEngine {
     }
 
     @Override
-    public int enqueue(Bitmap bitmap, boolean isFull) throws InterruptedException {
-        int key = bitmap.hashCode();
-        mInputs.put(new Pair<>(bitmap, isFull));
+    public int enqueue(Mat mat, boolean isFull) throws InterruptedException {
+        int key = mat.hashCode();
+        mInputs.put(new Pair<>(mat, isFull));
         return key;
     }
 
-    Pair<Bitmap, Boolean> getInput() {
+    Pair<Mat, Boolean> getInput() {
         try {
             return mInputs.take();
         } catch (InterruptedException e) {
@@ -87,10 +87,10 @@ public class TFLiteInferenceEngine implements InferenceEngine {
         return null;
     }
 
-    void enqueueResults(Bitmap bitmap, List<BoundingBox> results) {
-        mResultCallback.drawInferenceResult(STRMUtils.drawBoxes(bitmap.copy(bitmap.getConfig(), true), results, 0.1f));
+    void enqueueResults(Mat mat, List<BoundingBox> results) {
+        mResultCallback.drawInferenceResult(STRMUtils.drawBoxes(mat.clone(), results, 0.1f));
         synchronized (mResults) {
-            mResults.put(bitmap.hashCode(), results);
+            mResults.put(mat.hashCode(), results);
             mResults.notifyAll();
         }
     }

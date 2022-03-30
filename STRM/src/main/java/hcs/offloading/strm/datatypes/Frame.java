@@ -1,6 +1,6 @@
 package hcs.offloading.strm.datatypes;
 
-import android.graphics.Bitmap;
+import org.opencv.core.Mat;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Frame {
-    public final Bitmap bitmap;
+    public final Mat mat;
     public final String key;
     public final int frameIndex;
 
@@ -25,8 +25,8 @@ public class Frame {
      */
     private final List<BoundingBox> boxes = new ArrayList<>();
 
-    public Frame(Bitmap bitmap, String key, int frameIndex) {
-        this.bitmap = bitmap;
+    public Frame(Mat mat, String key, int frameIndex) {
+        this.mat = mat;
         this.key = key;
         this.frameIndex = frameIndex;
     }

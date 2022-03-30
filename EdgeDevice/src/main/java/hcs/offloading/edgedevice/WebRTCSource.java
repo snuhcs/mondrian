@@ -4,6 +4,8 @@ import android.graphics.Bitmap;
 import android.util.Log;
 
 import org.json.JSONException;
+import org.opencv.android.Utils;
+import org.opencv.core.Mat;
 import org.webrtc.MediaStream;
 import org.webrtc.PeerConnection;
 import org.webrtc.SurfaceViewRenderer;
@@ -101,8 +103,10 @@ public class WebRTCSource implements VideoSink, Runnable {
     public void onFrame(VideoFrame videoFrame) {
         YuvFrame yuvFrame = new YuvFrame(videoFrame);
         Bitmap bitmap = yuvFrame.getBitmap();
+        Mat mat = new Mat();
+        Utils.bitmapToMat(bitmap, mat);
         try {
-            strm.enqueueImage(mSourceIP, mFrameIndex++, bitmap);
+            strm.enqueueImage(mSourceIP, mFrameIndex++, mat);
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }

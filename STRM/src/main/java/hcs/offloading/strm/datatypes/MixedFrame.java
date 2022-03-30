@@ -1,11 +1,11 @@
 package hcs.offloading.strm.datatypes;
 
-import android.graphics.Bitmap;
+import org.opencv.core.Mat;
 
 import java.util.List;
 
 public class MixedFrame {
-    public final Bitmap packedBitmap;
+    public final Mat packedMat;
     public final List<Frame> packedFrames;
 
     /**
@@ -20,8 +20,8 @@ public class MixedFrame {
      */
     private int handle;
 
-    public MixedFrame(Bitmap packedBitmap, List<Frame> packedFrames) {
-        this.packedBitmap = packedBitmap;
+    public MixedFrame(Mat packedMat, List<Frame> packedFrames) {
+        this.packedMat = packedMat;
         this.packedFrames = packedFrames;
     }
 
