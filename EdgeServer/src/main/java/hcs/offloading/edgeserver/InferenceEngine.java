@@ -10,33 +10,61 @@ import org.tensorflow.lite.support.image.ImageProcessor;
 import org.tensorflow.lite.support.image.ops.ResizeOp;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Queue;
 
 import hcs.offloading.edgeserver.config.InferenceEngineConfig;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
+import hcs.offloading.edgeserver.model.Classifier;
+import hcs.offloading.edgeserver.model.YoloV4Classifier;
+import hcs.offloading.edgeserver.model.YoloV5Classifier;
 
 public class InferenceEngine {
     private final static String TAG = InferenceEngine.class.getName();
 
     public final int FRAME_SIZE;
+    public final int FULL_FRAME_SIZE;
     public final int NUM_WORKERS;
+    public final int MAX_QUEUED_REQUESTS;
 
     private final List<Worker> mWorkers = new ArrayList<>();
-    private final LinkedBlockingQueue<InferenceRequest> mInferenceRequests = new LinkedBlockingQueue<>();
+    private final Queue<InferenceRequest> mInferenceRequests = new LinkedList<>();
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     InferenceEngine(InferenceEngineConfig config, Worker.Callback callback, AssetManager assetManager) {
         FRAME_SIZE = config.FRAME_SIZE;
+        FULL_FRAME_SIZE = config.FULL_FRAME_SIZE;
         NUM_WORKERS = config.NUM_WORKERS;
+        MAX_QUEUED_REQUESTS = NUM_WORKERS * 2;
+
+        Classifier model = config.USE_YOLO_V4 ?
+                new YoloV4Classifier(assetManager, FRAME_SIZE, config.USE_TINY) :
+                new YoloV5Classifier(assetManager, FRAME_SIZE);
+        ImageProcessor processor = new ImageProcessor.Builder()
+                .add(new ResizeOp(FRAME_SIZE, FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+                .add(new NormalizeOp(0.0f, 255.0f))
+                .build();
+
+        Classifier fullModel;
+        ImageProcessor fullProcessor;
+        if (FRAME_SIZE != FULL_FRAME_SIZE) {
+            fullModel = config.USE_YOLO_V4 ?
+                    new YoloV4Classifier(assetManager, FULL_FRAME_SIZE, config.USE_TINY) :
+                    new YoloV5Classifier(assetManager, FULL_FRAME_SIZE);
+            fullProcessor = new ImageProcessor.Builder()
+                    .add(new ResizeOp(FULL_FRAME_SIZE, FULL_FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
+                    .add(new NormalizeOp(0.0f, 255.0f))
+                    .build();
+        } else {
+            fullModel = model;
+            fullProcessor = processor;
+        }
 
         for (int workerId = 0; workerId < NUM_WORKERS; workerId++) {
             mWorkers.add(new Worker(callback, this,
-                    new YoloV4Classifier(assetManager, FRAME_SIZE),
-                    new ImageProcessor.Builder()
-                            .add(new ResizeOp(FRAME_SIZE, FRAME_SIZE, ResizeOp.ResizeMethod.BILINEAR))
-                            .add(new NormalizeOp(0.0f, 255.0f))
-                            .build()));
+                    model, processor, fullModel, fullProcessor,
+                    config.PER_ROI_KEEP_RATIO));
         }
     }
 
@@ -45,19 +73,45 @@ public class InferenceEngine {
             worker.close();
         }
         mWorkers.clear();
-        mInferenceRequests.clear();
+        synchronized (mInferenceRequests) {
+            mInferenceRequests.clear();
+        }
         Log.d(TAG, "closed");
     }
 
     public void enqueueRequest(InferenceRequest inferenceRequest) {
-        mInferenceRequests.add(inferenceRequest);
+        //Log.v(TAG, "Start enqueueRequest(InferenceRequest inferenceRequest)");
+        try {
+            synchronized (mInferenceRequests) {
+                while (MAX_QUEUED_REQUESTS > 0 && mInferenceRequests.size() > MAX_QUEUED_REQUESTS) {
+                    mInferenceRequests.wait();
+                }
+                mInferenceRequests.add(inferenceRequest);
+                mInferenceRequests.notifyAll();
+            }
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+        }
+        //Log.v(TAG, "End enqueueRequest(InferenceRequest inferenceRequest)");
     }
 
     public InferenceRequest getRequest() throws InterruptedException {
-        return mInferenceRequests.take();
+        //Log.v(TAG, "Start getRequest()");
+        InferenceRequest request;
+        synchronized (mInferenceRequests) {
+            while (mInferenceRequests.size() == 0) {
+                mInferenceRequests.wait();
+            }
+            request = mInferenceRequests.poll();
+            mInferenceRequests.notifyAll();
+        }
+        //Log.v(TAG, "End getRequest()");
+        return request;
     }
 
     public int getRequestQueueSize() {
-        return mInferenceRequests.size();
+        synchronized (mInferenceRequests) {
+            return mInferenceRequests.size();
+        }
     }
 }

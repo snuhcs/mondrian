@@ -20,10 +20,10 @@ import org.webrtc.YuvConverter;
 public class CustomCapturer implements VideoCapturer {
     private static final String TAG = CustomCapturer.class.getName();
 
-    private SurfaceTextureHelper surTexture;
-    private CapturerObserver capturerObs;
-    private Thread captureThread;
-    private MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+    protected SurfaceTextureHelper surTexture;
+    protected CapturerObserver capturerObs;
+    protected Thread captureThread;
+    protected MediaMetadataRetriever retriever = new MediaMetadataRetriever();
 
     @Override
     public void initialize(SurfaceTextureHelper surfaceTextureHelper, Context applicationContext, CapturerObserver capturerObserver) {

@@ -2,6 +2,7 @@ package hcs.offloading.edgeserver.config;
 
 import android.util.Log;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -19,24 +20,46 @@ public class Config {
     public final RoIExtractorConfig roIExtractorConfig = new RoIExtractorConfig();
     public final InferenceEngineConfig inferenceEngineConfig = new InferenceEngineConfig();
     public final PatchReconstructorConfig patchReconstructorConfig = new PatchReconstructorConfig();
-    public final UtilsConfig utilsConfig = new UtilsConfig();
 
     public Config(String jsonPath) throws IOException, JSONException {
         JSONObject jsonObject = new JSONObject(getStringFromFile(jsonPath));
         Log.d(TAG, "Parsed Config: " + jsonObject);
 
-        if (jsonObject.has("full_inference_interval")) {
-            dispatcherConfig.FULL_INFERENCE_INTERVAL = jsonObject.getInt("full_inference_interval");
+        if (jsonObject.has("use_local_video")) {
+            dispatcherConfig.USE_LOCAL_VIDEO = jsonObject.getBoolean("use_local_video");
+            if (dispatcherConfig.USE_LOCAL_VIDEO) {
+                if (!jsonObject.has("video_configs") || jsonObject.getJSONArray("video_configs").length() == 0) {
+                    throw new IllegalArgumentException("Video configs should be specified");
+                }
+                JSONArray videoConfigs = jsonObject.getJSONArray("video_configs");
+                for (int i = 0; i < videoConfigs.length(); i++) {
+                    DispatcherConfig.VideoConfig videoConfig = new DispatcherConfig.VideoConfig();
+                    JSONObject jsonVideoConfig = videoConfigs.getJSONObject(i);
+                    if (jsonVideoConfig.has("path")) {
+                        videoConfig.PATH = jsonVideoConfig.getString("path");
+                    }
+                    if (jsonVideoConfig.has("width")) {
+                        videoConfig.WIDTH = jsonVideoConfig.getInt("width");
+                    }
+                    if (jsonVideoConfig.has("height")) {
+                        videoConfig.HEIGHT = jsonVideoConfig.getInt("height");
+                    }
+                    if (jsonVideoConfig.has("fps")) {
+                        videoConfig.FPS = jsonVideoConfig.getInt("fps");
+                    }
+                    dispatcherConfig.VIDEO_CONFIGS.add(videoConfig);
+                }
+            }
         }
 
         if (jsonObject.has("is_baseline")) { // if is_baseline = true, BATCH_SIZE must be 1
             roIExtractorConfig.IS_BASELINE = jsonObject.getBoolean("is_baseline");
-            roIExtractorConfig.BATCH_SIZE = 1;
-        } else if (jsonObject.has("batch_size")) { // else, use "batch_size"
+        }
+        if (jsonObject.has("batch_size")) { // else, use "batch_size"
             roIExtractorConfig.BATCH_SIZE = jsonObject.getInt("batch_size");
         }
-        if (jsonObject.has("frame_size")) {
-            roIExtractorConfig.MIXED_FRAME_SIZE = jsonObject.getInt("frame_size");
+        if (jsonObject.has("full_inference_batch_interval")) {
+            roIExtractorConfig.FULL_INFERENCE_BATCH_INTERVAL = jsonObject.getInt("full_inference_batch_interval");
         }
         if (jsonObject.has("merge_threshold")) {
             roIExtractorConfig.MERGE_THRESHOLD = (float) jsonObject.getDouble("merge_threshold");
@@ -48,22 +71,42 @@ public class Config {
             String method = String.valueOf(jsonObject.get("extraction_method"));
             switch (method) {
                 case "combined":
-                    roIExtractorConfig.EXTRACTION_METHOD = ExtractionMethod.COMBINED;
+                    roIExtractorConfig.EXTRACTION_METHOD = RoIExtractorConfig.Method.COMBINED;
                     break;
                 case "of":
-                    roIExtractorConfig.EXTRACTION_METHOD = ExtractionMethod.OF;
+                    roIExtractorConfig.EXTRACTION_METHOD = RoIExtractorConfig.Method.OF;
                     break;
                 case "pd":
-                    roIExtractorConfig.EXTRACTION_METHOD = ExtractionMethod.PD;
+                    roIExtractorConfig.EXTRACTION_METHOD = RoIExtractorConfig.Method.PD;
                     break;
             }
         }
+        if (jsonObject.has("person_threshold")) {
+            roIExtractorConfig.PERSON_THRESHOLD = jsonObject.getInt("person_threshold");
+        }
+        if (jsonObject.has("class_agnostic_threshold")) {
+            roIExtractorConfig.CLASS_AGNOSTIC_THRESHOLD = jsonObject.getInt("class_agnostic_threshold");
+        }
 
+        if (jsonObject.has("use_yolo_v4")) {
+            inferenceEngineConfig.USE_YOLO_V4 = jsonObject.getBoolean("use_yolo_v4");
+        }
+        if (jsonObject.has("use_tiny")) {
+            inferenceEngineConfig.USE_TINY = jsonObject.getBoolean("use_tiny");
+        }
         if (jsonObject.has("num_workers")) {
             inferenceEngineConfig.NUM_WORKERS = jsonObject.getInt("num_workers");
         }
         if (jsonObject.has("frame_size")) {
             inferenceEngineConfig.FRAME_SIZE = jsonObject.getInt("frame_size");
+        }
+        if (jsonObject.has("full_frame_size")) {
+            inferenceEngineConfig.FULL_FRAME_SIZE = jsonObject.getInt("full_frame_size");
+        } else {
+            inferenceEngineConfig.FULL_FRAME_SIZE = inferenceEngineConfig.FRAME_SIZE;
+        }
+        if (jsonObject.has("per_roi_keep_ratio")) {
+            inferenceEngineConfig.PER_ROI_KEEP_RATIO = jsonObject.getBoolean("per_roi_keep_ratio");
         }
 
         if (jsonObject.has("match_padding")) {
@@ -72,20 +115,11 @@ public class Config {
         if (jsonObject.has("use_iou_threshold")) {
             patchReconstructorConfig.USE_IOU_THRESHOLD = (float) jsonObject.getDouble("use_iou_threshold");
         }
-
-        if (jsonObject.has("minimum_confidence")) {
-            utilsConfig.MINIMUM_CONFIDENCE = (float) jsonObject.getDouble("minimum_confidence");
+        if (jsonObject.has("log_path")) {
+            patchReconstructorConfig.LOG_PATH = jsonObject.getString("log_path");
         }
-
-        validate();
-    }
-
-    private void validate() throws IllegalArgumentException {
-        if (!roIExtractorConfig.IS_BASELINE && roIExtractorConfig.MIXED_FRAME_SIZE != inferenceEngineConfig.FRAME_SIZE) {
-            throw new IllegalArgumentException("roIExtractorConfig.MIXED_FRAME_SIZE and inferenceEngineConfig.MIXED_FRAME_SIZE must be same");
-        }
-        if (roIExtractorConfig.IS_BASELINE && roIExtractorConfig.BATCH_SIZE != 1) {
-            throw new IllegalArgumentException("if is_baseline = true, roIExtractorConfig.BATCH_SIZE must be 1");
+        if (jsonObject.has("draw_confidence")) {
+            patchReconstructorConfig.DRAW_CONFIDENCE = (float) jsonObject.getDouble("draw_confidence");
         }
     }
 

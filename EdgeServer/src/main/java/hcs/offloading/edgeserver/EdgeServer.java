@@ -11,13 +11,17 @@ import android.util.Pair;
 import org.webrtc.EglBase;
 import org.webrtc.MediaStream;
 import org.webrtc.SurfaceViewRenderer;
+import org.webrtc.VideoCapturer;
+import org.webrtc.VideoTrack;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import hcs.offloading.edgeserver.config.Config;
+import hcs.offloading.edgeserver.config.DispatcherConfig;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 import hcs.offloading.edgeserver.datatypes.Frame;
 import hcs.offloading.edgeserver.datatypes.InferenceRequest;
@@ -43,6 +47,9 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     private WebRTCManager mWebRTCManager;
     private DeviceMqttManager mMqttManager;
 
+    private Thread mVideoEdgeServerThread;
+
+    private final List<VideoDispatcher> mVideoDispatchers = new ArrayList<>();
     private final Map<String, Dispatcher> mDispatchers = new ConcurrentHashMap<>();
     private RoIExtractor mRoIExtractor;
     private InferenceEngine mInferenceEngine;
@@ -52,17 +59,34 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
         mConfig = config;
         mAssetManager = context.getAssets();
 
+        EglBase eglBase = EglBase.create();
         mInputView = inputView;
+        mInputView.init(eglBase.getEglBaseContext(), null);
         mViewCallback = viewCallback;
 
-        mMqttManager = new DeviceMqttManager(context, uri, Device.EDGE, scheduleTopicHandler, webrtcTopicHandler);
-
-        EglBase eglBase = EglBase.create();
-        mInputView.init(eglBase.getEglBaseContext(), null);
+        if (!mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
+            mMqttManager = new DeviceMqttManager(context, uri, Device.EDGE, scheduleTopicHandler, webrtcTopicHandler);
+        }
         mWebRTCManager = new WebRTCManager(context, mMqttManager, eglBase, this);
+
+        if (mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
+            mVideoEdgeServerThread = new Thread(this::startVideoEdgeServer);
+            mVideoEdgeServerThread.start();
+        }
     }
 
     void close() {
+        if (mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
+            try {
+                mVideoEdgeServerThread.interrupt();
+                mVideoEdgeServerThread.join();
+            } catch (InterruptedException e) {
+                Log.e(TAG, e.getMessage());
+            }
+            for (VideoDispatcher videoDispatcher : mVideoDispatchers) {
+                videoDispatcher.stopCapture();
+            }
+        }
         stopEdgeServer();
 
         mMqttManager.close();
@@ -70,19 +94,44 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     }
 
     private void startEdgeServer() {
+        Log.d(TAG, "startEdgeServer");
         synchronized (this) {
             mPatchReconstructor = new PatchReconstructor(mConfig.patchReconstructorConfig, mViewCallback);
             mInferenceEngine = new InferenceEngine(mConfig.inferenceEngineConfig, this, mAssetManager);
-            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, this);
+            mRoIExtractor = new RoIExtractor(mConfig.roIExtractorConfig, this, mConfig.inferenceEngineConfig.FRAME_SIZE);
+        }
+    }
+
+    private void startVideoEdgeServer() {
+        Log.d(TAG, "startVideoEdgeServer");
+        startEdgeServer();
+        for (DispatcherConfig.VideoConfig videoConfig : mConfig.dispatcherConfig.VIDEO_CONFIGS) {
+            VideoDispatcher videoDispatcher = new VideoDispatcher(videoConfig, this);
+
+            Pair<VideoCapturer, VideoTrack> capturerAndTrack = mWebRTCManager.createSavedVideoTrack(videoConfig.PATH, videoDispatcher);
+            MediaStream mediaStream = mWebRTCManager.createMediaStream();
+            VideoCapturer videoCapturer = capturerAndTrack.first;
+            VideoTrack videoTrack = capturerAndTrack.second;
+            videoTrack.addSink(mInputView);
+            mediaStream.addTrack(videoTrack);
+            videoCapturer.startCapture(videoConfig.WIDTH, videoConfig.HEIGHT, videoConfig.FPS);
+
+            mVideoDispatchers.add(videoDispatcher);
         }
     }
 
     private void stopEdgeServer() {
-        Set<String> IPs = mDispatchers.keySet();
-        for (String ip : IPs) {
-            Dispatcher dispatcher = mDispatchers.remove(ip);
-            if (dispatcher != null) {
-                dispatcher.close();
+        if (!mConfig.dispatcherConfig.USE_LOCAL_VIDEO) {
+            Set<String> IPs = mDispatchers.keySet();
+            for (String ip : IPs) {
+                Dispatcher dispatcher = mDispatchers.remove(ip);
+                if (dispatcher != null) {
+                    dispatcher.close();
+                }
+            }
+        } else {
+            for (VideoDispatcher videoDispatcher : mVideoDispatchers) {
+                videoDispatcher.stopCapture();
             }
         }
         synchronized (this) {
@@ -117,7 +166,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
     private final PacketHandler webrtcTopicHandler = packet -> {
         if (mMqttManager.isLocalIP(packet.dstIp)) {
             if (packet.header.equals(WebRTCHeader.SDP.name())) {
-                mDispatchers.put(packet.srcIp, new Dispatcher(mConfig.dispatcherConfig, this,
+                mDispatchers.put(packet.srcIp, new Dispatcher(this,
                         packet.srcIp, mWebRTCManager, mInputView));
                 mDispatchers.get(packet.srcIp).handleSdpAndAnswer(packet.message);
             } else if (packet.header.equals(WebRTCHeader.ICE.name())) {
@@ -182,7 +231,7 @@ public class EdgeServer implements WebRTCCallback, Dispatcher.Callback, RoIExtra
 
     // Worker.Callback
     @Override
-    public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) {
+    public void enqueueInferenceResult(InferenceRequest request, List<BoundingBox> results) throws InterruptedException {
         if (mPatchReconstructor != null) {
             mPatchReconstructor.enqueueInferenceResult(request, results);
         }

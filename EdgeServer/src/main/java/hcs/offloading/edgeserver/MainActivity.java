@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -25,6 +26,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     private static final String TAG = MainActivity.class.getName();
 
     private static final String CONFIG_FILEPATH = "/data/local/tmp/edgeserver.json";
+    private static final boolean AUTO_START = true;
 
     private EditText mIpInput;
     private EditText mPortInput;
@@ -50,31 +52,40 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
 
         Switch connectButton = findViewById(R.id.connectButton);
         connectButton.setOnCheckedChangeListener(this);
+
+        if (AUTO_START) {
+            connectButton.setVisibility(View.INVISIBLE);
+            startEdgeServer();
+        }
     }
 
     @Override
     public void onCheckedChanged(CompoundButton button, boolean isChecked) {
         synchronized (this) {
             if (isChecked) {
-                String ip = mIpInput.getText().toString().trim();
-                int port = Integer.parseInt(mPortInput.getText().toString());
-                String uri = "tcp://" + ip + ":" + port;
-                try {
-                    mEdgeServer = new EdgeServer(
-                            new Config(CONFIG_FILEPATH),
-                            getApplicationContext(),
-                            uri,
-                            mInputView,
-                            this);
-                } catch (JSONException | IOException | IllegalArgumentException e) {
-                    Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
-                    mEdgeServer = null;
-                }
+                startEdgeServer();
             } else {
                 if (mEdgeServer != null) {
                     mEdgeServer.close();
                 }
             }
+        }
+    }
+
+    private void startEdgeServer() {
+        String ip = mIpInput.getText().toString().trim();
+        int port = Integer.parseInt(mPortInput.getText().toString());
+        String uri = "tcp://" + ip + ":" + port;
+        try {
+            mEdgeServer = new EdgeServer(
+                    new Config(CONFIG_FILEPATH),
+                    getApplicationContext(),
+                    uri,
+                    mInputView,
+                    this);
+        } catch (JSONException | IOException | IllegalArgumentException e) {
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+            mEdgeServer = null;
         }
     }
 

@@ -1,8 +1,7 @@
-package hcs.offloading.edgeserver;
+package hcs.offloading.edgeserver.model;
 
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
-import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.util.Log;
 
@@ -25,9 +24,10 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Vector;
 
+import hcs.offloading.edgeserver.Utils;
 import hcs.offloading.edgeserver.datatypes.BoundingBox;
 
-public class YoloV4Classifier {
+public class YoloV4Classifier implements Classifier {
     private final static String TAG = YoloV4Classifier.class.getName();
 
     private static final float OBJ_THRESHOLD = 0.5f;
@@ -35,31 +35,17 @@ public class YoloV4Classifier {
     private static final Vector<String> labels = new Vector<>();
 
     public final int INPUT_SIZE;
-    private final int[] OUTPUT_WIDTH_FULL;
+    private final int OUTPUT_WIDTH;
 
     private final Interpreter tfLite;
 
-    YoloV4Classifier(AssetManager assetManager, int size) {
+    public YoloV4Classifier(AssetManager assetManager, int size, boolean isTiny) {
+        assert size % 32 == 0;
         INPUT_SIZE = size;
-        String modelFilename;
-        switch (size) {
-            case 64:
-                modelFilename = "yolov4-64.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{252, 252};
-                break;
-            case 160:
-                modelFilename = "yolov4-160.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{1575, 1575};
-                break;
-            case 640:
-                modelFilename = "yolov4-640.tflite";
-                OUTPUT_WIDTH_FULL = new int[]{25200, 25200};
-                break;
-            default:
-                modelFilename = null;
-                OUTPUT_WIDTH_FULL = new int[]{-1, -1};
-                Log.e(TAG, "Wrong size : " + size);
-        }
+        String modelFilename = isTiny ?
+                "yolov4-tiny-" + size + ".tflite" :
+                "yolov4-" + size + ".tflite";
+        OUTPUT_WIDTH = (size / 32) * (size / 32) * (isTiny ? 15 : 63);
 
         try {
             InputStream labelsInput = assetManager.open("coco.txt");
@@ -87,8 +73,9 @@ public class YoloV4Classifier {
         tfLite = new Interpreter(loadModelFile(assetManager, modelFilename), options);
     }
 
-    public List<BoundingBox> recognizeImage(ByteBuffer byteBuffer, Bitmap bitmap) {
-        ArrayList<BoundingBox> detections = getDetectionsForFull(byteBuffer, bitmap);
+    @Override
+    public List<BoundingBox> recognizeImage(ByteBuffer byteBuffer, int originalWidth, int originalHeight) {
+        ArrayList<BoundingBox> detections = getDetectionsForFull(byteBuffer, originalWidth, originalHeight);
         return nms(detections);
     }
 
@@ -107,22 +94,21 @@ public class YoloV4Classifier {
         return buffer;
     }
 
-    private ArrayList<BoundingBox> getDetectionsForFull(ByteBuffer byteBuffer, Bitmap bitmap) {
+    private ArrayList<BoundingBox> getDetectionsForFull(ByteBuffer byteBuffer, int originalWidth, int originalHeight) {
         ArrayList<BoundingBox> detections = new ArrayList<>();
         Map<Integer, Object> outputMap = new HashMap<>();
-        outputMap.put(0, new float[1][OUTPUT_WIDTH_FULL[0]][4]);
-        outputMap.put(1, new float[1][OUTPUT_WIDTH_FULL[1]][labels.size()]);
+        outputMap.put(0, new float[1][OUTPUT_WIDTH][4]);
+        outputMap.put(1, new float[1][OUTPUT_WIDTH][labels.size()]);
         Object[] inputArray = {byteBuffer};
         long start = System.nanoTime();
         tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
         long end = System.nanoTime();
-        Log.d(TAG, "inference time: " + (end - start) / 1000000.0f);
+        Log.v(TAG, "Inference time (us): " + (end - start) / 1000);
 
-        int gridWidth = OUTPUT_WIDTH_FULL[0];
         float[][][] bboxes = (float[][][]) outputMap.get(0);
         float[][][] out_score = (float[][][]) outputMap.get(1);
 
-        for (int i = 0; i < gridWidth; i++) {
+        for (int i = 0; i < OUTPUT_WIDTH; i++) {
             float maxClass = 0;
             int detectedClass = -1;
             final float[] classes = new float[labels.size()];
@@ -142,17 +128,17 @@ public class YoloV4Classifier {
                 final float w = bboxes[0][i][2];
                 final float h = bboxes[0][i][3];
                 final Rect rect = new Rect(
-                        (int) (Math.max(0, xPos - w / 2) * bitmap.getWidth() / INPUT_SIZE),
-                        (int) (Math.max(0, yPos - h / 2) * bitmap.getHeight() / INPUT_SIZE),
-                        (int) (Math.min(INPUT_SIZE - 1, xPos + w / 2) * bitmap.getWidth() / INPUT_SIZE),
-                        (int) (Math.min(INPUT_SIZE - 1, yPos + h / 2) * bitmap.getHeight() / INPUT_SIZE));
+                        (int) (Math.max(0, xPos - w / 2) * originalWidth / INPUT_SIZE),
+                        (int) (Math.max(0, yPos - h / 2) * originalHeight / INPUT_SIZE),
+                        (int) (Math.min(INPUT_SIZE - 1, xPos + w / 2) * originalWidth / INPUT_SIZE),
+                        (int) (Math.min(INPUT_SIZE - 1, yPos + h / 2) * originalHeight / INPUT_SIZE));
                 detections.add(new BoundingBox(rect, score, detectedClass, labels.get(detectedClass)));
             }
         }
         return detections;
     }
 
-    public static List<BoundingBox> nms(List<BoundingBox> list) {
+    private static List<BoundingBox> nms(List<BoundingBox> list) {
         ArrayList<BoundingBox> nmsList = new ArrayList<>();
 
         for (int k = 0; k < labels.size(); k++) {
