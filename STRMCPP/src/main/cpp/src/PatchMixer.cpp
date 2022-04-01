@@ -1,0 +1,118 @@
+#include "PatchMixer.hpp"
+
+namespace rm {
+
+void PatchMixer::reset() {
+    mPackedFrames = std::vector<Frame>();
+    mFreeRects.clear();
+    mFreeRects.emplace_back(0, 0, mConfig.MIXED_FRAME_SIZE, mConfig.MIXED_FRAME_SIZE);
+}
+
+PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
+    assert(currFrame != nullptr);
+    std::lock_guard<std::mutex> patchMixerLock(mPatchMixerMtx);
+    auto finishedKeysIt = mFinishedKeys.find(currFrame->key);
+    if (finishedKeysIt != mFinishedKeys.end()) {
+        mFinishedKeys.erase(finishedKeysIt);
+        return FINISHED;
+    }
+    bool isAllPacked = true;
+    for (RoI roi : currFrame->getRoIs()) {
+        std::pair<int, int> wh = roi.getResizedWidthHeight();
+        bool isPacked = false;
+        for (auto it = mFreeRects.begin(); it != mFreeRects.end(); it++) {
+            Rect freeRect = *it;
+            if (canFit(wh, freeRect)) {
+                mFreeRects.erase(it);
+                roi.packedLocation = std::make_pair(freeRect.left, freeRect.top);
+                std::pair<Rect, Rect> newFreeRectPair = splitFreeRect(wh, freeRect);
+                mFreeRects.push_back(newFreeRectPair.first);
+                mFreeRects.push_back(newFreeRectPair.second);
+                isPacked = true;
+                break;
+            }
+        }
+        isAllPacked &= isPacked;
+    }
+
+    mPackedFrames.push_back(currFrame);
+    int minPackedFrameIndex = INT_MAX;
+    for (const Frame* frame : mPackedFrames) {
+        if (minPackedFrameIndex > frame->frameIndex) {
+            minPackedFrameIndex = frame->frameIndex;
+        }
+    }
+    int numPackedFrames = currFrame->frameIndex - minPackedFrameIndex + 1;
+    if (!isAllPacked || numPackedFrames >= mConfig.MAX_PACKED_FRAMES) {
+        Status status = FINISHED;
+        if (countPackedFrame(currFrame.key) >= 2) {
+            mPackedFrames.erase(std::find(mPackedFrames.begin(), mPackedFrames.end(), currFrame));
+            status = FINISHED_AND_PROCESS_LAST_FRAME_AGAIN;
+        }
+        if (mConfig.PACKING) {
+            cv::Mat mixedImage = getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE);
+            MixedFrame mixedFrame(std::move(mixedImage), mPackedFrames);
+            mixedFrame.setHandle(mInferenceEngine->enqueue(mixedImage, false));
+            mPatchReconstructor->enqueue(std::move(mixedFrame));
+        } else {
+            MixedFrame mixedFrame(cv::Mat(), mPackedFrames);
+            for (Frame* frame : mixedFrame.packedFrames) {
+                for (RoI& roi : frame->getRoIs()) {
+                    roi.setHandle(mInferenceEngine->enqueue(*roi.getMat(), false));
+                }
+            }
+            mPatchReconstructor->enqueue(std::move(mixedFrame));
+        }
+        mFinishedKeys.clear();
+        for (Frame* frame : mPackedFrames) {
+            mFinishedKeys.insert(frame->key);
+        }
+        mFinishedKeys.erase(currFrame->key);
+        reset();
+        return status;
+    } else {
+        return CONTINUE_PACKING;
+    }
+}
+
+int PatchMixer::countPackedFrame(const std::string& key) {
+    int count = 0;
+    for (Frame* frame : mPackedFrames) {
+        if (frame->key == key) {
+            count++;
+        }
+    }
+    return count;
+}
+
+cv::Mat PatchMixer::getMixedImage(const std::vector<Frame*>& frames, int mixedFrameSize) {
+    cv::Mat mat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
+    for (Frame* frame : frames) {
+        for (RoI& roi : frame->getRoIs()) {
+            if (roi.isPacked()) {
+                const cv::Mat* resizedRoI = roi.getResizedMat();
+//                resizedRoI.copyTo()
+            }
+        }
+    }
+    return mat;
+}
+
+bool PatchMixer::canFit(std::pair<int, int> wh, Rect rect) {
+    return wh.first <= rect.width() && wh.second <= rect.height();
+}
+
+std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, Rect rect) {
+    int w = wh.first;
+    int h = wh.second;
+    if (rect.width() > rect.height()) {
+        return std::make_pair(Rect(rect.left + w, rect.top, rect.right, rect.bottom),
+                              Rect(rect.left, rect.top + h, rect.left + w, rect.bottom));
+    } else {
+        return std::make_pair(Rect(rect.left, rect.top + h, rect.right, rect.bottom),
+                              Rect(rect.left + w, rect.top, rect.right, rect.top + h));
+    }
+}
+
+
+} // namespace rm

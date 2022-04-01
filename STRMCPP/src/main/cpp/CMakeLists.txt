@@ -30,7 +30,6 @@ add_library(
         ${strmcpp_jni_src}
 )
 
-
 add_library(
         jsoncpp
         SHARED

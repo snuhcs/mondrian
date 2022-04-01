@@ -4,7 +4,7 @@ import android.graphics.Bitmap;
 
 public class SpatioTemporalRoIMixer {
 
-    private long strmHandle;
+    private final long strmHandle;
 
     SpatioTemporalRoIMixer() {
         strmHandle = createSpatioTemporalRoIMixer();
