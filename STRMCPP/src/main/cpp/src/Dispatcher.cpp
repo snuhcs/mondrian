@@ -25,7 +25,7 @@ void Dispatcher::process(Frame*& currFrame) {
   } else {
     std::vector<BoundingBox> prevResults = getPrevBoxes();
     mRoIExtractor.process(std::make_pair(std::make_pair(mPrevFrame, currFrame), prevResults));
-    std::sort(currFrame->boxes.begin(), currFrame->boxes.end(), [this](const auto& lhs, const auto& rhs) {
+    std::sort(currFrame->rois.begin(), currFrame->rois.end(), [this](const RoI& lhs, const RoI& rhs) -> bool {
       return mRoIPrioritizer->priority(lhs) < mRoIPrioritizer->priority(rhs);
     });
     for (auto& roi : currFrame->rois) {
@@ -84,6 +84,24 @@ std::vector<BoundingBox> Dispatcher::getResults(int frameIndex) {
     return mFrames.at(frameIndex)->isResultReady.load();
   });
   return mFrames.at(frameIndex)->boxes;
+}
+
+void Dispatcher::enqueue(Frame* item) {
+  std::unique_lock<std::mutex> lock(mItemsMtx);
+  mItemsCV.wait(lock, [this] {
+    return mItems.size() < mMaxNumItems;
+  });
+  mItems.push(item);
+}
+
+Frame* Dispatcher::takeItem() {
+  std::unique_lock<std::mutex> lock(mItemsMtx);
+  mItemsCV.wait(lock, [this] {
+    return !mItems.empty();
+  });
+  Frame* item = mItems.front();
+  mItems.pop();
+  return item;
 }
 
 } // namespace rm

@@ -17,22 +17,28 @@
 
 namespace rm {
 
-class SpatioTemporalRoIMixer : ConsumerCallback<MixedFrame> {
+class SpatioTemporalRoIMixer : PatchReconstructorCallback {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
                          ResizeProfile* resizeProfile,
                          RoIPrioritizer* roIPrioritizer,
                          InferenceEngine* inferenceEngine)
-          : mResizeProfile(resizeProfile),
-            mRoIPrioritizer(roIPrioritizer),
-            mInferenceEngine(inferenceEngine),
+          : mResizeProfile(std::move(resizeProfile)),
+            mRoIPrioritizer(std::move(roIPrioritizer)),
+            mInferenceEngine(std::move(inferenceEngine)),
             mDispatcherConfig(config.dispatcherConfig),
             mRoIExtractorConfig(config.roIExtractorConfig),
             isClosed(false) {
     mPatchReconstructor = std::make_unique<PatchReconstructor>(
-            config.patchReconstructorConfig, inferenceEngine, (ConsumerCallback<MixedFrame>*) this);
+            config.patchReconstructorConfig, inferenceEngine, (PatchReconstructorCallback*) this);
     mPatchMixer = std::make_unique<PatchMixer>(
             config.patchMixerConfig, inferenceEngine, mPatchReconstructor.get());
+  }
+
+  ~SpatioTemporalRoIMixer() {
+    delete mResizeProfile;
+    delete mRoIPrioritizer;
+    delete mInferenceEngine;
   }
 
   void enqueueImage(const std::string& key, int frameIndex, const cv::Mat* mat);
@@ -45,14 +51,14 @@ class SpatioTemporalRoIMixer : ConsumerCallback<MixedFrame> {
 
   void close();
 
- private:
   void onProcessEnd(MixedFrame& mixedFrame) override;
 
+ private:
   std::atomic_bool isClosed;
 
-  std::unique_ptr<ResizeProfile> mResizeProfile;
-  std::unique_ptr<RoIPrioritizer> mRoIPrioritizer;
-  std::unique_ptr<InferenceEngine> mInferenceEngine;
+  ResizeProfile* mResizeProfile;
+  RoIPrioritizer* mRoIPrioritizer;
+  InferenceEngine* mInferenceEngine;
 
   std::unique_ptr<PatchMixer> mPatchMixer;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;

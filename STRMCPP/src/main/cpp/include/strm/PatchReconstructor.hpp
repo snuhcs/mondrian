@@ -1,23 +1,38 @@
 #ifndef PATCH_RECONSTRUCTOR_HPP_
 #define PATCH_RECONSTRUCTOR_HPP_
 
+#include <queue>
+#include <thread>
+
 #include "Config.hpp"
-#include "Consumer.hpp"
+#include "PatchReconstructorCallback.hpp"
 #include "DataType.hpp"
 #include "InferenceEngine.hpp"
 
 namespace rm {
 
-class PatchReconstructor : public Consumer<MixedFrame> {
+class PatchReconstructor {
  public:
   PatchReconstructor(PatchReconstructorConfig config,
                      InferenceEngine* inferenceEngine,
-                     ConsumerCallback<MixedFrame>* callback)
-          : Consumer<MixedFrame>(config.MAX_QUEUE_SIZE, callback),
-            mConfig(config),
-            mInferenceEngine(inferenceEngine) {};
+                     PatchReconstructorCallback* callback)
+          : mConfig(config),
+            mInferenceEngine(inferenceEngine),
+            mCallback(callback) {
+    mThread = std::thread([this]() {
+      while (!isClosed.load()) {
+        MixedFrame item = takeItem();
+        process(item);
+        mCallback->onProcessEnd(item);
+      }
+    });
+  };
 
-  void process(MixedFrame& item) override;
+  void process(MixedFrame& item);
+
+  void enqueue(const MixedFrame& item);
+
+  MixedFrame takeItem();
 
  private:
   static void updateMixedFrameInferenceResults(
@@ -27,6 +42,15 @@ class PatchReconstructor : public Consumer<MixedFrame> {
 
   PatchReconstructorConfig mConfig;
   InferenceEngine* mInferenceEngine;
+
+  std::atomic_bool isClosed;
+  std::thread mThread;
+  PatchReconstructorCallback* mCallback;
+
+  int mMaxNumItems;
+  std::queue<MixedFrame> mItems;
+  std::condition_variable mItemsCV;
+  std::mutex mItemsMtx;
 };
 
 } // namespace rm

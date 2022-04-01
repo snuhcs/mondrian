@@ -29,7 +29,7 @@ class RoIExtractor {
           const Frame* prevFrame, const Frame* currFrame,
           const std::vector<BoundingBox>& boundingBoxes, const cv::Size& targetSize);
 
-  static std::vector<std::vector<int>> getBoundingBoxShifts(
+  static std::vector<std::pair<int, int>> getBoundingBoxShifts(
           const cv::Mat* prevImage, const cv::Mat* currImage,
           const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize);
 

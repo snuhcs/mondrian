@@ -1,7 +1,5 @@
 #include "strm/PatchReconstructor.hpp"
 
-#include <algorithm>
-
 namespace rm {
 
 void PatchReconstructor::process(MixedFrame& mixedFrame) {
@@ -67,6 +65,24 @@ void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
       }
     }
   }
+}
+
+void PatchReconstructor::enqueue(const MixedFrame& item) {
+  std::unique_lock<std::mutex> lock(mItemsMtx);
+  mItemsCV.wait(lock, [this] {
+    return mItems.size() < mMaxNumItems;
+  });
+  mItems.push(item);
+}
+
+MixedFrame PatchReconstructor::takeItem() {
+  std::unique_lock<std::mutex> lock(mItemsMtx);
+  mItemsCV.wait(lock, [this] {
+    return !mItems.empty();
+  });
+  MixedFrame item = mItems.front();
+  mItems.pop();
+  return item;
 }
 
 } // namespace rm

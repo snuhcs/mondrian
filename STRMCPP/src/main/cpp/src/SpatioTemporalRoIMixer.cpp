@@ -37,7 +37,7 @@ void SpatioTemporalRoIMixer::addSource(const std::string& key) {
   if (mDispatchers.find(key) == mDispatchers.end()) {
     mDispatchers.insert(std::make_pair(key, std::make_unique<Dispatcher>(
             mDispatcherConfig, mRoIExtractorConfig,
-            mResizeProfile.get(), mRoIPrioritizer.get(), mInferenceEngine.get(),
+            mResizeProfile, mRoIPrioritizer, mInferenceEngine,
             mPatchMixer.get())));
   }
 }

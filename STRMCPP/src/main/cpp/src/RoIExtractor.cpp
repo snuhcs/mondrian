@@ -88,22 +88,23 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
   int height = currFrame->mat->rows;
 
   std::vector<Rect> boundingRects;
+  boundingRects.reserve(boundingBoxes.size());
   for (const auto& bbx : boundingBoxes) {
     boundingRects.emplace_back(bbx.location);
   }
 
   std::vector<RoI> opticalFlowRoIs;
   if (!boundingBoxes.empty()) {
-    const std::vector<std::vector<int>>& shifts = getBoundingBoxShifts(
+    const std::vector<std::pair<int, int>>& shifts = getBoundingBoxShifts(
             prevFrame->mat, currFrame->mat, boundingRects, targetSize);
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
-      std::vector<int> shift = shifts.at(boxIndex);
+      const std::pair<int, int>& shift = shifts.at(boxIndex);
       const BoundingBox& box = boundingBoxes.at(boxIndex);
       const Rect& loc = box.location;
-      int newLeft = std::max(0, loc.left + shift[0]);
-      int newTop = std::max(0, loc.top + shift[1]);
-      int newRight = std::min(width, loc.right + shift[0]);
-      int newBottom = std::min(height, loc.bottom + shift[1]);
+      int newLeft = std::max(0, loc.left + shift.first);
+      int newTop = std::max(0, loc.top + shift.second);
+      int newRight = std::min(width, loc.right + shift.first);
+      int newBottom = std::min(height, loc.bottom + shift.second);
       if (newLeft < newRight && newTop < newBottom) {
         opticalFlowRoIs.emplace_back(
                 currFrame, Rect(newLeft, newTop, newRight, newBottom),
@@ -114,7 +115,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
   return opticalFlowRoIs;
 }
 
-std::vector<std::vector<int>> RoIExtractor::getBoundingBoxShifts(
+std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
         const cv::Mat* prevImage, const cv::Mat* currImage,
         const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
   assert(prevImage != nullptr && currImage != nullptr);
@@ -143,8 +144,7 @@ std::vector<std::vector<int>> RoIExtractor::getBoundingBoxShifts(
     // might not work... replaces p0.fromList(centroids); p0 is Point2f,
     p0.push_back(bbxCentroidPoints);
   }
-  cv::TermCriteria criteria(cv::TermCriteria::COUNT
-  +cv::TermCriteria::EPS, 10, 0.03);
+  cv::TermCriteria criteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
   cv::calcOpticalFlowPyrLK(prevMat, currMat, p0, p1, status, err, cv::Size(15, 15), 2, criteria);
 
   uchar StatusArr[status.size()];
@@ -153,19 +153,16 @@ std::vector<std::vector<int>> RoIExtractor::getBoundingBoxShifts(
   cv::Point p1Arr[p1.size()];
   std::copy(p1.begin(), p1.end(), p1Arr);
 
-  int shifts[centroids.size()][2];
+  std::vector<std::pair<int, int>> shifts;
   for (int pointIdx = 0; pointIdx < centroids.size(); pointIdx++) {
     if (StatusArr[pointIdx] == 1) {
-      shifts[pointIdx][0] = (int) ((p1Arr[pointIdx].x = centroids.at(pointIdx).x)
-                                   * currImage->cols / targetSize.width);
-      shifts[pointIdx][1] = (int) ((p1Arr[pointIdx].y - centroids.at(pointIdx).y)
-                                   * currImage->rows / targetSize.height);
+      shifts.emplace_back((int) ((p1Arr[pointIdx].x - centroids.at(pointIdx).x) * currImage->cols / targetSize.width),
+                          (int) ((p1Arr[pointIdx].y - centroids.at(pointIdx).y) * currImage->rows / targetSize.height));
     } else {
-      shifts[pointIdx][0] = 0;
-      shifts[pointIdx][1] = 0;
+      shifts.emplace_back(0, 0);
     }
   }
-
+  return shifts;
 }
 
 std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Frame* currFrame,
@@ -197,7 +194,7 @@ std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Fr
 
   std::vector<RoI> rois;
   rois.reserve(boxes.size());
-  for (const Rect& box : boxes) {
+  for (Rect& box : boxes) {
     rois.emplace_back(currFrame, box, RoI::PD, "");
   }
   return rois;

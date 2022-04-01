@@ -18,16 +18,18 @@ link_directories(lib)
 # You can define multiple libraries, and CMake builds them for you.
 # Gradle automatically packages shared libraries with your APK.
 
-file(GLOB strmcpp_src ${CMAKE_SOURCE_DIR}/src/*.cpp)
-file(GLOB strmcpp_jni_src ${CMAKE_SOURCE_DIR}/jni/*.cpp)
-
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_library(
         strmcpp         # Sets the name of the library.
         SHARED          # Sets the library as a shared library.
-        ${strmcpp_src}  # Provides a relative path to your source file(s).
-        ${strmcpp_jni_src}
+        src/Config.cpp  # Provides a relative path to your source file(s).
+        src/Dispatcher.cpp
+        src/PatchMixer.cpp
+        src/PatchReconstructor.cpp
+        src/RoIExtractor.cpp
+        src/SpatioTemporalRoIMixer.cpp
+        jni/SpatioTemporalRoIMixer_jni.cpp
 )
 
 add_library(
@@ -57,6 +59,7 @@ target_link_libraries(
         jsoncpp
         opencv_core
         opencv_dnn
+        opencv_video
         opencv_imgcodecs
         opencv_imgproc
         tensorflowlite

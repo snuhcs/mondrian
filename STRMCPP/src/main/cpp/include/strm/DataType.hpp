@@ -19,8 +19,8 @@ struct Rect {
 
   Rect() {};
 
-  Rect(const int left, const int top, const int right, const int bottom)
-          : left(left), top(top), right(right), bottom(bottom) {};
+  Rect(int left, int top, int right, int bottom)
+  : left(left), top(top), right(right), bottom(bottom) {};
 
   Rect(const Rect& r)
   : left(r.left), top(r.top), right(r.right), bottom(r.bottom) {};
@@ -54,17 +54,17 @@ struct Rect {
 };
 
 struct BoundingBox {
-  const Rect location;
-  const float confidence;
-  const std::string labelName;
+  Rect location;
+  float confidence;
+  std::string labelName;
 
   BoundingBox(const Rect location, const float confidence, const std::string& labelName)
           : location(location), confidence(confidence), labelName(labelName) {}
 };
 
 struct Frame {
-  const std::string key;
-  const int frameIndex;
+  std::string key;
+  int frameIndex;
   const cv::Mat* mat;
 
   std::atomic_bool isResultReady;
@@ -87,7 +87,7 @@ struct RoI {
   };
 
   const Frame* frame;
-  const Rect location;
+  Rect location;
 
   int handle;
   std::vector<BoundingBox> boxes;
@@ -99,22 +99,11 @@ struct RoI {
   Type type;
   std::string labelName;
 
-//  RoI(const RoI& o)
-//  : frame(o.frame),
-//  location(o.location),
-//  handle(o.handle),
-//  boxes(o.boxes),
-//  minOriginLength(o.minOriginLength),
-//  scale(o.scale),
-//  packedLocation(o.packedLocation),
-//  type(o.type),
-//  labelName(o.labelName) {};
-
-  RoI(const Frame* frame, const Rect& location, Type type, std::string labelName)
+  RoI(const Frame* frame, Rect location, Type type, std::string labelName)
           : frame(frame), location(location), type(type), labelName(labelName),
             packedLocation(std::make_pair(-1, -1)) {};
 
-  RoI(const Frame* frame, const Rect& location, Type type, std::string labelName, int minOriginLength)
+  RoI(const Frame* frame, Rect location, Type type, std::string labelName, int minOriginLength)
           : frame(frame), location(location), type(type), labelName(labelName),
             minOriginLength(minOriginLength),
             packedLocation(std::make_pair(-1, -1)) {};

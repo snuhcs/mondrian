@@ -16,8 +16,9 @@ class CppInferenceEngine : public InferenceEngine {
 
   int enqueue(const cv::Mat& mat, bool isFull) {
     std::unique_lock<std::mutex> inputLock(inputMtx);
-    inputs.push(std::make_pair(mHandle++, mat));
+    inputs.push(std::make_pair(mHandle, mat));
     inputCv.notify_all();
+    return mHandle++;
   }
 
   std::pair<int, const cv::Mat&> getInput() {
@@ -85,6 +86,7 @@ class Worker {
     cv::cvtColor(processedImage, processedImage, CV_BGRA2RGB);
     cv::resize(processedImage, processedImage, cv::Size(960, 960));
     cv::divide(1.0/255.0, processedImage, processedImage);
+    return processedImage;
   }
 
   CppInferenceEngine* engine;

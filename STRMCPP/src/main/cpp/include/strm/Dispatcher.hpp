@@ -8,7 +8,7 @@
 
 #include "DataType.hpp"
 #include "Config.hpp"
-#include "Consumer.hpp"
+#include "PatchReconstructorCallback.hpp"
 #include "RoIExtractor.hpp"
 #include "PatchMixer.hpp"
 #include "RoIPrioritizer.hpp"
@@ -17,7 +17,7 @@
 
 namespace rm {
 
-class Dispatcher : public Consumer<Frame*> {
+class Dispatcher {
  public:
   Dispatcher(DispatcherConfig config,
              RoIExtractorConfig roIExtractorConfig,
@@ -25,20 +25,31 @@ class Dispatcher : public Consumer<Frame*> {
              RoIPrioritizer* roIPrioritizer,
              InferenceEngine* inferenceEngine,
              PatchMixer* patchMixer)
-          : Consumer<Frame*>(config.MAX_QUEUE_SIZE, nullptr),
-            mConfig(std::move(config)),
+          : mConfig(std::move(config)),
             mRoIExtractor(roIExtractorConfig),
             mResizeProfile(resizeProfile),
             mRoIPrioritizer(roIPrioritizer),
             mInferenceEngine(inferenceEngine),
-            mPatchMixer(patchMixer) {}
+            mPatchMixer(patchMixer) {
+    mThread = std::thread([this]() {
+      while (!isClosed.load()) {
+        Frame* item = takeItem();
+        process(item);
+      }
+    });
+  };
 
   void notifyResults();
 
   std::vector<BoundingBox> getResults(int frameIndex);
 
+  void process(Frame*& currFrame);
+
+  void enqueue(Frame* item);
+
+  Frame* takeItem();
+
  private:
-  void process(Frame*& currFrame) override;
 
   std::vector<BoundingBox> getPrevBoxes();
 
@@ -55,6 +66,14 @@ class Dispatcher : public Consumer<Frame*> {
   ResizeProfile* mResizeProfile;
   InferenceEngine* mInferenceEngine;
   PatchMixer* mPatchMixer;
+
+  std::atomic_bool isClosed;
+  std::thread mThread;
+
+  int mMaxNumItems;
+  std::queue<Frame*> mItems;
+  std::condition_variable mItemsCV;
+  std::mutex mItemsMtx;
 };
 
 } // namespace rm

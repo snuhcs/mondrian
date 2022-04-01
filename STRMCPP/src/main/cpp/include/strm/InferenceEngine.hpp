@@ -14,6 +14,8 @@ class InferenceEngine {
   virtual int enqueue(const cv::Mat& mat, bool isFull) = 0;
 
   virtual std::vector<BoundingBox> getResults(const int handle) = 0;
+
+  virtual ~InferenceEngine() {};
 };
 
 }

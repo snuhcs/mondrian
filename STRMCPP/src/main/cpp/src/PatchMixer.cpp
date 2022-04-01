@@ -53,7 +53,7 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
       cv::Mat mixedImage = getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE);
       MixedFrame mixedFrame(mixedImage.clone(), mPackedFrames);
       mixedFrame.handle = mInferenceEngine->enqueue(mixedImage, false);
-      mPatchReconstructor->enqueue(std::move(mixedFrame));
+      mPatchReconstructor->enqueue(mixedFrame);
     } else {
       MixedFrame mixedFrame(cv::Mat(), mPackedFrames);
       for (Frame* frame : mixedFrame.packedFrames) {
@@ -61,7 +61,7 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
           roi.handle = mInferenceEngine->enqueue(roi.getMat(), false);
         }
       }
-      mPatchReconstructor->enqueue(std::move(mixedFrame));
+      mPatchReconstructor->enqueue(mixedFrame);
     }
     mFinishedKeys.clear();
     for (Frame* frame : mPackedFrames) {
