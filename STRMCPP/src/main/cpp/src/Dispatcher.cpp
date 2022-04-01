@@ -2,9 +2,12 @@
 
 #include <cassert>
 
+#include "strm/Log.hpp"
+
 namespace rm {
 
 void Dispatcher::process(Frame*& currFrame) {
+  LOGD("Dispatcher::process");
   assert(currFrame != nullptr && mPrevFrame == nullptr || mPrevFrame->frameIndex + 1 == currFrame->frameIndex);
   /* Cases
    * 1. Full frame inference
@@ -50,6 +53,7 @@ void Dispatcher::process(Frame*& currFrame) {
 }
 
 std::vector<BoundingBox> Dispatcher::getPrevBoxes() {
+  LOGD("Dispatcher::getPrevBoxes");
   std::vector<BoundingBox> prevResults;
   if (!mRoIExtractor.useOpticalFlowRoIs()) {
     return prevResults;
@@ -75,18 +79,21 @@ std::vector<BoundingBox> Dispatcher::getPrevBoxes() {
 }
 
 void Dispatcher::notifyResults() {
+  LOGD("Dispatcher::notifyResults");
   cv.notify_all();
 }
 
 std::vector<BoundingBox> Dispatcher::getResults(int frameIndex) {
+  LOGD("Dispatcher::getResults");
   std::unique_lock<std::mutex> lock(mtx);
   cv.wait(lock, [this, &frameIndex]() {
-    return mFrames.at(frameIndex)->isResultReady.load();
+    return mFrames.find(frameIndex) != mFrames.end() && mFrames.at(frameIndex)->isResultReady.load();
   });
   return mFrames.at(frameIndex)->boxes;
 }
 
 void Dispatcher::enqueue(Frame* item) {
+  LOGD("Dispatcher::enqueue");
   std::unique_lock<std::mutex> lock(mItemsMtx);
   mItemsCV.wait(lock, [this] {
     return mItems.size() < mMaxNumItems;
@@ -95,6 +102,7 @@ void Dispatcher::enqueue(Frame* item) {
 }
 
 Frame* Dispatcher::takeItem() {
+  LOGD("Dispatcher::takeItem");
   std::unique_lock<std::mutex> lock(mItemsMtx);
   mItemsCV.wait(lock, [this] {
     return !mItems.empty();

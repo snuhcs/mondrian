@@ -101,7 +101,8 @@ public class WebRTCSource implements VideoSink, Runnable {
         Bitmap bitmap = yuvFrame.getBitmap();
         Mat mat = new Mat();
         Utils.bitmapToMat(bitmap, mat);
-        strm.enqueueImage(mSourceIP, mFrameIndex++, mat);
+        strm.enqueueImage(mSourceIP, mFrameIndex++, mat.clone());
+        mat.release();
     }
 
     void handleSdpAndAnswer(String message) {

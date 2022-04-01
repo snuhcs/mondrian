@@ -6,6 +6,17 @@ import java.util.List;
 
 public class SpatioTemporalRoIMixer {
 
+    static {
+        System.loadLibrary("opencv_core");
+        System.loadLibrary("opencv_dnn");
+        System.loadLibrary("opencv_video");
+        System.loadLibrary("opencv_imgcodecs");
+        System.loadLibrary("opencv_imgproc");
+        System.loadLibrary("tensorflowlite");
+        System.loadLibrary("tensorflowlite_gpu_delegate");
+        System.loadLibrary("strmcpp");
+    }
+
     private final long handle;
 
     public SpatioTemporalRoIMixer() {

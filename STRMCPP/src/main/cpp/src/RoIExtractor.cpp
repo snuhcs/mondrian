@@ -2,6 +2,8 @@
 
 #include "opencv2/video/tracking.hpp"
 
+#include "strm/Log.hpp"
+
 namespace rm {
 
 bool RoIExtractor::useOpticalFlowRoIs() const {
@@ -10,6 +12,7 @@ bool RoIExtractor::useOpticalFlowRoIs() const {
 
 void
 RoIExtractor::process(const std::pair<std::pair<Frame*, Frame*>, std::vector<BoundingBox>>& item) {
+  LOGD("RoIExtractor::process");
   Frame* prevFrame = item.first.first;
   Frame* currFrame = item.first.second;
 

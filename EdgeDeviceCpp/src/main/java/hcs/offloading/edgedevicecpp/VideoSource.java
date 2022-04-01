@@ -7,6 +7,7 @@ import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.util.Log;
 
+import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 import org.webrtc.TextureBufferImpl;
@@ -22,6 +23,11 @@ import hcs.offloading.strmcpp.BoundingBox;
 
 public class VideoSource extends CustomCapturer implements Runnable {
     private static final String TAG = VideoSource.class.getName();
+
+    static {
+        if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
+        else Log.d("OpenCV", "OpenCV loaded Successfully");
+    }
 
     private final int startIndex = 0;
     private final String VIDEO_PATH;
@@ -90,7 +96,8 @@ public class VideoSource extends CustomCapturer implements Runnable {
 
                 Mat mat = new Mat();
                 Utils.bitmapToMat(bitmap, mat);
-                strm.enqueueImage(VIDEO_PATH, frameIndex, mat);
+                strm.enqueueImage(VIDEO_PATH, frameIndex, mat.clone());
+                mat.release();
             }
         });
         captureThread.start();

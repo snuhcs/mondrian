@@ -2,6 +2,8 @@
 
 #include <fstream>
 
+#include "strm/Log.hpp"
+
 namespace rm {
 
 DispatcherConfig parseDispatcherConfig(const Json::Value& json) {
@@ -76,13 +78,16 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   STRMConfig strmConfig;
   std::ifstream jsonFile(jsonPath, std::ifstream::binary);
   if (!jsonFile.is_open()) {
+    LOGE("Cannot open config file");
     return strmConfig;
   }
   Json::Value json;
   jsonFile >> json;
   if (!json.isObject()) {
+    LOGE("Json parsing failed");
     return strmConfig;
   }
+  LOGD("STRMConfig : %s", json.toStyledString().c_str());
   if (!json["dispatcher"].isNull()) {
     strmConfig.dispatcherConfig = parseDispatcherConfig(json["dispatcher"]);
   }

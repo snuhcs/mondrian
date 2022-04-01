@@ -8,6 +8,7 @@
 
 #include "DataType.hpp"
 #include "Config.hpp"
+#include "Log.hpp"
 #include "PatchReconstructorCallback.hpp"
 #include "RoIExtractor.hpp"
 #include "PatchMixer.hpp"
@@ -30,7 +31,9 @@ class Dispatcher {
             mResizeProfile(resizeProfile),
             mRoIPrioritizer(roIPrioritizer),
             mInferenceEngine(inferenceEngine),
-            mPatchMixer(patchMixer) {
+            mPatchMixer(patchMixer),
+            mMaxNumItems(config.MAX_QUEUE_SIZE) {
+    LOGD("Dispatcher()");
     mThread = std::thread([this]() {
       while (!isClosed.load()) {
         Frame* item = takeItem();

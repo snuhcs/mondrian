@@ -7,6 +7,7 @@
 #include <string>
 
 #include "Config.hpp"
+#include "Log.hpp"
 #include "ResizeProfile.hpp"
 #include "RoIPrioritizer.hpp"
 #include "InferenceEngine.hpp"
@@ -29,6 +30,7 @@ class SpatioTemporalRoIMixer : PatchReconstructorCallback {
             mDispatcherConfig(config.dispatcherConfig),
             mRoIExtractorConfig(config.roIExtractorConfig),
             isClosed(false) {
+    LOGD("SpatioTemporalRoIMixer()");
     mPatchReconstructor = std::make_unique<PatchReconstructor>(
             config.patchReconstructorConfig, inferenceEngine, (PatchReconstructorCallback*) this);
     mPatchMixer = std::make_unique<PatchMixer>(

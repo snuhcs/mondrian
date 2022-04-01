@@ -8,6 +8,8 @@
 #include "CppInferenceEngine.hpp"
 #include "JavaInferenceEngine.hpp"
 
+static jboolean isCopy = JNI_TRUE;
+
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(JNIEnv* env,
@@ -26,7 +28,7 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_enqueueImage(JNIEnv* env, job
                                                                 jint frameIndex, jlong matAddr) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   auto* image = (cv::Mat*) matAddr;
-  const char* k = env->GetStringUTFChars(key, JNI_FALSE);
+  const char* k = env->GetStringUTFChars(key, &isCopy);
   strm->enqueueImage(std::string(k), frameIndex, image);
 }
 
@@ -36,7 +38,7 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_getResults(JNIEnv* env, jobje
                                                               jlong handle, jstring key,
                                                               jint frame_index) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  const char* k = env->GetStringUTFChars(key, JNI_FALSE);
+  const char* k = env->GetStringUTFChars(key, &isCopy);
   std::vector<rm::BoundingBox> results = strm->getResults(std::string(k), frame_index);
 
   jclass class_ArrayList = env->FindClass("java/util/ArrayList");
@@ -62,7 +64,7 @@ JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_addSource(JNIEnv* env, jobject thiz,
                                                              jlong handle, jstring key) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  const char* k = env->GetStringUTFChars(key, JNI_FALSE);
+  const char* k = env->GetStringUTFChars(key, &isCopy);
   strm->addSource(std::string(k));
 }
 
@@ -71,7 +73,7 @@ JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_removeSource(JNIEnv* env, jobject thiz,
                                                                 jlong handle, jstring key) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  const char* k = env->GetStringUTFChars(key, JNI_FALSE);
+  const char* k = env->GetStringUTFChars(key, &isCopy);
   strm->removeSource(std::string(k));
 }
 
