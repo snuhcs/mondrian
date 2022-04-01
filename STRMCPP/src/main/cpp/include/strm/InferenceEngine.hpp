@@ -5,12 +5,15 @@
 
 #include "opencv2/core/mat.hpp"
 
+#include "strm/DataType.hpp"
+
 namespace rm {
 
 class InferenceEngine {
-public:
-    virtual int enqueue(const cv::Mat& mat, bool isFull) = 0;
-    virtual std::vector<BoundingBox> getResults(int handle) = 0;
+ public:
+  virtual int enqueue(const cv::Mat& mat, bool isFull) = 0;
+
+  virtual std::vector<BoundingBox> getResults(const int handle) = 0;
 };
 
 }

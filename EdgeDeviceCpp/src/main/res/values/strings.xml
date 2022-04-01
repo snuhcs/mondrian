@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">EdgeDeviceCpp</string>
+    <string name="default_ip">147.46.219.55</string>
+    <string name="default_port">1883</string>
+    <string name="default_result">result_placeholder</string>
+    <string name="fps">FPS</string>
+</resources>

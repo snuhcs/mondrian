@@ -139,8 +139,9 @@ license you like.
 #pragma pack(push, 8)
 
 namespace Json {
-template <typename T> class SecureAllocator {
-public:
+template<typename T>
+class SecureAllocator {
+ public:
   // Type definitions
   using value_type = T;
   using pointer = T*;
@@ -173,9 +174,10 @@ public:
   /**
    * Construct an item in-place at pointer P.
    */
-  template <typename... Args> void construct(pointer p, Args&&... args) {
+  template<typename... Args>
+  void construct(pointer p, Args&& ... args) {
     // construct using "placement new" and "perfect forwarding"
-    ::new (static_cast<void*>(p)) T(std::forward<Args>(args)...);
+    ::new(static_cast<void*>(p)) T(std::forward<Args>(args)...);
   }
 
   size_type max_size() const { return size_t(-1) / sizeof(T); }
@@ -194,16 +196,22 @@ public:
 
   // Boilerplate
   SecureAllocator() {}
-  template <typename U> SecureAllocator(const SecureAllocator<U>&) {}
-  template <typename U> struct rebind { using other = SecureAllocator<U>; };
+
+  template<typename U>
+  SecureAllocator(const SecureAllocator<U>&) {}
+
+  template<typename U>
+  struct rebind {
+    using other = SecureAllocator<U>;
+  };
 };
 
-template <typename T, typename U>
+template<typename T, typename U>
 bool operator==(const SecureAllocator<T>&, const SecureAllocator<U>&) {
   return true;
 }
 
-template <typename T, typename U>
+template<typename T, typename U>
 bool operator!=(const SecureAllocator<T>&, const SecureAllocator<U>&) {
   return false;
 }
@@ -234,6 +242,7 @@ bool operator!=(const SecureAllocator<T>&, const SecureAllocator<U>&) {
 
 #ifndef JSON_CONFIG_H_INCLUDED
 #define JSON_CONFIG_H_INCLUDED
+
 #include <cstddef>
 #include <cstdint>
 #include <istream>
@@ -314,7 +323,7 @@ extern JSON_API int msvc_pre1900_c99_snprintf(char* outBuf, size_t size,
 #define JSONCPP_DEPRECATED(message) __attribute__((__deprecated__))
 #endif                  // GNUC version
 #elif defined(_MSC_VER) // MSVC (after clang because clang on Windows emulates
-                        // MSVC)
+// MSVC)
 #define JSONCPP_DEPRECATED(message) __declspec(deprecated(message))
 #endif // __clang__ || __GNUC__ || _MSC_VER
 
@@ -354,17 +363,17 @@ using LargestUInt = UInt64;
 #define JSON_HAS_INT64
 #endif // if defined(JSON_NO_INT64)
 
-template <typename T>
+template<typename T>
 using Allocator =
-    typename std::conditional<JSONCPP_USING_SECURE_MEMORY, SecureAllocator<T>,
-                              std::allocator<T>>::type;
+typename std::conditional<JSONCPP_USING_SECURE_MEMORY, SecureAllocator<T>,
+        std::allocator < T>>::type;
 using String = std::basic_string<char, std::char_traits<char>, Allocator<char>>;
 using IStringStream =
-    std::basic_istringstream<String::value_type, String::traits_type,
-                             String::allocator_type>;
+std::basic_istringstream<String::value_type, String::traits_type,
+        String::allocator_type>;
 using OStringStream =
-    std::basic_ostringstream<String::value_type, String::traits_type,
-                             String::allocator_type>;
+std::basic_ostringstream<String::value_type, String::traits_type,
+        String::allocator_type>;
 using IStream = std::istream;
 using OStream = std::ostream;
 } // namespace Json
@@ -407,15 +416,22 @@ namespace Json {
 
 // writer.h
 class StreamWriter;
+
 class StreamWriterBuilder;
+
 class Writer;
+
 class FastWriter;
+
 class StyledWriter;
+
 class StyledStreamWriter;
 
 // reader.h
 class Reader;
+
 class CharReader;
+
 class CharReaderBuilder;
 
 // json_features.h
@@ -423,12 +439,19 @@ class Features;
 
 // value.h
 using ArrayIndex = unsigned int;
+
 class StaticString;
+
 class Path;
+
 class PathArgument;
+
 class Value;
+
 class ValueIteratorBase;
+
 class ValueIterator;
+
 class ValueConstIterator;
 
 } // namespace Json

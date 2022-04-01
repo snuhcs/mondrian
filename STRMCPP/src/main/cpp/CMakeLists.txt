@@ -18,7 +18,7 @@ link_directories(lib)
 # You can define multiple libraries, and CMake builds them for you.
 # Gradle automatically packages shared libraries with your APK.
 
-file(GLOB strmcpp_src     ${CMAKE_SOURCE_DIR}/src/*.cpp)
+file(GLOB strmcpp_src ${CMAKE_SOURCE_DIR}/src/*.cpp)
 file(GLOB strmcpp_jni_src ${CMAKE_SOURCE_DIR}/jni/*.cpp)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
