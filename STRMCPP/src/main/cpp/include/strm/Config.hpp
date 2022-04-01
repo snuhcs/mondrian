@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include <json/json.h>
+
 namespace rm {
 
 struct DispatcherConfig {
@@ -40,6 +42,10 @@ struct STRMConfig {
   PatchReconstructorConfig patchReconstructorConfig;
 };
 
+DispatcherConfig parseDispatcherConfig(const Json::Value& json);
+RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
+PatchMixerConfig parsePatchMixerConfig(const Json::Value& json);
+PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
 STRMConfig parseSTRMConfig(const std::string& jsonPath);
 
 } // namespace rm

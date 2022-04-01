@@ -5,29 +5,27 @@
 #include "strm/SpatioTemporalRoIMixer.hpp"
 #include "CustomResizeProfile.hpp"
 #include "CustomRoIPrioritizer.hpp"
-#include "CppInferenceEngine.h"
+#include "CppInferenceEngine.hpp"
 #include "JavaInferenceEngine.hpp"
 
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(JNIEnv* env,
-                                                                                jobject thiz,
-                                                                                jobject inferenceEngine) {
-  std::string jsonPath = "/data/local/tmp/strm.json";
+                                                                                jobject thiz) {
+  std::string jsonPath = "/data/local/tmp/strmcpp.json";
   return reinterpret_cast<jlong>(new rm::SpatioTemporalRoIMixer(rm::parseSTRMConfig(jsonPath),
                                                                 new rm::CustomResizeProfile(),
                                                                 new rm::CustomRoIPrioritizer(),
                                                                 new rm::CppInferenceEngine()));
-//                                                                new rm::JavaInferenceEngine(env, inferenceEngine)));
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_enqueueImage(JNIEnv* env, jobject thiz,
-                                                                jlong strm_handle, jstring key,
+                                                                jlong handle, jstring key,
                                                                 jint frameIndex, jlong matAddr) {
-  auto* strm = (rm::SpatioTemporalRoIMixer*) strm_handle;
-  auto* image = (cv::Mat*)matAddr;
+  auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
+  auto* image = (cv::Mat*) matAddr;
   const char* k = env->GetStringUTFChars(key, JNI_FALSE);
   strm->enqueueImage(std::string(k), frameIndex, image);
 }
@@ -35,31 +33,35 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_enqueueImage(JNIEnv* env, job
 extern "C"
 JNIEXPORT jobject JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_getResults(JNIEnv* env, jobject thiz,
-                                                              jlong strm_handle, jstring key,
+                                                              jlong handle, jstring key,
                                                               jint frame_index) {
-  auto* strm = (rm::SpatioTemporalRoIMixer*) strm_handle;
+  auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   const char* k = env->GetStringUTFChars(key, JNI_FALSE);
   std::vector<rm::BoundingBox> results = strm->getResults(std::string(k), frame_index);
-  jclass arrayListClass = env->FindClass("java/util/ArrayList");
-  jmethodID constructor = env->GetMethodID(arrayListClass, "<init>", "()V");
-  jobject arrayList = env->NewObject(arrayListClass, constructor);
-  jmethodID add = env->GetMethodID(arrayListClass, "add", "(ILjava/lang/Object;)V");
-  jclass boxClass = env->FindClass("hcs/offloading/strmcpp/BoundingBox");
-  jmethodID box_init = env->GetMethodID(boxClass, "<init>", "(IIIIFLjava/lang/String;)V");
+
+  jclass class_ArrayList = env->FindClass("java/util/ArrayList");
+  jclass class_BoundingBox = env->FindClass("hcs/offloading/strmcpp/BoundingBox");
+  jmethodID ArrayList_init = env->GetMethodID(class_ArrayList, "<init>", "()V");
+  jmethodID ArrayList_add = env->GetMethodID(class_ArrayList, "add", "(ILjava/lang/Object;)V");
+  jmethodID BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIFLjava/lang/String;)V");
+
+  jobject boxes = env->NewObject(class_ArrayList, ArrayList_init);
   for (int i = 0; i < results.size(); i++) {
     const rm::BoundingBox& b = results.at(i);
     jstring labelName = env->NewStringUTF(b.labelName.c_str());
-    jobject box = env->NewObject(boxClass, box_init, b.location.left, b.location.top, b.location.right, b.location.bottom, b.confidence, labelName);
-    env->CallVoidMethod(arrayList, add, i, box);
+    jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
+                                 b.location.left, b.location.top, b.location.right, b.location.bottom,
+                                 b.confidence, labelName);
+    env->CallVoidMethod(boxes, ArrayList_add, i, box);
   }
-  return arrayList;
+  return boxes;
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_addSource(JNIEnv* env, jobject thiz,
-                                                             jlong strm_handle, jstring key) {
-  auto* strm = (rm::SpatioTemporalRoIMixer*) strm_handle;
+                                                             jlong handle, jstring key) {
+  auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   const char* k = env->GetStringUTFChars(key, JNI_FALSE);
   strm->addSource(std::string(k));
 }
@@ -67,8 +69,8 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_addSource(JNIEnv* env, jobjec
 extern "C"
 JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_removeSource(JNIEnv* env, jobject thiz,
-                                                                jlong strm_handle, jstring key) {
-  auto* strm = (rm::SpatioTemporalRoIMixer*) strm_handle;
+                                                                jlong handle, jstring key) {
+  auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   const char* k = env->GetStringUTFChars(key, JNI_FALSE);
   strm->removeSource(std::string(k));
 }
@@ -76,7 +78,7 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_removeSource(JNIEnv* env, job
 extern "C"
 JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_close(JNIEnv* env, jobject thiz,
-                                                         jlong strm_handle) {
-  auto* strm = (rm::SpatioTemporalRoIMixer*) strm_handle;
+                                                         jlong handle) {
+  auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   strm->close();
 }

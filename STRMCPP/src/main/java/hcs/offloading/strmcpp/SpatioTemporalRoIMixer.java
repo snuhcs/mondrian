@@ -6,41 +6,41 @@ import java.util.List;
 
 public class SpatioTemporalRoIMixer {
 
-    private final long strmHandle;
+    private final long handle;
 
     public SpatioTemporalRoIMixer() {
-        strmHandle = createSpatioTemporalRoIMixer();
+        handle = createSpatioTemporalRoIMixer();
     }
 
     public void enqueueImage(String key, int frameIndex, Mat mat) {
-        enqueueImage(strmHandle, key, frameIndex, mat.getNativeObjAddr());
+        enqueueImage(handle, key, frameIndex, mat.getNativeObjAddr());
     }
 
     public List<BoundingBox> getResults(String key, int frameIndex) {
-        return getResults(strmHandle, key, frameIndex);
+        return getResults(handle, key, frameIndex);
     }
 
     public void addSource(String key) {
-        addSource(strmHandle, key);
+        addSource(handle, key);
     }
 
     public void removeSource(String key) {
-        removeSource(strmHandle, key);
+        removeSource(handle, key);
     }
 
     public void close() {
-        close(strmHandle);
+        close(handle);
     }
 
     private native long createSpatioTemporalRoIMixer();
 
-    private native void enqueueImage(long strmHandle, String key, int frameIndex, long matAddr);
+    private native void enqueueImage(long handle, String key, int frameIndex, long matAddr);
 
-    private native List<BoundingBox> getResults(long strmHandle, String key, int frameIndex);
+    private native List<BoundingBox> getResults(long handle, String key, int frameIndex);
 
-    private native void addSource(long strmHandle, String key);
+    private native void addSource(long handle, String key);
 
-    private native void removeSource(long strmHandle, String key);
+    private native void removeSource(long handle, String key);
 
-    private native void close(long strmHandle);
+    private native void close(long handle);
 }

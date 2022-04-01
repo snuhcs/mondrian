@@ -46,6 +46,11 @@ struct Rect {
       return width * height;
     }
   }
+
+  float iou(const Rect& other) const {
+    int inter = intersection(other);
+    return (float) inter / (area() + other.area() - inter);
+  }
 };
 
 struct BoundingBox {
