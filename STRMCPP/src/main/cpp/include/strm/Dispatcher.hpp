@@ -25,26 +25,9 @@ class Dispatcher {
              ResizeProfile* resizeProfile,
              RoIPrioritizer* roIPrioritizer,
              InferenceEngine* inferenceEngine,
-             PatchMixer* patchMixer)
-          : mConfig(std::move(config)),
-            mRoIExtractor(roIExtractorConfig),
-            mResizeProfile(resizeProfile),
-            mRoIPrioritizer(roIPrioritizer),
-            mInferenceEngine(inferenceEngine),
-            mPatchMixer(patchMixer),
-            mMaxNumItems(config.MAX_QUEUE_SIZE),
-            isClosed(false),
-            mCountMixedFrameInference(INT_MAX),
-            mUseInferenceResults(true),
-            mPrevFrame(nullptr) {
-    LOGD("Dispatcher()");
-    mThread = std::thread([this]() {
-      while (!isClosed.load()) {
-        Frame* item = takeItem();
-        process(item);
-      }
-    });
-  };
+             PatchMixer* patchMixer);
+
+  ~Dispatcher();
 
   void notifyResults();
 

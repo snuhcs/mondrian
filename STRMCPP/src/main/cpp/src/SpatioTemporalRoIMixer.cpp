@@ -4,6 +4,27 @@
 
 namespace rm {
 
+SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
+                                               ResizeProfile* resizeProfile,
+                                               RoIPrioritizer* roIPrioritizer,
+                                               InferenceEngine* inferenceEngine)
+    : mResizeProfile(resizeProfile),
+      mRoIPrioritizer(roIPrioritizer),
+      mInferenceEngine(inferenceEngine),
+      mDispatcherConfig(config.dispatcherConfig),
+      mRoIExtractorConfig(config.roIExtractorConfig) {
+  LOGD("SpatioTemporalRoIMixer()");
+  mPatchReconstructor = std::make_unique<PatchReconstructor>(
+      config.patchReconstructorConfig, inferenceEngine, (PatchReconstructorCallback*) this);
+  mPatchMixer = std::make_unique<PatchMixer>(
+      config.patchMixerConfig, inferenceEngine, mPatchReconstructor.get());
+}
+
+SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
+  std::lock_guard<std::mutex> dispatcherLock(mDispatchersMtx);
+  mDispatchers.clear();
+}
+
 void SpatioTemporalRoIMixer::onProcessEnd(MixedFrame& mixedFrame) {
   std::set<std::string> keys;
   for (Frame* frame : mixedFrame.packedFrames) {
@@ -18,8 +39,9 @@ void SpatioTemporalRoIMixer::onProcessEnd(MixedFrame& mixedFrame) {
 }
 
 void SpatioTemporalRoIMixer::enqueueImage(
-        const std::string& key, int frameIndex, const cv::Mat* mat) {
-  LOGD("SpatioTemporalRoIMixer::enqueueImage %s %d Mat(%d, %d, %d)", key.c_str(), frameIndex, mat->cols, mat->rows, mat->channels());
+    const std::string& key, int frameIndex, const cv::Mat* mat) {
+  LOGD("SpatioTemporalRoIMixer::enqueueImage %s %d Mat(%d, %d, %d)", key.c_str(), frameIndex,
+       mat->cols, mat->rows, mat->channels());
   assert(mat != nullptr);
   std::unique_lock<std::mutex> dispatchersLock(mDispatchersMtx);
   if (mDispatchers.find(key) == mDispatchers.end()) {
@@ -52,12 +74,6 @@ void SpatioTemporalRoIMixer::removeSource(const std::string& key) {
   LOGD("SpatioTemporalRoIMixer::removeSource");
   std::lock_guard<std::mutex> dispatcherLock(mDispatchersMtx);
   mDispatchers.erase(mDispatchers.find(key));
-}
-
-void SpatioTemporalRoIMixer::close() {
-  isClosed.store(true);
-  std::lock_guard<std::mutex> dispatcherLock(mDispatchersMtx);
-  mDispatchers.clear();
 }
 
 } // namespace rm

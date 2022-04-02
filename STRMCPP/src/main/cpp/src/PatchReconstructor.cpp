@@ -2,6 +2,24 @@
 
 namespace rm {
 
+PatchReconstructor::PatchReconstructor(PatchReconstructorConfig config,
+                                       InferenceEngine* inferenceEngine,
+                                       PatchReconstructorCallback* callback)
+    : mConfig(config),
+      mInferenceEngine(inferenceEngine),
+      mCallback(callback),
+      mMaxNumItems(config.MAX_QUEUE_SIZE),
+      isClosed(false) {
+  LOGD("PatchReconstructor()");
+  mThread = std::thread([this]() {
+    while (!isClosed.load()) {
+      MixedFrame item = takeItem();
+      process(item);
+      mCallback->onProcessEnd(item);
+    }
+  });
+};
+
 void PatchReconstructor::process(MixedFrame& mixedFrame) {
   LOGD("PatchReconstructor::process");
   if (!mixedFrame.packedMat.empty()) {
@@ -27,18 +45,27 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
       for (RoI& roi : frame->rois) {
         if (roi.isPacked()) {
           Rect paddedRoIPos(
-                  std::max(0, roi.location.left - matchPadding),
-                  std::max(0, roi.location.top - matchPadding),
-                  std::min(roi.frame->mat->cols, roi.location.right + matchPadding),
-                  std::min(roi.frame->mat->rows, roi.location.bottom + matchPadding));
+              std::max(0, roi.location.left - matchPadding),
+              std::max(0, roi.location.top - matchPadding),
+              std::min(roi.frame->mat->cols, roi.location.right + matchPadding),
+              std::min(roi.frame->mat->rows, roi.location.bottom + matchPadding));
           Rect movedAndResizedBoxPos(
-                  std::max(0, (int) ((float) (box.location.left - roi.packedLocation.first) / roi.scale) + roi.location.left),
-                  std::max(0, (int) ((float) (box.location.top - roi.packedLocation.second) / roi.scale) + roi.location.top),
-                  std::min(roi.frame->mat->cols, (int) ((float) (box.location.right - roi.packedLocation.first) / roi.scale) + roi.location.left),
-                  std::min(roi.frame->mat->rows, (int) ((float) (box.location.bottom - roi.packedLocation.second) / roi.scale) + roi.location.top));
+              std::max(0,
+                       (int) ((float) (box.location.left - roi.packedLocation.first) / roi.scale) +
+                       roi.location.left),
+              std::max(0,
+                       (int) ((float) (box.location.top - roi.packedLocation.second) / roi.scale) +
+                       roi.location.top),
+              std::min(roi.frame->mat->cols,
+                       (int) ((float) (box.location.right - roi.packedLocation.first) / roi.scale) +
+                       roi.location.left),
+              std::min(roi.frame->mat->rows,
+                       (int) ((float) (box.location.bottom - roi.packedLocation.second) /
+                              roi.scale) + roi.location.top));
           int intersection = paddedRoIPos.intersection(movedAndResizedBoxPos);
           float overlapRatio = std::max((float) intersection / (float) paddedRoIPos.area(),
-                                        (float) intersection / (float) movedAndResizedBoxPos.area());
+                                        (float) intersection /
+                                        (float) movedAndResizedBoxPos.area());
           if (maxOverlap < overlapRatio) {
             maxOverlap = overlapRatio;
             maxBoxPos = movedAndResizedBoxPos;
@@ -58,11 +85,11 @@ void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
     for (RoI& roi : frame->rois) {
       for (const BoundingBox& box : roi.boxes) {
         frame->boxes.emplace_back(
-                Rect(box.location.left + roi.location.left,
-                     box.location.top + roi.location.top,
-                     box.location.right + roi.location.left,
-                     box.location.bottom + roi.location.top),
-                     box.confidence, box.labelName);
+            Rect(box.location.left + roi.location.left,
+                 box.location.top + roi.location.top,
+                 box.location.right + roi.location.left,
+                 box.location.bottom + roi.location.top),
+            box.confidence, box.labelName);
       }
     }
   }

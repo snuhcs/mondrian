@@ -20,10 +20,10 @@ struct Rect {
   Rect() {};
 
   Rect(int left, int top, int right, int bottom)
-  : left(left), top(top), right(right), bottom(bottom) {};
+      : left(left), top(top), right(right), bottom(bottom) {};
 
   Rect(const Rect& r)
-  : left(r.left), top(r.top), right(r.right), bottom(r.bottom) {};
+      : left(r.left), top(r.top), right(r.right), bottom(r.bottom) {};
 
   int width() const {
     return right - left;
@@ -58,8 +58,8 @@ struct BoundingBox {
   float confidence;
   std::string labelName;
 
-  BoundingBox(const Rect location, const float confidence, const std::string& labelName)
-          : location(location), confidence(confidence), labelName(labelName) {}
+  BoundingBox(const Rect& location, const float confidence, const std::string& labelName)
+      : location(location), confidence(confidence), labelName(labelName) {}
 };
 
 struct Frame {
@@ -74,10 +74,10 @@ struct Frame {
   std::vector<RoI> opticalFlowRoIs;
 
   Frame(const Frame& frame)
-          : key(frame.key), frameIndex(frame.frameIndex), mat(frame.mat), isResultReady(false) {}
+      : key(frame.key), frameIndex(frame.frameIndex), mat(frame.mat), isResultReady(false) {}
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat* mat)
-          : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false) {}
+      : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false) {}
 };
 
 struct RoI {
@@ -99,14 +99,14 @@ struct RoI {
   Type type;
   std::string labelName;
 
-  RoI(const Frame* frame, Rect location, Type type, std::string labelName)
-          : frame(frame), location(location), type(type), labelName(labelName),
-            packedLocation(std::make_pair(-1, -1)) {};
+  RoI(const Frame* frame, Rect location, const Type type, std::string labelName)
+      : frame(frame), location(location), type(type), labelName(labelName),
+        packedLocation(std::make_pair(-1, -1)) {};
 
   RoI(const Frame* frame, Rect location, Type type, std::string labelName, int minOriginLength)
-          : frame(frame), location(location), type(type), labelName(labelName),
-            minOriginLength(minOriginLength),
-            packedLocation(std::make_pair(-1, -1)) {};
+      : frame(frame), location(location), type(type), labelName(labelName),
+        minOriginLength(minOriginLength),
+        packedLocation(std::make_pair(-1, -1)) {};
 
   bool isPacked() const {
     return packedLocation.first == -1 && packedLocation.second == -1;
@@ -122,7 +122,8 @@ struct RoI {
   }
 
   cv::Mat getMat() {
-    return frame->mat->operator()(cv::Rect(location.left, location.top, location.width(), location.height()));
+    return frame->mat->operator()(
+        cv::Rect(location.left, location.top, location.width(), location.height()));
   }
 
   cv::Mat getResizedMat() {
@@ -141,7 +142,7 @@ struct MixedFrame {
   std::vector<BoundingBox> boxes;
 
   MixedFrame(cv::Mat packedMat, std::vector<Frame*> packedFrames)
-          : packedMat(std::move(packedMat)), packedFrames(packedFrames) {};
+      : packedMat(std::move(packedMat)), packedFrames(packedFrames) {};
 };
 
 } // namespace rm

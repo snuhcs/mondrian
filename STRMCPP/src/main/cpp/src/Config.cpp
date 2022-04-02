@@ -98,7 +98,8 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
     strmConfig.patchMixerConfig = parsePatchMixerConfig(json["patch_mixer"]);
   }
   if (!json["patch_reconstructor"].isNull()) {
-    strmConfig.patchReconstructorConfig = parsePatchReconstructorConfig(json["patch_reconstructor"]);
+    strmConfig.patchReconstructorConfig = parsePatchReconstructorConfig(
+        json["patch_reconstructor"]);
   }
   return strmConfig;
 }

@@ -2,6 +2,14 @@
 
 namespace rm {
 
+PatchMixer::PatchMixer(PatchMixerConfig config, InferenceEngine* inferenceEngine,
+                       PatchReconstructor* patchReconstructor)
+    : mConfig(config), mInferenceEngine(inferenceEngine),
+      mPatchReconstructor(patchReconstructor),
+      mFreeRects({Rect(0, 0, config.MIXED_FRAME_SIZE, config.MIXED_FRAME_SIZE)}) {
+  LOGD("PatchMixer()");
+};
+
 void PatchMixer::reset() {
   mPackedFrames.clear();
   mFreeRects.clear();
@@ -93,7 +101,8 @@ cv::Mat PatchMixer::getMixedImage(const std::vector<Frame*>& frames, int mixedFr
       if (roi.isPacked()) {
         std::pair<int, int> wh = roi.getResizedWidthHeight();
         roi.getResizedMat().copyTo(
-                mat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second, wh.first, wh.second)));
+            mat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second, wh.first,
+                         wh.second)));
       }
     }
   }

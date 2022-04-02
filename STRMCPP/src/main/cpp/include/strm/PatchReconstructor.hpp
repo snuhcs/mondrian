@@ -16,21 +16,7 @@ class PatchReconstructor {
  public:
   PatchReconstructor(PatchReconstructorConfig config,
                      InferenceEngine* inferenceEngine,
-                     PatchReconstructorCallback* callback)
-          : mConfig(config),
-            mInferenceEngine(inferenceEngine),
-            mCallback(callback),
-            mMaxNumItems(config.MAX_QUEUE_SIZE),
-            isClosed(false) {
-    LOGD("PatchReconstructor()");
-    mThread = std::thread([this]() {
-      while (!isClosed.load()) {
-        MixedFrame item = takeItem();
-        process(item);
-        mCallback->onProcessEnd(item);
-      }
-    });
-  };
+                     PatchReconstructorCallback* callback);
 
   void process(MixedFrame& item);
 
@@ -40,7 +26,7 @@ class PatchReconstructor {
 
  private:
   static void updateMixedFrameInferenceResults(
-          MixedFrame& mixedFrame, int matchPadding, float useIoUThreshold);
+      MixedFrame& mixedFrame, int matchPadding, float useIoUThreshold);
 
   static void updateRoIInferenceResults(MixedFrame& mixedFrame);
 

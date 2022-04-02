@@ -6,11 +6,40 @@
 
 namespace rm {
 
+Dispatcher::Dispatcher(DispatcherConfig config, RoIExtractorConfig roIExtractorConfig,
+                       ResizeProfile* resizeProfile, RoIPrioritizer* roIPrioritizer,
+                       InferenceEngine* inferenceEngine, PatchMixer* patchMixer)
+    : mConfig(config),
+      mRoIExtractor(roIExtractorConfig),
+      mResizeProfile(resizeProfile),
+      mRoIPrioritizer(roIPrioritizer),
+      mInferenceEngine(inferenceEngine),
+      mPatchMixer(patchMixer),
+      mMaxNumItems(config.MAX_QUEUE_SIZE),
+      isClosed(false),
+      mCountMixedFrameInference(INT_MAX),
+      mUseInferenceResults(true),
+      mPrevFrame(nullptr) {
+  LOGD("Dispatcher()");
+  mThread = std::thread([this]() {
+    while (!isClosed.load()) {
+      Frame* item = takeItem();
+      process(item);
+    }
+  });
+};
+
+Dispatcher::~Dispatcher() {
+  isClosed.store(true);
+  mThread.join();
+};
+
 void Dispatcher::process(Frame*& currFrame) {
   LOGD("Dispatcher::process %d %d",
        currFrame != nullptr ? currFrame->frameIndex : -1,
        mPrevFrame != nullptr ? mPrevFrame->frameIndex : -1);
-  assert(currFrame != nullptr && mPrevFrame == nullptr || mPrevFrame->frameIndex + 1 == currFrame->frameIndex);
+  assert(currFrame != nullptr && mPrevFrame == nullptr ||
+         mPrevFrame->frameIndex + 1 == currFrame->frameIndex);
   /* Cases
    * 1. Full frame inference
    * 2. Mixed frame inference
@@ -30,9 +59,10 @@ void Dispatcher::process(Frame*& currFrame) {
   } else {
     std::vector<BoundingBox> prevResults = getPrevBoxes();
     mRoIExtractor.process(std::make_pair(std::make_pair(mPrevFrame, currFrame), prevResults));
-    std::sort(currFrame->rois.begin(), currFrame->rois.end(), [this](const RoI& lhs, const RoI& rhs) -> bool {
-      return mRoIPrioritizer->priority(lhs) < mRoIPrioritizer->priority(rhs);
-    });
+    std::sort(currFrame->rois.begin(), currFrame->rois.end(),
+              [this](const RoI& lhs, const RoI& rhs) -> bool {
+                return mRoIPrioritizer->priority(lhs) < mRoIPrioritizer->priority(rhs);
+              });
     for (auto& roi : currFrame->rois) {
       roi.scale = mResizeProfile->getScale(roi.labelName, roi.location.width(),
                                            roi.location.height(), roi.minOriginLength);
@@ -62,15 +92,15 @@ std::vector<BoundingBox> Dispatcher::getPrevBoxes() {
   }
   std::unique_lock<std::mutex> lock(mtx);
   if (mUseInferenceResults) {
-    cv.wait(lock, [this](){
+    cv.wait(lock, [this]() {
       return mPrevFrame->isResultReady.load();
     });
     for (const BoundingBox& box : mPrevFrame->boxes) {
       prevResults.emplace_back(Rect(
-              box.location.left - mConfig.ROI_PADDING,
-              box.location.top - mConfig.ROI_PADDING,
-              box.location.right + mConfig.ROI_PADDING,
-              box.location.bottom + mConfig.ROI_PADDING), box.confidence, box.labelName);
+          box.location.left - mConfig.ROI_PADDING,
+          box.location.top - mConfig.ROI_PADDING,
+          box.location.right + mConfig.ROI_PADDING,
+          box.location.bottom + mConfig.ROI_PADDING), box.confidence, box.labelName);
     }
   } else {
     for (const RoI& roi : mPrevFrame->opticalFlowRoIs) {
@@ -89,7 +119,8 @@ std::vector<BoundingBox> Dispatcher::getResults(int frameIndex) {
   LOGD("Dispatcher::getResults Start %d", frameIndex);
   std::unique_lock<std::mutex> lock(mtx);
   cv.wait(lock, [this, &frameIndex]() {
-    return mFrames.find(frameIndex) != mFrames.end() && mFrames.at(frameIndex)->isResultReady.load();
+    return mFrames.find(frameIndex) != mFrames.end() &&
+           mFrames.at(frameIndex)->isResultReady.load();
   });
   LOGD("Dispatcher::getResults End   %d", frameIndex);
   return mFrames.at(frameIndex)->boxes;

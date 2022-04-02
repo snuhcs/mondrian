@@ -7,7 +7,8 @@ CppInferenceEngine::CppInferenceEngine() : mHandle(0) {
 };
 
 int CppInferenceEngine::enqueue(cv::Mat mat, bool isFull) {
-  LOGD("CppInferenceEngine::enqueue : Mat(%d, %d, %d), %d", mat.cols, mat.rows, mat.channels(), isFull);
+  LOGD("CppInferenceEngine::enqueue : Mat(%d, %d, %d), %d", mat.cols, mat.rows, mat.channels(),
+       isFull);
   std::unique_lock<std::mutex> inputLock(inputMtx);
   inputs.push(std::make_pair(mHandle, mat));
   inputLock.unlock();
@@ -18,7 +19,7 @@ int CppInferenceEngine::enqueue(cv::Mat mat, bool isFull) {
 std::pair<int, cv::Mat> CppInferenceEngine::getInput() {
   LOGD("CppInferenceEngine::getInput");
   std::unique_lock<std::mutex> inputLock(inputMtx);
-  inputCv.wait(inputLock, [this](){
+  inputCv.wait(inputLock, [this]() {
     return !inputs.empty();
   });
   std::pair<int, cv::Mat> input = inputs.front();
@@ -37,7 +38,7 @@ void CppInferenceEngine::enqueueResults(const int handle, const std::vector<Boun
 std::vector<BoundingBox> CppInferenceEngine::getResults(const int handle) {
   LOGD("CppInferenceEngine::getResults");
   std::unique_lock<std::mutex> resultLock(resultMtx);
-  resultCv.wait(resultLock, [this, handle](){
+  resultCv.wait(resultLock, [this, handle]() {
     return results.find(handle) != results.end();
   });
   std::vector<BoundingBox> boxes = results.at(handle);
@@ -45,9 +46,10 @@ std::vector<BoundingBox> CppInferenceEngine::getResults(const int handle) {
   return boxes;
 };
 
-Worker::Worker(CppInferenceEngine* engine) : engine(engine), isClosed(false), classifier(new YoloV4Classifier()) {
+Worker::Worker(CppInferenceEngine* engine) : engine(engine), isClosed(false),
+                                             classifier(new YoloV4Classifier()) {
   LOGD("Worker::Worker()");
-  thread = std::thread([this](){
+  thread = std::thread([this]() {
     while (!isClosed.load()) {
       Work();
     }

@@ -18,30 +18,14 @@
 
 namespace rm {
 
-class SpatioTemporalRoIMixer : PatchReconstructorCallback {
+class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
                          ResizeProfile* resizeProfile,
                          RoIPrioritizer* roIPrioritizer,
-                         InferenceEngine* inferenceEngine)
-          : mResizeProfile(std::move(resizeProfile)),
-            mRoIPrioritizer(std::move(roIPrioritizer)),
-            mInferenceEngine(std::move(inferenceEngine)),
-            mDispatcherConfig(config.dispatcherConfig),
-            mRoIExtractorConfig(config.roIExtractorConfig),
-            isClosed(false) {
-    LOGD("SpatioTemporalRoIMixer()");
-    mPatchReconstructor = std::make_unique<PatchReconstructor>(
-            config.patchReconstructorConfig, inferenceEngine, (PatchReconstructorCallback*) this);
-    mPatchMixer = std::make_unique<PatchMixer>(
-            config.patchMixerConfig, inferenceEngine, mPatchReconstructor.get());
-  }
+                         InferenceEngine* inferenceEngine);
 
-  ~SpatioTemporalRoIMixer() {
-    delete mResizeProfile;
-    delete mRoIPrioritizer;
-    delete mInferenceEngine;
-  }
+  ~SpatioTemporalRoIMixer();
 
   void enqueueImage(const std::string& key, int frameIndex, const cv::Mat* mat);
 
@@ -49,13 +33,9 @@ class SpatioTemporalRoIMixer : PatchReconstructorCallback {
 
   void removeSource(const std::string& key);
 
-  void close();
-
   void onProcessEnd(MixedFrame& mixedFrame) override;
 
  private:
-  std::atomic_bool isClosed;
-
   ResizeProfile* mResizeProfile;
   RoIPrioritizer* mRoIPrioritizer;
   InferenceEngine* mInferenceEngine;

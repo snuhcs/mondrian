@@ -51,7 +51,8 @@ class YoloV4Classifier {
   }
 
  private:
-  std::vector<BoundingBox> getDetectionsForFull(cv::Mat& mat, int originalWidth, int originalHeight) {
+  std::vector<BoundingBox>
+  getDetectionsForFull(cv::Mat& mat, int originalWidth, int originalHeight) {
     LOGD("YoloV4 getDetectionsForFull");
     std::vector<BoundingBox> detections;
 
