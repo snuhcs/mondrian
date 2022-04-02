@@ -19,38 +19,33 @@ void SpatioTemporalRoIMixer::onProcessEnd(MixedFrame& mixedFrame) {
 
 void SpatioTemporalRoIMixer::enqueueImage(
         const std::string& key, int frameIndex, const cv::Mat* mat) {
-  LOGD("SpatioTemporalRoIMixer::enqueueImage %s %d %p", key.c_str(), frameIndex, mat);
-  if (mat == nullptr) {
-    LOGE("SpatioTemporalRoIMixer::enqueueImage: mat == nullptr");
+  LOGD("SpatioTemporalRoIMixer::enqueueImage %s %d Mat(%d, %d, %d)", key.c_str(), frameIndex, mat->cols, mat->rows, mat->channels());
+  assert(mat != nullptr);
+  std::unique_lock<std::mutex> dispatchersLock(mDispatchersMtx);
+  if (mDispatchers.find(key) == mDispatchers.end()) {
+    mDispatchers.insert(std::make_pair(key, std::make_unique<Dispatcher>(
+        mDispatcherConfig, mRoIExtractorConfig,
+        mResizeProfile, mRoIPrioritizer, mInferenceEngine,
+        mPatchMixer.get())));
   }
-  std::lock_guard<std::mutex> dispatchersLock(mDispatchersMtx);
-  if (mDispatchers.find(key) != mDispatchers.end()) {
-    LOGD("mDispatchers.at(key)->enqueue");
-    mDispatchers.at(key)->enqueue(new Frame(key, frameIndex, mat));
-  }
+  Dispatcher* dispatcher = mDispatchers.at(key).get();
+  dispatchersLock.unlock();
+  dispatcher->enqueue(new Frame(key, frameIndex, mat));
 }
 
 std::vector<BoundingBox>
 SpatioTemporalRoIMixer::getResults(const std::string& key, int frameIndex) {
   LOGD("SpatioTemporalRoIMixer::getResults %s %d", key.c_str(), frameIndex);
-  std::lock_guard<std::mutex> dispatcherLock(mDispatchersMtx);
-  if (mDispatchers.find(key) != mDispatchers.end()) {
-    LOGD("mDispatchers.at(key)->getResults");
-    return mDispatchers.at(key)->getResults(frameIndex);
-  }
-  return {};
-}
-
-void SpatioTemporalRoIMixer::addSource(const std::string& key) {
-  LOGD("SpatioTemporalRoIMixer::addSource");
-  std::lock_guard<std::mutex> dispatcherLock(mDispatchersMtx);
+  std::unique_lock<std::mutex> dispatcherLock(mDispatchersMtx);
   if (mDispatchers.find(key) == mDispatchers.end()) {
-    LOGD("mDispatchers.insert(dispatcher)");
     mDispatchers.insert(std::make_pair(key, std::make_unique<Dispatcher>(
-            mDispatcherConfig, mRoIExtractorConfig,
-            mResizeProfile, mRoIPrioritizer, mInferenceEngine,
-            mPatchMixer.get())));
+        mDispatcherConfig, mRoIExtractorConfig,
+        mResizeProfile, mRoIPrioritizer, mInferenceEngine,
+        mPatchMixer.get())));
   }
+  Dispatcher* dispatcher = mDispatchers.at(key).get();
+  dispatcherLock.unlock();
+  return dispatcher->getResults(frameIndex);
 }
 
 void SpatioTemporalRoIMixer::removeSource(const std::string& key) {

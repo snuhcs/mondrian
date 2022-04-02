@@ -16,10 +16,12 @@ class YoloV4Classifier {
   YoloV4Classifier() {
     auto model = tflite::FlatBufferModel::BuildFromFile("/data/local/tmp/models/yolov4-960.tflite");
     if (model == nullptr) {
+      LOGE("YoloV4 model == nullptr");
       return;
     }
     auto resolver = std::make_unique<tflite::ops::builtin::BuiltinOpResolver>();
     if (tflite::InterpreterBuilder(*model, *resolver)(&tfLite, 1)) {
+      LOGE("YoloV4 tflite::InterpreterBuilder");
       return;
     }
 
@@ -33,29 +35,37 @@ class YoloV4Classifier {
         TfLiteGpuDelegateV2Create(&gpu_opts), &TfLiteGpuDelegateV2Delete);
 
     if (tfLite->ModifyGraphWithDelegate(std::move(gpu_delegate))) {
+      LOGE("YoloV4 tfLite->ModifyGraphWithDelegate");
       return;
     }
     if (tfLite->AllocateTensors()) {
+      LOGE("YoloV4 tfLite->AllocateTensors()");
       return;
     }
+    LOGD("YoloV4 Initialize Success");
   }
 
-  std::vector<BoundingBox> recognizeImage(cv::Mat mat, int originalWidth, int originalHeight) {
+  std::vector<BoundingBox> recognizeImage(cv::Mat& mat, int originalWidth, int originalHeight) {
+    LOGD("YoloV4 recognizeImage");
     return nms(getDetectionsForFull(mat, originalWidth, originalHeight));
   }
 
  private:
-  std::vector<BoundingBox> getDetectionsForFull(cv::Mat byteBuffer, int originalWidth, int originalHeight) {
+  std::vector<BoundingBox> getDetectionsForFull(cv::Mat& mat, int originalWidth, int originalHeight) {
+    LOGD("YoloV4 getDetectionsForFull");
     std::vector<BoundingBox> detections;
 
     assert(tfLite->inputs().size() == 1);
-    float* input = tfLite->typed_tensor<float>(0);
-    std::memcpy(input, byteBuffer.data, byteBuffer.total() * byteBuffer.elemSize());
+    LOGD("Output size : %d %d", tfLite->output_tensor(0)->bytes, tfLite->output_tensor(1)->bytes);
+    LOGD("Before memcpy");
+    std::memcpy(tfLite->input_tensor(0)->data.data, mat.data, tfLite->input_tensor(0)->bytes);
+    LOGD("Before Invoke");
 
     tfLite->Invoke();
 
-    float* bboxes = tfLite->typed_output_tensor<float>(0);
-    float* confidences = tfLite->typed_output_tensor<float>(1);
+    LOGD("After Invoke");
+    float* bboxes = tfLite->output_tensor(0)->data.f;
+    float* confidences = tfLite->output_tensor(1)->data.f;
 
     for (int i = 0; i < OUTPUT_WIDTH; i++) {
       float maxConfidence = 0;

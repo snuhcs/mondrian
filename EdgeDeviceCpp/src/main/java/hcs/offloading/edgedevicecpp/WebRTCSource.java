@@ -42,7 +42,6 @@ public class WebRTCSource implements VideoSink, Runnable {
                  SurfaceViewRenderer inputView, ResultCallback resultCallback, float drawConfidence) {
         mSourceIP = sourceIP;
         this.strm = strm;
-        this.strm.addSource(mSourceIP);
         mWebRTCManager = webRTCManager;
         mInputView = inputView;
         mResultCallback = resultCallback;

@@ -45,7 +45,6 @@ public class VideoSource extends CustomCapturer implements Runnable {
         DRAW_CONFIDENCE = drawConfidence;
         mResultCallback = resultCallback;
         this.strm = strm;
-        this.strm.addSource(VIDEO_PATH);
         retriever.setDataSource(VIDEO_PATH);
 
         Log.d(TAG, "Start drawThread");

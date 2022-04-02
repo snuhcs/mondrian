@@ -47,8 +47,6 @@ class SpatioTemporalRoIMixer : PatchReconstructorCallback {
 
   std::vector<BoundingBox> getResults(const std::string& key, int frameIndex);
 
-  void addSource(const std::string& key);
-
   void removeSource(const std::string& key);
 
   void close();

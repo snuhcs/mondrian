@@ -2,7 +2,10 @@
 #define CPP_INFERENCE_ENGINE_H
 
 #include <map>
+#include <queue>
+#include <thread>
 
+#include "strm/Log.hpp"
 #include "strm/InferenceEngine.hpp"
 #include "YoloV4Classifier.hpp"
 
@@ -12,44 +15,21 @@ class Worker;
 
 class CppInferenceEngine : public InferenceEngine {
  public:
-  CppInferenceEngine() : mHandle(0) {};
+  CppInferenceEngine();
 
-  int enqueue(const cv::Mat& mat, bool isFull) {
-    std::unique_lock<std::mutex> inputLock(inputMtx);
-    inputs.push(std::make_pair(mHandle, mat));
-    inputCv.notify_all();
-    return mHandle++;
-  }
+  int enqueue(cv::Mat mat, bool isFull);
 
-  std::pair<int, const cv::Mat&> getInput() {
-    std::unique_lock<std::mutex> inputLock(inputMtx);
-    inputCv.wait(inputLock, [this](){
-      return !inputs.empty();
-    });
-    std::pair<int, const cv::Mat&> input = inputs.front();
-    inputs.pop();
-    return input;
-  }
+  std::pair<int, cv::Mat> getInput();
 
-  void enqueueResults(const int handle, std::vector<BoundingBox> boxes) {
-    std::unique_lock<std::mutex> resultLock(resultMtx);
-    results.insert(std::make_pair(handle, boxes));
-    resultCv.notify_all();
-  }
+  void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
 
-  std::vector<BoundingBox> getResults(const int handle) {
-    std::unique_lock<std::mutex> resultLock(resultMtx);
-    resultCv.wait(resultLock, [this, handle](){
-      return results.find(handle) != results.end();
-    });
-    return results.at(handle);
-  }
+  std::vector<BoundingBox> getResults(const int handle);
 
  private:
   std::vector<std::unique_ptr<Worker>> workers;
 
   int mHandle;
-  std::queue<std::pair<int, const cv::Mat&>> inputs;
+  std::queue<std::pair<int, cv::Mat>> inputs;
   std::mutex inputMtx;
   std::condition_variable inputCv;
   std::map<int, std::vector<BoundingBox>> results;
@@ -59,13 +39,7 @@ class CppInferenceEngine : public InferenceEngine {
 
 class Worker {
  public:
-  Worker(CppInferenceEngine* engine) : engine(engine), isClosed(false) {
-    thread = std::thread([this](){
-      while (isClosed.load()) {
-        Work();
-      }
-    });
-  };
+  Worker(CppInferenceEngine* engine);
 
   ~Worker() {
     isClosed.store(true);
@@ -73,25 +47,13 @@ class Worker {
   }
 
  private:
-  void Work() {
-    std::pair<int, const cv::Mat&> input = engine->getInput();
-    std::vector<BoundingBox> boxes = classifier.recognizeImage(
-        preprocess(input.second), input.second.cols, input.second.rows);
-    engine->enqueueResults(input.first, boxes);
-  };
+  void Work();
 
-  cv::Mat preprocess(const cv::Mat& input) {
-    cv::Mat processedImage;
-    input.convertTo(processedImage, CV_32FC3);
-    cv::cvtColor(processedImage, processedImage, CV_BGRA2RGB);
-    cv::resize(processedImage, processedImage, cv::Size(960, 960));
-    cv::divide(1.0/255.0, processedImage, processedImage);
-    return processedImage;
-  }
+  static void preprocess(cv::Mat& mat);
 
   CppInferenceEngine* engine;
 
-  YoloV4Classifier classifier;
+  std::unique_ptr<YoloV4Classifier> classifier;
   std::atomic_bool isClosed;
   std::thread thread;
 };

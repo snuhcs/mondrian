@@ -5,8 +5,9 @@
 #include <thread>
 
 #include "Config.hpp"
-#include "PatchReconstructorCallback.hpp"
 #include "DataType.hpp"
+#include "Log.hpp"
+#include "PatchReconstructorCallback.hpp"
 #include "InferenceEngine.hpp"
 
 namespace rm {
@@ -18,7 +19,10 @@ class PatchReconstructor {
                      PatchReconstructorCallback* callback)
           : mConfig(config),
             mInferenceEngine(inferenceEngine),
-            mCallback(callback) {
+            mCallback(callback),
+            mMaxNumItems(config.MAX_QUEUE_SIZE),
+            isClosed(false) {
+    LOGD("PatchReconstructor()");
     mThread = std::thread([this]() {
       while (!isClosed.load()) {
         MixedFrame item = takeItem();

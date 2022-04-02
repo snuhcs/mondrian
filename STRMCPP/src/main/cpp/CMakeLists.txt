@@ -29,6 +29,7 @@ add_library(
         src/PatchReconstructor.cpp
         src/RoIExtractor.cpp
         src/SpatioTemporalRoIMixer.cpp
+        src/CppInferenceEngine.cpp
         jni/SpatioTemporalRoIMixer_jni.cpp
 )
 

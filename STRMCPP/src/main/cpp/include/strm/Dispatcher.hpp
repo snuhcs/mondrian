@@ -32,7 +32,11 @@ class Dispatcher {
             mRoIPrioritizer(roIPrioritizer),
             mInferenceEngine(inferenceEngine),
             mPatchMixer(patchMixer),
-            mMaxNumItems(config.MAX_QUEUE_SIZE) {
+            mMaxNumItems(config.MAX_QUEUE_SIZE),
+            isClosed(false),
+            mCountMixedFrameInference(INT_MAX),
+            mUseInferenceResults(true),
+            mPrevFrame(nullptr) {
     LOGD("Dispatcher()");
     mThread = std::thread([this]() {
       while (!isClosed.load()) {
@@ -53,11 +57,10 @@ class Dispatcher {
   Frame* takeItem();
 
  private:
-
   std::vector<BoundingBox> getPrevBoxes();
 
-  int mCountMixedFrameInference = INT_MAX;
-  bool mUseInferenceResults = true;
+  int mCountMixedFrameInference;
+  bool mUseInferenceResults;
   Frame* mPrevFrame;
   std::mutex mtx;
   std::condition_variable cv;

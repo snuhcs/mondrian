@@ -7,7 +7,9 @@
 namespace rm {
 
 void Dispatcher::process(Frame*& currFrame) {
-  LOGD("Dispatcher::process");
+  LOGD("Dispatcher::process %d %d",
+       currFrame != nullptr ? currFrame->frameIndex : -1,
+       mPrevFrame != nullptr ? mPrevFrame->frameIndex : -1);
   assert(currFrame != nullptr && mPrevFrame == nullptr || mPrevFrame->frameIndex + 1 == currFrame->frameIndex);
   /* Cases
    * 1. Full frame inference
@@ -84,31 +86,38 @@ void Dispatcher::notifyResults() {
 }
 
 std::vector<BoundingBox> Dispatcher::getResults(int frameIndex) {
-  LOGD("Dispatcher::getResults");
+  LOGD("Dispatcher::getResults Start %d", frameIndex);
   std::unique_lock<std::mutex> lock(mtx);
   cv.wait(lock, [this, &frameIndex]() {
     return mFrames.find(frameIndex) != mFrames.end() && mFrames.at(frameIndex)->isResultReady.load();
   });
+  LOGD("Dispatcher::getResults End   %d", frameIndex);
   return mFrames.at(frameIndex)->boxes;
 }
 
 void Dispatcher::enqueue(Frame* item) {
-  LOGD("Dispatcher::enqueue");
+  LOGD("Dispatcher::enqueue start %d", item->frameIndex);
   std::unique_lock<std::mutex> lock(mItemsMtx);
   mItemsCV.wait(lock, [this] {
     return mItems.size() < mMaxNumItems;
   });
   mItems.push(item);
+  lock.unlock();
+  mItemsCV.notify_all();
+  LOGD("Dispatcher::enqueue end   %d", item->frameIndex);
 }
 
 Frame* Dispatcher::takeItem() {
-  LOGD("Dispatcher::takeItem");
+  LOGD("Dispatcher::takeItem start");
   std::unique_lock<std::mutex> lock(mItemsMtx);
   mItemsCV.wait(lock, [this] {
     return !mItems.empty();
   });
   Frame* item = mItems.front();
   mItems.pop();
+  lock.unlock();
+  mItemsCV.notify_all();
+  LOGD("Dispatcher::takeItem end %d", item->frameIndex);
   return item;
 }
 

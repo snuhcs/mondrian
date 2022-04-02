@@ -7,6 +7,7 @@
 
 #include "Config.hpp"
 #include "DataType.hpp"
+#include "Log.hpp"
 
 namespace rm {
 
@@ -14,8 +15,10 @@ class RoIExtractor {
  public:
   RoIExtractor(RoIExtractorConfig config)
           : mConfig(config),
-            mTargetSize(
-                    cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)) {};
+            mTargetSize(cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH,
+                                 mConfig.EXTRACTION_RESIZE_HEIGHT)) {
+    LOGD("RoIExtractor()");
+  };
 
   bool useOpticalFlowRoIs() const;
 

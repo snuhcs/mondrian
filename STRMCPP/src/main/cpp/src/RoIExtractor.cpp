@@ -12,9 +12,11 @@ bool RoIExtractor::useOpticalFlowRoIs() const {
 
 void
 RoIExtractor::process(const std::pair<std::pair<Frame*, Frame*>, std::vector<BoundingBox>>& item) {
-  LOGD("RoIExtractor::process");
   Frame* prevFrame = item.first.first;
   Frame* currFrame = item.first.second;
+  LOGD("RoIExtractor::process %d %d",
+       prevFrame != nullptr ? prevFrame->frameIndex : -1,
+       currFrame != nullptr ? currFrame->frameIndex : -1);
 
   std::vector<RoI> rois;
   if (mConfig.OF_ROI) {

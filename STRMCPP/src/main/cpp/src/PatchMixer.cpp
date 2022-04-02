@@ -10,6 +10,7 @@ void PatchMixer::reset() {
 
 PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
   assert(currFrame != nullptr);
+  LOGD("PatchMixer::tryPackAndEnqueueMixedFrame %d", currFrame->frameIndex);
   std::lock_guard<std::mutex> patchMixerLock(mPatchMixerMtx);
   auto finishedKeysIt = mFinishedKeys.find(currFrame->key);
   if (finishedKeysIt != mFinishedKeys.end()) {

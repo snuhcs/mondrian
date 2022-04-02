@@ -3,6 +3,7 @@
 namespace rm {
 
 void PatchReconstructor::process(MixedFrame& mixedFrame) {
+  LOGD("PatchReconstructor::process");
   if (!mixedFrame.packedMat.empty()) {
     mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
     updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
@@ -68,6 +69,7 @@ void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
 }
 
 void PatchReconstructor::enqueue(const MixedFrame& item) {
+  LOGD("PatchReconstructor::enqueue");
   std::unique_lock<std::mutex> lock(mItemsMtx);
   mItemsCV.wait(lock, [this] {
     return mItems.size() < mMaxNumItems;
@@ -76,6 +78,7 @@ void PatchReconstructor::enqueue(const MixedFrame& item) {
 }
 
 MixedFrame PatchReconstructor::takeItem() {
+  LOGD("PatchReconstructor::takeItem");
   std::unique_lock<std::mutex> lock(mItemsMtx);
   mItemsCV.wait(lock, [this] {
     return !mItems.empty();

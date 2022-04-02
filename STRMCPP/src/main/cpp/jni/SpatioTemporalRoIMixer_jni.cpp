@@ -2,6 +2,7 @@
 
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
+#include "strm/Log.hpp"
 #include "strm/SpatioTemporalRoIMixer.hpp"
 #include "CustomResizeProfile.hpp"
 #include "CustomRoIPrioritizer.hpp"
@@ -29,6 +30,7 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_enqueueImage(JNIEnv* env, job
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   auto* image = (cv::Mat*) matAddr;
   const char* k = env->GetStringUTFChars(key, &isCopy);
+  LOGD("JNI enqueueImage: %d %d %d", image->cols, image->rows, image->channels());
   strm->enqueueImage(std::string(k), frameIndex, image);
 }
 
@@ -57,15 +59,6 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_getResults(JNIEnv* env, jobje
     env->CallVoidMethod(boxes, ArrayList_add, i, box);
   }
   return boxes;
-}
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_addSource(JNIEnv* env, jobject thiz,
-                                                             jlong handle, jstring key) {
-  auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  const char* k = env->GetStringUTFChars(key, &isCopy);
-  strm->addSource(std::string(k));
 }
 
 extern "C"

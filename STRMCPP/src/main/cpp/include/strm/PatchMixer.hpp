@@ -9,6 +9,7 @@
 
 #include "Config.hpp"
 #include "DataType.hpp"
+#include "Log.hpp"
 #include "InferenceEngine.hpp"
 #include "PatchReconstructor.hpp"
 
@@ -26,7 +27,9 @@ class PatchMixer {
              PatchReconstructor* patchReconstructor)
           : mConfig(config), mInferenceEngine(inferenceEngine),
             mPatchReconstructor(patchReconstructor),
-            mFreeRects({Rect(0, 0, config.MIXED_FRAME_SIZE, config.MIXED_FRAME_SIZE)}) {};
+            mFreeRects({Rect(0, 0, config.MIXED_FRAME_SIZE, config.MIXED_FRAME_SIZE)}) {
+    LOGD("PatchMixer()");
+  };
 
   Status tryPackAndEnqueueMixedFrame(Frame* currFrame);
 

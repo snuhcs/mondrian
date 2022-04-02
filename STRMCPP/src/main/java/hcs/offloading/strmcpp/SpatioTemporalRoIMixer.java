@@ -1,5 +1,7 @@
 package hcs.offloading.strmcpp;
 
+import android.util.Log;
+
 import org.opencv.core.Mat;
 
 import java.util.List;
@@ -31,10 +33,6 @@ public class SpatioTemporalRoIMixer {
         return getResults(handle, key, frameIndex);
     }
 
-    public void addSource(String key) {
-        addSource(handle, key);
-    }
-
     public void removeSource(String key) {
         removeSource(handle, key);
     }
@@ -48,8 +46,6 @@ public class SpatioTemporalRoIMixer {
     private native void enqueueImage(long handle, String key, int frameIndex, long matAddr);
 
     private native List<BoundingBox> getResults(long handle, String key, int frameIndex);
-
-    private native void addSource(long handle, String key);
 
     private native void removeSource(long handle, String key);
 
