@@ -119,7 +119,9 @@ public class VideoSource extends CustomCapturer {
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(5.0f);
         for (BoundingBox box : boxes) {
-            canvas.drawRect(new Rect(box.left, box.top, box.right, box.bottom), paint);
+            if (box.confidence >= drawConfidence) {
+                canvas.drawRect(new Rect(box.left, box.top, box.right, box.bottom), paint);
+            }
         }
         return bitmap;
     }

@@ -9,6 +9,18 @@ import java.util.List;
 public class CppInferenceEngine {
     private static final String TAG = "STRMCPP_JAVA";
 
+    static {
+        System.loadLibrary("strmcpp");
+        System.loadLibrary("opencv_core");
+        System.loadLibrary("opencv_dnn");
+        System.loadLibrary("opencv_video");
+        System.loadLibrary("opencv_imgcodecs");
+        System.loadLibrary("opencv_imgproc");
+        System.loadLibrary("MNN");
+        System.loadLibrary("MNN_CL");
+        System.loadLibrary("MNN_Express");
+    }
+
     private final long handle;
 
     public CppInferenceEngine() {

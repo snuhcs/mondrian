@@ -1,0 +1,156 @@
+#include "YoloV4Classifier.hpp"
+
+#include <map>
+#include <set>
+
+#include "strm/Log.hpp"
+
+namespace rm {
+
+YoloV4Classifier::YoloV4Classifier() {
+  LOGD("YoloV4 YoloV4Classifier::YoloV4Classifier()");
+  interpreter = MNN::Interpreter::createFromFile("/data/local/tmp/models/yolov4-960-fp16.mnn");
+  if (interpreter == nullptr) {
+    LOGE("YoloV4 interpreter == nullptr");
+    return;
+  }
+
+  MNN::ScheduleConfig conf;
+//  conf.type = MNN_FORWARD_OPENCL;
+  session = interpreter->createSession(conf);
+  LOGD("YoloV4 interpreter->createSession(conf)");
+  if (session == nullptr) {
+    LOGE("YoloV4 session == nullptr");
+    return;
+  }
+
+  std::map<std::string, MNN::Tensor*> inputTensorMap = interpreter->getSessionInputAll(session);
+  std::map<std::string, MNN::Tensor*> outputTensorMap = interpreter->getSessionOutputAll(session);
+  auto getShapeString = [](const std::vector<int>& shape) {
+    std::string shapeString;
+    for (int i = 0; i < shape.size(); i++) {
+      shapeString += std::to_string(shape[i]);
+      if (i != shape.size() - 1) {
+        shapeString += ", ";
+      }
+    }
+    return shapeString;
+  };
+  std::string inputInfo;
+  for (auto& it : inputTensorMap) {
+    inputInfo += it.first + ": " + getShapeString(it.second->shape());
+    inputInfo += " | ";
+  }
+  LOGD("Inputs  : %s", inputInfo.c_str());
+  std::string outputInfo;
+  for (auto& it : outputTensorMap) {
+    outputInfo += it.first + ": " + getShapeString(it.second->shape());
+    outputInfo += " | ";
+  }
+  LOGD("Outputs : %s", outputInfo.c_str());
+
+  LOGD("YoloV4 Initialize Success");
+}
+
+std::vector<BoundingBox> YoloV4Classifier::recognizeImage(
+    cv::Mat& mat, int originalWidth, int originalHeight) {
+  LOGD("YoloV4 recognizeImage: (%d, %d)", originalWidth, originalHeight);
+  return nms(getDetectionsForFull(mat, originalWidth, originalHeight));
+}
+
+std::vector<BoundingBox> YoloV4Classifier::getDetectionsForFull(
+    cv::Mat& mat, int originalWidth, int originalHeight) {
+  LOGD("YoloV4 getDetectionsForFull");
+  std::vector<BoundingBox> detections;
+
+  MNN::Tensor* inputTensor = interpreter->getSessionInputAll(session).at(INPUT_TENSOR_NAME);
+  MNN::Tensor* outputBoxes = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_BOXES);
+  MNN::Tensor* outputConfs = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_CONFS);
+
+  std::string shape;
+  for (int i = 0; i < inputTensor->shape().size(); i++) {
+    shape += std::to_string(inputTensor->shape()[i]);
+    if (i != inputTensor->shape().size() - 1) {
+      shape += ", ";
+    }
+  }
+  LOGD("Input  size : %d", inputTensor->size());
+  LOGD("Mat    size : %d", mat.total() * mat.elemSize());
+  LOGD("Before memcpy");
+  std::memcpy((void*) inputTensor->host<float>(), (void*) mat.data, inputTensor->size());
+
+  LOGD("Before Invoke");
+  interpreter->runSession(session);
+  LOGD("After Invoke");
+
+  auto* bboxes = outputBoxes->host<float>();
+  auto* confidences = outputConfs->host<float>();
+  for (int i = 0; i < OUTPUT_WIDTH; i++) {
+    float maxConfidence = 0;
+    int maxLabel = -1;
+    for (int label = 0; label < NUM_LABELS; label++) {
+      float confidence = confidences[i * NUM_LABELS + label];
+      if (maxConfidence < confidence) {
+        maxLabel = label;
+        maxConfidence = confidence;
+      }
+    }
+    if (maxLabel == 0 && maxConfidence > CONF_THRESHOLD) {
+      float xPos = bboxes[i * 4 + 0];
+      float yPos = bboxes[i * 4 + 1];
+      float w = bboxes[i * 4 + 2];
+      float h = bboxes[i * 4 + 3];
+      LOGD("Poses: %f, %f, %f, %f", xPos, yPos, w, h);
+      detections.emplace_back(Rect(
+          std::max(0, (int) ((xPos - w / 2) * (float) originalWidth / (float) INPUT_SIZE)),
+          std::max(0, (int) ((yPos - h / 2) * (float) originalHeight / (float) INPUT_SIZE)),
+          std::min(originalWidth, (int) ((xPos + w / 2) * (float) originalWidth / (float) INPUT_SIZE)),
+          std::min(originalHeight, (int) ((yPos + h / 2) * (float) originalHeight / (float) INPUT_SIZE))),
+                              maxConfidence, "person");
+    }
+  }
+  return detections;
+}
+
+std::vector<BoundingBox> YoloV4Classifier::nms(const std::vector<BoundingBox>& boxes) const {
+  std::vector<BoundingBox> nmsList;
+
+  auto comp = [](const BoundingBox& l, const BoundingBox& r) -> bool {
+    return l.confidence > r.confidence;
+  };
+  for (int k = 0; k < NUM_LABELS; k++) {
+    if (k != 0) {
+      continue;
+    }
+    std::set<BoundingBox, decltype(comp)> sortedBoxes(comp);
+
+    for (const BoundingBox& box : boxes) {
+//      if (box.labelName == <labelName for k>) {
+      if (box.labelName == "person") {
+        sortedBoxes.insert(box);
+      }
+    }
+
+    while (!sortedBoxes.empty()) {
+      auto startIt = sortedBoxes.begin();
+      const BoundingBox& max = *startIt;
+      nmsList.push_back(max);
+      sortedBoxes.erase(startIt);
+
+      for (auto it = sortedBoxes.begin(); it != sortedBoxes.end();) {
+        if (max.location.iou(it->location) >= IOU_THRESHOLD) {
+          it = sortedBoxes.erase(it);
+        } else {
+          it++;
+        }
+      }
+    }
+  }
+  return nmsList;
+}
+
+int YoloV4Classifier::getInputSize() const {
+  return INPUT_SIZE;
+}
+
+} // namespace rm

@@ -3,6 +3,7 @@
 namespace rm {
 
 CppInferenceEngine::CppInferenceEngine() : mHandle(0) {
+  LOGD("CppInferenceEngine::CppInferenceEngine()");
   workers.push_back(std::make_unique<Worker>(this));
 }
 
@@ -45,8 +46,9 @@ void CppInferenceEngine::enqueueResults(const int handle, const std::vector<Boun
   resultCv.notify_all();
 }
 
-Worker::Worker(CppInferenceEngine* engine) : engine(engine), isClosed(false),
-                                             classifier(new YoloV4Classifier()) {
+Worker::Worker(CppInferenceEngine* engine)
+: engine(engine), isClosed(false), classifier(new YoloV4Classifier()) {
+  targetSize = cv::Size(classifier->getInputSize(), classifier->getInputSize());
   LOGD("Worker::Worker()");
   thread = std::thread([this]() {
     while (!isClosed.load()) {
@@ -59,32 +61,30 @@ void Worker::Work() {
   LOGD("Worker::Work()");
   std::pair<int, cv::Mat> input = engine->getInput();
   cv::Mat& mat = input.second;
-  auto* data = (uint8_t*) mat.data;
-  LOGD("Worker: Mat(%d, %d, %d, %d), %d, %d, %d",
-       mat.cols, mat.rows, mat.channels(), mat.type(),
-       data[0], data[1], data[2]);
-  preprocess(mat);
+  int originalWidth = mat.cols;
+  int originalHeight = mat.rows;
+  preprocess(mat, targetSize);
   std::vector<BoundingBox> boxes = classifier->recognizeImage(
-      mat, input.second.cols, input.second.rows);
+      mat, originalWidth, originalHeight);
   engine->enqueueResults(input.first, boxes);
 }
 
-void Worker::preprocess(cv::Mat& mat) {
+void Worker::preprocess(cv::Mat& mat, const cv::Size& size) {
   cv::cvtColor(mat, mat, CV_BGRA2RGB);
   auto* udata = (uint8_t*) mat.data;
   LOGD("Worker::cvtColor : Mat(%d, %d, %d, %d), %d, %d, %d",
        mat.cols, mat.rows, mat.channels(), mat.type(),
        udata[0], udata[1], udata[2]);
 
+  cv::resize(mat, mat, size);
+  udata = (uint8_t*) mat.data;
+  LOGD("Worker::resize : Mat(%d, %d, %d, %d), %d, %d, %d",
+       mat.cols, mat.rows, mat.channels(), mat.type(),
+       udata[0], udata[1], udata[2]);
+
   mat.convertTo(mat, CV_32FC3, 1.f / 255);
   auto* data = (float*) mat.data;
   LOGD("Worker::convertTo : Mat(%d, %d, %d, %d), %f, %f, %f",
-       mat.cols, mat.rows, mat.channels(), mat.type(),
-       data[0], data[1], data[2]);
-
-  cv::resize(mat, mat, cv::Size(960, 960));
-  data = (float*) mat.data;
-  LOGD("Worker::resize : Mat(%d, %d, %d, %d), %f, %f, %f",
        mat.cols, mat.rows, mat.channels(), mat.type(),
        data[0], data[1], data[2]);
 }

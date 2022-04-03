@@ -42,7 +42,7 @@ public class EdgeDevice implements WebRTCCallback {
     private final Map<String, VideoSource> mVideoSources = new ConcurrentHashMap<>();
     private final Map<String, WebRTCSource> mWebRTCSources = new ConcurrentHashMap<>();
     private SpatioTemporalRoIMixer mSpatioTemporalRoIMixer;
-    private CppInferenceEngine engine;
+    private final CppInferenceEngine engine;
 
     EdgeDevice(Config config, Context context, String uri, SurfaceViewRenderer inputView, ResultCallback resultCallback) {
         mConfig = config;
@@ -52,7 +52,7 @@ public class EdgeDevice implements WebRTCCallback {
         mInputView = inputView;
         mInputView.init(eglBase.getEglBaseContext(), null);
 
-        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer();
+//        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer();
         engine = new CppInferenceEngine();
 
         if (!mConfig.sourceConfig.USE_LOCAL_VIDEO) {

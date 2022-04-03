@@ -1,11 +1,7 @@
 #ifndef YOLO_V4_CLASSIFIER_HPP_
 #define YOLO_V4_CLASSIFIER_HPP_
 
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/interpreter_builder.h"
-#include "tensorflow/lite/model_builder.h"
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/delegates/gpu/delegate.h"
+#include "MNN/Interpreter.hpp"
 
 #include "strm/DataType.hpp"
 
@@ -13,124 +9,18 @@ namespace rm {
 
 class YoloV4Classifier {
  public:
-  YoloV4Classifier() {
-    auto model = tflite::FlatBufferModel::BuildFromFile("/data/local/tmp/models/yolov4-960.tflite");
-    if (model == nullptr) {
-      LOGE("YoloV4 model == nullptr");
-      return;
-    }
-    auto resolver = std::make_unique<tflite::ops::builtin::BuiltinOpResolver>();
-    if (tflite::InterpreterBuilder(*model, *resolver)(&tfLite, 1)) {
-      LOGE("YoloV4 tflite::InterpreterBuilder");
-      return;
-    }
-
-//    TfLiteGpuDelegateOptionsV2 gpu_opts = TfLiteGpuDelegateOptionsV2Default();
-//    gpu_opts.inference_priority1 = TFLITE_GPU_INFERENCE_PRIORITY_MIN_LATENCY;
-//    gpu_opts.inference_priority2 = TFLITE_GPU_INFERENCE_PRIORITY_MIN_MEMORY_USAGE;
-//    gpu_opts.inference_priority3 = TFLITE_GPU_INFERENCE_PRIORITY_MAX_PRECISION;
-//    gpu_opts.experimental_flags |= TFLITE_GPU_EXPERIMENTAL_FLAGS_ENABLE_QUANT;
-//    gpu_opts.max_delegated_partitions = 100;
-//    tflite::Interpreter::TfLiteDelegatePtr gpu_delegate = tflite::Interpreter::TfLiteDelegatePtr(
-//        TfLiteGpuDelegateV2Create(&gpu_opts), &TfLiteGpuDelegateV2Delete);
-//
-//    if (tfLite->ModifyGraphWithDelegate(std::move(gpu_delegate))) {
-//      LOGE("YoloV4 tfLite->ModifyGraphWithDelegate");
-//      return;
-//    }
-    if (tfLite->AllocateTensors()) {
-      LOGE("YoloV4 tfLite->AllocateTensors()");
-      return;
-    }
-    LOGD("YoloV4 Initialize Success");
-  }
-
-  std::vector<BoundingBox> recognizeImage(cv::Mat& mat, int originalWidth, int originalHeight) {
-    LOGD("YoloV4 recognizeImage");
-    return nms(getDetectionsForFull(mat, originalWidth, originalHeight));
-  }
+  YoloV4Classifier();
+  std::vector<BoundingBox> recognizeImage(cv::Mat& mat, int originalWidth, int originalHeight);
+  int getInputSize() const;
 
  private:
-  std::vector<BoundingBox>
-  getDetectionsForFull(cv::Mat& mat, int originalWidth, int originalHeight) {
-    LOGD("YoloV4 getDetectionsForFull");
-    std::vector<BoundingBox> detections;
+  std::vector<BoundingBox> getDetectionsForFull(
+      cv::Mat& mat, int originalWidth, int originalHeight);
+  std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes) const;
 
-    assert(tfLite->inputs().size() == 1);
-    LOGD("Input  size : %d", tfLite->input_tensor(0)->bytes);
-    LOGD("Mat    size : %d", mat.total() * mat.elemSize());
-    LOGD("Output size : %d %d", tfLite->output_tensor(0)->bytes, tfLite->output_tensor(1)->bytes);
-    LOGD("Before memcpy");
-    std::memcpy(tfLite->input_tensor(0)->data.data, mat.data, tfLite->input_tensor(0)->bytes);
-    LOGD("Before Invoke");
-
-    tfLite->Invoke();
-
-    LOGD("After Invoke");
-    float* bboxes = tfLite->output_tensor(0)->data.f;
-    float* confidences = tfLite->output_tensor(1)->data.f;
-
-    for (int i = 0; i < OUTPUT_WIDTH; i++) {
-      float maxConfidence = 0;
-      int detectedClass = -1;
-      for (int c = 0; c < NUM_LABELS; c++) {
-        if (confidences[i * NUM_LABELS + c] > maxConfidence) {
-          detectedClass = c;
-          maxConfidence = confidences[c];
-        }
-      }
-      if (detectedClass == 0 && maxConfidence > CONF_THRESHOLD) {
-        float xPos = bboxes[i * 4 + 0];
-        float yPos = bboxes[i * 4 + 1];
-        float w = bboxes[i * 4 + 2];
-        float h = bboxes[i * 4 + 3];
-        Rect rect(
-            (int) (std::max(0, (int) (xPos - w / 2)) * originalWidth / INPUT_SIZE),
-            (int) (std::max(0, (int) (yPos - h / 2)) * originalHeight / INPUT_SIZE),
-            (int) (std::min(INPUT_SIZE - 1, (int) (xPos + w / 2)) * originalWidth / INPUT_SIZE),
-            (int) (std::min(INPUT_SIZE - 1, (int) (yPos + h / 2)) * originalHeight / INPUT_SIZE));
-        detections.push_back(BoundingBox(rect, maxConfidence, "person"));
-      }
-    }
-    return detections;
-  }
-
-  std::vector<BoundingBox> nms(std::vector<BoundingBox> boxes) {
-    std::vector<BoundingBox> nmsList;
-
-    for (int k = 0; k < NUM_LABELS; k++) {
-      if (k != 0) {
-        continue;
-      }
-
-      auto comp = [](const BoundingBox& l, const BoundingBox& r) -> bool {
-        return l.confidence > r.confidence;
-      };
-      std::set<BoundingBox, decltype(comp)> sortedBoxes(comp);
-
-      for (BoundingBox box : boxes) {
-        if (box.labelName == "person") {
-          sortedBoxes.insert(box);
-        }
-      }
-
-      while (sortedBoxes.size() > 0) {
-        auto startIt = sortedBoxes.begin();
-        const BoundingBox& max = *startIt;
-        nmsList.push_back(max);
-        sortedBoxes.erase(startIt);
-
-        for (auto it = sortedBoxes.begin(); it != sortedBoxes.end();) {
-          if (max.location.iou(it->location) >= IOU_THRESHOLD) {
-            it = sortedBoxes.erase(it);
-          } else {
-            it++;
-          }
-        }
-      }
-    }
-    return nmsList;
-  }
+  const std::string INPUT_TENSOR_NAME = "x";
+  const std::string OUTPUT_TENSOR_NAME_BOXES = "model/tf.concat_22/concat";
+  const std::string OUTPUT_TENSOR_NAME_CONFS = "model/tf.concat_23/concat";
 
   const int NUM_LABELS = 80;
   const int INPUT_SIZE = 960;
@@ -138,7 +28,8 @@ class YoloV4Classifier {
   const float CONF_THRESHOLD = 0.1;
   const float IOU_THRESHOLD = 0.3;
 
-  std::unique_ptr<tflite::Interpreter> tfLite;
+  MNN::Interpreter* interpreter;
+  MNN::Session* session;
 };
 
 }

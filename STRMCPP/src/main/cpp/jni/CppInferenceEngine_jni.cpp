@@ -6,8 +6,10 @@
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_hcs_offloading_strmcpp_CppInferenceEngine_createCppInferenceEngine(JNIEnv* env, jobject thiz) {
+  LOGD("JNI CppInferenceEngine.createCppInferenceEngine");
   return reinterpret_cast<long>(new rm::CppInferenceEngine());
 }
+
 extern "C"
 JNIEXPORT jint JNICALL
 Java_hcs_offloading_strmcpp_CppInferenceEngine_enqueue(JNIEnv* env, jobject thiz, jlong handle,
@@ -16,7 +18,6 @@ Java_hcs_offloading_strmcpp_CppInferenceEngine_enqueue(JNIEnv* env, jobject thiz
   auto* image = (cv::Mat*) matAddr;
   LOGD("JNI enqueue(Mat(%d, %d, %d))", image->cols, image->rows, image->channels());
   cv::Mat clonedMat = image->clone();
-  engine->hi();
   return engine->enqueue(clonedMat, true);
 }
 extern "C"

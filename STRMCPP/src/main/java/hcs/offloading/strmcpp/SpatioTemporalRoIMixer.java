@@ -10,16 +10,15 @@ public class SpatioTemporalRoIMixer {
     private static final String TAG = "STRMCPP";
 
     static {
+        System.loadLibrary("strmcpp");
         System.loadLibrary("opencv_core");
         System.loadLibrary("opencv_dnn");
         System.loadLibrary("opencv_video");
         System.loadLibrary("opencv_imgcodecs");
         System.loadLibrary("opencv_imgproc");
-//        System.loadLibrary("tensorflowlite");
-//        System.loadLibrary("tensorflowlite_gpu_delegate");
-        System.loadLibrary("tensorflowlite_jni");
-        System.loadLibrary("tensorflowlite_gpu_jni");
-        System.loadLibrary("strmcpp");
+        System.loadLibrary("MNN");
+        System.loadLibrary("MNN_CL");
+        System.loadLibrary("MNN_Express");
     }
 
     private final long handle;

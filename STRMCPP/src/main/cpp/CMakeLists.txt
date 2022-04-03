@@ -30,6 +30,7 @@ add_library(
         src/RoIExtractor.cpp
         src/SpatioTemporalRoIMixer.cpp
         src/CppInferenceEngine.cpp
+        src/YoloV4Classifier.cpp
         jni/SpatioTemporalRoIMixer_jni.cpp
         jni/CppInferenceEngine_jni.cpp
 )
@@ -64,6 +65,7 @@ target_link_libraries(
         opencv_video
         opencv_imgcodecs
         opencv_imgproc
-        tensorflowlite
-        tensorflowlite_gpu_delegate
+        MNN
+        MNN_CL
+        MNN_Express
 )

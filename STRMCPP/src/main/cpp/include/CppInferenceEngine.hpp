@@ -17,10 +17,6 @@ class CppInferenceEngine : public InferenceEngine {
  public:
   CppInferenceEngine();
 
-  void hi() {
-    LOGD("hi");
-  }
-
   int enqueue(const cv::Mat mat, bool isFull) override;
 
   std::vector<BoundingBox> getResults(const int handle) override;
@@ -53,13 +49,14 @@ class Worker {
  private:
   void Work();
 
-  static void preprocess(cv::Mat& mat);
+  static void preprocess(cv::Mat& mat, const cv::Size& size);
 
   CppInferenceEngine* engine;
 
   std::unique_ptr<YoloV4Classifier> classifier;
   std::atomic_bool isClosed;
   std::thread thread;
+  cv::Size targetSize;
 };
 
 }
