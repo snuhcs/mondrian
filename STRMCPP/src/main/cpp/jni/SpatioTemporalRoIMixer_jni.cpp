@@ -35,11 +35,10 @@ JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_enqueueImage(JNIEnv* env, jobject thiz,
                                                                 jlong handle, jstring key,
                                                                 jint frameIndex, jlong matAddr) {
-  LOGD("SpatioTemporalRoIMixer.enqueueImage()");
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   auto* image = (cv::Mat*) matAddr;
   const char* k = env->GetStringUTFChars(key, &isCopy);
-  LOGD("JNI enqueueImage: %d %d %d", image->cols, image->rows, image->channels());
+  LOGD("SpatioTemporalRoIMixer.enqueueImage(): %d %d %d", image->cols, image->rows, image->channels());
   strm->enqueueImage(std::string(k), frameIndex, image);
 }
 
@@ -48,7 +47,7 @@ JNIEXPORT jobject JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_getResults(JNIEnv* env, jobject thiz,
                                                               jlong handle, jstring key,
                                                               jint frame_index) {
-  LOGD("SpatioTemporalRoIMixer.getResults()");
+  LOGD("SpatioTemporalRoIMixer.getResults() start");
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   const char* k = env->GetStringUTFChars(key, &isCopy);
   std::vector<rm::BoundingBox> results = strm->getResults(std::string(k), frame_index);

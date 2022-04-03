@@ -25,19 +25,19 @@ class YoloV4Classifier {
       return;
     }
 
-    TfLiteGpuDelegateOptionsV2 gpu_opts = TfLiteGpuDelegateOptionsV2Default();
-    gpu_opts.inference_priority1 = TFLITE_GPU_INFERENCE_PRIORITY_MIN_LATENCY;
-    gpu_opts.inference_priority2 = TFLITE_GPU_INFERENCE_PRIORITY_MIN_MEMORY_USAGE;
-    gpu_opts.inference_priority3 = TFLITE_GPU_INFERENCE_PRIORITY_MAX_PRECISION;
-    gpu_opts.experimental_flags |= TFLITE_GPU_EXPERIMENTAL_FLAGS_ENABLE_QUANT;
-    gpu_opts.max_delegated_partitions = 100;
-    tflite::Interpreter::TfLiteDelegatePtr gpu_delegate = tflite::Interpreter::TfLiteDelegatePtr(
-        TfLiteGpuDelegateV2Create(&gpu_opts), &TfLiteGpuDelegateV2Delete);
-
-    if (tfLite->ModifyGraphWithDelegate(std::move(gpu_delegate))) {
-      LOGE("YoloV4 tfLite->ModifyGraphWithDelegate");
-      return;
-    }
+//    TfLiteGpuDelegateOptionsV2 gpu_opts = TfLiteGpuDelegateOptionsV2Default();
+//    gpu_opts.inference_priority1 = TFLITE_GPU_INFERENCE_PRIORITY_MIN_LATENCY;
+//    gpu_opts.inference_priority2 = TFLITE_GPU_INFERENCE_PRIORITY_MIN_MEMORY_USAGE;
+//    gpu_opts.inference_priority3 = TFLITE_GPU_INFERENCE_PRIORITY_MAX_PRECISION;
+//    gpu_opts.experimental_flags |= TFLITE_GPU_EXPERIMENTAL_FLAGS_ENABLE_QUANT;
+//    gpu_opts.max_delegated_partitions = 100;
+//    tflite::Interpreter::TfLiteDelegatePtr gpu_delegate = tflite::Interpreter::TfLiteDelegatePtr(
+//        TfLiteGpuDelegateV2Create(&gpu_opts), &TfLiteGpuDelegateV2Delete);
+//
+//    if (tfLite->ModifyGraphWithDelegate(std::move(gpu_delegate))) {
+//      LOGE("YoloV4 tfLite->ModifyGraphWithDelegate");
+//      return;
+//    }
     if (tfLite->AllocateTensors()) {
       LOGE("YoloV4 tfLite->AllocateTensors()");
       return;
@@ -57,6 +57,8 @@ class YoloV4Classifier {
     std::vector<BoundingBox> detections;
 
     assert(tfLite->inputs().size() == 1);
+    LOGD("Input  size : %d", tfLite->input_tensor(0)->bytes);
+    LOGD("Mat    size : %d", mat.total() * mat.elemSize());
     LOGD("Output size : %d %d", tfLite->output_tensor(0)->bytes, tfLite->output_tensor(1)->bytes);
     LOGD("Before memcpy");
     std::memcpy(tfLite->input_tensor(0)->data.data, mat.data, tfLite->input_tensor(0)->bytes);

@@ -60,7 +60,7 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
     }
     if (mConfig.PACKING) {
       cv::Mat mixedImage = getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE);
-      MixedFrame mixedFrame(mixedImage.clone(), mPackedFrames);
+      MixedFrame mixedFrame(std::move(mixedImage.clone()), mPackedFrames);
       mixedFrame.handle = mInferenceEngine->enqueue(mixedImage, false);
       mPatchReconstructor->enqueue(mixedFrame);
     } else {

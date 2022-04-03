@@ -7,6 +7,7 @@ import org.opencv.core.Mat;
 import java.util.List;
 
 public class SpatioTemporalRoIMixer {
+    private static final String TAG = "STRMCPP";
 
     static {
         System.loadLibrary("opencv_core");
@@ -14,8 +15,10 @@ public class SpatioTemporalRoIMixer {
         System.loadLibrary("opencv_video");
         System.loadLibrary("opencv_imgcodecs");
         System.loadLibrary("opencv_imgproc");
-        System.loadLibrary("tensorflowlite");
-        System.loadLibrary("tensorflowlite_gpu_delegate");
+//        System.loadLibrary("tensorflowlite");
+//        System.loadLibrary("tensorflowlite_gpu_delegate");
+        System.loadLibrary("tensorflowlite_jni");
+        System.loadLibrary("tensorflowlite_gpu_jni");
         System.loadLibrary("strmcpp");
     }
 
@@ -30,7 +33,9 @@ public class SpatioTemporalRoIMixer {
     }
 
     public List<BoundingBox> getResults(String key, int frameIndex) {
-        return getResults(handle, key, frameIndex);
+        List<BoundingBox> results = getResults(handle, key, frameIndex);
+        Log.d(TAG, "SpatioTemporalRoIMixer.getResults() end : " + results.size());
+        return results;
     }
 
     public void removeSource(String key) {

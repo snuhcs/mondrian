@@ -10,7 +10,7 @@ Dispatcher::Dispatcher(DispatcherConfig config, RoIExtractorConfig roIExtractorC
                        ResizeProfile* resizeProfile, RoIPrioritizer* roIPrioritizer,
                        InferenceEngine* inferenceEngine, PatchMixer* patchMixer)
     : mConfig(config),
-      mRoIExtractor(roIExtractorConfig),
+      mRoIExtractor(new RoIExtractor(roIExtractorConfig)),
       mResizeProfile(resizeProfile),
       mRoIPrioritizer(roIPrioritizer),
       mInferenceEngine(inferenceEngine),
@@ -58,7 +58,7 @@ void Dispatcher::process(Frame*& currFrame) {
     notifyResults();
   } else {
     std::vector<BoundingBox> prevResults = getPrevBoxes();
-    mRoIExtractor.process(std::make_pair(std::make_pair(mPrevFrame, currFrame), prevResults));
+    mRoIExtractor->process(std::make_pair(std::make_pair(mPrevFrame, currFrame), prevResults));
     std::sort(currFrame->rois.begin(), currFrame->rois.end(),
               [this](const RoI& lhs, const RoI& rhs) -> bool {
                 return mRoIPrioritizer->priority(lhs) < mRoIPrioritizer->priority(rhs);
@@ -82,12 +82,13 @@ void Dispatcher::process(Frame*& currFrame) {
     }
   }
   mPrevFrame = currFrame;
+  LOGD("Dispatcher::process end : %d %d", mCountMixedFrameInference, mUseInferenceResults);
 }
 
 std::vector<BoundingBox> Dispatcher::getPrevBoxes() {
   LOGD("Dispatcher::getPrevBoxes");
   std::vector<BoundingBox> prevResults;
-  if (!mRoIExtractor.useOpticalFlowRoIs()) {
+  if (!mRoIExtractor->useOpticalFlowRoIs()) {
     return prevResults;
   }
   std::unique_lock<std::mutex> lock(mtx);
@@ -107,6 +108,7 @@ std::vector<BoundingBox> Dispatcher::getPrevBoxes() {
       prevResults.emplace_back(roi.location, 1.0, roi.labelName);
     }
   }
+  LOGD("Dispatcher::getPrevBoxes end : %d", prevResults.size());
   return prevResults;
 }
 

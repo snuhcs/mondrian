@@ -31,6 +31,7 @@ add_library(
         src/SpatioTemporalRoIMixer.cpp
         src/CppInferenceEngine.cpp
         jni/SpatioTemporalRoIMixer_jni.cpp
+        jni/CppInferenceEngine_jni.cpp
 )
 
 add_library(

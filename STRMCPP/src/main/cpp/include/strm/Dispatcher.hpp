@@ -50,7 +50,7 @@ class Dispatcher {
 
   DispatcherConfig mConfig;
   std::map<int, std::unique_ptr<Frame>> mFrames;
-  RoIExtractor mRoIExtractor;
+  std::unique_ptr<RoIExtractor> mRoIExtractor;
   RoIPrioritizer* mRoIPrioritizer;
   ResizeProfile* mResizeProfile;
   InferenceEngine* mInferenceEngine;

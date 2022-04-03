@@ -4,36 +4,16 @@ namespace rm {
 
 CppInferenceEngine::CppInferenceEngine() : mHandle(0) {
   workers.push_back(std::make_unique<Worker>(this));
-};
+}
 
-int CppInferenceEngine::enqueue(cv::Mat mat, bool isFull) {
-  LOGD("CppInferenceEngine::enqueue : Mat(%d, %d, %d), %d", mat.cols, mat.rows, mat.channels(),
-       isFull);
+int CppInferenceEngine::enqueue(const cv::Mat mat, bool isFull) {
+  LOGD("CPP enqueue(Mat(%d, %d, %d))", mat.cols, mat.rows, mat.channels());
   std::unique_lock<std::mutex> inputLock(inputMtx);
-  inputs.push(std::make_pair(mHandle, mat));
+  inputs.push(std::make_pair(mHandle, mat.clone()));
   inputLock.unlock();
   inputCv.notify_all();
   return mHandle++;
-};
-
-std::pair<int, cv::Mat> CppInferenceEngine::getInput() {
-  LOGD("CppInferenceEngine::getInput");
-  std::unique_lock<std::mutex> inputLock(inputMtx);
-  inputCv.wait(inputLock, [this]() {
-    return !inputs.empty();
-  });
-  std::pair<int, cv::Mat> input = inputs.front();
-  inputs.pop();
-  return input;
-};
-
-void CppInferenceEngine::enqueueResults(const int handle, const std::vector<BoundingBox>& boxes) {
-  LOGD("CppInferenceEngine::enqueueResults");
-  std::unique_lock<std::mutex> resultLock(resultMtx);
-  results.insert(std::make_pair(handle, boxes));
-  resultLock.unlock();
-  resultCv.notify_all();
-};
+}
 
 std::vector<BoundingBox> CppInferenceEngine::getResults(const int handle) {
   LOGD("CppInferenceEngine::getResults");
@@ -44,7 +24,26 @@ std::vector<BoundingBox> CppInferenceEngine::getResults(const int handle) {
   std::vector<BoundingBox> boxes = results.at(handle);
   results.erase(results.find(handle));
   return boxes;
-};
+}
+
+std::pair<int, cv::Mat> CppInferenceEngine::getInput() {
+  LOGD("CppInferenceEngine::getInput");
+  std::unique_lock<std::mutex> inputLock(inputMtx);
+  inputCv.wait(inputLock, [this]() {
+    return !inputs.empty();
+  });
+  std::pair<int, cv::Mat> input = inputs.front();
+  inputs.pop();
+  return input;
+}
+
+void CppInferenceEngine::enqueueResults(const int handle, const std::vector<BoundingBox>& boxes) {
+  LOGD("CppInferenceEngine::enqueueResults");
+  std::unique_lock<std::mutex> resultLock(resultMtx);
+  results.insert(std::make_pair(handle, boxes));
+  resultLock.unlock();
+  resultCv.notify_all();
+}
 
 Worker::Worker(CppInferenceEngine* engine) : engine(engine), isClosed(false),
                                              classifier(new YoloV4Classifier()) {
@@ -88,6 +87,6 @@ void Worker::preprocess(cv::Mat& mat) {
   LOGD("Worker::resize : Mat(%d, %d, %d, %d), %f, %f, %f",
        mat.cols, mat.rows, mat.channels(), mat.type(),
        data[0], data[1], data[2]);
-};
+}
 
 } // namespace rm

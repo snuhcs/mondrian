@@ -17,13 +17,17 @@ class CppInferenceEngine : public InferenceEngine {
  public:
   CppInferenceEngine();
 
-  int enqueue(cv::Mat mat, bool isFull);
+  void hi() {
+    LOGD("hi");
+  }
+
+  int enqueue(const cv::Mat mat, bool isFull) override;
+
+  std::vector<BoundingBox> getResults(const int handle) override;
 
   std::pair<int, cv::Mat> getInput();
 
   void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
-
-  std::vector<BoundingBox> getResults(const int handle);
 
  private:
   std::vector<std::unique_ptr<Worker>> workers;

@@ -58,7 +58,7 @@ struct BoundingBox {
   float confidence;
   std::string labelName;
 
-  BoundingBox(const Rect& location, const float confidence, const std::string& labelName)
+  BoundingBox(const Rect location, const float confidence, const std::string labelName)
       : location(location), confidence(confidence), labelName(labelName) {}
 };
 
@@ -76,7 +76,7 @@ struct Frame {
   Frame(const Frame& frame)
       : key(frame.key), frameIndex(frame.frameIndex), mat(frame.mat), isResultReady(false) {}
 
-  Frame(const std::string& key, const int frameIndex, const cv::Mat* mat)
+  Frame(const std::string key, const int frameIndex, const cv::Mat* mat)
       : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false) {}
 };
 
@@ -88,25 +88,25 @@ struct RoI {
 
   const Frame* frame;
   Rect location;
-
-  int handle;
-  std::vector<BoundingBox> boxes;
+  Type type;
+  std::string labelName;
 
   int minOriginLength;
   float scale;
   std::pair<int, int> packedLocation;
 
-  Type type;
-  std::string labelName;
+  int handle;
+  std::vector<BoundingBox> boxes;
 
-  RoI(const Frame* frame, Rect location, const Type type, std::string labelName)
+  RoI(const Frame* frame, const Rect location, const Type type, const std::string labelName)
       : frame(frame), location(location), type(type), labelName(labelName),
-        packedLocation(std::make_pair(-1, -1)) {};
+        minOriginLength(-1), scale(1), packedLocation(std::make_pair(-1, -1)),
+        handle(-1) {};
 
-  RoI(const Frame* frame, Rect location, Type type, std::string labelName, int minOriginLength)
+  RoI(const Frame* frame, const Rect location, const Type type, const std::string labelName, const int minOriginLength)
       : frame(frame), location(location), type(type), labelName(labelName),
-        minOriginLength(minOriginLength),
-        packedLocation(std::make_pair(-1, -1)) {};
+        minOriginLength(minOriginLength), scale(1), packedLocation(std::make_pair(-1, -1)),
+        handle(-1) {};
 
   bool isPacked() const {
     return packedLocation.first == -1 && packedLocation.second == -1;
@@ -116,17 +116,17 @@ struct RoI {
     return location.width() * location.height();
   }
 
-  std::pair<int, int> getResizedWidthHeight() {
+  std::pair<int, int> getResizedWidthHeight() const {
     return std::pair<int, int>(std::max(1, (int) (location.width() * scale)),
                                std::max(1, (int) (location.height() * scale)));
   }
 
-  cv::Mat getMat() {
+  cv::Mat getMat() const {
     return frame->mat->operator()(
         cv::Rect(location.left, location.top, location.width(), location.height()));
   }
 
-  cv::Mat getResizedMat() {
+  cv::Mat getResizedMat() const {
     std::pair<int, int> wh = getResizedWidthHeight();
     cv::Mat resizedMat;
     cv::resize(getMat(), resizedMat, cv::Size(wh.first, wh.second));
@@ -141,7 +141,7 @@ struct MixedFrame {
   int handle;
   std::vector<BoundingBox> boxes;
 
-  MixedFrame(cv::Mat packedMat, std::vector<Frame*> packedFrames)
+  MixedFrame(const cv::Mat packedMat, std::vector<Frame*> packedFrames)
       : packedMat(std::move(packedMat)), packedFrames(packedFrames) {};
 };
 
