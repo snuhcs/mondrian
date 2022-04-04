@@ -18,7 +18,7 @@ YoloV4Classifier::YoloV4Classifier(int inputSize)
     LOGE("YoloV4 interpreter creation failed");
     return;
   } else {
-    LOGD("YOloV4 interpreter created");
+    LOGD("YoloV4 interpreter created");
   }
 
   MNN::ScheduleConfig conf;
