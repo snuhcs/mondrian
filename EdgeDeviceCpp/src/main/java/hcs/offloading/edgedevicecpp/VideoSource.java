@@ -20,7 +20,9 @@ import org.webrtc.YuvConverter;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import hcs.offloading.edgedevicecpp.config.SourceConfig;
 import hcs.offloading.network.webrtc.CustomCapturer;
@@ -40,6 +42,7 @@ public class VideoSource extends CustomCapturer implements Runnable {
 
     private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
     private final Map<Integer, Bitmap> frames = new ConcurrentHashMap<>();
+    private final LinkedBlockingQueue<Integer> frameIndices = new LinkedBlockingQueue<>();
 
     private final SpatioTemporalRoIMixer strm;
 
@@ -61,15 +64,14 @@ public class VideoSource extends CustomCapturer implements Runnable {
 
     @Override
     public void run() {
-        int frameIndex = startIndex;
         try {
             while (true) {
+                int frameIndex = frameIndices.take();
                 List<BoundingBox> results = strm.getResults(VIDEO_PATH, frameIndex);
                 Bitmap bitmap = frames.remove(frameIndex);
                 mResultCallback.log(VIDEO_PATH, frameIndex, results);
                 mResultCallback.drawObjectDetectionResult(drawBoxes(
                         bitmap, results, DRAW_CONFIDENCE));
-                frameIndex++;
                 Thread.sleep(50);
             }
         } catch (InterruptedException e) {
@@ -90,12 +92,10 @@ public class VideoSource extends CustomCapturer implements Runnable {
             YuvConverter yuvConverter = new YuvConverter();
             TextureBufferImpl buffer = new TextureBufferImpl(width, height, VideoFrame.TextureBuffer.Type.RGB, textures[0], new Matrix(), surTexture.getHandler(), yuvConverter, null);
 
-//            int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
-            int frameCount = 50;
+            int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
             for (int frameIndex = startIndex; frameIndex < frameCount; frameIndex++) {
                 Log.v(TAG, VIDEO_PATH + " " + frameIndex + " loaded");
                 Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
-                frames.put(frameIndex, bitmap);
 
                 surTexture.getHandler().post(() -> {
                     GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
@@ -112,7 +112,13 @@ public class VideoSource extends CustomCapturer implements Runnable {
 
                 Mat mat = new Mat();
                 Utils.bitmapToMat(bitmap, mat);
-                strm.enqueueImage(VIDEO_PATH, mat.clone());
+                int index = strm.enqueueImage(VIDEO_PATH, mat.clone());
+                frames.put(index, bitmap);
+                try {
+                    frameIndices.put(index);
+                } catch (InterruptedException e) {
+                    Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+                }
                 mat.release();
             }
         });

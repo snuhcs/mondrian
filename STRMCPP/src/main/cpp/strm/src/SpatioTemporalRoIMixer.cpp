@@ -37,7 +37,7 @@ void SpatioTemporalRoIMixer::notifyMixedInferenceResults(const MixedFrame& mixed
   }
 }
 
-void SpatioTemporalRoIMixer::enqueueImage(
+int SpatioTemporalRoIMixer::enqueueImage(
     const std::string& key, const cv::Mat mat) {
   LOGD("SpatioTemporalRoIMixer::enqueueImage(%s, Mat(%d, %d, %d))",
        key.c_str(), mat.cols, mat.rows, mat.channels());
@@ -51,7 +51,7 @@ void SpatioTemporalRoIMixer::enqueueImage(
   }
   Dispatcher* dispatcher = mDispatchers.at(key).get();
   dispatchersLock.unlock();
-  dispatcher->enqueue(mat);
+  return dispatcher->enqueue(mat);
 }
 
 std::vector<BoundingBox>

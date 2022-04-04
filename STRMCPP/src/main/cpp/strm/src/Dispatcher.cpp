@@ -40,18 +40,19 @@ Dispatcher::~Dispatcher() {
   mThread.join();
 };
 
-void Dispatcher::enqueue(const cv::Mat mat) {
+int Dispatcher::enqueue(const cv::Mat mat) {
   LOGD("Dispatcher%s::enqueue(Mat(%d, %d, %d))", mTag.c_str(), mat.cols, mat.rows, mat.channels());
   std::unique_lock<std::mutex> lock(mFramesMtx);
   mFramesCv.wait(lock, [this] {
     return mEnqueuedFrameIndex - mProcessedFrameIndex < mMaxNumItems;
   });
+  int frameIndex = mEnqueuedFrameIndex++;
   mFrames.insert(
-      std::make_pair(mEnqueuedFrameIndex, std::make_unique<Frame>(mKey, mEnqueuedFrameIndex, mat)));
-  LOGD("Dispatcher%s::enqueue(%d) end", mTag.c_str(), mEnqueuedFrameIndex);
-  mEnqueuedFrameIndex++;
+      std::make_pair(frameIndex, std::make_unique<Frame>(mKey, frameIndex, mat)));
+  LOGD("Dispatcher%s::enqueue(%d) end", mTag.c_str(), frameIndex);
   lock.unlock();
   mFramesCv.notify_all();
+  return frameIndex;
 }
 
 Frame* Dispatcher::getFrameToProcess() {

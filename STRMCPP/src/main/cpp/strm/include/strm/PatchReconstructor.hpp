@@ -16,17 +16,13 @@ class PatchReconstructor {
   PatchReconstructor(PatchReconstructorConfig config,
                      InferenceEngine* inferenceEngine,
                      PatchReconstructorCallback* callback);
-
-  void process(MixedFrame& item);
-
   void enqueue(const MixedFrame item);
 
-  MixedFrame takeItem();
-
  private:
+  void process(MixedFrame& item);
+  MixedFrame takeItem();
   static void updateMixedFrameInferenceResults(
       MixedFrame& mixedFrame, int matchPadding, float useIoUThreshold);
-
   static void updateRoIInferenceResults(MixedFrame& mixedFrame);
 
   PatchReconstructorConfig mConfig;

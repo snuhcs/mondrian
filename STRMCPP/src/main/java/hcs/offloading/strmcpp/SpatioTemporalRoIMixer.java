@@ -23,8 +23,8 @@ public class SpatioTemporalRoIMixer {
         handle = createSpatioTemporalRoIMixer(frameSize, fullFrameSize);
     }
 
-    public void enqueueImage(String key, Mat mat) {
-        enqueueImage(handle, key, mat.getNativeObjAddr());
+    public int enqueueImage(String key, Mat mat) {
+        return enqueueImage(handle, key, mat.getNativeObjAddr());
     }
 
     public List<BoundingBox> getResults(String key, int frameIndex) {
@@ -41,7 +41,7 @@ public class SpatioTemporalRoIMixer {
 
     private native long createSpatioTemporalRoIMixer(int frameSize, int fullFrameSize);
 
-    private native void enqueueImage(long handle, String key, long matAddr);
+    private native int enqueueImage(long handle, String key, long matAddr);
 
     private native List<BoundingBox> getResults(long handle, String key, int frameIndex);
 

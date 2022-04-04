@@ -8,8 +8,6 @@ namespace rm {
 class RoIPrioritizer {
  public:
   virtual bool priority(const RoI& roi) const = 0;
-
-  virtual ~RoIPrioritizer() {};
 };
 
 }

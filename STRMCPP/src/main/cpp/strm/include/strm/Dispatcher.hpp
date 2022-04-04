@@ -29,7 +29,7 @@ class Dispatcher {
 
   ~Dispatcher();
 
-  void enqueue(const cv::Mat mat);
+  int enqueue(const cv::Mat mat);
 
   Frame* getFrameToProcess();
 

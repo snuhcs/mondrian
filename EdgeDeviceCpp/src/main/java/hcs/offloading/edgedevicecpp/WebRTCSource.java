@@ -1,6 +1,10 @@
 package hcs.offloading.edgedevicecpp;
 
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.util.Log;
 
 import org.json.JSONException;
@@ -14,6 +18,9 @@ import org.webrtc.VideoSink;
 import org.webrtc.VideoTrack;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import hcs.offloading.network.webrtc.WebRTCManager;
 import hcs.offloading.network.webrtc.YuvFrame;
@@ -27,6 +34,8 @@ public class WebRTCSource implements VideoSink, Runnable {
 
     private final SpatioTemporalRoIMixer strm;
 
+    private final Map<Integer, Bitmap> frames = new ConcurrentHashMap<>();
+    private final LinkedBlockingQueue<Integer> frameIndices = new LinkedBlockingQueue<>();
     private final Thread drawThread;
     private final ResultCallback mResultCallback;
     private final float DRAW_CONFIDENCE;
@@ -53,12 +62,33 @@ public class WebRTCSource implements VideoSink, Runnable {
 
     @Override
     public void run() {
-        int frameIndex = 0;
-        while (true) {
-            List<BoundingBox> results = strm.getResults(mSourceIP, frameIndex);
-            mResultCallback.log(mSourceIP, frameIndex, results);
-            frameIndex++;
+        try {
+            while (true) {
+                int frameIndex = frameIndices.take();
+                List<BoundingBox> results = strm.getResults(mSourceIP, frameIndex);
+                Bitmap bitmap = frames.remove(frameIndex);
+                mResultCallback.log(mSourceIP, frameIndex, results);
+                mResultCallback.drawObjectDetectionResult(drawBoxes(
+                        bitmap, results, DRAW_CONFIDENCE));
+                Thread.sleep(50);
+            }
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
+    }
+
+    public static Bitmap drawBoxes(Bitmap bitmap, List<BoundingBox> boxes, float drawConfidence) {
+        final Canvas canvas = new Canvas(bitmap);
+        final Paint paint = new Paint();
+        paint.setColor(Color.HSVToColor(new float[]{120f, 1f, 1f}));
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(5.0f);
+        for (BoundingBox box : boxes) {
+            if (box.confidence >= drawConfidence) {
+                canvas.drawRect(new Rect(box.left, box.top, box.right, box.bottom), paint);
+            }
+        }
+        return bitmap;
     }
 
     void onAddStream(MediaStream mediaStream) {
@@ -99,7 +129,13 @@ public class WebRTCSource implements VideoSink, Runnable {
         Bitmap bitmap = yuvFrame.getBitmap();
         Mat mat = new Mat();
         Utils.bitmapToMat(bitmap, mat);
-        strm.enqueueImage(mSourceIP, mat.clone());
+        int index = strm.enqueueImage(mSourceIP, mat.clone());
+        frames.put(index, bitmap);
+        try {
+            frameIndices.put(index);
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+        }
         mat.release();
     }
 
