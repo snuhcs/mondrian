@@ -2,15 +2,15 @@
 
 namespace rm {
 
-CppInferenceEngine::CppInferenceEngine(int inputSize) : mHandle(0) {
+CppInferenceEngine::CppInferenceEngine(int frameSize, int fullFrameSize) : mHandle(0) {
   LOGD("CppInferenceEngine::CppInferenceEngine()");
-  workers.push_back(std::make_unique<Worker>(this, inputSize));
+  workers.push_back(std::make_unique<Worker>(this, frameSize, fullFrameSize));
 }
 
 int CppInferenceEngine::enqueue(const cv::Mat mat, const bool isFull) {
   LOGD("CppInferenceEngine::enqueue(Mat(%d, %d, %d))", mat.cols, mat.rows, mat.channels());
   std::unique_lock<std::mutex> inputLock(inputMtx);
-  inputs.push(std::make_pair(mHandle, mat));
+  inputs.push(std::make_tuple(mHandle, mat, isFull));
   inputLock.unlock();
   inputCv.notify_all();
   return mHandle++;
@@ -28,16 +28,16 @@ std::vector<BoundingBox> CppInferenceEngine::getResults(const int handle) {
   return boxes;
 }
 
-std::pair<int, const cv::Mat> CppInferenceEngine::getInput() {
+std::tuple<int, const cv::Mat, bool> CppInferenceEngine::getInput() {
   LOGD("CppInferenceEngine::getInput()");
   std::unique_lock<std::mutex> inputLock(inputMtx);
   inputCv.wait(inputLock, [this]() {
     return !inputs.empty();
   });
-  std::pair<int, const cv::Mat> input = inputs.front();
+  std::tuple<int, const cv::Mat, bool> input = inputs.front();
   inputs.pop();
   LOGD("CppInferenceEngine::getInput(%d, Mat(%d, %d, %d))",
-       input.first, input.second.cols, input.second.rows, input.second.channels());
+       std::get<0>(input), std::get<1>(input).cols, std::get<1>(input).rows, std::get<1>(input).channels());
   return input;
 }
 
@@ -49,9 +49,11 @@ void CppInferenceEngine::enqueueResults(const int handle, const std::vector<Boun
   resultCv.notify_all();
 }
 
-Worker::Worker(CppInferenceEngine* engine, int inputSize)
-: engine(engine), isClosed(false), classifier(new YoloV4Classifier(inputSize)) {
+Worker::Worker(CppInferenceEngine* engine, int frameSize, int fullFrameSize)
+: engine(engine), isClosed(false),
+  classifier(new YoloV4Classifier(frameSize)), fullClassifier(new YoloV4Classifier(fullFrameSize)) {
   targetSize = cv::Size(classifier->getInputSize(), classifier->getInputSize());
+  fullTargetSize = cv::Size(fullClassifier->getInputSize(), fullClassifier->getInputSize());
   LOGD("Worker::Worker()");
   thread = std::thread([this]() {
     while (!isClosed.load()) {
@@ -62,40 +64,23 @@ Worker::Worker(CppInferenceEngine* engine, int inputSize)
 
 void Worker::Work() {
   LOGD("Worker::Work()");
-  std::pair<int, const cv::Mat> input = engine->getInput();
-  const cv::Mat mat = input.second;
+  std::tuple<int, const cv::Mat, bool> input = engine->getInput();
+  int handle = std::get<0>(input);
+  const cv::Mat mat = std::get<1>(input);
+  bool isFull = std::get<2>(input);
   int originalWidth = mat.cols;
   int originalHeight = mat.rows;
-  LOGV("1Mat(%d, %d, %d, %d)", mat.cols, mat.rows, mat.channels(), mat.type());
-  cv::Mat preprocessedMat = preprocess(mat, targetSize);
-  LOGV("2Mat(%d, %d, %d, %d)", mat.cols, mat.rows, mat.channels(), mat.type());
-  std::vector<BoundingBox> boxes = classifier->recognizeImage(
+  cv::Mat preprocessedMat = preprocess(mat, isFull ? fullTargetSize : targetSize);
+  std::vector<BoundingBox> boxes = (isFull ? fullClassifier : classifier)->recognizeImage(
       preprocessedMat, originalWidth, originalHeight);
-  LOGV("3Mat(%d, %d, %d, %d)", preprocessedMat.cols, preprocessedMat.rows,
-       preprocessedMat.channels(), preprocessedMat.type());
-  LOGV("4Mat(%d, %d, %d, %d)", mat.cols, mat.rows, mat.channels(), mat.type());
-  engine->enqueueResults(input.first, boxes);
+  engine->enqueueResults(handle, boxes);
 }
 
 cv::Mat Worker::preprocess(const cv::Mat mat, const cv::Size& size) {
   cv::Mat preprocessedMat = mat.clone();
   cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
-//  auto* udata = (uint8_t*) preprocessedMat.data;
-//  LOGD("Worker::cvtColor : Mat(%d, %d, %d, %d), %d, %d, %d",
-//       preprocessedMat.cols, preprocessedMat.rows, preprocessedMat.channels(), preprocessedMat.type(),
-//       udata[0], udata[1], udata[2]);
-
   cv::resize(preprocessedMat, preprocessedMat, size);
-//  udata = (uint8_t*) preprocessedMat.data;
-//  LOGD("Worker::resize : Mat(%d, %d, %d, %d), %d, %d, %d",
-//       preprocessedMat.cols, preprocessedMat.rows, preprocessedMat.channels(), preprocessedMat.type(),
-//       udata[0], udata[1], udata[2]);
-
   preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
-//  auto* data = (float*) preprocessedMat.data;
-//  LOGD("Worker::convertTo : Mat(%d, %d, %d, %d), %f, %f, %f",
-//       preprocessedMat.cols, preprocessedMat.rows, preprocessedMat.channels(), preprocessedMat.type(),
-//       data[0], data[1], data[2]);
   return preprocessedMat;
 }
 

@@ -15,13 +15,13 @@ class Worker;
 
 class CppInferenceEngine : public InferenceEngine {
  public:
-  CppInferenceEngine(int inputSize);
+  CppInferenceEngine(int frameSize, int fullFrameSize);
 
   int enqueue(const cv::Mat mat, const bool isFull) override;
 
   std::vector<BoundingBox> getResults(const int handle) override;
 
-  std::pair<int, const cv::Mat> getInput();
+  std::tuple<int, const cv::Mat, bool> getInput();
 
   void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
 
@@ -29,7 +29,7 @@ class CppInferenceEngine : public InferenceEngine {
   std::vector<std::unique_ptr<Worker>> workers;
 
   int mHandle;
-  std::queue<std::pair<int, const cv::Mat>> inputs;
+  std::queue<std::tuple<int, const cv::Mat, bool>> inputs;
   std::mutex inputMtx;
   std::condition_variable inputCv;
   std::map<int, std::vector<BoundingBox>> results;
@@ -39,7 +39,7 @@ class CppInferenceEngine : public InferenceEngine {
 
 class Worker {
  public:
-  Worker(CppInferenceEngine* engine, int inputSize);
+  Worker(CppInferenceEngine* engine, int frameSize, int fullFrameSize);
 
   ~Worker() {
     isClosed.store(true);
@@ -54,11 +54,13 @@ class Worker {
   CppInferenceEngine* engine;
 
   std::unique_ptr<YoloV4Classifier> classifier;
+  std::unique_ptr<YoloV4Classifier> fullClassifier;
   std::atomic_bool isClosed;
   std::thread thread;
   cv::Size targetSize;
+  cv::Size fullTargetSize;
 };
 
-}
+} // namespace rm
 
 #endif // CPP_INFERENCE_ENGINE_H

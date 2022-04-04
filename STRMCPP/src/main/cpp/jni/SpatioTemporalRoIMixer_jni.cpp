@@ -18,11 +18,12 @@ extern "C"
 JNIEXPORT jlong JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(JNIEnv* env,
                                                                                 jobject thiz,
-                                                                                jint inputSize) {
+                                                                                jint frameSize,
+                                                                                jint fullFrameSize) {
   std::string jsonPath = "/data/local/tmp/strmcpp.json";
   auto* resizeProfile = new rm::CustomResizeProfile();
   auto* roIPrioritizer = new rm::CustomRoIPrioritizer();
-  auto* inferenceEngine = new rm::CppInferenceEngine(inputSize);
+  auto* inferenceEngine = new rm::CppInferenceEngine(frameSize, fullFrameSize);
   resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
   roiPrioritizerHandle = reinterpret_cast<long>(roIPrioritizer);
   inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);
