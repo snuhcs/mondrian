@@ -31,7 +31,10 @@ void PatchReconstructor::process(MixedFrame& mixedFrame) {
   } else {
     for (Frame* frame : mixedFrame.packedFrames) {
       for (RoI& roi : frame->rois) {
-        roi.boxes = mInferenceEngine->getResults(roi.handle);
+        if (roi.isPacked()) {
+          assert(roi.handle != -1);
+          roi.boxes = mInferenceEngine->getResults(roi.handle);
+        }
       }
     }
     updateRoIInferenceResults(mixedFrame);

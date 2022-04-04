@@ -70,7 +70,9 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
       MixedFrame mixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE, false);
       for (Frame* frame : mixedFrame.packedFrames) {
         for (RoI& roi : frame->rois) {
-          roi.handle = mInferenceEngine->enqueue(roi.getMat(), false);
+          if (roi.isPacked()) {
+            roi.handle = mInferenceEngine->enqueue(roi.getMat(), false);
+          }
         }
       }
       mPatchReconstructor->enqueue(mixedFrame);
