@@ -76,7 +76,8 @@ struct Frame {
   std::vector<RoI> opticalFlowRoIs;
 
   Frame(const Frame& frame)
-      : key(frame.key), frameIndex(frame.frameIndex), mat(frame.mat.clone()), isResultReady(false) {}
+      : key(frame.key), frameIndex(frame.frameIndex), mat(frame.mat.clone()),
+        isResultReady(false) {}
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat)
       : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false) {}
@@ -105,7 +106,8 @@ struct RoI {
         minOriginLength(-1), scale(1), packedLocation(std::make_pair(-1, -1)),
         handle(-1) {};
 
-  RoI(const Frame* frame, const Rect location, const Type type, const std::string labelName, const int minOriginLength)
+  RoI(const Frame* frame, const Rect location, const Type type, const std::string labelName,
+      const int minOriginLength)
       : frame(frame), location(location), type(type), labelName(labelName),
         minOriginLength(minOriginLength), scale(1), packedLocation(std::make_pair(-1, -1)),
         handle(-1) {};
@@ -145,7 +147,8 @@ struct MixedFrame {
   int handle;
   std::vector<BoundingBox> boxes;
 
-  MixedFrame(const int mixedFrameIndex, const std::vector<Frame*> packedFrames, const int mixedFrameSize, const bool mixing)
+  MixedFrame(const int mixedFrameIndex, const std::vector<Frame*> packedFrames,
+             const int mixedFrameSize, const bool mixing)
       : mixedFrameIndex(mixedFrameIndex), packedFrames(packedFrames) {
     if (mixing) {
       packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
@@ -154,7 +157,8 @@ struct MixedFrame {
           if (roi.isPacked()) {
             std::pair<int, int> wh = roi.getResizedWidthHeight();
             roi.getResizedMat().copyTo(
-                packedMat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second, wh.first, wh.second)));
+                packedMat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second,
+                                   wh.first, wh.second)));
           }
         }
       }

@@ -21,7 +21,8 @@ PatchReconstructor::PatchReconstructor(PatchReconstructorConfig config,
 };
 
 void PatchReconstructor::process(MixedFrame& mixedFrame) {
-  LOGD("PatchReconstructor::process(%d) %d frames packed", mixedFrame.mixedFrameIndex, mixedFrame.packedFrames.size());
+  LOGD("PatchReconstructor::process(%d) %d frames packed", mixedFrame.mixedFrameIndex,
+       mixedFrame.packedFrames.size());
   if (!mixedFrame.packedMat.empty()) {
     mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
     updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);

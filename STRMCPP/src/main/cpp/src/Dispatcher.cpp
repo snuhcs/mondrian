@@ -46,7 +46,8 @@ void Dispatcher::enqueue(const cv::Mat mat) {
   mFramesCv.wait(lock, [this] {
     return mEnqueuedFrameIndex - mProcessedFrameIndex < mMaxNumItems;
   });
-  mFrames.insert(std::make_pair(mEnqueuedFrameIndex, std::make_unique<Frame>(mKey, mEnqueuedFrameIndex, mat)));
+  mFrames.insert(
+      std::make_pair(mEnqueuedFrameIndex, std::make_unique<Frame>(mKey, mEnqueuedFrameIndex, mat)));
   LOGD("Dispatcher%s::enqueue(%d) end", mTag.c_str(), mEnqueuedFrameIndex);
   mEnqueuedFrameIndex++;
   lock.unlock();

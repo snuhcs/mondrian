@@ -40,6 +40,8 @@ public class CppInferenceEngine {
     }
 
     private native long createCppInferenceEngine();
+
     private native int enqueue(long handle, long mat);
+
     private native List<BoundingBox> getResults(long handle, int requestHandle);
 }

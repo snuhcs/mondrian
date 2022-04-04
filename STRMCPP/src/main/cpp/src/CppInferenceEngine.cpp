@@ -37,7 +37,8 @@ std::tuple<int, const cv::Mat, bool> CppInferenceEngine::getInput() {
   std::tuple<int, const cv::Mat, bool> input = inputs.front();
   inputs.pop();
   LOGD("CppInferenceEngine::getInput(%d, Mat(%d, %d, %d))",
-       std::get<0>(input), std::get<1>(input).cols, std::get<1>(input).rows, std::get<1>(input).channels());
+       std::get<0>(input), std::get<1>(input).cols, std::get<1>(input).rows,
+       std::get<1>(input).channels());
   return input;
 }
 
@@ -50,8 +51,9 @@ void CppInferenceEngine::enqueueResults(const int handle, const std::vector<Boun
 }
 
 Worker::Worker(CppInferenceEngine* engine, int frameSize, int fullFrameSize)
-: engine(engine), isClosed(false),
-  classifier(new YoloV4Classifier(frameSize)), fullClassifier(new YoloV4Classifier(fullFrameSize)) {
+    : engine(engine), isClosed(false),
+      classifier(new YoloV4Classifier(frameSize)),
+      fullClassifier(new YoloV4Classifier(fullFrameSize)) {
   targetSize = cv::Size(classifier->getInputSize(), classifier->getInputSize());
   fullTargetSize = cv::Size(fullClassifier->getInputSize(), fullClassifier->getInputSize());
   LOGD("Worker::Worker()");

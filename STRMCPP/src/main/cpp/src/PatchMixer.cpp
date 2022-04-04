@@ -18,12 +18,14 @@ void PatchMixer::reset() {
 
 PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
   assert(currFrame != nullptr);
-  LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d)", currFrame->key.c_str(), currFrame->frameIndex);
+  LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d)", currFrame->key.c_str(),
+       currFrame->frameIndex);
   std::lock_guard<std::mutex> patchMixerLock(mPatchMixerMtx);
   auto finishedKeysIt = mFinishedKeys.find(currFrame->key);
   if (finishedKeysIt != mFinishedKeys.end()) {
     mFinishedKeys.erase(finishedKeysIt);
-    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(), currFrame->frameIndex, FINISHED);
+    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(),
+         currFrame->frameIndex, FINISHED);
     return FINISHED;
   }
   bool isAllPacked = true;
@@ -79,10 +81,12 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
     }
     mFinishedKeys.erase(currFrame->key);
     reset();
-    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(), currFrame->frameIndex, status);
+    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(),
+         currFrame->frameIndex, status);
     return status;
   } else {
-    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(), currFrame->frameIndex, CONTINUE_PACKING);
+    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(),
+         currFrame->frameIndex, CONTINUE_PACKING);
     return CONTINUE_PACKING;
   }
 }

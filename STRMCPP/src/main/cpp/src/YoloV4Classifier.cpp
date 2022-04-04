@@ -9,7 +9,7 @@
 namespace rm {
 
 YoloV4Classifier::YoloV4Classifier(int inputSize)
-: INPUT_SIZE(inputSize), OUTPUT_WIDTH((inputSize / 32) * (inputSize / 32) * 63) {
+    : INPUT_SIZE(inputSize), OUTPUT_WIDTH((inputSize / 32) * (inputSize / 32) * 63) {
   LOGD("YoloV4 YoloV4Classifier::YoloV4Classifier()");
   std::string filepath = "/data/local/tmp/models/yolov4-";
   filepath += std::to_string(inputSize) + "-fp16.mnn";
@@ -99,8 +99,10 @@ std::vector<BoundingBox> YoloV4Classifier::getDetectionsForFull(
       detections.emplace_back(Rect(
           std::max(0, (int) ((xPos - w / 2) * (float) originalWidth / (float) INPUT_SIZE)),
           std::max(0, (int) ((yPos - h / 2) * (float) originalHeight / (float) INPUT_SIZE)),
-          std::min(originalWidth, (int) ((xPos + w / 2) * (float) originalWidth / (float) INPUT_SIZE)),
-          std::min(originalHeight, (int) ((yPos + h / 2) * (float) originalHeight / (float) INPUT_SIZE))),
+          std::min(originalWidth,
+                   (int) ((xPos + w / 2) * (float) originalWidth / (float) INPUT_SIZE)),
+          std::min(originalHeight,
+                   (int) ((yPos + h / 2) * (float) originalHeight / (float) INPUT_SIZE))),
                               maxConfidence, "person");
     }
   }
