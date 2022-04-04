@@ -10,7 +10,10 @@ cmake_minimum_required(VERSION 3.18.1)
 
 project(strmcpp)
 
-include_directories(include)
+include_directories(
+        third_party/include
+        strm/include
+)
 link_directories(lib)
 
 # Creates and names a library, sets it as either STATIC
@@ -21,17 +24,17 @@ link_directories(lib)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_library(
-        strmcpp         # Sets the name of the library.
-        SHARED          # Sets the library as a shared library.
-        src/Config.cpp  # Provides a relative path to your source file(s).
-        src/Dispatcher.cpp
-        src/PatchMixer.cpp
-        src/PatchReconstructor.cpp
-        src/RoIExtractor.cpp
-        src/SpatioTemporalRoIMixer.cpp
-        src/Impl/CustomInferenceEngine.cpp
-        src/Impl/Worker.cpp
-        src/Impl/YoloV4Classifier.cpp
+        strmcpp              # Sets the name of the library.
+        SHARED               # Sets the library as a shared library.
+        strm/src/Config.cpp  # Provides a relative path to your source file(s).
+        strm/src/Dispatcher.cpp
+        strm/src/PatchMixer.cpp
+        strm/src/PatchReconstructor.cpp
+        strm/src/RoIExtractor.cpp
+        strm/src/SpatioTemporalRoIMixer.cpp
+        strm/src/Impl/CustomInferenceEngine.cpp
+        strm/src/Impl/Worker.cpp
+        strm/src/Impl/YoloV4Classifier.cpp
         jni/SpatioTemporalRoIMixer_jni.cpp
 )
 

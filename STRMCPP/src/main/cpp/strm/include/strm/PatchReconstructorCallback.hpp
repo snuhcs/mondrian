@@ -1,7 +1,7 @@
 #ifndef PATCH_RECONSTRUCTOR_CALLBACK_
 #define PATCH_RECONSTRUCTOR_CALLBACK_
 
-#include "DataType.hpp"
+#include "strm/DataType.hpp"
 
 namespace rm {
 
