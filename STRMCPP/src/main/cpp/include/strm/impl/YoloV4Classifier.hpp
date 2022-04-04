@@ -1,5 +1,5 @@
-#ifndef YOLO_V4_CLASSIFIER_HPP_
-#define YOLO_V4_CLASSIFIER_HPP_
+#ifndef IMPL_YOLO_V4_CLASSIFIER_HPP_
+#define IMPL_YOLO_V4_CLASSIFIER_HPP_
 
 #include "MNN/Interpreter.hpp"
 
@@ -32,6 +32,6 @@ class YoloV4Classifier {
   MNN::Session* session;
 };
 
-}
+} // namespace rm
 
-#endif // YOLO_V4_CLASSIFIER_HPP_
+#endif // IMPL_YOLO_V4_CLASSIFIER_HPP_

@@ -1,7 +1,5 @@
-#ifndef CUSTOM_RESIZE_PROFILE_H
-#define CUSTOM_RESIZE_PROFILE_H
-
-#include <jni.h>
+#ifndef IMPL_CUSTOM_RESIZE_PROFILE_H
+#define IMPL_CUSTOM_RESIZE_PROFILE_H
 
 #include "strm/ResizeProfile.hpp"
 
@@ -20,6 +18,6 @@ class CustomResizeProfile : public ResizeProfile {
   }
 };
 
-}
+} // namespace rm
 
-#endif // CUSTOM_RESIZE_PROFILE_H
+#endif // IMPL_CUSTOM_RESIZE_PROFILE_H

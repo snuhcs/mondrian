@@ -4,10 +4,9 @@
 #include "strm/DataType.hpp"
 #include "strm/Log.hpp"
 #include "strm/SpatioTemporalRoIMixer.hpp"
-#include "CustomResizeProfile.hpp"
-#include "CustomRoIPrioritizer.hpp"
-#include "CppInferenceEngine.hpp"
-#include "JavaInferenceEngine.hpp"
+#include "strm/impl/CustomResizeProfile.hpp"
+#include "strm/impl/CustomRoIPrioritizer.hpp"
+#include "strm/impl/CustomInferenceEngine.hpp"
 
 static jboolean isCopy = JNI_TRUE;
 static long resizeProfileHandle = (long) nullptr;
@@ -23,7 +22,7 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(
   std::string jsonPath = "/data/local/tmp/strmcpp.json";
   auto* resizeProfile = new rm::CustomResizeProfile();
   auto* roIPrioritizer = new rm::CustomRoIPrioritizer();
-  auto* inferenceEngine = new rm::CppInferenceEngine(frameSize, fullFrameSize);
+  auto* inferenceEngine = new rm::CustomInferenceEngine(frameSize, fullFrameSize);
   resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
   roiPrioritizerHandle = reinterpret_cast<long>(roIPrioritizer);
   inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);

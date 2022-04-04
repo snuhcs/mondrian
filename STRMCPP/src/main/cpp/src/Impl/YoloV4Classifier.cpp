@@ -1,4 +1,4 @@
-#include "YoloV4Classifier.hpp"
+#include "strm/impl/YoloV4Classifier.hpp"
 
 #include <chrono>
 #include <map>
@@ -22,7 +22,7 @@ YoloV4Classifier::YoloV4Classifier(int inputSize)
   }
 
   MNN::ScheduleConfig conf;
-//  conf.type = MNN_FORWARD_OPENCL;
+//  conf.type = MNN_FORWARD_OPENCL; // TODO: Fail to execute with OpenCL (GPU)
   session = interpreter->createSession(conf);
   if (session == nullptr) {
     LOGE("YoloV4 session creation failed");

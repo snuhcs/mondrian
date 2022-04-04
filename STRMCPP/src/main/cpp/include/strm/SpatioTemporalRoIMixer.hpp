@@ -1,13 +1,10 @@
 #ifndef SPATIO_TEMPORAL_ROI_MIXER_HPP_
 #define SPATIO_TEMPORAL_ROI_MIXER_HPP_
 
-#include <atomic>
 #include <map>
-#include <memory>
 #include <string>
 
 #include "Config.hpp"
-#include "Log.hpp"
 #include "ResizeProfile.hpp"
 #include "RoIPrioritizer.hpp"
 #include "InferenceEngine.hpp"
@@ -33,7 +30,7 @@ class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
 
   void removeSource(const std::string& key);
 
-  void onProcessEnd(const MixedFrame& mixedFrame) override;
+  void notifyMixedInferenceResults(const MixedFrame& mixedFrame) override;
 
  private:
   const ResizeProfile* mResizeProfile;
@@ -49,6 +46,6 @@ class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
   const RoIExtractorConfig mRoIExtractorConfig;
 };
 
-}
+} // namespace rm
 
 #endif // SPATIO_TEMPORAL_ROI_MIXER_HPP_

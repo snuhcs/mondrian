@@ -1,8 +1,6 @@
 #ifndef CUSTOM_ROI_PRIORITIZER_H
 #define CUSTOM_ROI_PRIORITIZER_H
 
-#include <jni.h>
-
 #include "strm/RoIPrioritizer.hpp"
 
 namespace rm {

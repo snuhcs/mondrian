@@ -1,5 +1,7 @@
 #include "strm/PatchReconstructor.hpp"
 
+#include "strm/Log.hpp"
+
 namespace rm {
 
 PatchReconstructor::PatchReconstructor(PatchReconstructorConfig config,
@@ -15,7 +17,7 @@ PatchReconstructor::PatchReconstructor(PatchReconstructorConfig config,
     while (!isClosed.load()) {
       MixedFrame item = takeItem();
       process(item);
-      mCallback->onProcessEnd(item);
+      mCallback->notifyMixedInferenceResults(item);
     }
   });
 };

@@ -33,8 +33,6 @@ class PatchMixer {
 
   int countPackedFrame(const std::string& key);
 
-  static cv::Mat getMixedImage(const std::vector<Frame*>& frames, int mixedFrameSize);
-
   static bool canFit(std::pair<int, int> wh, Rect rect);
 
   static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, Rect rect);

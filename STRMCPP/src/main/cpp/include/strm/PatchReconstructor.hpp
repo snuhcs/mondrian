@@ -6,9 +6,8 @@
 
 #include "Config.hpp"
 #include "DataType.hpp"
-#include "Log.hpp"
-#include "PatchReconstructorCallback.hpp"
 #include "InferenceEngine.hpp"
+#include "PatchReconstructorCallback.hpp"
 
 namespace rm {
 

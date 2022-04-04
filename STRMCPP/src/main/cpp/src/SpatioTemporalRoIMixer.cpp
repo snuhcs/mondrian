@@ -1,7 +1,5 @@
 #include "strm/SpatioTemporalRoIMixer.hpp"
 
-#include <utility>
-
 namespace rm {
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
@@ -25,8 +23,8 @@ SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
   mDispatchers.clear();
 }
 
-void SpatioTemporalRoIMixer::onProcessEnd(const MixedFrame& mixedFrame) {
-  LOGD("SpatioTemporalRoIMixer::onProcessEnd");
+void SpatioTemporalRoIMixer::notifyMixedInferenceResults(const MixedFrame& mixedFrame) {
+  LOGD("SpatioTemporalRoIMixer::notifyMixedInferenceResults");
   std::set<std::string> keys;
   for (Frame* frame : mixedFrame.packedFrames) {
     keys.insert(frame->key);

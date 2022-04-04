@@ -6,15 +6,14 @@
 #include <utility>
 #include <vector>
 
-#include "DataType.hpp"
 #include "Config.hpp"
-#include "Log.hpp"
-#include "PatchReconstructorCallback.hpp"
+#include "DataType.hpp"
+#include "ResizeProfile.hpp"
+#include "RoIPrioritizer.hpp"
+#include "InferenceEngine.hpp"
 #include "RoIExtractor.hpp"
 #include "PatchMixer.hpp"
-#include "RoIPrioritizer.hpp"
-#include "ResizeProfile.hpp"
-#include "InferenceEngine.hpp"
+#include "PatchReconstructorCallback.hpp"
 
 namespace rm {
 

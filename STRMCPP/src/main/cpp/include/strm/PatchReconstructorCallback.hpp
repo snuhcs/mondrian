@@ -7,9 +7,9 @@ namespace rm {
 
 class PatchReconstructorCallback {
  public:
-  virtual void onProcessEnd(const MixedFrame& item) = 0;
+  virtual void notifyMixedInferenceResults(const MixedFrame& item) = 0;
 };
 
-}
+} // namespace rm
 
 #endif // PATCH_RECONSTRUCTOR_CALLBACK_

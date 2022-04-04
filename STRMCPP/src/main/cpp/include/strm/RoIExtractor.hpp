@@ -7,7 +7,6 @@
 
 #include "Config.hpp"
 #include "DataType.hpp"
-#include "Log.hpp"
 
 namespace rm {
 

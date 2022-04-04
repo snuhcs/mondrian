@@ -2,12 +2,10 @@
 #define DATA_TYPE_HPP_
 
 #include <string>
-#include <utility>
 #include <vector>
 
-#include "opencv2/opencv.hpp"
-
-#include "strm/Log.hpp"
+#include "opencv2/core/mat.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
 namespace rm {
 

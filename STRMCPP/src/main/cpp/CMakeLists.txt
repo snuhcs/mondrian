@@ -29,8 +29,9 @@ add_library(
         src/PatchReconstructor.cpp
         src/RoIExtractor.cpp
         src/SpatioTemporalRoIMixer.cpp
-        src/CppInferenceEngine.cpp
-        src/YoloV4Classifier.cpp
+        src/Impl/CustomInferenceEngine.cpp
+        src/Impl/Worker.cpp
+        src/Impl/YoloV4Classifier.cpp
         jni/SpatioTemporalRoIMixer_jni.cpp
 )
 
