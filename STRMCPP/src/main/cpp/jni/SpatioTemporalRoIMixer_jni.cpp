@@ -4,7 +4,7 @@
 #include "strm/DataType.hpp"
 #include "strm/Log.hpp"
 #include "strm/SpatioTemporalRoIMixer.hpp"
-#include "strm/impl/CustomResizeProfiler.hpp"
+#include "strm/impl/CustomResizeProfile.hpp"
 #include "strm/impl/CustomRoIPrioritizer.hpp"
 #include "strm/impl/CustomInferenceEngine.hpp"
 
@@ -20,7 +20,7 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(
                                                                                 jint frameSize,
                                                                                 jint fullFrameSize) {
   std::string jsonPath = "/data/local/tmp/strmcpp.json";
-  auto* resizeProfile = new rm::CustomResizeProfiler();
+  auto* resizeProfile = new rm::CustomResizeProfile();
   auto* roIPrioritizer = new rm::CustomRoIPrioritizer();
   auto* inferenceEngine = new rm::CustomInferenceEngine(frameSize, fullFrameSize);
   resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
@@ -84,9 +84,9 @@ JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_close(JNIEnv* env, jobject thiz,
                                                          jlong handle) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  auto* resizeProfile = (rm::CustomResizeProfiler*) resizeProfileHandle;
-  auto* roiPrioritizer = (rm::CustomResizeProfiler*) roiPrioritizerHandle;
-  auto* inferenceEngine = (rm::CustomResizeProfiler*) inferenceEngineHandle;
+  auto* resizeProfile = (rm::CustomResizeProfile*) resizeProfileHandle;
+  auto* roiPrioritizer = (rm::CustomResizeProfile*) roiPrioritizerHandle;
+  auto* inferenceEngine = (rm::CustomResizeProfile*) inferenceEngineHandle;
   delete strm;
   delete resizeProfile;
   delete roiPrioritizer;

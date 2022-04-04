@@ -9,7 +9,7 @@ namespace rm {
 Dispatcher::Dispatcher(const std::string& key,
                        const DispatcherConfig& config,
                        const RoIExtractorConfig& roIExtractorConfig,
-                       const ResizeProfiler* resizeProfiler,
+                       const ResizeProfile* resizeProfile,
                        const RoIPrioritizer* roIPrioritizer,
                        InferenceEngine* inferenceEngine,
                        PatchMixer* patchMixer)
@@ -17,7 +17,7 @@ Dispatcher::Dispatcher(const std::string& key,
       mTag(key.substr(key.size() - 8)),
       mConfig(config),
       mRoIExtractor(new RoIExtractor(roIExtractorConfig)),
-      mResizeProfiler(resizeProfiler),
+      mResizeProfile(resizeProfile),
       mRoIPrioritizer(roIPrioritizer),
       mInferenceEngine(inferenceEngine),
       mPatchMixer(patchMixer),
@@ -94,8 +94,8 @@ void Dispatcher::process(Frame* currFrame) {
                 return mRoIPrioritizer->priority(lhs) < mRoIPrioritizer->priority(rhs);
               });
     for (auto& roi : currFrame->rois) {
-      roi.scale = mResizeProfiler->getScale(roi.labelName, roi.location.width(),
-                                            roi.location.height(), roi.minOriginLength);
+      roi.scale = mResizeProfile->getScale(roi.labelName, roi.location.width(),
+                                           roi.location.height(), roi.minOriginLength);
     }
     PatchMixer::Status status = mPatchMixer->tryPackAndEnqueueMixedFrame(currFrame);
     LOGD("PatchMixer::Status: %d", status);

@@ -5,7 +5,7 @@
 #include <string>
 
 #include "Config.hpp"
-#include "ResizeProfiler.hpp"
+#include "ResizeProfile.hpp"
 #include "RoIPrioritizer.hpp"
 #include "InferenceEngine.hpp"
 #include "Dispatcher.hpp"
@@ -18,7 +18,7 @@ namespace rm {
 class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
-                         const ResizeProfiler* resizeProfiler,
+                         const ResizeProfile* resizeProfile,
                          const RoIPrioritizer* roIPrioritizer,
                          InferenceEngine* inferenceEngine);
 
@@ -33,7 +33,7 @@ class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
   void notifyMixedInferenceResults(const MixedFrame& mixedFrame) override;
 
  private:
-  const ResizeProfiler* mResizeProfiler;
+  const ResizeProfile* mResizeProfile;
   const RoIPrioritizer* mRoIPrioritizer;
   InferenceEngine* mInferenceEngine;
 

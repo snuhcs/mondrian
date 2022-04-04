@@ -1,11 +1,11 @@
-#ifndef IMPL_CUSTOM_RESIZE_PROFILER_H
-#define IMPL_CUSTOM_RESIZE_PROFILER_H
+#ifndef IMPL_CUSTOM_RESIZE_PROFILE_H
+#define IMPL_CUSTOM_RESIZE_PROFILE_H
 
-#include "strm/ResizeProfiler.hpp"
+#include "strm/ResizeProfile.hpp"
 
 namespace rm {
 
-class CustomResizeProfiler : public ResizeProfiler {
+class CustomResizeProfile : public ResizeProfile {
  public:
   float getScale(const std::string& labelName,
                  int width, int height, int minOriginLength) const {
@@ -20,4 +20,4 @@ class CustomResizeProfiler : public ResizeProfiler {
 
 } // namespace rm
 
-#endif // IMPL_CUSTOM_RESIZE_PROFILER_H
+#endif // IMPL_CUSTOM_RESIZE_PROFILE_H
