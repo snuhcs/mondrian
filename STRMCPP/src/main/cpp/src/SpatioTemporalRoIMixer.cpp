@@ -3,10 +3,10 @@
 namespace rm {
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
-                                               const ResizeProfile* resizeProfile,
+                                               const ResizeProfiler* resizeProfiler,
                                                const RoIPrioritizer* roIPrioritizer,
                                                InferenceEngine* inferenceEngine)
-    : mResizeProfile(resizeProfile),
+    : mResizeProfiler(resizeProfiler),
       mRoIPrioritizer(roIPrioritizer),
       mInferenceEngine(inferenceEngine),
       mDispatcherConfig(config.dispatcherConfig),
@@ -46,7 +46,7 @@ void SpatioTemporalRoIMixer::enqueueImage(
   if (mDispatchers.find(key) == mDispatchers.end()) {
     mDispatchers.insert(std::make_pair(key, std::make_unique<Dispatcher>(
         key, mDispatcherConfig, mRoIExtractorConfig,
-        mResizeProfile, mRoIPrioritizer, mInferenceEngine,
+        mResizeProfiler, mRoIPrioritizer, mInferenceEngine,
         mPatchMixer.get())));
   }
   Dispatcher* dispatcher = mDispatchers.at(key).get();
@@ -61,7 +61,7 @@ SpatioTemporalRoIMixer::getResults(const std::string& key, int frameIndex) {
   if (mDispatchers.find(key) == mDispatchers.end()) {
     mDispatchers.insert(std::make_pair(key, std::make_unique<Dispatcher>(
         key, mDispatcherConfig, mRoIExtractorConfig,
-        mResizeProfile, mRoIPrioritizer, mInferenceEngine,
+        mResizeProfiler, mRoIPrioritizer, mInferenceEngine,
         mPatchMixer.get())));
   }
   Dispatcher* dispatcher = mDispatchers.at(key).get();

@@ -8,7 +8,7 @@
 
 #include "Config.hpp"
 #include "DataType.hpp"
-#include "ResizeProfile.hpp"
+#include "ResizeProfiler.hpp"
 #include "RoIPrioritizer.hpp"
 #include "InferenceEngine.hpp"
 #include "RoIExtractor.hpp"
@@ -22,7 +22,7 @@ class Dispatcher {
   Dispatcher(const std::string& key,
              const DispatcherConfig& config,
              const RoIExtractorConfig& roIExtractorConfig,
-             const ResizeProfile* resizeProfile,
+             const ResizeProfiler* resizeProfiler,
              const RoIPrioritizer* roIPrioritizer,
              InferenceEngine* inferenceEngine,
              PatchMixer* patchMixer);
@@ -53,8 +53,8 @@ class Dispatcher {
 
   DispatcherConfig mConfig;
   std::unique_ptr<RoIExtractor> mRoIExtractor;
+  const ResizeProfiler* mResizeProfiler;
   const RoIPrioritizer* mRoIPrioritizer;
-  const ResizeProfile* mResizeProfile;
   InferenceEngine* mInferenceEngine;
   PatchMixer* mPatchMixer;
 
