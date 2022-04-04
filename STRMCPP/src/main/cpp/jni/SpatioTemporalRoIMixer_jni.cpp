@@ -18,7 +18,6 @@ extern "C"
 JNIEXPORT jlong JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(JNIEnv* env,
                                                                                 jobject thiz) {
-  LOGD("SpatioTemporalRoIMixer.createSpatioTemporalRoIMixer");
   std::string jsonPath = "/data/local/tmp/strmcpp.json";
   auto* resizeProfile = new rm::CustomResizeProfile();
   auto* roIPrioritizer = new rm::CustomRoIPrioritizer();
@@ -33,13 +32,11 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(
 extern "C"
 JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_enqueueImage(JNIEnv* env, jobject thiz,
-                                                                jlong handle, jstring key,
-                                                                jint frameIndex, jlong matAddr) {
+                                                                jlong handle, jstring key, jlong matAddr) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   auto* image = (cv::Mat*) matAddr;
   const char* k = env->GetStringUTFChars(key, &isCopy);
-  LOGD("SpatioTemporalRoIMixer.enqueueImage(): %d %d %d", image->cols, image->rows, image->channels());
-  strm->enqueueImage(std::string(k), frameIndex, image);
+  strm->enqueueImage(std::string(k), image->clone());
 }
 
 extern "C"
@@ -47,7 +44,6 @@ JNIEXPORT jobject JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_getResults(JNIEnv* env, jobject thiz,
                                                               jlong handle, jstring key,
                                                               jint frame_index) {
-  LOGD("SpatioTemporalRoIMixer.getResults() start");
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   const char* k = env->GetStringUTFChars(key, &isCopy);
   std::vector<rm::BoundingBox> results = strm->getResults(std::string(k), frame_index);
@@ -76,7 +72,6 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_removeSource(JNIEnv* env, jobject thiz,
                                                                 jlong handle, jstring key) {
-  LOGD("SpatioTemporalRoIMixer.removeSource()");
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   const char* k = env->GetStringUTFChars(key, &isCopy);
   strm->removeSource(std::string(k));
@@ -86,7 +81,6 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_close(JNIEnv* env, jobject thiz,
                                                          jlong handle) {
-  LOGD("SpatioTemporalRoIMixer.close()");
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   auto* resizeProfile = (rm::CustomResizeProfile*) resizeProfileHandle;
   auto* roiPrioritizer = (rm::CustomResizeProfile*) roiPrioritizerHandle;

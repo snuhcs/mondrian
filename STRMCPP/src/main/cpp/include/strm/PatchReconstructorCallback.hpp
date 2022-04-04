@@ -7,7 +7,7 @@ namespace rm {
 
 class PatchReconstructorCallback {
  public:
-  virtual void onProcessEnd(MixedFrame& item) = 0;
+  virtual void onProcessEnd(const MixedFrame& item) = 0;
 };
 
 }

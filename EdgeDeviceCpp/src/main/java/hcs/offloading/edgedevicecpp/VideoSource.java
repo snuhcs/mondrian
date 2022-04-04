@@ -19,15 +19,15 @@ import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import hcs.offloading.edgedevicecpp.config.SourceConfig;
 import hcs.offloading.network.webrtc.CustomCapturer;
-import hcs.offloading.strmcpp.CppInferenceEngine;
 import hcs.offloading.strmcpp.SpatioTemporalRoIMixer;
 import hcs.offloading.strmcpp.BoundingBox;
 
-//public class VideoSource extends CustomCapturer implements Runnable {
-public class VideoSource extends CustomCapturer {
+public class VideoSource extends CustomCapturer implements Runnable {
     private static final String TAG = VideoSource.class.getName();
 
     static {
@@ -39,14 +39,15 @@ public class VideoSource extends CustomCapturer {
     private final String VIDEO_PATH;
 
     private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+    private final Map<Integer, Bitmap> frames = new ConcurrentHashMap<>();
 
-    private final CppInferenceEngine strm;
+    private final SpatioTemporalRoIMixer strm;
 
-//    private final Thread drawThread;
+    private final Thread drawThread;
     private final ResultCallback mResultCallback;
     private final float DRAW_CONFIDENCE;
 
-    VideoSource(SourceConfig.VideoConfig config, CppInferenceEngine strm, ResultCallback resultCallback, float drawConfidence) {
+    VideoSource(SourceConfig.VideoConfig config, SpatioTemporalRoIMixer strm, ResultCallback resultCallback, float drawConfidence) {
         VIDEO_PATH = config.PATH;
         DRAW_CONFIDENCE = drawConfidence;
         mResultCallback = resultCallback;
@@ -54,19 +55,27 @@ public class VideoSource extends CustomCapturer {
         retriever.setDataSource(VIDEO_PATH);
 
         Log.d(TAG, "Start drawThread");
-//        drawThread = new Thread(this);
-//        drawThread.start();
+        drawThread = new Thread(this);
+        drawThread.start();
     }
 
-//    @Override
-//    public void run() {
-//        int frameIndex = startIndex;
-//        while (true) {
-//            List<BoundingBox> results = strm.getResults(VIDEO_PATH, frameIndex);
-//            mResultCallback.log(VIDEO_PATH, frameIndex, results);
-//            frameIndex++;
-//        }
-//    }
+    @Override
+    public void run() {
+        int frameIndex = startIndex;
+        try {
+            while (true) {
+                List<BoundingBox> results = strm.getResults(VIDEO_PATH, frameIndex);
+                Bitmap bitmap = frames.remove(frameIndex);
+                mResultCallback.log(VIDEO_PATH, frameIndex, results);
+                mResultCallback.drawObjectDetectionResult(drawBoxes(
+                        bitmap, results, DRAW_CONFIDENCE));
+                frameIndex++;
+                Thread.sleep(50);
+            }
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+        }
+    }
 
     @Override
     public void startCapture(int width, int height, int fps) {
@@ -85,6 +94,7 @@ public class VideoSource extends CustomCapturer {
             for (int frameIndex = startIndex; frameIndex < frameCount; frameIndex++) {
                 Log.v(TAG, VIDEO_PATH + " " + frameIndex + " loaded");
                 Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
+                frames.put(frameIndex, bitmap);
 
                 surTexture.getHandler().post(() -> {
                     GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
@@ -101,18 +111,14 @@ public class VideoSource extends CustomCapturer {
 
                 Mat mat = new Mat();
                 Utils.bitmapToMat(bitmap, mat);
-                List<BoundingBox> results = strm.getResults(strm.enqueue(mat));
-                mResultCallback.drawInferenceResult(drawBoxes(mat, results, DRAW_CONFIDENCE));
-//                strm.enqueueImage(VIDEO_PATH, frameIndex, mat.clone());
+                strm.enqueueImage(VIDEO_PATH, mat.clone());
                 mat.release();
             }
         });
         captureThread.start();
     }
 
-    public static Bitmap drawBoxes(Mat mat, List<BoundingBox> boxes, float drawConfidence) {
-        Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(mat, bitmap);
+    public static Bitmap drawBoxes(Bitmap bitmap, List<BoundingBox> boxes, float drawConfidence) {
         final Canvas canvas = new Canvas(bitmap);
         final Paint paint = new Paint();
         paint.setColor(Color.HSVToColor(new float[]{120f, 1f, 1f}));
@@ -127,12 +133,12 @@ public class VideoSource extends CustomCapturer {
     }
 
     public void close() {
-//        strm.removeSource(VIDEO_PATH);
+        strm.removeSource(VIDEO_PATH);
         try {
             captureThread.interrupt();
             captureThread.join();
-//            drawThread.interrupt();
-//            drawThread.join();
+            drawThread.interrupt();
+            drawThread.join();
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }

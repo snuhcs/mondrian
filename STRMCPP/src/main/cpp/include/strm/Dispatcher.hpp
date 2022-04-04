@@ -20,39 +20,42 @@ namespace rm {
 
 class Dispatcher {
  public:
-  Dispatcher(DispatcherConfig config,
-             RoIExtractorConfig roIExtractorConfig,
-             ResizeProfile* resizeProfile,
-             RoIPrioritizer* roIPrioritizer,
+  Dispatcher(const std::string& key,
+             const DispatcherConfig& config,
+             const RoIExtractorConfig& roIExtractorConfig,
+             const ResizeProfile* resizeProfile,
+             const RoIPrioritizer* roIPrioritizer,
              InferenceEngine* inferenceEngine,
              PatchMixer* patchMixer);
 
   ~Dispatcher();
 
+  void enqueue(const cv::Mat mat);
+
+  Frame* getFrameToProcess();
+
+  void process(Frame* currFrame);
+
   void notifyResults();
 
   std::vector<BoundingBox> getResults(int frameIndex);
 
-  void process(Frame*& currFrame);
-
-  void enqueue(Frame* item);
-
-  Frame* takeItem();
-
  private:
   std::vector<BoundingBox> getPrevBoxes();
 
+  const std::string mKey;
+  const std::string mTag;
+
   int mCountMixedFrameInference;
   bool mUseInferenceResults;
-  Frame* mPrevFrame;
-  std::mutex mtx;
-  std::condition_variable cv;
+  Frame* mPrevFrame = nullptr;
+  std::mutex mResultsMtx;
+  std::condition_variable mResultsCv;
 
   DispatcherConfig mConfig;
-  std::map<int, std::unique_ptr<Frame>> mFrames;
   std::unique_ptr<RoIExtractor> mRoIExtractor;
-  RoIPrioritizer* mRoIPrioritizer;
-  ResizeProfile* mResizeProfile;
+  const RoIPrioritizer* mRoIPrioritizer;
+  const ResizeProfile* mResizeProfile;
   InferenceEngine* mInferenceEngine;
   PatchMixer* mPatchMixer;
 
@@ -60,9 +63,11 @@ class Dispatcher {
   std::thread mThread;
 
   int mMaxNumItems;
-  std::queue<Frame*> mItems;
-  std::condition_variable mItemsCV;
-  std::mutex mItemsMtx;
+  int mEnqueuedFrameIndex = 0;
+  int mProcessedFrameIndex = 0;
+  std::map<int, std::unique_ptr<Frame>> mFrames;
+  std::condition_variable mFramesCv;
+  std::mutex mFramesMtx;
 };
 
 } // namespace rm

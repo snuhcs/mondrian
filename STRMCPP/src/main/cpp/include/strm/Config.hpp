@@ -24,7 +24,6 @@ struct RoIExtractorConfig {
 };
 
 struct PatchMixerConfig {
-  bool PACKING = true;
   int MAX_PACKED_FRAMES = 30;
   int MIXED_FRAME_SIZE = 800;
 };

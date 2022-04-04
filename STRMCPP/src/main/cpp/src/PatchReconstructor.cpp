@@ -21,18 +21,9 @@ PatchReconstructor::PatchReconstructor(PatchReconstructorConfig config,
 };
 
 void PatchReconstructor::process(MixedFrame& mixedFrame) {
-  LOGD("PatchReconstructor::process");
-  if (!mixedFrame.packedMat.empty()) {
-    mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
-    updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
-  } else {
-    for (Frame* frame : mixedFrame.packedFrames) {
-      for (RoI& roi : frame->rois) {
-        roi.boxes = mInferenceEngine->getResults(roi.handle);
-      }
-    }
-    updateRoIInferenceResults(mixedFrame);
-  }
+  LOGD("PatchReconstructor::process(%d) %d frames packed", mixedFrame.mixedFrameIndex, mixedFrame.packedFrames.size());
+  mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
+  updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
 }
 
 void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame, int matchPadding,
@@ -41,14 +32,14 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
     float maxOverlap = -1;
     Rect maxBoxPos;
     Frame* maxFrame = nullptr;
-    for (Frame* frame : mixedFrame.packedFrames) {
+    for (Frame*& frame : mixedFrame.packedFrames) {
       for (RoI& roi : frame->rois) {
         if (roi.isPacked()) {
           Rect paddedRoIPos(
               std::max(0, roi.location.left - matchPadding),
               std::max(0, roi.location.top - matchPadding),
-              std::min(roi.frame->mat->cols, roi.location.right + matchPadding),
-              std::min(roi.frame->mat->rows, roi.location.bottom + matchPadding));
+              std::min(roi.frame->mat.cols, roi.location.right + matchPadding),
+              std::min(roi.frame->mat.rows, roi.location.bottom + matchPadding));
           Rect movedAndResizedBoxPos(
               std::max(0,
                        (int) ((float) (box.location.left - roi.packedLocation.first) / roi.scale) +
@@ -56,10 +47,10 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
               std::max(0,
                        (int) ((float) (box.location.top - roi.packedLocation.second) / roi.scale) +
                        roi.location.top),
-              std::min(roi.frame->mat->cols,
+              std::min(roi.frame->mat.cols,
                        (int) ((float) (box.location.right - roi.packedLocation.first) / roi.scale) +
                        roi.location.left),
-              std::min(roi.frame->mat->rows,
+              std::min(roi.frame->mat.rows,
                        (int) ((float) (box.location.bottom - roi.packedLocation.second) /
                               roi.scale) + roi.location.top));
           int intersection = paddedRoIPos.intersection(movedAndResizedBoxPos);
@@ -78,40 +69,34 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
       maxFrame->boxes.emplace_back(maxBoxPos, box.confidence, box.labelName);
     }
   }
-}
-
-void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
-  for (Frame* frame : mixedFrame.packedFrames) {
-    for (RoI& roi : frame->rois) {
-      for (const BoundingBox& box : roi.boxes) {
-        frame->boxes.emplace_back(
-            Rect(box.location.left + roi.location.left,
-                 box.location.top + roi.location.top,
-                 box.location.right + roi.location.left,
-                 box.location.bottom + roi.location.top),
-            box.confidence, box.labelName);
-      }
-    }
+  for (Frame*& frame : mixedFrame.packedFrames) {
+    frame->isResultReady.store(true);
   }
 }
 
-void PatchReconstructor::enqueue(const MixedFrame& item) {
-  LOGD("PatchReconstructor::enqueue");
+void PatchReconstructor::enqueue(const MixedFrame item) {
+  LOGD("PatchReconstructor::enqueue(%d)", item.mixedFrameIndex);
   std::unique_lock<std::mutex> lock(mItemsMtx);
   mItemsCV.wait(lock, [this] {
     return mItems.size() < mMaxNumItems;
   });
   mItems.push(item);
+  lock.unlock();
+  mItemsCV.notify_all();
+  LOGD("PatchReconstructor::enqueue(%d) end", item.mixedFrameIndex);
 }
 
 MixedFrame PatchReconstructor::takeItem() {
-  LOGD("PatchReconstructor::takeItem");
+  LOGD("PatchReconstructor::takeItem()");
   std::unique_lock<std::mutex> lock(mItemsMtx);
   mItemsCV.wait(lock, [this] {
     return !mItems.empty();
   });
   MixedFrame item = mItems.front();
   mItems.pop();
+  lock.unlock();
+  mItemsCV.notify_all();
+  LOGD("PatchReconstructor::takeItem() end : %d", item.mixedFrameIndex);
   return item;
 }
 

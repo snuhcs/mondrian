@@ -7,8 +7,8 @@ namespace rm {
 
 class ResizeProfile {
  public:
-  virtual float
-  getScale(const std::string& labelName, int width, int height, int minOriginLength) = 0;
+  virtual float getScale(const std::string& labelName,
+                         int width, int height, int minOriginLength) const = 0;
 
   virtual ~ResizeProfile() {}
 };

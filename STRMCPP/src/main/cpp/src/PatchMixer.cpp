@@ -7,7 +7,7 @@ PatchMixer::PatchMixer(PatchMixerConfig config, InferenceEngine* inferenceEngine
     : mConfig(config), mInferenceEngine(inferenceEngine),
       mPatchReconstructor(patchReconstructor),
       mFreeRects({Rect(0, 0, config.MIXED_FRAME_SIZE, config.MIXED_FRAME_SIZE)}) {
-  LOGD("PatchMixer()");
+  LOGD("PatchMixer() %d %d", config.MIXED_FRAME_SIZE, config.MAX_PACKED_FRAMES);
 };
 
 void PatchMixer::reset() {
@@ -18,11 +18,12 @@ void PatchMixer::reset() {
 
 PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
   assert(currFrame != nullptr);
-  LOGD("PatchMixer::tryPackAndEnqueueMixedFrame %d", currFrame->frameIndex);
+  LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d)", currFrame->key.c_str(), currFrame->frameIndex);
   std::lock_guard<std::mutex> patchMixerLock(mPatchMixerMtx);
   auto finishedKeysIt = mFinishedKeys.find(currFrame->key);
   if (finishedKeysIt != mFinishedKeys.end()) {
     mFinishedKeys.erase(finishedKeysIt);
+    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(), currFrame->frameIndex, FINISHED);
     return FINISHED;
   }
   bool isAllPacked = true;
@@ -30,7 +31,7 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
     std::pair<int, int> wh = roi.getResizedWidthHeight();
     bool isPacked = false;
     for (auto it = mFreeRects.begin(); it != mFreeRects.end(); it++) {
-      const Rect& freeRect = *it;
+      const Rect freeRect = *it;
       if (canFit(wh, freeRect)) {
         mFreeRects.erase(it);
         roi.packedLocation = std::make_pair(freeRect.left, freeRect.top);
@@ -58,28 +59,19 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
       mPackedFrames.erase(std::find(mPackedFrames.begin(), mPackedFrames.end(), currFrame));
       status = FINISHED_AND_PROCESS_LAST_FRAME_AGAIN;
     }
-    if (mConfig.PACKING) {
-      cv::Mat mixedImage = getMixedImage(mPackedFrames, mConfig.MIXED_FRAME_SIZE);
-      MixedFrame mixedFrame(std::move(mixedImage.clone()), mPackedFrames);
-      mixedFrame.handle = mInferenceEngine->enqueue(mixedImage, false);
-      mPatchReconstructor->enqueue(mixedFrame);
-    } else {
-      MixedFrame mixedFrame(cv::Mat(), mPackedFrames);
-      for (Frame* frame : mixedFrame.packedFrames) {
-        for (RoI& roi : frame->rois) {
-          roi.handle = mInferenceEngine->enqueue(roi.getMat(), false);
-        }
-      }
-      mPatchReconstructor->enqueue(mixedFrame);
-    }
+    MixedFrame mixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE);
+    mixedFrame.handle = mInferenceEngine->enqueue(mixedFrame.packedMat, false);
+    mPatchReconstructor->enqueue(mixedFrame);
     mFinishedKeys.clear();
     for (Frame* frame : mPackedFrames) {
       mFinishedKeys.insert(frame->key);
     }
     mFinishedKeys.erase(currFrame->key);
     reset();
+    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(), currFrame->frameIndex, status);
     return status;
   } else {
+    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(), currFrame->frameIndex, CONTINUE_PACKING);
     return CONTINUE_PACKING;
   }
 }
@@ -92,21 +84,6 @@ int PatchMixer::countPackedFrame(const std::string& key) {
     }
   }
   return count;
-}
-
-cv::Mat PatchMixer::getMixedImage(const std::vector<Frame*>& frames, int mixedFrameSize) {
-  cv::Mat mat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
-  for (Frame* frame : frames) {
-    for (RoI& roi : frame->rois) {
-      if (roi.isPacked()) {
-        std::pair<int, int> wh = roi.getResizedWidthHeight();
-        roi.getResizedMat().copyTo(
-            mat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second, wh.first,
-                         wh.second)));
-      }
-    }
-  }
-  return mat;
 }
 
 bool PatchMixer::canFit(std::pair<int, int> wh, Rect rect) {

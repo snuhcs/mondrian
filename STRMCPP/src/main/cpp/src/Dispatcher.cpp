@@ -6,10 +6,16 @@
 
 namespace rm {
 
-Dispatcher::Dispatcher(DispatcherConfig config, RoIExtractorConfig roIExtractorConfig,
-                       ResizeProfile* resizeProfile, RoIPrioritizer* roIPrioritizer,
-                       InferenceEngine* inferenceEngine, PatchMixer* patchMixer)
-    : mConfig(config),
+Dispatcher::Dispatcher(const std::string& key,
+                       const DispatcherConfig& config,
+                       const RoIExtractorConfig& roIExtractorConfig,
+                       const ResizeProfile* resizeProfile,
+                       const RoIPrioritizer* roIPrioritizer,
+                       InferenceEngine* inferenceEngine,
+                       PatchMixer* patchMixer)
+    : mKey(key),
+      mTag(key.substr(key.size() - 8)),
+      mConfig(config),
       mRoIExtractor(new RoIExtractor(roIExtractorConfig)),
       mResizeProfile(resizeProfile),
       mRoIPrioritizer(roIPrioritizer),
@@ -20,11 +26,11 @@ Dispatcher::Dispatcher(DispatcherConfig config, RoIExtractorConfig roIExtractorC
       mCountMixedFrameInference(INT_MAX),
       mUseInferenceResults(true),
       mPrevFrame(nullptr) {
-  LOGD("Dispatcher()");
+  LOGD("Dispatcher%s()", mTag.c_str());
   mThread = std::thread([this]() {
     while (!isClosed.load()) {
-      Frame* item = takeItem();
-      process(item);
+      Frame* frame = getFrameToProcess();
+      process(frame);
     }
   });
 };
@@ -34,12 +40,35 @@ Dispatcher::~Dispatcher() {
   mThread.join();
 };
 
-void Dispatcher::process(Frame*& currFrame) {
-  LOGD("Dispatcher::process %d %d",
-       currFrame != nullptr ? currFrame->frameIndex : -1,
-       mPrevFrame != nullptr ? mPrevFrame->frameIndex : -1);
-  assert(currFrame != nullptr && mPrevFrame == nullptr ||
-         mPrevFrame->frameIndex + 1 == currFrame->frameIndex);
+void Dispatcher::enqueue(const cv::Mat mat) {
+  LOGD("Dispatcher%s::enqueue(Mat(%d, %d, %d))", mTag.c_str(), mat.cols, mat.rows, mat.channels());
+  std::unique_lock<std::mutex> lock(mFramesMtx);
+  mFramesCv.wait(lock, [this] {
+    return mEnqueuedFrameIndex - mProcessedFrameIndex < mMaxNumItems;
+  });
+  mFrames.insert(std::make_pair(mEnqueuedFrameIndex, std::make_unique<Frame>(mKey, mEnqueuedFrameIndex, mat)));
+  LOGD("Dispatcher%s::enqueue(%d) end", mTag.c_str(), mEnqueuedFrameIndex);
+  mEnqueuedFrameIndex++;
+  lock.unlock();
+  mFramesCv.notify_all();
+}
+
+Frame* Dispatcher::getFrameToProcess() {
+  LOGD("Dispatcher%s::getFrameToProcess()", mTag.c_str());
+  std::unique_lock<std::mutex> lock(mFramesMtx);
+  mFramesCv.wait(lock, [this] {
+    return mEnqueuedFrameIndex > mProcessedFrameIndex;
+  });
+  Frame* frame = mFrames.at(mProcessedFrameIndex++).get();
+  lock.unlock();
+  mFramesCv.notify_all();
+  return frame;
+}
+
+void Dispatcher::process(Frame* currFrame) {
+  LOGD("Dispatcher%s::process(%d)", mTag.c_str(), currFrame->frameIndex);
+  assert(currFrame != nullptr);
+  assert(mPrevFrame == nullptr || mPrevFrame->frameIndex + 1 == currFrame->frameIndex);
   /* Cases
    * 1. Full frame inference
    * 2. Mixed frame inference
@@ -48,13 +77,13 @@ void Dispatcher::process(Frame*& currFrame) {
    *        We have to re-pack the frame into next mixed frame.
    *   2.2. Else wait for mixed frame result and continue to process next frame.
    */
-  mFrames.insert(std::make_pair(currFrame->frameIndex, std::unique_ptr<Frame>(currFrame)));
   if (mCountMixedFrameInference >= mConfig.FULL_INFERENCE_INTERVAL) {
     mCountMixedFrameInference = 0;
     mUseInferenceResults = true;
-    int handle = mInferenceEngine->enqueue(currFrame->mat->clone(), true);
+    int handle = mInferenceEngine->enqueue(currFrame->mat, true);
     std::vector<BoundingBox> results = mInferenceEngine->getResults(handle);
     currFrame->boxes.insert(currFrame->boxes.end(), results.begin(), results.end());
+    currFrame->isResultReady.store(true);
     notifyResults();
   } else {
     std::vector<BoundingBox> prevResults = getPrevBoxes();
@@ -68,6 +97,7 @@ void Dispatcher::process(Frame*& currFrame) {
                                            roi.location.height(), roi.minOriginLength);
     }
     PatchMixer::Status status = mPatchMixer->tryPackAndEnqueueMixedFrame(currFrame);
+    LOGD("PatchMixer::Status: %d", status);
     if (status == PatchMixer::CONTINUE_PACKING) {
       mUseInferenceResults = false;
     } else if (status == PatchMixer::FINISHED) {
@@ -81,19 +111,20 @@ void Dispatcher::process(Frame*& currFrame) {
       // TODO: Error handling
     }
   }
+  LOGD("Dispatcher%s::process(%d) end, %d, %d", mTag.c_str(), currFrame->frameIndex,
+       mCountMixedFrameInference, mUseInferenceResults);
   mPrevFrame = currFrame;
-  LOGD("Dispatcher::process end : %d %d", mCountMixedFrameInference, mUseInferenceResults);
 }
 
 std::vector<BoundingBox> Dispatcher::getPrevBoxes() {
-  LOGD("Dispatcher::getPrevBoxes");
+  LOGD("Dispatcher%s::getPrevBoxes()", mTag.c_str());
   std::vector<BoundingBox> prevResults;
   if (!mRoIExtractor->useOpticalFlowRoIs()) {
     return prevResults;
   }
-  std::unique_lock<std::mutex> lock(mtx);
   if (mUseInferenceResults) {
-    cv.wait(lock, [this]() {
+    std::unique_lock<std::mutex> lock(mResultsMtx);
+    mResultsCv.wait(lock, [this]() {
       return mPrevFrame->isResultReady.load();
     });
     for (const BoundingBox& box : mPrevFrame->boxes) {
@@ -108,50 +139,24 @@ std::vector<BoundingBox> Dispatcher::getPrevBoxes() {
       prevResults.emplace_back(roi.location, 1.0, roi.labelName);
     }
   }
-  LOGD("Dispatcher::getPrevBoxes end : %d", prevResults.size());
+  LOGD("Dispatcher::getPrevBoxes() end : %d", (int) prevResults.size());
   return prevResults;
 }
 
 void Dispatcher::notifyResults() {
-  LOGD("Dispatcher::notifyResults");
-  cv.notify_all();
+  LOGD("Dispatcher::notifyResults()");
+  mResultsCv.notify_all();
 }
 
 std::vector<BoundingBox> Dispatcher::getResults(int frameIndex) {
-  LOGD("Dispatcher::getResults Start %d", frameIndex);
-  std::unique_lock<std::mutex> lock(mtx);
-  cv.wait(lock, [this, &frameIndex]() {
+  LOGD("Dispatcher::getResults(%d)", frameIndex);
+  std::unique_lock<std::mutex> lock(mResultsMtx);
+  mResultsCv.wait(lock, [this, &frameIndex]() {
     return mFrames.find(frameIndex) != mFrames.end() &&
            mFrames.at(frameIndex)->isResultReady.load();
   });
-  LOGD("Dispatcher::getResults End   %d", frameIndex);
+  LOGD("Dispatcher::getResults(%d) end", frameIndex);
   return mFrames.at(frameIndex)->boxes;
-}
-
-void Dispatcher::enqueue(Frame* item) {
-  LOGD("Dispatcher::enqueue start %d", item->frameIndex);
-  std::unique_lock<std::mutex> lock(mItemsMtx);
-  mItemsCV.wait(lock, [this] {
-    return mItems.size() < mMaxNumItems;
-  });
-  mItems.push(item);
-  lock.unlock();
-  mItemsCV.notify_all();
-  LOGD("Dispatcher::enqueue end   %d", item->frameIndex);
-}
-
-Frame* Dispatcher::takeItem() {
-  LOGD("Dispatcher::takeItem start");
-  std::unique_lock<std::mutex> lock(mItemsMtx);
-  mItemsCV.wait(lock, [this] {
-    return !mItems.empty();
-  });
-  Frame* item = mItems.front();
-  mItems.pop();
-  lock.unlock();
-  mItemsCV.notify_all();
-  LOGD("Dispatcher::takeItem end %d", item->frameIndex);
-  return item;
 }
 
 } // namespace rm

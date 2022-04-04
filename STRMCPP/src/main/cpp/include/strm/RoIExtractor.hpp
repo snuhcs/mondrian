@@ -17,27 +17,27 @@ class RoIExtractor {
 
   bool useOpticalFlowRoIs() const;
 
-  void process(const std::pair<std::pair<Frame*, Frame*>, std::vector<BoundingBox>>& item);
+  void process(const std::pair<std::pair<Frame*, Frame*>, std::vector<BoundingBox>>& item) const;
 
  private:
   static void mergeSingleFrameRoIs(
-      const Frame* frame, std::vector<RoI> rois, float mergeThreshold);
+      std::vector<RoI>& rois, const Frame* frame, const float mergeThreshold);
 
   static std::vector<RoI> getOpticalFlowRoIs(
       const Frame* prevFrame, const Frame* currFrame,
       const std::vector<BoundingBox>& boundingBoxes, const cv::Size& targetSize);
 
   static std::vector<std::pair<int, int>> getBoundingBoxShifts(
-      const cv::Mat* prevImage, const cv::Mat* currImage,
+      const cv::Mat prevImage, const cv::Mat currImage,
       const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize);
 
   static std::vector<RoI> getPixelDiffRoIs(
       const Frame* prevFrame, const Frame* currFrame, const cv::Size& targetSize);
 
-  static void calculateDiffAndThreshold(
-      const cv::Mat& frame0, const cv::Mat& frame1, cv::Mat& diff);
+  static cv::Mat calculateDiffAndThreshold(
+      const cv::Mat prevMat, const cv::Mat currMat);
 
-  static void cannyEdgeDetection(cv::Mat& mat);
+  static void cannyEdgeDetection(cv::Mat mat);
 
   const RoIExtractorConfig mConfig;
   const cv::Size mTargetSize;

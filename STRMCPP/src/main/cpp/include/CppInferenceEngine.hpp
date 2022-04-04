@@ -17,11 +17,11 @@ class CppInferenceEngine : public InferenceEngine {
  public:
   CppInferenceEngine();
 
-  int enqueue(const cv::Mat mat, bool isFull) override;
+  int enqueue(const cv::Mat mat, const bool isFull) override;
 
   std::vector<BoundingBox> getResults(const int handle) override;
 
-  std::pair<int, cv::Mat> getInput();
+  std::pair<int, const cv::Mat> getInput();
 
   void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
 
@@ -29,7 +29,7 @@ class CppInferenceEngine : public InferenceEngine {
   std::vector<std::unique_ptr<Worker>> workers;
 
   int mHandle;
-  std::queue<std::pair<int, cv::Mat>> inputs;
+  std::queue<std::pair<int, const cv::Mat>> inputs;
   std::mutex inputMtx;
   std::condition_variable inputCv;
   std::map<int, std::vector<BoundingBox>> results;
@@ -49,7 +49,7 @@ class Worker {
  private:
   void Work();
 
-  static void preprocess(cv::Mat& mat, const cv::Size& size);
+  static cv::Mat preprocess(const cv::Mat mat, const cv::Size& size);
 
   CppInferenceEngine* engine;
 

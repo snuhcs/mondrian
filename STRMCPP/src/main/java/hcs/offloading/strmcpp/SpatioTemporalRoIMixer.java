@@ -1,14 +1,10 @@
 package hcs.offloading.strmcpp;
 
-import android.util.Log;
-
 import org.opencv.core.Mat;
 
 import java.util.List;
 
 public class SpatioTemporalRoIMixer {
-    private static final String TAG = "STRMCPP";
-
     static {
         System.loadLibrary("strmcpp");
         System.loadLibrary("opencv_core");
@@ -27,14 +23,12 @@ public class SpatioTemporalRoIMixer {
         handle = createSpatioTemporalRoIMixer();
     }
 
-    public void enqueueImage(String key, int frameIndex, Mat mat) {
-        enqueueImage(handle, key, frameIndex, mat.getNativeObjAddr());
+    public void enqueueImage(String key, Mat mat) {
+        enqueueImage(handle, key, mat.getNativeObjAddr());
     }
 
     public List<BoundingBox> getResults(String key, int frameIndex) {
-        List<BoundingBox> results = getResults(handle, key, frameIndex);
-        Log.d(TAG, "SpatioTemporalRoIMixer.getResults() end : " + results.size());
-        return results;
+        return getResults(handle, key, frameIndex);
     }
 
     public void removeSource(String key) {
@@ -47,7 +41,7 @@ public class SpatioTemporalRoIMixer {
 
     private native long createSpatioTemporalRoIMixer();
 
-    private native void enqueueImage(long handle, String key, int frameIndex, long matAddr);
+    private native void enqueueImage(long handle, String key, long matAddr);
 
     private native List<BoundingBox> getResults(long handle, String key, int frameIndex);
 

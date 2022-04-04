@@ -7,7 +7,7 @@ namespace rm {
 
 class RoIPrioritizer {
  public:
-  virtual bool priority(const RoI& roi) = 0;
+  virtual bool priority(const RoI& roi) const = 0;
 
   virtual ~RoIPrioritizer() {};
 };

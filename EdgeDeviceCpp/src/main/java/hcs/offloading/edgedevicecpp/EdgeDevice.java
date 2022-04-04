@@ -22,7 +22,6 @@ import hcs.offloading.network.mqtt.datatypes.PacketHandler;
 import hcs.offloading.network.mqtt.datatypes.WebRTCHeader;
 import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
-import hcs.offloading.strmcpp.CppInferenceEngine;
 import hcs.offloading.strmcpp.SpatioTemporalRoIMixer;
 
 public class EdgeDevice implements WebRTCCallback {
@@ -42,7 +41,6 @@ public class EdgeDevice implements WebRTCCallback {
     private final Map<String, VideoSource> mVideoSources = new ConcurrentHashMap<>();
     private final Map<String, WebRTCSource> mWebRTCSources = new ConcurrentHashMap<>();
     private SpatioTemporalRoIMixer mSpatioTemporalRoIMixer;
-    private final CppInferenceEngine engine;
 
     EdgeDevice(Config config, Context context, String uri, SurfaceViewRenderer inputView, ResultCallback resultCallback) {
         mConfig = config;
@@ -52,8 +50,7 @@ public class EdgeDevice implements WebRTCCallback {
         mInputView = inputView;
         mInputView.init(eglBase.getEglBaseContext(), null);
 
-//        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer();
-        engine = new CppInferenceEngine();
+        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer();
 
         if (!mConfig.sourceConfig.USE_LOCAL_VIDEO) {
             mMqttManager = new DeviceMqttManager(context, uri, Device.EDGE, scheduleTopicHandler, webrtcTopicHandler);
@@ -96,10 +93,12 @@ public class EdgeDevice implements WebRTCCallback {
         Log.d(TAG, "startVideoEdgeDevice");
         startEdgeDevice();
         for (SourceConfig.VideoConfig videoConfig : mConfig.sourceConfig.VIDEO_CONFIGS) {
-            VideoSource videoSource = new VideoSource(videoConfig, engine, mResultCallback, mConfig.sourceConfig.DRAW_CONFIDENCE);
+            VideoSource videoSource = new VideoSource(
+                    videoConfig, mSpatioTemporalRoIMixer, mResultCallback, mConfig.sourceConfig.DRAW_CONFIDENCE);
             Log.d(TAG, "VideoSource Added : " + videoConfig.PATH + " " + videoConfig.PATH.hashCode());
 
-            Pair<VideoCapturer, VideoTrack> capturerAndTrack = mWebRTCManager.createSavedVideoTrack(videoConfig.PATH, videoSource);
+            Pair<VideoCapturer, VideoTrack> capturerAndTrack =
+                    mWebRTCManager.createSavedVideoTrack(videoConfig.PATH, videoSource);
             MediaStream mediaStream = mWebRTCManager.createMediaStream();
             VideoCapturer videoCapturer = capturerAndTrack.first;
             VideoTrack videoTrack = capturerAndTrack.second;

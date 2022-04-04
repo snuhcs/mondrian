@@ -25,7 +25,6 @@ public class WebRTCSource implements VideoSink, Runnable {
 
     private final SurfaceViewRenderer mInputView;
 
-    private int mFrameIndex = 0;
     private final SpatioTemporalRoIMixer strm;
 
     private final Thread drawThread;
@@ -100,7 +99,7 @@ public class WebRTCSource implements VideoSink, Runnable {
         Bitmap bitmap = yuvFrame.getBitmap();
         Mat mat = new Mat();
         Utils.bitmapToMat(bitmap, mat);
-        strm.enqueueImage(mSourceIP, mFrameIndex++, mat.clone());
+        strm.enqueueImage(mSourceIP, mat.clone());
         mat.release();
     }
 

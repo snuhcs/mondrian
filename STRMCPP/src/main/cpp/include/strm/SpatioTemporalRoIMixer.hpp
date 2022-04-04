@@ -21,23 +21,23 @@ namespace rm {
 class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
-                         ResizeProfile* resizeProfile,
-                         RoIPrioritizer* roIPrioritizer,
+                         const ResizeProfile* resizeProfile,
+                         const RoIPrioritizer* roIPrioritizer,
                          InferenceEngine* inferenceEngine);
 
   ~SpatioTemporalRoIMixer();
 
-  void enqueueImage(const std::string& key, int frameIndex, const cv::Mat* mat);
+  void enqueueImage(const std::string& key, const cv::Mat mat);
 
   std::vector<BoundingBox> getResults(const std::string& key, int frameIndex);
 
   void removeSource(const std::string& key);
 
-  void onProcessEnd(MixedFrame& mixedFrame) override;
+  void onProcessEnd(const MixedFrame& mixedFrame) override;
 
  private:
-  ResizeProfile* mResizeProfile;
-  RoIPrioritizer* mRoIPrioritizer;
+  const ResizeProfile* mResizeProfile;
+  const RoIPrioritizer* mRoIPrioritizer;
   InferenceEngine* mInferenceEngine;
 
   std::unique_ptr<PatchMixer> mPatchMixer;

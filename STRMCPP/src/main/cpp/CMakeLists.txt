@@ -32,7 +32,6 @@ add_library(
         src/CppInferenceEngine.cpp
         src/YoloV4Classifier.cpp
         jni/SpatioTemporalRoIMixer_jni.cpp
-        jni/CppInferenceEngine_jni.cpp
 )
 
 add_library(

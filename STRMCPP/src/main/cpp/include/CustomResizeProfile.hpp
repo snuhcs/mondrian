@@ -9,8 +9,14 @@ namespace rm {
 
 class CustomResizeProfile : public ResizeProfile {
  public:
-  float getScale(const std::string& labelName, int width, int height, int minOriginLength) {
-    return (float) std::max(width, height) / 160;
+  float getScale(const std::string& labelName,
+                 int width, int height, int minOriginLength) const {
+    int maxLength = std::max(width, height);
+    if (maxLength > 160) {
+      return 160.0 / (float) maxLength;
+    } else {
+      return 1.0;
+    }
   }
 };
 

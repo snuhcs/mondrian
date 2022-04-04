@@ -7,6 +7,8 @@
 
 #include "opencv2/opencv.hpp"
 
+#include "strm/Log.hpp"
+
 namespace rm {
 
 struct RoI;
@@ -17,9 +19,9 @@ struct Rect {
   int right;
   int bottom;
 
-  Rect() {};
+  Rect() {}
 
-  Rect(int left, int top, int right, int bottom)
+  Rect(const int left, const int top, const int right, const int bottom)
       : left(left), top(top), right(right), bottom(bottom) {};
 
   Rect(const Rect& r)
@@ -63,9 +65,9 @@ struct BoundingBox {
 };
 
 struct Frame {
-  std::string key;
-  int frameIndex;
-  const cv::Mat* mat;
+  const std::string key;
+  const int frameIndex;
+  const cv::Mat mat;
 
   std::atomic_bool isResultReady;
   std::vector<BoundingBox> boxes;
@@ -74,9 +76,9 @@ struct Frame {
   std::vector<RoI> opticalFlowRoIs;
 
   Frame(const Frame& frame)
-      : key(frame.key), frameIndex(frame.frameIndex), mat(frame.mat), isResultReady(false) {}
+      : key(frame.key), frameIndex(frame.frameIndex), mat(frame.mat.clone()), isResultReady(false) {}
 
-  Frame(const std::string key, const int frameIndex, const cv::Mat* mat)
+  Frame(const std::string& key, const int frameIndex, const cv::Mat mat)
       : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false) {}
 };
 
@@ -109,10 +111,11 @@ struct RoI {
         handle(-1) {};
 
   bool isPacked() const {
-    return packedLocation.first == -1 && packedLocation.second == -1;
+    return packedLocation.first >= 0 && packedLocation.second >= 0;
   }
 
   int getArea() const {
+
     return location.width() * location.height();
   }
 
@@ -122,7 +125,7 @@ struct RoI {
   }
 
   cv::Mat getMat() const {
-    return frame->mat->operator()(
+    return frame->mat.operator()(
         cv::Rect(location.left, location.top, location.width(), location.height()));
   }
 
@@ -135,14 +138,26 @@ struct RoI {
 };
 
 struct MixedFrame {
+  const int mixedFrameIndex;
   cv::Mat packedMat;
   std::vector<Frame*> packedFrames;
 
   int handle;
   std::vector<BoundingBox> boxes;
 
-  MixedFrame(const cv::Mat packedMat, std::vector<Frame*> packedFrames)
-      : packedMat(std::move(packedMat)), packedFrames(packedFrames) {};
+  MixedFrame(const int mixedFrameIndex, const std::vector<Frame*> packedFrames, const int mixedFrameSize)
+      : mixedFrameIndex(mixedFrameIndex), packedFrames(packedFrames) {
+    packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
+    for (Frame* frame : packedFrames) {
+      for (RoI& roi : frame->rois) {
+        if (roi.isPacked()) {
+          std::pair<int, int> wh = roi.getResizedWidthHeight();
+          roi.getResizedMat().copyTo(
+              packedMat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second, wh.first, wh.second)));
+        }
+      }
+    }
+  }
 };
 
 } // namespace rm

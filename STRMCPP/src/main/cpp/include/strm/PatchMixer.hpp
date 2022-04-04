@@ -39,6 +39,7 @@ class PatchMixer {
 
   static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, Rect rect);
 
+  int mixedFrameIndex = 0;
   PatchMixerConfig mConfig;
   std::set<std::string> mFinishedKeys;
   std::vector<Frame*> mPackedFrames;

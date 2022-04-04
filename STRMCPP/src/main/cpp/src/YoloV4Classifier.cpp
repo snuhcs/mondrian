@@ -1,5 +1,6 @@
 #include "YoloV4Classifier.hpp"
 
+#include <chrono>
 #include <map>
 #include <set>
 
@@ -11,17 +12,20 @@ YoloV4Classifier::YoloV4Classifier() {
   LOGD("YoloV4 YoloV4Classifier::YoloV4Classifier()");
   interpreter = MNN::Interpreter::createFromFile("/data/local/tmp/models/yolov4-960-fp16.mnn");
   if (interpreter == nullptr) {
-    LOGE("YoloV4 interpreter == nullptr");
+    LOGE("YoloV4 interpreter creation failed");
     return;
+  } else {
+    LOGD("YOloV4 interpreter created");
   }
 
   MNN::ScheduleConfig conf;
 //  conf.type = MNN_FORWARD_OPENCL;
   session = interpreter->createSession(conf);
-  LOGD("YoloV4 interpreter->createSession(conf)");
   if (session == nullptr) {
-    LOGE("YoloV4 session == nullptr");
+    LOGE("YoloV4 session creation failed");
     return;
+  } else {
+    LOGD("YoloV4 session created");
   }
 
   std::map<std::string, MNN::Tensor*> inputTensorMap = interpreter->getSessionInputAll(session);
@@ -41,48 +45,37 @@ YoloV4Classifier::YoloV4Classifier() {
     inputInfo += it.first + ": " + getShapeString(it.second->shape());
     inputInfo += " | ";
   }
-  LOGD("Inputs  : %s", inputInfo.c_str());
+  LOGD("YoloV4 inputs  : %s", inputInfo.c_str());
+
   std::string outputInfo;
   for (auto& it : outputTensorMap) {
     outputInfo += it.first + ": " + getShapeString(it.second->shape());
     outputInfo += " | ";
   }
-  LOGD("Outputs : %s", outputInfo.c_str());
-
-  LOGD("YoloV4 Initialize Success");
+  LOGD("YoloV4 outputs : %s", outputInfo.c_str());
 }
 
 std::vector<BoundingBox> YoloV4Classifier::recognizeImage(
-    cv::Mat& mat, int originalWidth, int originalHeight) {
-  LOGD("YoloV4 recognizeImage: (%d, %d)", originalWidth, originalHeight);
+    const cv::Mat mat, int originalWidth, int originalHeight) {
   return nms(getDetectionsForFull(mat, originalWidth, originalHeight));
 }
 
 std::vector<BoundingBox> YoloV4Classifier::getDetectionsForFull(
-    cv::Mat& mat, int originalWidth, int originalHeight) {
-  LOGD("YoloV4 getDetectionsForFull");
-  std::vector<BoundingBox> detections;
-
+    const cv::Mat mat, int originalWidth, int originalHeight) {
   MNN::Tensor* inputTensor = interpreter->getSessionInputAll(session).at(INPUT_TENSOR_NAME);
   MNN::Tensor* outputBoxes = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_BOXES);
   MNN::Tensor* outputConfs = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_CONFS);
 
-  std::string shape;
-  for (int i = 0; i < inputTensor->shape().size(); i++) {
-    shape += std::to_string(inputTensor->shape()[i]);
-    if (i != inputTensor->shape().size() - 1) {
-      shape += ", ";
-    }
-  }
-  LOGD("Input  size : %d", inputTensor->size());
-  LOGD("Mat    size : %d", mat.total() * mat.elemSize());
-  LOGD("Before memcpy");
+  assert(inputTensor->size() == mat.total() * mat.elemSize());
   std::memcpy((void*) inputTensor->host<float>(), (void*) mat.data, inputTensor->size());
 
-  LOGD("Before Invoke");
+  auto start = std::chrono::system_clock::now();
   interpreter->runSession(session);
-  LOGD("After Invoke");
+  auto end = std::chrono::system_clock::now();
+  LOGV("YoloV4 Inference %lld us",
+       std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
 
+  std::vector<BoundingBox> detections;
   auto* bboxes = outputBoxes->host<float>();
   auto* confidences = outputConfs->host<float>();
   for (int i = 0; i < OUTPUT_WIDTH; i++) {
@@ -100,7 +93,6 @@ std::vector<BoundingBox> YoloV4Classifier::getDetectionsForFull(
       float yPos = bboxes[i * 4 + 1];
       float w = bboxes[i * 4 + 2];
       float h = bboxes[i * 4 + 3];
-      LOGD("Poses: %f, %f, %f, %f", xPos, yPos, w, h);
       detections.emplace_back(Rect(
           std::max(0, (int) ((xPos - w / 2) * (float) originalWidth / (float) INPUT_SIZE)),
           std::max(0, (int) ((yPos - h / 2) * (float) originalHeight / (float) INPUT_SIZE)),
