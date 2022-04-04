@@ -2,9 +2,9 @@
 
 namespace rm {
 
-CppInferenceEngine::CppInferenceEngine() : mHandle(0) {
+CppInferenceEngine::CppInferenceEngine(int inputSize) : mHandle(0) {
   LOGD("CppInferenceEngine::CppInferenceEngine()");
-  workers.push_back(std::make_unique<Worker>(this));
+  workers.push_back(std::make_unique<Worker>(this, inputSize));
 }
 
 int CppInferenceEngine::enqueue(const cv::Mat mat, const bool isFull) {
@@ -49,8 +49,8 @@ void CppInferenceEngine::enqueueResults(const int handle, const std::vector<Boun
   resultCv.notify_all();
 }
 
-Worker::Worker(CppInferenceEngine* engine)
-: engine(engine), isClosed(false), classifier(new YoloV4Classifier()) {
+Worker::Worker(CppInferenceEngine* engine, int inputSize)
+: engine(engine), isClosed(false), classifier(new YoloV4Classifier(inputSize)) {
   targetSize = cv::Size(classifier->getInputSize(), classifier->getInputSize());
   LOGD("Worker::Worker()");
   thread = std::thread([this]() {

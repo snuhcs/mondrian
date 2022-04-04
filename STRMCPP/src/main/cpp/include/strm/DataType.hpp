@@ -145,15 +145,17 @@ struct MixedFrame {
   int handle;
   std::vector<BoundingBox> boxes;
 
-  MixedFrame(const int mixedFrameIndex, const std::vector<Frame*> packedFrames, const int mixedFrameSize)
+  MixedFrame(const int mixedFrameIndex, const std::vector<Frame*> packedFrames, const int mixedFrameSize, const bool mixing)
       : mixedFrameIndex(mixedFrameIndex), packedFrames(packedFrames) {
-    packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
-    for (Frame* frame : packedFrames) {
-      for (RoI& roi : frame->rois) {
-        if (roi.isPacked()) {
-          std::pair<int, int> wh = roi.getResizedWidthHeight();
-          roi.getResizedMat().copyTo(
-              packedMat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second, wh.first, wh.second)));
+    if (mixing) {
+      packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
+      for (Frame* frame : packedFrames) {
+        for (RoI& roi : frame->rois) {
+          if (roi.isPacked()) {
+            std::pair<int, int> wh = roi.getResizedWidthHeight();
+            roi.getResizedMat().copyTo(
+                packedMat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second, wh.first, wh.second)));
+          }
         }
       }
     }

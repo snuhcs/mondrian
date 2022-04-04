@@ -22,8 +22,17 @@ PatchReconstructor::PatchReconstructor(PatchReconstructorConfig config,
 
 void PatchReconstructor::process(MixedFrame& mixedFrame) {
   LOGD("PatchReconstructor::process(%d) %d frames packed", mixedFrame.mixedFrameIndex, mixedFrame.packedFrames.size());
-  mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
-  updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
+  if (!mixedFrame.packedMat.empty()) {
+    mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
+    updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
+  } else {
+    for (Frame* frame : mixedFrame.packedFrames) {
+      for (RoI& roi : frame->rois) {
+        roi.boxes = mInferenceEngine->getResults(roi.handle);
+      }
+    }
+    updateRoIInferenceResults(mixedFrame);
+  }
 }
 
 void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame, int matchPadding,
@@ -70,6 +79,22 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
     }
   }
   for (Frame*& frame : mixedFrame.packedFrames) {
+    frame->isResultReady.store(true);
+  }
+}
+
+void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
+  for (Frame*& frame : mixedFrame.packedFrames) {
+    for (RoI& roi : frame->rois) {
+      for (const BoundingBox& box : roi.boxes) {
+        frame->boxes.emplace_back(
+            Rect(box.location.left + roi.location.left,
+                 box.location.top + roi.location.top,
+                 box.location.right + roi.location.left,
+                 box.location.bottom + roi.location.top),
+            box.confidence, box.labelName);
+      }
+    }
     frame->isResultReady.store(true);
   }
 }

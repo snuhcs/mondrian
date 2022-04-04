@@ -15,7 +15,7 @@ class Worker;
 
 class CppInferenceEngine : public InferenceEngine {
  public:
-  CppInferenceEngine();
+  CppInferenceEngine(int inputSize);
 
   int enqueue(const cv::Mat mat, const bool isFull) override;
 
@@ -39,7 +39,7 @@ class CppInferenceEngine : public InferenceEngine {
 
 class Worker {
  public:
-  Worker(CppInferenceEngine* engine);
+  Worker(CppInferenceEngine* engine, int inputSize);
 
   ~Worker() {
     isClosed.store(true);

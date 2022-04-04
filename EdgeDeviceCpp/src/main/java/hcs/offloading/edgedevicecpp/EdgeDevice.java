@@ -50,7 +50,7 @@ public class EdgeDevice implements WebRTCCallback {
         mInputView = inputView;
         mInputView.init(eglBase.getEglBaseContext(), null);
 
-        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer();
+        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer(config.inferenceEngineConfig.INPUT_SIZE);
 
         if (!mConfig.sourceConfig.USE_LOCAL_VIDEO) {
             mMqttManager = new DeviceMqttManager(context, uri, Device.EDGE, scheduleTopicHandler, webrtcTopicHandler);

@@ -48,6 +48,9 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
 
 PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   PatchMixerConfig config;
+  if (!json["packing"].isNull()) {
+    config.PACKING = json["packing"].asBool();
+  }
   if (!json["max_packed_frames"].isNull()) {
     config.MAX_PACKED_FRAMES = json["max_packed_frames"].asInt();
   }

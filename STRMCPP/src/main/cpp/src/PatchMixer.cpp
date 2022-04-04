@@ -59,9 +59,20 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
       mPackedFrames.erase(std::find(mPackedFrames.begin(), mPackedFrames.end(), currFrame));
       status = FINISHED_AND_PROCESS_LAST_FRAME_AGAIN;
     }
-    MixedFrame mixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE);
-    mixedFrame.handle = mInferenceEngine->enqueue(mixedFrame.packedMat, false);
-    mPatchReconstructor->enqueue(mixedFrame);
+
+    if (mConfig.PACKING) {
+      MixedFrame mixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE, true);
+      mixedFrame.handle = mInferenceEngine->enqueue(mixedFrame.packedMat, false);
+      mPatchReconstructor->enqueue(mixedFrame);
+    } else {
+      MixedFrame mixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE, false);
+      for (Frame* frame : mixedFrame.packedFrames) {
+        for (RoI& roi : frame->rois) {
+          roi.handle = mInferenceEngine->enqueue(roi.getMat(), false);
+        }
+      }
+      mPatchReconstructor->enqueue(mixedFrame);
+    }
     mFinishedKeys.clear();
     for (Frame* frame : mPackedFrames) {
       mFinishedKeys.insert(frame->key);

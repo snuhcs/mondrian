@@ -28,6 +28,8 @@ class PatchReconstructor {
   static void updateMixedFrameInferenceResults(
       MixedFrame& mixedFrame, int matchPadding, float useIoUThreshold);
 
+  static void updateRoIInferenceResults(MixedFrame& mixedFrame);
+
   PatchReconstructorConfig mConfig;
   InferenceEngine* mInferenceEngine;
 

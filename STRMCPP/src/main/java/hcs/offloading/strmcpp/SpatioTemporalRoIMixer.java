@@ -19,8 +19,8 @@ public class SpatioTemporalRoIMixer {
 
     private final long handle;
 
-    public SpatioTemporalRoIMixer() {
-        handle = createSpatioTemporalRoIMixer();
+    public SpatioTemporalRoIMixer(int inputSize) {
+        handle = createSpatioTemporalRoIMixer(inputSize);
     }
 
     public void enqueueImage(String key, Mat mat) {
@@ -39,7 +39,7 @@ public class SpatioTemporalRoIMixer {
         close(handle);
     }
 
-    private native long createSpatioTemporalRoIMixer();
+    private native long createSpatioTemporalRoIMixer(int inputSize);
 
     private native void enqueueImage(long handle, String key, long matAddr);
 

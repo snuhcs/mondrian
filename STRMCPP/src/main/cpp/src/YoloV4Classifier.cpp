@@ -8,9 +8,12 @@
 
 namespace rm {
 
-YoloV4Classifier::YoloV4Classifier() {
+YoloV4Classifier::YoloV4Classifier(int inputSize)
+: INPUT_SIZE(inputSize), OUTPUT_WIDTH((inputSize / 32) * (inputSize / 32) * 63) {
   LOGD("YoloV4 YoloV4Classifier::YoloV4Classifier()");
-  interpreter = MNN::Interpreter::createFromFile("/data/local/tmp/models/yolov4-960-fp16.mnn");
+  std::string filepath = "/data/local/tmp/models/yolov4-";
+  filepath += std::to_string(inputSize) + "-fp16.mnn";
+  interpreter = MNN::Interpreter::createFromFile(filepath.c_str());
   if (interpreter == nullptr) {
     LOGE("YoloV4 interpreter creation failed");
     return;

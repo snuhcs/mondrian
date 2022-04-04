@@ -9,7 +9,7 @@ namespace rm {
 
 class YoloV4Classifier {
  public:
-  YoloV4Classifier();
+  YoloV4Classifier(int inputSize);
   std::vector<BoundingBox> recognizeImage(const cv::Mat mat, int originalWidth, int originalHeight);
   int getInputSize() const;
 
@@ -23,8 +23,8 @@ class YoloV4Classifier {
   const std::string OUTPUT_TENSOR_NAME_CONFS = "model/tf.concat_23/concat";
 
   const int NUM_LABELS = 80;
-  const int INPUT_SIZE = 960;
-  const int OUTPUT_WIDTH = (INPUT_SIZE / 32) * (INPUT_SIZE / 32) * 63;
+  const int INPUT_SIZE;
+  const int OUTPUT_WIDTH;
   const float CONF_THRESHOLD = 0.1;
   const float IOU_THRESHOLD = 0.3;
 
