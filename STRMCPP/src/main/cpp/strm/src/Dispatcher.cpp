@@ -29,7 +29,7 @@ Dispatcher::Dispatcher(const std::string& key,
   LOGD("Dispatcher%s()", mTag.c_str());
   mThread = std::thread([this]() {
     while (!isClosed.load()) {
-      Frame* frame = getFrameToProcess();
+      std::shared_ptr<Frame> frame = getFrameToProcess();
       process(frame);
     }
   });
@@ -47,27 +47,26 @@ int Dispatcher::enqueue(const cv::Mat mat) {
     return mEnqueuedFrameIndex - mProcessedFrameIndex < mMaxNumItems;
   });
   int frameIndex = mEnqueuedFrameIndex++;
-  mFrames.insert(
-      std::make_pair(frameIndex, std::make_unique<Frame>(mKey, frameIndex, mat)));
+  mFrames.insert(std::make_pair(frameIndex, std::make_shared<Frame>(mKey, frameIndex, mat)));
   LOGD("Dispatcher%s::enqueue(%d) end", mTag.c_str(), frameIndex);
   lock.unlock();
   mFramesCv.notify_all();
   return frameIndex;
 }
 
-Frame* Dispatcher::getFrameToProcess() {
+std::shared_ptr<Frame> Dispatcher::getFrameToProcess() {
   LOGD("Dispatcher%s::getFrameToProcess()", mTag.c_str());
   std::unique_lock<std::mutex> lock(mFramesMtx);
   mFramesCv.wait(lock, [this] {
     return mEnqueuedFrameIndex > mProcessedFrameIndex;
   });
-  Frame* frame = mFrames.at(mProcessedFrameIndex++).get();
+  std::shared_ptr<Frame> frame = mFrames.at(mProcessedFrameIndex++);
   lock.unlock();
   mFramesCv.notify_all();
   return frame;
 }
 
-void Dispatcher::process(Frame* currFrame) {
+void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
   LOGD("Dispatcher%s::process(%d)", mTag.c_str(), currFrame->frameIndex);
   assert(currFrame != nullptr);
   assert(mPrevFrame == nullptr || mPrevFrame->frameIndex + 1 == currFrame->frameIndex);
@@ -98,7 +97,7 @@ void Dispatcher::process(Frame* currFrame) {
       roi.scale = mResizeProfile->getScale(roi.labelName, roi.location.width(),
                                            roi.location.height(), roi.minOriginLength);
     }
-    PatchMixer::Status status = mPatchMixer->tryPackAndEnqueueMixedFrame(currFrame);
+    PatchMixer::Status status = mPatchMixer->tryPackAndEnqueueMixedFrame(currFrame.get());
     LOGD("PatchMixer::Status: %d", status);
     if (status == PatchMixer::CONTINUE_PACKING) {
       mUseInferenceResults = false;
@@ -158,7 +157,9 @@ std::vector<BoundingBox> Dispatcher::getResults(int frameIndex) {
            mFrames.at(frameIndex)->isResultReady.load();
   });
   LOGD("Dispatcher::getResults(%d) end", frameIndex);
-  return mFrames.at(frameIndex)->boxes;
+  std::vector<BoundingBox> boxes = mFrames.at(frameIndex)->boxes;
+  mFrames.erase(frameIndex);
+  return boxes;
 }
 
 } // namespace rm

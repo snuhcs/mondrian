@@ -16,7 +16,7 @@ class RoIExtractor {
 
   bool useOpticalFlowRoIs() const;
 
-  void process(const std::pair<std::pair<Frame*, Frame*>, std::vector<BoundingBox>>& item) const;
+  void process(const std::pair<std::pair<std::shared_ptr<Frame>, std::shared_ptr<Frame>>, std::vector<BoundingBox>>& item) const;
 
  private:
   static void mergeSingleFrameRoIs(

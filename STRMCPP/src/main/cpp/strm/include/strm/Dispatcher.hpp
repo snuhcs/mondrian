@@ -31,9 +31,9 @@ class Dispatcher {
 
   int enqueue(const cv::Mat mat);
 
-  Frame* getFrameToProcess();
+  std::shared_ptr<Frame> getFrameToProcess();
 
-  void process(Frame* currFrame);
+  void process(const std::shared_ptr<Frame>& currFrame);
 
   void notifyResults();
 
@@ -47,7 +47,7 @@ class Dispatcher {
 
   int mCountMixedFrameInference;
   bool mUseInferenceResults;
-  Frame* mPrevFrame = nullptr;
+  std::shared_ptr<Frame> mPrevFrame = nullptr;
   std::mutex mResultsMtx;
   std::condition_variable mResultsCv;
 
@@ -64,7 +64,7 @@ class Dispatcher {
   int mMaxNumItems;
   int mEnqueuedFrameIndex = 0;
   int mProcessedFrameIndex = 0;
-  std::map<int, std::unique_ptr<Frame>> mFrames;
+  std::map<int, std::shared_ptr<Frame>> mFrames;
   std::condition_variable mFramesCv;
   std::mutex mFramesMtx;
 };

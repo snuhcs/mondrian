@@ -112,14 +112,13 @@ public class VideoSource extends CustomCapturer implements Runnable {
 
                 Mat mat = new Mat();
                 Utils.bitmapToMat(bitmap, mat);
-                int index = strm.enqueueImage(VIDEO_PATH, mat.clone());
+                int index = strm.enqueueImage(VIDEO_PATH, mat);
                 frames.put(index, bitmap);
                 try {
                     frameIndices.put(index);
                 } catch (InterruptedException e) {
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                 }
-                mat.release();
             }
         });
         captureThread.start();

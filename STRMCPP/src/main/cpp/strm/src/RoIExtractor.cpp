@@ -18,9 +18,9 @@ bool RoIExtractor::useOpticalFlowRoIs() const {
 }
 
 void RoIExtractor::process(
-    const std::pair<std::pair<Frame*, Frame*>, std::vector<BoundingBox>>& item) const {
-  Frame* prevFrame = item.first.first;
-  Frame* currFrame = item.first.second;
+    const std::pair<std::pair<std::shared_ptr<Frame>, std::shared_ptr<Frame>>, std::vector<BoundingBox>>& item) const {
+  Frame* prevFrame = item.first.first.get();
+  Frame* currFrame = item.first.second.get();
   LOGD("RoIExtractor::process((%s, %d), (%s, %d), %d)", prevFrame->key.c_str(),
        prevFrame->frameIndex,
        currFrame->key.c_str(), currFrame->frameIndex, (int) item.second.size());

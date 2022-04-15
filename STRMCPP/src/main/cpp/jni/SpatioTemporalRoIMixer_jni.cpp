@@ -38,7 +38,7 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_enqueueImage(JNIEnv* env, job
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   auto* image = (cv::Mat*) matAddr;
   const char* k = env->GetStringUTFChars(key, &isCopy);
-  return strm->enqueueImage(std::string(k), image->clone());
+  return strm->enqueueImage(std::string(k), *image);
 }
 
 extern "C"
