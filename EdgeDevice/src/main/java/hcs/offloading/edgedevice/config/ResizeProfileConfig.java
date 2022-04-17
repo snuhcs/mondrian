@@ -4,7 +4,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class ResizeProfileConfig {
-    public boolean FIT_RESIZE = true;
+    public boolean FIT_RESIZE = false;
     public boolean MERGED_RESIZE = false;
     public int PERSON_THRESHOLD = 160;
     public int CLASS_AGNOSTIC_THRESHOLD = 160;

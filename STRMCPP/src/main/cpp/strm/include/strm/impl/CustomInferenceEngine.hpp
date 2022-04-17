@@ -5,6 +5,7 @@
 #include <queue>
 
 #include "strm/InferenceEngine.hpp"
+#include "strm/impl/ImplConfig.hpp"
 
 namespace rm {
 
@@ -12,7 +13,7 @@ class Worker;
 
 class CustomInferenceEngine : public InferenceEngine {
  public:
-  CustomInferenceEngine(int frameSize, int fullFrameSize);
+  CustomInferenceEngine(const InferenceEngineConfig& config);
 
   int enqueue(const cv::Mat mat, const bool isFull) override;
 

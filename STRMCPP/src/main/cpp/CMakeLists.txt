@@ -1,67 +1,46 @@
-
-# For more information about using CMake with Android Studio, read the
-# documentation: https://d.android.com/studio/projects/add-native-code.html
-
-# Sets the minimum version of CMake required to build the native library.
-
 cmake_minimum_required(VERSION 3.18.1)
-
-# Declares and names the project.
 
 project(strmcpp)
 
 include_directories(
-        third_party/include
-        strm/include
+        third_party/include/
+        strm/include/
 )
-link_directories(lib)
 
-# Creates and names a library, sets it as either STATIC
-# or SHARED, and provides the relative paths to its source code.
-# You can define multiple libraries, and CMake builds them for you.
-# Gradle automatically packages shared libraries with your APK.
-
-include_directories(${CMAKE_SOURCE_DIR}/include)
-
-add_library(
-        strmcpp              # Sets the name of the library.
-        SHARED               # Sets the library as a shared library.
-        strm/src/Config.cpp  # Provides a relative path to your source file(s).
-        strm/src/Dispatcher.cpp
-        strm/src/PatchMixer.cpp
-        strm/src/PatchReconstructor.cpp
-        strm/src/RoIExtractor.cpp
-        strm/src/SpatioTemporalRoIMixer.cpp
-        strm/src/Impl/CustomInferenceEngine.cpp
-        strm/src/Impl/Worker.cpp
-        strm/src/Impl/YoloV4Classifier.cpp
-        jni/SpatioTemporalRoIMixer_jni.cpp
+link_directories(
+        third_party/lib
 )
 
 add_library(
         jsoncpp
         SHARED
-        ${CMAKE_SOURCE_DIR}/lib/jsoncpp.cpp
+        third_party/lib/jsoncpp.cpp
 )
-
-# Searches for a specified prebuilt library and stores the path as a
-# variable. Because CMake includes system libraries in the search path by
-# default, you only need to specify the name of the public NDK library
-# you want to add. CMake verifies that the library exists before
-# completing its build.
 
 find_library(
-        log-lib  # Sets the name of the path variable.
-        log  # Specifies the name of the NDK library that you want CMake to locate.
+        log-lib
+        log
 )
 
-# Specifies libraries CMake should link to your target library. You
-# can link multiple libraries, such as libraries you define in this
-# build script, prebuilt third-party libraries, or system libraries.
+add_library(
+        strmcpp
+        SHARED
+        strm/src/Config.cpp
+        strm/src/Dispatcher.cpp
+        strm/src/PatchMixer.cpp
+        strm/src/PatchReconstructor.cpp
+        strm/src/RoIExtractor.cpp
+        strm/src/SpatioTemporalRoIMixer.cpp
+        strm/src/impl/ImplConfig.cpp
+        strm/src/impl/CustomInferenceEngine.cpp
+        strm/src/impl/Worker.cpp
+        strm/src/impl/YoloV4Classifier.cpp
+        jni/SpatioTemporalRoIMixer_jni.cpp
+)
 
 target_link_libraries(
-        strmcpp     # Specifies the target library.
-        ${log-lib}  # Links the target library to the log library included in the NDK.
+        strmcpp
+        ${log-lib}
         jsoncpp
         opencv_core
         opencv_dnn

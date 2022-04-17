@@ -16,7 +16,7 @@ struct DispatcherConfig {
 struct RoIExtractorConfig {
   int EXTRACTION_RESIZE_WIDTH = 640;
   int EXTRACTION_RESIZE_HEIGHT = 360;
-  float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.3f;
+  float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1f;
   float MERGE_THRESHOLD = 0.5f;
   bool OF_ROI = true;
   bool PD_ROI = true;
@@ -26,7 +26,7 @@ struct RoIExtractorConfig {
 struct PatchMixerConfig {
   bool PACKING = true;
   int MAX_PACKED_FRAMES = 30;
-  int MIXED_FRAME_SIZE = 960;
+  int MIXED_FRAME_SIZE = 800;
 };
 
 struct PatchReconstructorConfig {

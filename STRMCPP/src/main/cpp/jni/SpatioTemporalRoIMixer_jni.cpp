@@ -4,6 +4,7 @@
 #include "strm/DataType.hpp"
 #include "strm/Log.hpp"
 #include "strm/SpatioTemporalRoIMixer.hpp"
+#include "strm/impl/ImplConfig.hpp"
 #include "strm/impl/CustomResizeProfile.hpp"
 #include "strm/impl/CustomRoIPrioritizer.hpp"
 #include "strm/impl/CustomInferenceEngine.hpp"
@@ -16,13 +17,13 @@ static long inferenceEngineHandle = (long) nullptr;
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(JNIEnv* env,
-                                                                                jobject thiz,
-                                                                                jint frameSize,
-                                                                                jint fullFrameSize) {
+                                                                                jobject thiz) {
   std::string jsonPath = "/data/local/tmp/strmcpp.json";
-  auto* resizeProfile = new rm::CustomResizeProfile();
+  std::string implJsonPath = "/data/local/tmp/edgedevicecpp.json";
+  rm::IMPLConfig config = rm::parseIMPLConfig(implJsonPath);
+  auto* resizeProfile = new rm::CustomResizeProfile(config.resizeProfileConfig);
   auto* roIPrioritizer = new rm::CustomRoIPrioritizer();
-  auto* inferenceEngine = new rm::CustomInferenceEngine(frameSize, fullFrameSize);
+  auto* inferenceEngine = new rm::CustomInferenceEngine(config.inferenceEngineConfig);
   resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
   roiPrioritizerHandle = reinterpret_cast<long>(roIPrioritizer);
   inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);

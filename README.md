@@ -23,24 +23,63 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 * [Android Studio](https://developer.android.com/studio/)
 
 
-## Getting Started
+## Getting Started (C++)
 
 ### Prerequisites
-1. Download MNN and TensorFlow Lite models from google drive.
-2. Put downloaded models in `EdgeDevice/src/main/assets` directory.
+1. Download dependencies into `STRMCPP/src/main/jniLibs` and `STRMCPP/src/main/cpp/third_party` from google drive.
+2. Download models to use from google drive.
+3. (Optional) Download source videos from google drive.
 
 ### Installation
 1. Download the Android Studio.
 2. Open this project with the Android Studio.
-3. Select each application to install. (`edgedevice`, `sourcecamera`, `edgehub`)
+3. Select each application to install. (`EdgeDeviceCPP`, `SourceCamera`, `EdgeHub`)
+4. Build and install the target application.
+
+### How to Run
+#### Option 1. Process videos on the EdgeDevice
+1. Build and install `EdgeDeviceCPP` application.
+2. Upload `edgedevicecpp.json` and `strmcpp.json` into `/data/local/tmp`.
+    * `adb push <host edgedevicecpp.json path> /data/local/tmp/edgedevicecpp.json`
+    * `adb push <host strmcpp.json path> /data/local/tmp/strmcpp.json`
+3. Upload models to use into `/data/local/tmp/models/`.
+    * `adb push <host model path> /data/local/tmp/models`
+4. (Only for `Option 1. Process videos on the EdgeDevice`) Upload videos specified in `edgedevicecpp.json`.
+    * `adb push <host video path> <adb video path>`
+5. Run `EdgeDeviceCPP`.
+
+#### Option 2. Process videos on SourceCameras
+1. Build and install `EdgeDeviceCPP`, `SoureCamera`, and `EdgeHub` to different mobile devices.
+2. Setup `EdgeDeviceCPP` refer to `Option 1. Process videos on the EdgeDevice`.
+3. Upload `sourcecamera.json` into `/data/local/tmp`.
+    * `adb push <host sourcecamera.json path> /data/local/tmp/sourcecamera.json`
+4. (Only for `Option 2. Process videos on SourceCameras`) Upload videos specified in `sourcecamera.json`.
+    * `adb push <host video path> <adb video path>`
+5. Run applications with the Android Studio and click the switch button on the screen.
+
+#### Option 3. Process camera streams of SourceCameras
+1. Build and install `EdgeDeviceCPP`, `SoureCamera`, and `EdgeHub` to different mobile devices.
+2. Setup `EdgeDeviceCPP` refer to `Option 1. Process videos on the EdgeDevice`.
+3. Upload `sourcecamera.json` into `/data/local/tmp`.
+    * `adb push <host sourcecamera.json path> /data/local/tmp/sourcecamera.json`
+4. Run applications with the Android Studio and click the switch button on the screen.
+
+
+## Getting Started (Java)
+
+### Prerequisites
+1. Download models to use from google drive.
+2. (Optional, For TensorFlow Lite models) Put TensorFlow Lite models into `EdgeDevice/src/main/asserts/` directory.
+3. (Optional) Download source videos from google drive.
+
+### Installation
+1. Download the Android Studio.
+2. Open this project with the Android Studio.
+3. Select each application to install. (`EdgeDevice`, `SourceCamera`, `EdgeHub`)
 4. Build the target application.
 
 ### How to Run
-1. Install applications to different mobile devices with the Android Studio.
-2. Upload `edgedevice.json` and `strm.json` into `/data/local/tmp`. (`adb push edgedevice.json /data/local/tmp` and `adb push strm.json /data/local/tmp`)
-3. Upload `sourcecamera.json` into `/data/local/tmp`. (`adb push sourcecamera.json /data/local/tmp`)
-4. If local video file is to be sent from `SourceCamera`, upload video specified in `sourcecamera.json` into `/data/local/tmp`. (`adb push [video_file_path] /data/local/tmp`)
-5. Run applications with the Android Studio.
+* For all options, do same as C++ without `cpp` in config names.
 
 
 ## Contact

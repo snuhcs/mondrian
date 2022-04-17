@@ -1,5 +1,5 @@
 {
-    "log_path": "/data/data/hcs.offloading.edgedevice/test.log",
+    "log_path": "/data/data/hcs.offloading.edgedevicecpp/test.log",
     "source": {
         "use_local_video": true,
         "video_configs": [

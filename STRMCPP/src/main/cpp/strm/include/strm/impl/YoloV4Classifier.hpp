@@ -9,7 +9,7 @@ namespace rm {
 
 class YoloV4Classifier {
  public:
-  YoloV4Classifier(int inputSize);
+  YoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny);
   std::vector<BoundingBox> recognizeImage(const cv::Mat mat, int originalWidth, int originalHeight);
   int getInputSize() const;
 
@@ -25,8 +25,8 @@ class YoloV4Classifier {
   const int NUM_LABELS = 80;
   const int INPUT_SIZE;
   const int OUTPUT_WIDTH;
-  const float CONF_THRESHOLD = 0.1;
-  const float IOU_THRESHOLD = 0.3;
+  const float CONF_THRESHOLD;
+  const float IOU_THRESHOLD;
 
   MNN::Interpreter* interpreter;
   MNN::Session* session;

@@ -19,8 +19,8 @@ public class SpatioTemporalRoIMixer {
 
     private final long handle;
 
-    public SpatioTemporalRoIMixer(int frameSize, int fullFrameSize) {
-        handle = createSpatioTemporalRoIMixer(frameSize, fullFrameSize);
+    public SpatioTemporalRoIMixer() {
+        handle = createSpatioTemporalRoIMixer();
     }
 
     public int enqueueImage(String key, Mat mat) {
@@ -39,7 +39,7 @@ public class SpatioTemporalRoIMixer {
         close(handle);
     }
 
-    private native long createSpatioTemporalRoIMixer(int frameSize, int fullFrameSize);
+    private native long createSpatioTemporalRoIMixer();
 
     private native int enqueueImage(long handle, String key, long matAddr);
 

@@ -5,9 +5,15 @@
 
 namespace rm {
 
-CustomInferenceEngine::CustomInferenceEngine(int frameSize, int fullFrameSize) : mHandle(0) {
+CustomInferenceEngine::CustomInferenceEngine(const InferenceEngineConfig& config) : mHandle(0) {
   LOGD("CppInferenceEngine::CppInferenceEngine()");
-  workers.push_back(std::make_unique<Worker>(this, frameSize, fullFrameSize));
+  for (int i = 0; i < config.NUM_WORKERS; i++) {
+    workers.push_back(std::make_unique<Worker>(
+        this, std::make_unique<YoloV4Classifier>(config.INPUT_SIZE, config.CONF_THRESHOLD,
+                                                 config.IOU_THRESHOLD, config.USE_TINY),
+        std::make_unique<YoloV4Classifier>(config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD,
+                                           config.IOU_THRESHOLD, config.USE_TINY)));
+  }
 }
 
 int CustomInferenceEngine::enqueue(const cv::Mat mat, const bool isFull) {
@@ -45,7 +51,8 @@ std::tuple<int, const cv::Mat, bool> CustomInferenceEngine::getInput() {
   return input;
 }
 
-void CustomInferenceEngine::enqueueResults(const int handle, const std::vector<BoundingBox>& boxes) {
+void
+CustomInferenceEngine::enqueueResults(const int handle, const std::vector<BoundingBox>& boxes) {
   LOGD("CppInferenceEngine::enqueueResults(%d, %d)", handle, (int) boxes.size());
   std::unique_lock<std::mutex> resultLock(resultMtx);
   results.insert(std::make_pair(handle, boxes));

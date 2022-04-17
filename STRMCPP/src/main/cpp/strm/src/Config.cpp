@@ -105,4 +105,3 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
 }
 
 } // namespace rm
-

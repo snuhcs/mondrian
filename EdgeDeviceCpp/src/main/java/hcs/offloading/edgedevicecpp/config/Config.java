@@ -17,8 +17,6 @@ public class Config {
 
     public String LOG_PATH;
     public final SourceConfig sourceConfig;
-    public final ResizeProfileConfig resizeProfileConfig;
-    public final InferenceEngineConfig inferenceEngineConfig;
 
     public Config(String jsonPath) throws IOException, JSONException {
         JSONObject jsonObject = new JSONObject(getStringFromFile(jsonPath));
@@ -34,18 +32,6 @@ public class Config {
             sourceConfig = new SourceConfig(jsonObject.getJSONObject("source"));
         } else {
             sourceConfig = new SourceConfig();
-        }
-
-        if (jsonObject.has("resize_profile")) {
-            resizeProfileConfig = new ResizeProfileConfig(jsonObject.getJSONObject("resize_profile"));
-        } else {
-            resizeProfileConfig = new ResizeProfileConfig();
-        }
-
-        if (jsonObject.has("inference_engine")) {
-            inferenceEngineConfig = new InferenceEngineConfig(jsonObject.getJSONObject("inference_engine"));
-        } else {
-            inferenceEngineConfig = new InferenceEngineConfig();
         }
     }
 

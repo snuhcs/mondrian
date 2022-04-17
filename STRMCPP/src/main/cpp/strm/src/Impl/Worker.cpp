@@ -4,10 +4,11 @@
 
 namespace rm {
 
-Worker::Worker(CustomInferenceEngine* engine, int frameSize, int fullFrameSize)
-    : engine(engine), isClosed(false),
-      classifier(new YoloV4Classifier(frameSize)),
-      fullClassifier(new YoloV4Classifier(fullFrameSize)) {
+Worker::Worker(CustomInferenceEngine* engine,
+               std::unique_ptr<YoloV4Classifier> cls,
+               std::unique_ptr<YoloV4Classifier> fullCls)
+    : engine(engine), classifier(std::move(cls)),
+      fullClassifier(std::move(fullCls)), isClosed(false) {
   targetSize = cv::Size(classifier->getInputSize(), classifier->getInputSize());
   fullTargetSize = cv::Size(fullClassifier->getInputSize(), fullClassifier->getInputSize());
   LOGD("Worker::Worker()");

@@ -8,11 +8,12 @@
 
 namespace rm {
 
-YoloV4Classifier::YoloV4Classifier(int inputSize)
-    : INPUT_SIZE(inputSize), OUTPUT_WIDTH((inputSize / 32) * (inputSize / 32) * 63) {
+YoloV4Classifier::YoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny)
+    : INPUT_SIZE(size), OUTPUT_WIDTH((size / 32) * (size / 32) * 63),
+      CONF_THRESHOLD(confThreshold), IOU_THRESHOLD(iouThreshold) {
   LOGD("YoloV4 YoloV4Classifier::YoloV4Classifier()");
   std::string filepath = "/data/local/tmp/models/yolov4-";
-  filepath += std::to_string(inputSize) + "-fp16.mnn";
+  filepath += (isTiny ? "-tiny" : "") + std::to_string(size) + "-fp16.mnn";
   interpreter = MNN::Interpreter::createFromFile(filepath.c_str());
   if (interpreter == nullptr) {
     LOGE("YoloV4 interpreter creation failed");

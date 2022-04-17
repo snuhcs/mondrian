@@ -10,7 +10,9 @@ namespace rm {
 
 class Worker {
  public:
-  Worker(CustomInferenceEngine* engine, int frameSize, int fullFrameSize);
+  Worker(CustomInferenceEngine* engine,
+         std::unique_ptr<YoloV4Classifier> classifier,
+         std::unique_ptr<YoloV4Classifier> fullClassifier);
 
   ~Worker() {
     isClosed.store(true);
