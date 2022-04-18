@@ -12,7 +12,7 @@ public class InferenceEngineConfig {
     public Model MODEL = Model.YOLO_V4;
     public boolean USE_TINY = false;
     public float CONF_THRESHOLD = 0.1f;
-    public float IOU_THRESHOLD = 0.6f;
+    public float IOU_THRESHOLD = 0.3f;
     public int NUM_WORKERS = 1;
     public int INPUT_SIZE = 800;
     public int FULL_FRAME_INPUT_SIZE = 800;

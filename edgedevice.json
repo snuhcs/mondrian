@@ -30,7 +30,7 @@
         "conf_threshold": 0.1,
         "iou_threshold": 0.3,
         "num_workers": 1,
-        "input_size": 960,
-        "full_frame_input_size": 960
+        "input_size": 800,
+        "full_frame_input_size": 800
     }
 }

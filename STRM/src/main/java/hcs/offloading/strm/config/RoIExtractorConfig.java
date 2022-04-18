@@ -4,10 +4,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class RoIExtractorConfig {
-    public int MAX_QUEUE_SIZE = 2;
     public int EXTRACTION_RESIZE_WIDTH = 640;
     public int EXTRACTION_RESIZE_HEIGHT = 360;
-    public float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.3f;
+    public float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1f;
     public float MERGE_THRESHOLD = 0.5f;
     public boolean OF_ROI = true;
     public boolean PD_ROI = true;
@@ -17,9 +16,6 @@ public class RoIExtractorConfig {
     }
 
     RoIExtractorConfig(JSONObject jsonObject) throws JSONException {
-        if (jsonObject.has("max_queue_size")) {
-            MAX_QUEUE_SIZE = jsonObject.getInt("max_queue_size");
-        }
         if (jsonObject.has("extraction_resize_width")) {
             EXTRACTION_RESIZE_WIDTH = jsonObject.getInt("extraction_resize_width");
         }
