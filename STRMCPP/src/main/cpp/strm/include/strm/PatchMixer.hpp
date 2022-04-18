@@ -33,9 +33,9 @@ class PatchMixer {
 
   int countPackedFrame(const std::string& key);
 
-  static bool canFit(std::pair<int, int> wh, Rect rect);
+  static bool canFit(std::pair<int, int> wh, const Rect& rect);
 
-  static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, Rect rect);
+  static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, const Rect& rect);
 
   int mixedFrameIndex = 0;
   PatchMixerConfig mConfig;

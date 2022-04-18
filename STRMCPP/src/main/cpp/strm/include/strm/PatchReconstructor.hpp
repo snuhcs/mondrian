@@ -16,7 +16,10 @@ class PatchReconstructor {
   PatchReconstructor(PatchReconstructorConfig config,
                      InferenceEngine* inferenceEngine,
                      PatchReconstructorCallback* callback);
-  void enqueue(const MixedFrame item);
+
+  ~PatchReconstructor();
+
+  void enqueue(const MixedFrame& item);
 
  private:
   void process(MixedFrame& item);

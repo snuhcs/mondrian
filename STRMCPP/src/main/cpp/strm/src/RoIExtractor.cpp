@@ -11,7 +11,7 @@ RoIExtractor::RoIExtractor(RoIExtractorConfig config)
       mTargetSize(cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH,
                            mConfig.EXTRACTION_RESIZE_HEIGHT)) {
   LOGD("RoIExtractor()");
-};
+}
 
 bool RoIExtractor::useOpticalFlowRoIs() const {
   return mConfig.OF_ROI;
@@ -42,11 +42,11 @@ void RoIExtractor::process(
     std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame, mTargetSize);
     rois.insert(rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
   }
-  LOGD("Before Merge: %d", rois.size());
+  LOGD("Before Merge: %lu", rois.size());
   if (mConfig.MERGE_ROI) {
     mergeSingleFrameRoIs(rois, currFrame, mConfig.MERGE_THRESHOLD);
   }
-  LOGD("After  Merge: %d", rois.size());
+  LOGD("After  Merge: %lu", rois.size());
   currFrame->rois = rois;
 }
 
@@ -131,7 +131,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
 }
 
 std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
-    const cv::Mat prevImage, const cv::Mat currImage,
+    const cv::Mat& prevImage, const cv::Mat& currImage,
     const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
   assert(!prevImage.empty() && !currImage.empty());
   cv::Mat prevMat = prevImage.clone();
@@ -220,7 +220,7 @@ std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Fr
 }
 
 cv::Mat RoIExtractor::calculateDiffAndThreshold(
-    const cv::Mat prevMat, const cv::Mat currMat) {
+    const cv::Mat& prevMat, const cv::Mat& currMat) {
   cv::Mat diff;
   cv::absdiff(prevMat, currMat, diff);
   for (int i = 0; i < 3; i++) {

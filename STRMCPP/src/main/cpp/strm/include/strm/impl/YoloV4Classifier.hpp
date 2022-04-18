@@ -10,12 +10,12 @@ namespace rm {
 class YoloV4Classifier {
  public:
   YoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny);
-  std::vector<BoundingBox> recognizeImage(const cv::Mat mat, int originalWidth, int originalHeight);
+  std::vector<BoundingBox> recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight);
   int getInputSize() const;
 
  private:
   std::vector<BoundingBox> getDetectionsForFull(
-      const cv::Mat mat, int originalWidth, int originalHeight);
+      const cv::Mat& mat, int originalWidth, int originalHeight);
   std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes) const;
 
   const std::string INPUT_TENSOR_NAME = "x";

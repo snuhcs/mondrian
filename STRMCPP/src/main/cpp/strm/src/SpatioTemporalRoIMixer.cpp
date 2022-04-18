@@ -38,7 +38,7 @@ void SpatioTemporalRoIMixer::notifyMixedInferenceResults(const MixedFrame& mixed
 }
 
 int SpatioTemporalRoIMixer::enqueueImage(
-    const std::string& key, const cv::Mat mat) {
+    const std::string& key, const cv::Mat& mat) {
   LOGD("SpatioTemporalRoIMixer::enqueueImage(%s, Mat(%d, %d, %d))",
        key.c_str(), mat.cols, mat.rows, mat.channels());
   assert(!mat.empty());

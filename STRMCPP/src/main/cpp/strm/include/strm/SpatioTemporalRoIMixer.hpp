@@ -24,7 +24,7 @@ class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
 
   ~SpatioTemporalRoIMixer();
 
-  int enqueueImage(const std::string& key, const cv::Mat mat);
+  int enqueueImage(const std::string& key, const cv::Mat& mat);
 
   std::vector<BoundingBox> getResults(const std::string& key, int frameIndex);
 

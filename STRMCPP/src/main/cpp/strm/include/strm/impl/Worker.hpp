@@ -22,7 +22,7 @@ class Worker {
  private:
   void Work();
 
-  static cv::Mat preprocess(const cv::Mat mat, const cv::Size& size);
+  static cv::Mat preprocess(const cv::Mat& mat, const cv::Size& size);
 
   CustomInferenceEngine* engine;
 

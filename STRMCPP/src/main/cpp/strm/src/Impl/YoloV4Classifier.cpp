@@ -60,12 +60,12 @@ YoloV4Classifier::YoloV4Classifier(int size, float confThreshold, float iouThres
 }
 
 std::vector<BoundingBox> YoloV4Classifier::recognizeImage(
-    const cv::Mat mat, int originalWidth, int originalHeight) {
+    const cv::Mat& mat, int originalWidth, int originalHeight) {
   return nms(getDetectionsForFull(mat, originalWidth, originalHeight));
 }
 
 std::vector<BoundingBox> YoloV4Classifier::getDetectionsForFull(
-    const cv::Mat mat, int originalWidth, int originalHeight) {
+    const cv::Mat& mat, int originalWidth, int originalHeight) {
   MNN::Tensor* inputTensor = interpreter->getSessionInputAll(session).at(INPUT_TENSOR_NAME);
   MNN::Tensor* outputBoxes = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_BOXES);
   MNN::Tensor* outputConfs = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_CONFS);

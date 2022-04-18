@@ -33,7 +33,7 @@ void Worker::Work() {
   engine->enqueueResults(handle, boxes);
 }
 
-cv::Mat Worker::preprocess(const cv::Mat mat, const cv::Size& size) {
+cv::Mat Worker::preprocess(const cv::Mat& mat, const cv::Size& size) {
   cv::Mat preprocessedMat = mat.clone();
   cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
   cv::resize(preprocessedMat, preprocessedMat, size);
