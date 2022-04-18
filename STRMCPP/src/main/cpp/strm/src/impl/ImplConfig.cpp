@@ -64,10 +64,10 @@ IMPLConfig parseIMPLConfig(const std::string& jsonPath) {
   }
   LOGD("IMPLConfig : %s", json.toStyledString().c_str());
   if (!json["resize_profile"].isNull()) {
-    implConfig.resizeProfileConfig = parseResizeProfileConfig(json["dispatcher"]);
+    implConfig.resizeProfileConfig = parseResizeProfileConfig(json["resize_profile"]);
   }
   if (!json["inference_engine"].isNull()) {
-    implConfig.inferenceEngineConfig = parseInferenceEngineConfig(json["roi_extractor"]);
+    implConfig.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
   }
   return implConfig;
 }

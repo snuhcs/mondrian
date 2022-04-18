@@ -33,14 +33,14 @@ Dispatcher::Dispatcher(const std::string& key,
       process(frame);
     }
   });
-};
+}
 
 Dispatcher::~Dispatcher() {
   isClosed.store(true);
   mThread.join();
-};
+}
 
-int Dispatcher::enqueue(const cv::Mat mat) {
+int Dispatcher::enqueue(const cv::Mat& mat) {
   LOGD("Dispatcher%s::enqueue(Mat(%d, %d, %d))", mTag.c_str(), mat.cols, mat.rows, mat.channels());
   std::unique_lock<std::mutex> lock(mFramesMtx);
   mFramesCv.wait(lock, [this] {
