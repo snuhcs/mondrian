@@ -29,7 +29,7 @@ class Dispatcher {
 
   ~Dispatcher();
 
-  int enqueue(const cv::Mat& mat);
+  int enqueue(const cv::Mat mat);
 
   std::shared_ptr<Frame> getFrameToProcess();
 

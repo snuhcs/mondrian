@@ -9,7 +9,7 @@ namespace rm {
 class CustomResizeProfile : public ResizeProfile {
  public:
   CustomResizeProfile(const ResizeProfileConfig& config)
-  : mConfig(config) {}
+      : mConfig(config) {}
 
   float getScale(const std::string& labelName,
                  int width, int height, int minOriginLength) const {

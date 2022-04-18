@@ -20,15 +20,10 @@ PatchReconstructor::PatchReconstructor(PatchReconstructorConfig config,
       mCallback->notifyMixedInferenceResults(item);
     }
   });
-}
-
-PatchReconstructor::~PatchReconstructor() {
-  isClosed.store(true);
-  mThread.join();
-}
+};
 
 void PatchReconstructor::process(MixedFrame& mixedFrame) {
-  LOGD("PatchReconstructor::process(%d) %lu frames packed", mixedFrame.mixedFrameIndex,
+  LOGD("PatchReconstructor::process(%d) %d frames packed", mixedFrame.mixedFrameIndex,
        mixedFrame.packedFrames.size());
   if (!mixedFrame.packedMat.empty()) {
     mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
@@ -110,7 +105,7 @@ void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
   }
 }
 
-void PatchReconstructor::enqueue(const MixedFrame& item) {
+void PatchReconstructor::enqueue(const MixedFrame item) {
   LOGD("PatchReconstructor::enqueue(%d)", item.mixedFrameIndex);
   std::unique_lock<std::mutex> lock(mItemsMtx);
   mItemsCV.wait(lock, [this] {
