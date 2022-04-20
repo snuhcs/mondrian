@@ -1,5 +1,6 @@
 *.so
 *.tflite
+*.mnn
 .cxx/
 third_party/
 desktop.ini
