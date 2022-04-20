@@ -1,6 +1,6 @@
 {
     "dispatcher": {
-        "max_queue_size": 2,
+        "max_queue_size": 10000,
         "full_inference_interval": 4,
         "roi_padding": 10
     },
