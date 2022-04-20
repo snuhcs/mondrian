@@ -15,9 +15,11 @@ class Worker {
          std::unique_ptr<YoloV4Classifier> fullClassifier);
 
   ~Worker() {
-    isClosed.store(true);
-    thread.join();
+      isClosed.store(true);
+      thread.join();
   }
+
+  long long getInferenceTime();
 
  private:
   void Work();

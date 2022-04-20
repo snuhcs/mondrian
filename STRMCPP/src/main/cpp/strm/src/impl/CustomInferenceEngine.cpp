@@ -60,4 +60,14 @@ CustomInferenceEngine::enqueueResults(const int handle, const std::vector<Boundi
   resultCv.notify_all();
 }
 
+long long CustomInferenceEngine::getInferenceTime() {
+  long long inferenceTime = 0;
+  for (auto& worker : workers) {
+    long long t_inf_worker = worker->getInferenceTime();
+    inferenceTime += t_inf_worker < 0 ? 0 : t_inf_worker;
+  }
+  inferenceTime /= workers.size();
+  return inferenceTime;
+}
+
 } // namespace rm

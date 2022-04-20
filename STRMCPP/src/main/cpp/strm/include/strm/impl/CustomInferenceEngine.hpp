@@ -23,6 +23,8 @@ class CustomInferenceEngine : public InferenceEngine {
 
   void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
 
+  long long getInferenceTime();
+
  private:
   std::vector<std::unique_ptr<Worker>> workers;
 

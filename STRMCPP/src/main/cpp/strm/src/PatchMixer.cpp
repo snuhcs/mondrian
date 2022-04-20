@@ -48,14 +48,27 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
   }
 
   mPackedFrames.push_back(currFrame);
+  std::chrono::system_clock::time_point oldestBirthTime = currFrame->birthTime;
   int minPackedFrameIndex = INT_MAX;
   for (const Frame* frame : mPackedFrames) {
     if (minPackedFrameIndex > frame->frameIndex) {
       minPackedFrameIndex = frame->frameIndex;
     }
+    if (oldestBirthTime > frame->birthTime) {
+      oldestBirthTime = frame->birthTime;
+    }
   }
+  long long patchFillUpTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - oldestBirthTime).count();
+  long long inferenceTime = mInferenceEngine->getInferenceTime(); // dummy
   int numPackedFrames = currFrame->frameIndex - minPackedFrameIndex + 1;
+  //if (!isAllPacked || (mConfig.LATENCY_SLO - inferenceTime) < patchFillUpTime) {
   if (!isAllPacked || numPackedFrames >= mConfig.MAX_PACKED_FRAMES) {
+    int tf = (mConfig.LATENCY_SLO - inferenceTime) < patchFillUpTime;
+    if (tf) {
+      LOGD("XXX: %lld %lld A", inferenceTime, patchFillUpTime);
+    } else {
+      LOGD("XXX: %lld %lld BBBBB", inferenceTime, patchFillUpTime);
+    }
     Status status = FINISHED;
     if (countPackedFrame(currFrame->key) >= 2) {
       mPackedFrames.erase(std::find(mPackedFrames.begin(), mPackedFrames.end(), currFrame));
@@ -87,6 +100,12 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
          currFrame->frameIndex, status);
     return status;
   } else {
+    int tf = (mConfig.LATENCY_SLO - inferenceTime) < patchFillUpTime;
+    if (tf) {
+      LOGD("XXX: %lld %lld CCCCCCCCCCC", inferenceTime, patchFillUpTime);
+    } else {
+      LOGD("XXX: %lld %lld DDDDDDDDDDDDDDDDDD", inferenceTime, patchFillUpTime);
+    }
     LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(),
          currFrame->frameIndex, CONTINUE_PACKING);
     return CONTINUE_PACKING;
