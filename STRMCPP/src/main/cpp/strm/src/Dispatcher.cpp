@@ -87,7 +87,7 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
     currFrame->isResultReady.store(true);
     notifyResults();
   } else {
-    std::vector<BoundingBox> prevResults = getPrevBoxes();
+    std::vector<BoundingBox> prevResults = getPrevBoxes(mUseInferenceResults);
     mRoIExtractor->process(std::make_pair(std::make_pair(mPrevFrame, currFrame), prevResults));
     std::sort(currFrame->rois.begin(), currFrame->rois.end(),
               [this](const RoI& lhs, const RoI& rhs) -> bool {
@@ -117,13 +117,13 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
   mPrevFrame = currFrame;
 }
 
-std::vector<BoundingBox> Dispatcher::getPrevBoxes() {
+std::vector<BoundingBox> Dispatcher::getPrevBoxes(bool useInferenceResults) {
   LOGD("Dispatcher%s::getPrevBoxes()", mTag.c_str());
   std::vector<BoundingBox> prevResults;
   if (!mRoIExtractor->useOpticalFlowRoIs()) {
     return prevResults;
   }
-  if (mUseInferenceResults) {
+  if (useInferenceResults) {
     std::unique_lock<std::mutex> lock(mResultsMtx);
     mResultsCv.wait(lock, [this]() {
       return mPrevFrame->isResultReady.load();

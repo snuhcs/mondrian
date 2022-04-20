@@ -58,58 +58,33 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
       oldestBirthTime = frame->birthTime;
     }
   }
-  long long patchFillUpTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - oldestBirthTime).count();
-  long long inferenceTime = mInferenceEngine->getInferenceTime(); // dummy
+
+  long long oldestRoIAge = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - oldestBirthTime).count();
+  long long inferenceTime = mInferenceEngine->getInferenceTime();
+
   int numPackedFrames = currFrame->frameIndex - minPackedFrameIndex + 1;
-  //if (!isAllPacked || (mConfig.LATENCY_SLO - inferenceTime) < patchFillUpTime) {
-  if (!isAllPacked || numPackedFrames >= mConfig.MAX_PACKED_FRAMES) {
-    int tf = (mConfig.LATENCY_SLO - inferenceTime) < patchFillUpTime;
-    if (tf) {
-      LOGD("XXX: %lld %lld A", inferenceTime, patchFillUpTime);
-    } else {
-      LOGD("XXX: %lld %lld BBBBB", inferenceTime, patchFillUpTime);
-    }
-    Status status = FINISHED;
-    if (countPackedFrame(currFrame->key) >= 2) {
+  bool doEnqueue = (!isAllPacked) || (numPackedFrames >= mConfig.MAX_PACKED_FRAMES);
+
+  Status status = (!doEnqueue) ? CONTINUE_PACKING :
+                  (countPackedFrame(currFrame->key) == 1) ? FINISHED
+                                                          : FINISHED_AND_PROCESS_LAST_FRAME_AGAIN;
+  if (doEnqueue) {
+    if (status == FINISHED_AND_PROCESS_LAST_FRAME_AGAIN) {
       mPackedFrames.erase(std::find(mPackedFrames.begin(), mPackedFrames.end(), currFrame));
-      status = FINISHED_AND_PROCESS_LAST_FRAME_AGAIN;
     }
 
-    if (mConfig.PACKING) {
-      MixedFrame mixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE, true);
-      mixedFrame.handle = mInferenceEngine->enqueue(mixedFrame.packedMat, false);
-      mPatchReconstructor->enqueue(mixedFrame);
-    } else {
-      MixedFrame mixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE, false);
-      for (Frame* frame : mixedFrame.packedFrames) {
-        for (RoI& roi : frame->rois) {
-          if (roi.isPacked()) {
-            roi.handle = mInferenceEngine->enqueue(roi.getMat(), false);
-          }
-        }
-      }
-      mPatchReconstructor->enqueue(mixedFrame);
-    }
     mFinishedKeys.clear();
     for (Frame* frame : mPackedFrames) {
       mFinishedKeys.insert(frame->key);
     }
     mFinishedKeys.erase(currFrame->key);
-    reset();
-    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(),
-         currFrame->frameIndex, status);
-    return status;
-  } else {
-    int tf = (mConfig.LATENCY_SLO - inferenceTime) < patchFillUpTime;
-    if (tf) {
-      LOGD("XXX: %lld %lld CCCCCCCCCCC", inferenceTime, patchFillUpTime);
-    } else {
-      LOGD("XXX: %lld %lld DDDDDDDDDDDDDDDDDD", inferenceTime, patchFillUpTime);
-    }
-    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(),
-         currFrame->frameIndex, CONTINUE_PACKING);
-    return CONTINUE_PACKING;
+
+    MixedFrame mixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE, mConfig.PACKING);
+    enqueueMixedFrame(mixedFrame);
   }
+
+  LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(), currFrame->frameIndex, status);
+  return status;
 }
 
 int PatchMixer::countPackedFrame(const std::string& key) {
@@ -137,5 +112,21 @@ std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, Rect rec
                           Rect(rect.left + w, rect.top, rect.right, rect.top + h));
   }
 }
+
+  void PatchMixer::enqueueMixedFrame(MixedFrame &mixedFrame) {
+    if (mConfig.PACKING) {
+      mixedFrame.handle = mInferenceEngine->enqueue(mixedFrame.packedMat, false);
+    } else {
+      for (Frame* frame : mixedFrame.packedFrames) {
+        for (RoI& roi : frame->rois) {
+          if (roi.isPacked()) {
+            roi.handle = mInferenceEngine->enqueue(roi.getMat(), false);
+          }
+        }
+      }
+    }
+    mPatchReconstructor->enqueue(mixedFrame);
+    reset();
+  }
 
 } // namespace rm

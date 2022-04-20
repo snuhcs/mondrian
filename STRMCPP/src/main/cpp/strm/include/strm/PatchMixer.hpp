@@ -37,6 +37,8 @@ class PatchMixer {
 
   static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, Rect rect);
 
+  void enqueueMixedFrame(MixedFrame &mixedFrame);
+
   int mixedFrameIndex = 0;
   PatchMixerConfig mConfig;
   std::set<std::string> mFinishedKeys;
