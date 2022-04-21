@@ -25,8 +25,8 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
   if (finishedKeysIt != mFinishedKeys.end()) {
     mFinishedKeys.erase(finishedKeysIt);
     LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(),
-         currFrame->frameIndex, FINISHED);
-    return FINISHED;
+         currFrame->frameIndex, FINISHED_AND_PROCESS_LAST_FRAME_AGAIN);
+    return FINISHED_AND_PROCESS_LAST_FRAME_AGAIN;
   }
   bool isAllPacked = true;
   for (RoI& roi : currFrame->rois) {
