@@ -18,16 +18,17 @@ void PatchMixer::reset() {
 
 PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
   assert(currFrame != nullptr);
-  LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d)", currFrame->key.c_str(),
-       currFrame->frameIndex);
+  LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d)", currFrame->key.c_str(), currFrame->frameIndex);
   std::lock_guard<std::mutex> patchMixerLock(mPatchMixerMtx);
+
   auto finishedKeysIt = mFinishedKeys.find(currFrame->key);
   if (finishedKeysIt != mFinishedKeys.end()) {
     mFinishedKeys.erase(finishedKeysIt);
     LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(),
-         currFrame->frameIndex, FINISHED_AND_PROCESS_LAST_FRAME_AGAIN);
-    return FINISHED_AND_PROCESS_LAST_FRAME_AGAIN;
+         currFrame->frameIndex, DONE_BUT_NEED_REPROCESS);
+    return DONE_BUT_NEED_REPROCESS;
   }
+
   bool isAllPacked = true;
   for (RoI& roi : currFrame->rois) {
     std::pair<int, int> wh = roi.getResizedWidthHeight();
@@ -47,40 +48,49 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
     isAllPacked &= isPacked;
   }
 
-  mPackedFrames.push_back(currFrame);
+  /*
+  // >>> Will later replace numPackedFrames
   std::chrono::system_clock::time_point oldestBirthTime = currFrame->birthTime;
-  int minPackedFrameIndex = INT_MAX;
   for (const Frame* frame : mPackedFrames) {
-    if (minPackedFrameIndex > frame->frameIndex) {
-      minPackedFrameIndex = frame->frameIndex;
-    }
     if (oldestBirthTime > frame->birthTime) {
       oldestBirthTime = frame->birthTime;
     }
   }
-
   long long oldestRoIAge = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - oldestBirthTime).count();
   long long inferenceTime = mInferenceEngine->getInferenceTime();
+  bool tooOld = oldestRoIAge > (mConfig.LATENCY_SLO - mInferenceEngine->getInferenceTime());
+  // <<<
+  */
 
-  int numPackedFrames = currFrame->frameIndex - minPackedFrameIndex + 1;
-  bool doEnqueue = (!isAllPacked) || (numPackedFrames >= mConfig.MAX_PACKED_FRAMES);
-
-  Status status = (!doEnqueue) ? CONTINUE_PACKING :
-                  (countPackedFrame(currFrame->key) == 1) ? FINISHED
-                                                          : FINISHED_AND_PROCESS_LAST_FRAME_AGAIN;
-  if (doEnqueue) {
-    if (status == FINISHED_AND_PROCESS_LAST_FRAME_AGAIN) {
-      mPackedFrames.erase(std::find(mPackedFrames.begin(), mPackedFrames.end(), currFrame));
+  // >>> Will later replaced by above section of code
+  int minPackedFrameIndex = currFrame->frameIndex;
+  for (const Frame* frame : mPackedFrames) {
+    if (minPackedFrameIndex > frame->frameIndex) {
+      minPackedFrameIndex = frame->frameIndex;
     }
+  }
+  int numPackedFrames = currFrame->frameIndex - minPackedFrameIndex + 1;
+  bool tooOld = (numPackedFrames >= mConfig.MAX_PACKED_FRAMES);
+  // <<<
 
+  bool doEnqueue = !isAllPacked || tooOld;
+  Status status = (!doEnqueue) ? ONGOING :
+                  (countPackedFrame(currFrame->key) == 0) ? DONE_BUT_DROPPED_FEW_ROIS
+                                                          : DONE_BUT_NEED_REPROCESS;
+  bool packCurrFrame = isAllPacked || (status == DONE_BUT_DROPPED_FEW_ROIS);
+
+  if (packCurrFrame) {
+    mPackedFrames.push_back(currFrame);
+  }
+
+  if (doEnqueue) {
     mFinishedKeys.clear();
     for (Frame* frame : mPackedFrames) {
       mFinishedKeys.insert(frame->key);
     }
     mFinishedKeys.erase(currFrame->key);
-
-    MixedFrame mixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE, mConfig.PACKING);
-    enqueueMixedFrame(mixedFrame);
+    enqueueMixedFrame(MixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE, mConfig.PACKING));
+    reset();
   }
 
   LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(), currFrame->frameIndex, status);
@@ -113,7 +123,7 @@ std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, Rect rec
   }
 }
 
-  void PatchMixer::enqueueMixedFrame(MixedFrame &mixedFrame) {
+  void PatchMixer::enqueueMixedFrame(MixedFrame mixedFrame) {
     if (mConfig.PACKING) {
       mixedFrame.handle = mInferenceEngine->enqueue(mixedFrame.packedMat, false);
     } else {
@@ -126,7 +136,6 @@ std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, Rect rec
       }
     }
     mPatchReconstructor->enqueue(mixedFrame);
-    reset();
   }
 
 } // namespace rm

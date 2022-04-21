@@ -97,19 +97,18 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
       roi.scale = mResizeProfile->getScale(roi.labelName, roi.location.width(),
                                            roi.location.height(), roi.minOriginLength);
     }
+
     PatchMixer::Status status = mPatchMixer->tryPackAndEnqueueMixedFrame(currFrame.get());
     LOGD("PatchMixer::Status: %d", status);
-    if (status == PatchMixer::CONTINUE_PACKING) {
+
+    if (status == PatchMixer::ONGOING) {
       mUseInferenceResults = false;
-    } else if (status == PatchMixer::FINISHED) {
-      mCountMixedFrameInference++;
-      mUseInferenceResults = true;
-    } else if (status == PatchMixer::FINISHED_AND_PROCESS_LAST_FRAME_AGAIN) {
-      mCountMixedFrameInference++;
-      mUseInferenceResults = true;
-      process(currFrame);
     } else {
-      // TODO: Error handling
+      mUseInferenceResults = true;
+      mCountMixedFrameInference++;
+      if (status == PatchMixer::DONE_BUT_NEED_REPROCESS) {
+        process(currFrame);
+      }
     }
   }
   LOGD("Dispatcher%s::process(%d) end, %d, %d", mTag.c_str(), currFrame->frameIndex,

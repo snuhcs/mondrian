@@ -18,9 +18,10 @@ namespace rm {
 class PatchMixer {
  public:
   enum Status {
-    CONTINUE_PACKING = 1,
-    FINISHED = 2,
-    FINISHED_AND_PROCESS_LAST_FRAME_AGAIN = 3,
+    // each status means status of "patchmixer"
+    ONGOING = 1,
+    DONE_BUT_DROPPED_FEW_ROIS = 2,
+    DONE_BUT_NEED_REPROCESS = 3,
   };
 
   PatchMixer(PatchMixerConfig config, InferenceEngine* inferenceEngine,
@@ -37,7 +38,7 @@ class PatchMixer {
 
   static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, Rect rect);
 
-  void enqueueMixedFrame(MixedFrame &mixedFrame);
+  void enqueueMixedFrame(MixedFrame mixedFrame);
 
   int mixedFrameIndex = 0;
   PatchMixerConfig mConfig;

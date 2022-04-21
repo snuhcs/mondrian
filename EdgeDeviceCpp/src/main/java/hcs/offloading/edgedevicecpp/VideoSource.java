@@ -81,6 +81,7 @@ public class VideoSource extends CustomCapturer implements Runnable {
 
     @Override
     public void startCapture(int width, int height, int fps) {
+        int fps0 = 1;
         Log.d(TAG, "startCapture");
         captureThread = new Thread(() -> {
             long startTimeNs = System.nanoTime();
@@ -122,9 +123,9 @@ public class VideoSource extends CustomCapturer implements Runnable {
                 }
                 long endTime = System.nanoTime();
                 long duration = endTime - startTime;
-                if (duration < 1e9 / fps) {
+                if (duration < 1e9 / fps0) {
                     try {
-                        Thread.sleep((int) ((1e9 / fps - duration) / 1e6));
+                        Thread.sleep((int) ((1e9 / fps0 - duration) / 1e6));
                     } catch (InterruptedException e) {
                         Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                     }
