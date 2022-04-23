@@ -4,6 +4,7 @@
 .cxx/
 third_party/
 desktop.ini
+.DS_STORE
 
 # Created by https://www.toptal.com/developers/gitignore/api/androidstudio,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=androidstudio,visualstudiocode
