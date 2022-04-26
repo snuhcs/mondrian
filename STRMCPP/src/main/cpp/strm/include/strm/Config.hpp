@@ -27,7 +27,7 @@ struct PatchMixerConfig {
   bool PACKING = true;
   int MAX_PACKED_FRAMES = 30;
   int MIXED_FRAME_SIZE = 800;
-  int LATENCY_SLO = 5000;
+  int LATENCY_SLO_MS = 5000;
 };
 
 struct PatchReconstructorConfig {

@@ -57,8 +57,8 @@ PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   if (!json["mixed_frame_size"].isNull()) {
     config.MIXED_FRAME_SIZE = json["mixed_frame_size"].asInt();
   }
-  if (!json["latency_slo"].isNull()) {
-    config.LATENCY_SLO = json["latency_slo"].asInt();
+  if (!json["latency_slo_ms"].isNull()) {
+    config.LATENCY_SLO_MS = json["latency_slo_ms"].asInt();
   }
   return config;
 }

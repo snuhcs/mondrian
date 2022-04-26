@@ -12,7 +12,7 @@ class YoloV4Classifier {
   YoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny);
   std::vector<BoundingBox> recognizeImage(const cv::Mat mat, int originalWidth, int originalHeight);
   int getInputSize() const;
-  long long getInferenceTime();
+  long long getInferenceTimeMS();
 
  private:
   std::vector<BoundingBox> getDetectionsForFull(
@@ -29,7 +29,7 @@ class YoloV4Classifier {
   const float CONF_THRESHOLD;
   const float IOU_THRESHOLD;
 
-  long long inferenceTime;
+  long long inferenceTimeMS;
 
   MNN::Interpreter* interpreter;
   MNN::Session* session;
