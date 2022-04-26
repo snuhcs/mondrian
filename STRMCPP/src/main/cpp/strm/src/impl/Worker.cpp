@@ -41,8 +41,8 @@ cv::Mat Worker::preprocess(const cv::Mat mat, const cv::Size& size) {
   return preprocessedMat;
 }
 
-long long Worker::getInferenceTimeMS(){
-  return classifier->getInferenceTimeMS();
+long long Worker::getInferenceTimeMs(){
+  return classifier->getInferenceTimeMs();
 }
 
 } // namespace rm

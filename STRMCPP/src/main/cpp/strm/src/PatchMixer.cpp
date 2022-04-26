@@ -56,9 +56,9 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
       oldestBirthTime = frame->birthTime;
     }
   }
+  long long inferenceTimeMs = mInferenceEngine->getInferenceTimeMs();
   long long oldestRoIAge = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - oldestBirthTime).count();
-  long long inferenceTimeMS = mInferenceEngine->getInferenceTimeMS();
-  bool tooOld = oldestRoIAge > (mConfig.LATENCY_SLO_MS - mInferenceEngine->getInferenceTimeMS());
+  bool tooOld = oldestRoIAge > (mConfig.LATENCY_SLO_MS - inferenceTimeMs);
   // <<<
   */
 

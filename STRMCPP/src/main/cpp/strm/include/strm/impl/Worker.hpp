@@ -19,7 +19,7 @@ class Worker {
     thread.join();
   }
 
-  long long getInferenceTimeMS();
+  long long getInferenceTimeMs();
 
  private:
   void Work();

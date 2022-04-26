@@ -10,7 +10,7 @@ namespace rm {
 
 YoloV4Classifier::YoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny)
     : INPUT_SIZE(size), OUTPUT_WIDTH((size / 32) * (size / 32) * 63),
-      CONF_THRESHOLD(confThreshold), IOU_THRESHOLD(iouThreshold), inferenceTimeMS(-1) {
+      CONF_THRESHOLD(confThreshold), IOU_THRESHOLD(iouThreshold), inferenceTimeMs(-1) {
   LOGD("YoloV4 YoloV4Classifier::YoloV4Classifier()");
   std::string filepath = "/data/local/tmp/models/yolov4-";
   filepath += (isTiny ? "-tiny" : "") + std::to_string(size) + "-fp16.mnn";
@@ -76,8 +76,8 @@ std::vector<BoundingBox> YoloV4Classifier::getDetectionsForFull(
   auto start = std::chrono::system_clock::now();
   interpreter->runSession(session);
   auto end = std::chrono::system_clock::now();
-  inferenceTimeMS = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  LOGV("YoloV4 Inference %lld ms", inferenceTimeMS);
+  inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  LOGV("YoloV4 Inference %lld ms", inferenceTimeMs);
 
   std::vector<BoundingBox> detections;
   auto* bboxes = outputBoxes->host<float>();
@@ -151,8 +151,8 @@ int YoloV4Classifier::getInputSize() const {
   return INPUT_SIZE;
 }
 
-long long YoloV4Classifier::getInferenceTimeMS() {
-  return inferenceTimeMS;
+long long YoloV4Classifier::getInferenceTimeMs() {
+  return inferenceTimeMs;
 }
 
 } // namespace rm
