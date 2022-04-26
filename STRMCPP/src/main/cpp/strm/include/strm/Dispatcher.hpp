@@ -40,7 +40,7 @@ class Dispatcher {
   std::vector<BoundingBox> getResults(int frameIndex);
 
  private:
-  std::vector<BoundingBox> getPrevBoxes();
+  std::vector<BoundingBox> getPrevBoxes(bool useInferenceResults);
 
   const std::string mKey;
   const std::string mTag;
