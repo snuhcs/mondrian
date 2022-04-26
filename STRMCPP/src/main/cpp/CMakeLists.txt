@@ -26,6 +26,7 @@ add_library(
         strmcpp
         SHARED
         strm/src/Config.cpp
+        strm/src/Time.cpp
         strm/src/Dispatcher.cpp
         strm/src/PatchMixer.cpp
         strm/src/PatchReconstructor.cpp

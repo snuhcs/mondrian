@@ -42,12 +42,14 @@ Dispatcher::~Dispatcher() {
 
 int Dispatcher::enqueue(const cv::Mat& mat) {
   LOGD("Dispatcher%s::enqueue(Mat(%d, %d, %d))", mTag.c_str(), mat.cols, mat.rows, mat.channels());
+  const time_ms enqueueTime = NowMicros();
   std::unique_lock<std::mutex> lock(mFramesMtx);
   mFramesCv.wait(lock, [this] {
     return mEnqueuedFrameIndex - mProcessedFrameIndex < mMaxNumItems;
   });
   int frameIndex = mEnqueuedFrameIndex++;
-  mFrames.insert(std::make_pair(frameIndex, std::make_shared<Frame>(mKey, frameIndex, mat)));
+  mFrames.insert(std::make_pair(
+      frameIndex, std::make_shared<Frame>(mKey, frameIndex, mat, enqueueTime)));
   LOGD("Dispatcher%s::enqueue(%d) end", mTag.c_str(), frameIndex);
   lock.unlock();
   mFramesCv.notify_all();
@@ -78,11 +80,14 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
    *        We have to re-pack the frame into next mixed frame.
    *   2.2. Else wait for mixed frame result and continue to process next frame.
    */
+  currFrame->dispatcherProcessStartTime = NowMicros();
   if (mCountMixedFrameInference >= mConfig.FULL_INFERENCE_INTERVAL) {
     mCountMixedFrameInference = 0;
     mUseInferenceResults = true;
+    currFrame->fullFrameEnqueueTime = NowMicros();
     int handle = mInferenceEngine->enqueue(currFrame->mat, true);
     std::vector<BoundingBox> results = mInferenceEngine->getResults(handle);
+    currFrame->fullFrameGetResultsTime = NowMicros();
     currFrame->boxes.insert(currFrame->boxes.end(), results.begin(), results.end());
     currFrame->isResultReady.store(true);
     notifyResults();
@@ -93,10 +98,12 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
               [this](const RoI& lhs, const RoI& rhs) -> bool {
                 return mRoIPrioritizer->priority(lhs) < mRoIPrioritizer->priority(rhs);
               });
+    currFrame->resizeRoIStartTime = NowMicros();
     for (auto& roi : currFrame->rois) {
       roi.scale = mResizeProfile->getScale(roi.labelName, roi.location.width(),
                                            roi.location.height(), roi.minOriginLength);
     }
+    currFrame->resizeRoIEndTime = NowMicros();
 
     PatchMixer::Status status = mPatchMixer->tryPackAndEnqueueMixedFrame(currFrame.get());
     LOGD("PatchMixer::Status: %d", status);

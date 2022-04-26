@@ -29,6 +29,7 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
     return DONE_BUT_NEED_REPROCESS;
   }
 
+  currFrame->mixingStartTime = NowMicros();
   bool isAllPacked = true;
   for (RoI& roi : currFrame->rois) {
     std::pair<int, int> wh = roi.getResizedWidthHeight();
@@ -47,6 +48,7 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(Frame* currFrame) {
     }
     isAllPacked &= isPacked;
   }
+  currFrame->mixingEndTime = NowMicros();
 
   /*
   // >>> Will later replace numPackedFrames
@@ -124,6 +126,10 @@ std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, const Re
 }
 
   void PatchMixer::enqueueMixedFrame(MixedFrame mixedFrame) {
+    const time_ms mixedFrameEnqueueTime = NowMicros();
+    for (Frame*& frame : mixedFrame.packedFrames) {
+      frame->mixedFrameEnqueueTime = mixedFrameEnqueueTime;
+    }
     if (mConfig.PACKING) {
       mixedFrame.handle = mInferenceEngine->enqueue(mixedFrame.packedMat, false);
     } else {
