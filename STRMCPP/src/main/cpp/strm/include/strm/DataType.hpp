@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <chrono>
 
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -66,6 +67,7 @@ struct Frame {
   const std::string key;
   const int frameIndex;
   const cv::Mat mat;
+  const std::chrono::system_clock::time_point birthTime;
 
   std::atomic_bool isResultReady;
   std::vector<BoundingBox> boxes;
@@ -75,10 +77,11 @@ struct Frame {
 
   Frame(const Frame& frame)
       : key(frame.key), frameIndex(frame.frameIndex), mat(frame.mat.clone()),
-        isResultReady(false) {}
+        isResultReady(false), birthTime(std::chrono::system_clock::now()){}
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat)
-      : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false) {}
+      : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false),
+      birthTime(std::chrono::system_clock::now()){}
 };
 
 struct RoI {

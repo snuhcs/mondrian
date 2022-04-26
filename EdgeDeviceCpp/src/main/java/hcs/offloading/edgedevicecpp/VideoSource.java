@@ -94,6 +94,7 @@ public class VideoSource extends CustomCapturer implements Runnable {
 
             int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
             for (int frameIndex = startIndex; frameIndex < frameCount; frameIndex++) {
+                long startTime = System.nanoTime();
                 Log.v(TAG, VIDEO_PATH + " " + frameIndex + " loaded");
                 Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
@@ -118,6 +119,15 @@ public class VideoSource extends CustomCapturer implements Runnable {
                     frameIndices.put(index);
                 } catch (InterruptedException e) {
                     Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+                }
+                long endTime = System.nanoTime();
+                long duration = endTime - startTime;
+                if (duration < 1e9 / fps) {
+                    try {
+                        Thread.sleep((int) ((1e9 / fps - duration) / 1e6));
+                    } catch (InterruptedException e) {
+                        Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+                    }
                 }
             }
         });
