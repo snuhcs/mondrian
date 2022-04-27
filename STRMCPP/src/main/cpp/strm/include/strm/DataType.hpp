@@ -5,6 +5,7 @@
 #include <vector>
 #include <chrono>
 #include <cstdint>
+#include <fstream>
 
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgproc/imgproc.hpp"

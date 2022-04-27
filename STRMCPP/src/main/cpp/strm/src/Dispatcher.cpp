@@ -12,8 +12,10 @@ Dispatcher::Dispatcher(const std::string& key,
                        const ResizeProfile* resizeProfile,
                        const RoIPrioritizer* roIPrioritizer,
                        InferenceEngine* inferenceEngine,
-                       PatchMixer* patchMixer)
-    : mKey(key),
+                       PatchMixer* patchMixer,
+                       Logger* logger)
+    : mLogger(logger),
+      mKey(key),
       mTag(key.substr(key.size() - 8)),
       mConfig(config),
       mRoIExtractor(new RoIExtractor(roIExtractorConfig)),
@@ -163,8 +165,10 @@ std::vector<BoundingBox> Dispatcher::getResults(int frameIndex) {
            mFrames.at(frameIndex)->isResultReady.load();
   });
   LOGD("Dispatcher::getResults(%d) end", frameIndex);
-  std::vector<BoundingBox> boxes = mFrames.at(frameIndex)->boxes;
+  std::shared_ptr<Frame> frame = mFrames.at(frameIndex);
+  std::vector<BoundingBox> boxes = frame->boxes;
   mFrames.erase(frameIndex);
+  mLogger->log(frame.get());
   return boxes;
 }
 
