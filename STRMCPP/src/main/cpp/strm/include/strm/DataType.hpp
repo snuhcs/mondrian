@@ -80,6 +80,7 @@ struct Frame {
 
   const time_us enqueueTime;
   time_us dispatcherProcessStartTime = 0;
+  time_us dispatcherProcessEndTime = 0;
   time_us fullFrameEnqueueTime = 0;
   time_us fullFrameGetResultsTime = 0;
   time_us opticalFlowRoIProcessStartTime = 0;
