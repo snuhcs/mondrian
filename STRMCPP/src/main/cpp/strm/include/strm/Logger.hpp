@@ -19,7 +19,7 @@ class Logger {
  private:
   time_us fromBaseTime(const time_us& time) const;
 
-  const char delimiter = '\t';
+  const char delim = '\t';
 
   std::ofstream logFile;
   std::mutex mtx;
