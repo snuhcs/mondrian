@@ -5,8 +5,8 @@
 
 namespace rm {
 
-using time_ms = uint64_t;
-time_ms NowMicros();
+using time_us = uint64_t;
+time_us NowMicros();
 
 } // namespace rm
 

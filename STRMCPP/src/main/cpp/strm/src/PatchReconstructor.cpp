@@ -30,8 +30,8 @@ PatchReconstructor::~PatchReconstructor() {
 void PatchReconstructor::process(MixedFrame& mixedFrame) {
   LOGD("PatchReconstructor::process(%d) %lu frames packed", mixedFrame.mixedFrameIndex,
        mixedFrame.packedFrames.size());
-  time_ms reconstructStartTime;
-  time_ms reconstructEndTime;
+  time_us reconstructStartTime;
+  time_us reconstructEndTime;
   if (!mixedFrame.packedMat.empty()) {
     mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
     reconstructStartTime = NowMicros();

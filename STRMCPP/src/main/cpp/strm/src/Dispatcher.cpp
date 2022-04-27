@@ -44,7 +44,7 @@ Dispatcher::~Dispatcher() {
 
 int Dispatcher::enqueue(const cv::Mat& mat) {
   LOGD("Dispatcher%s::enqueue(Mat(%d, %d, %d))", mTag.c_str(), mat.cols, mat.rows, mat.channels());
-  const time_ms enqueueTime = NowMicros();
+  const time_us enqueueTime = NowMicros();
   std::unique_lock<std::mutex> lock(mFramesMtx);
   mFramesCv.wait(lock, [this] {
     return mEnqueuedFrameIndex - mProcessedFrameIndex < mMaxNumItems;

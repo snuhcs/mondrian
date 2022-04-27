@@ -78,29 +78,29 @@ struct Frame {
   std::vector<RoI> rois;
   std::vector<RoI> opticalFlowRoIs;
 
-  const time_ms enqueueTime;
-  time_ms dispatcherProcessStartTime = 0;
-  time_ms fullFrameEnqueueTime = 0;
-  time_ms fullFrameGetResultsTime = 0;
-  time_ms opticalFlowRoIProcessStartTime = 0;
-  time_ms opticalFlowRoIProcessEndTime = 0;
-  time_ms pixelDiffRoIProcessStartTime = 0;
-  time_ms pixelDiffRoIProcessEndTime = 0;
-  time_ms mergeRoIStartTime = 0;
-  time_ms mergeRoIEndTime = 0;
-  time_ms resizeRoIStartTime = 0;
-  time_ms resizeRoIEndTime = 0;
-  time_ms mixingStartTime = 0;
-  time_ms mixingEndTime = 0;
-  time_ms mixedFrameCreateStartTime = 0;
-  time_ms mixedFrameCreateEndTime = 0;
-  time_ms mixedFrameEnqueueTime = 0;
-  time_ms reconstructStartTime = 0;
-  time_ms reconstructEndTime = 0;
-  time_ms endTime = 0;
+  const time_us enqueueTime;
+  time_us dispatcherProcessStartTime = 0;
+  time_us fullFrameEnqueueTime = 0;
+  time_us fullFrameGetResultsTime = 0;
+  time_us opticalFlowRoIProcessStartTime = 0;
+  time_us opticalFlowRoIProcessEndTime = 0;
+  time_us pixelDiffRoIProcessStartTime = 0;
+  time_us pixelDiffRoIProcessEndTime = 0;
+  time_us mergeRoIStartTime = 0;
+  time_us mergeRoIEndTime = 0;
+  time_us resizeRoIStartTime = 0;
+  time_us resizeRoIEndTime = 0;
+  time_us mixingStartTime = 0;
+  time_us mixingEndTime = 0;
+  time_us mixedFrameCreateStartTime = 0;
+  time_us mixedFrameCreateEndTime = 0;
+  time_us mixedFrameEnqueueTime = 0;
+  time_us reconstructStartTime = 0;
+  time_us reconstructEndTime = 0;
+  time_us endTime = 0;
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
-        const time_ms& enqueueTime)
+        const time_us& enqueueTime)
       : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false),
         enqueueTime(enqueueTime) {}
 
@@ -176,7 +176,7 @@ struct MixedFrame {
              const int mixedFrameSize, const bool mixing)
       : mixedFrameIndex(mixedFrameIndex), packedFrames(packedFrames) {
     if (mixing) {
-      const time_ms mixedFrameCreateStartTime = NowMicros();
+      const time_us mixedFrameCreateStartTime = NowMicros();
       packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
       for (Frame* frame : packedFrames) {
         for (RoI& roi : frame->rois) {
@@ -188,7 +188,7 @@ struct MixedFrame {
           }
         }
       }
-      const time_ms mixedFrameCreateEndTime = NowMicros();
+      const time_us mixedFrameCreateEndTime = NowMicros();
       for (Frame* frame : packedFrames) {
         frame->mixedFrameCreateStartTime = mixedFrameCreateStartTime;
         frame->mixedFrameCreateEndTime = mixedFrameCreateEndTime;

@@ -17,14 +17,14 @@ class Logger {
   void log(Frame* frame);
 
  private:
-  time_ms fromBaseTime(const time_ms& time) const;
+  time_us fromBaseTime(const time_us& time) const;
 
   const char delimiter = '\t';
 
   std::ofstream logFile;
   std::mutex mtx;
 
-  time_ms baseTime;
+  time_us baseTime;
 };
 
 } // namespace rm

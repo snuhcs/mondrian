@@ -126,7 +126,7 @@ std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, const Re
 }
 
   void PatchMixer::enqueueMixedFrame(MixedFrame mixedFrame) {
-    const time_ms mixedFrameEnqueueTime = NowMicros();
+    const time_us mixedFrameEnqueueTime = NowMicros();
     for (Frame*& frame : mixedFrame.packedFrames) {
       frame->mixedFrameEnqueueTime = mixedFrameEnqueueTime;
     }

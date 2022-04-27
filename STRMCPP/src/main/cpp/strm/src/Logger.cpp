@@ -71,7 +71,7 @@ void Logger::log(Frame* frame) {
   logFile.flush();
 }
 
-time_ms Logger::fromBaseTime(const time_ms& time) const {
+time_us Logger::fromBaseTime(const time_us& time) const {
   return time != 0 ? time - baseTime : 0;
 }
 
