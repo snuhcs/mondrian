@@ -4,9 +4,9 @@ namespace rm {
 
 PatchMixer::PatchMixer(PatchMixerConfig config, InferenceEngine* inferenceEngine,
                        PatchReconstructor* patchReconstructor)
-        : mConfig(config), mInferenceEngine(inferenceEngine),
-          mPatchReconstructor(patchReconstructor),
-          mFreeRects({Rect(0, 0, config.MIXED_FRAME_SIZE, config.MIXED_FRAME_SIZE)}) {
+    : mConfig(config), mInferenceEngine(inferenceEngine),
+      mPatchReconstructor(patchReconstructor),
+      mFreeRects({Rect(0, 0, config.MIXED_FRAME_SIZE, config.MIXED_FRAME_SIZE)}) {
   LOGD("PatchMixer() %d %d", config.MIXED_FRAME_SIZE, config.MAX_PACKED_FRAMES);
 }
 

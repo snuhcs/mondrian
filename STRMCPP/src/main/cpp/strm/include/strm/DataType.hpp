@@ -174,7 +174,7 @@ struct MixedFrame {
 
   MixedFrame(const int mixedFrameIndex, const std::vector<std::shared_ptr<Frame>> packedFrames,
              const int mixedFrameSize, const bool mixing)
-          : mixedFrameIndex(mixedFrameIndex), packedFrames(packedFrames) {
+      : mixedFrameIndex(mixedFrameIndex), packedFrames(packedFrames) {
     if (mixing) {
       const time_us mixedFrameCreateStartTime = NowMicros();
       packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
