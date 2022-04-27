@@ -27,7 +27,7 @@ class PatchMixer {
   PatchMixer(PatchMixerConfig config, InferenceEngine* inferenceEngine,
              PatchReconstructor* patchReconstructor);
 
-  Status tryPackAndEnqueueMixedFrame(Frame* currFrame);
+  Status tryPackAndEnqueueMixedFrame(const std::shared_ptr<Frame>& currFrame);
 
  private:
   void reset();
@@ -43,7 +43,7 @@ class PatchMixer {
   int mixedFrameIndex = 0;
   PatchMixerConfig mConfig;
   std::set<std::string> mFinishedKeys;
-  std::vector<Frame*> mPackedFrames;
+  std::vector<std::shared_ptr<Frame>> mPackedFrames;
   std::vector<Rect> mFreeRects;
 
   InferenceEngine* mInferenceEngine;

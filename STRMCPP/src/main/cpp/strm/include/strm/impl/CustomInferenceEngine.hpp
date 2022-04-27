@@ -19,11 +19,11 @@ class CustomInferenceEngine : public InferenceEngine {
 
   std::vector<BoundingBox> getResults(const int handle) override;
 
+  long long getInferenceTimeMs() override;
+
   std::tuple<int, const cv::Mat, bool> getInput();
 
   void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
-
-  long long getInferenceTimeMs();
 
  private:
   std::vector<std::unique_ptr<Worker>> workers;

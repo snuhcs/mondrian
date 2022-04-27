@@ -167,18 +167,18 @@ struct RoI {
 struct MixedFrame {
   const int mixedFrameIndex;
   cv::Mat packedMat;
-  std::vector<Frame*> packedFrames;
+  std::vector<std::shared_ptr<Frame>> packedFrames;
 
   int handle;
   std::vector<BoundingBox> boxes;
 
-  MixedFrame(const int mixedFrameIndex, const std::vector<Frame*> packedFrames,
+  MixedFrame(const int mixedFrameIndex, const std::vector<std::shared_ptr<Frame>> packedFrames,
              const int mixedFrameSize, const bool mixing)
-      : mixedFrameIndex(mixedFrameIndex), packedFrames(packedFrames) {
+          : mixedFrameIndex(mixedFrameIndex), packedFrames(packedFrames) {
     if (mixing) {
       const time_us mixedFrameCreateStartTime = NowMicros();
       packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
-      for (Frame* frame : packedFrames) {
+      for (std::shared_ptr<Frame> frame : packedFrames) {
         for (RoI& roi : frame->rois) {
           if (roi.isPacked()) {
             std::pair<int, int> wh = roi.getResizedWidthHeight();
@@ -189,7 +189,7 @@ struct MixedFrame {
         }
       }
       const time_us mixedFrameCreateEndTime = NowMicros();
-      for (Frame* frame : packedFrames) {
+      for (std::shared_ptr<Frame> frame : packedFrames) {
         frame->mixedFrameCreateStartTime = mixedFrameCreateStartTime;
         frame->mixedFrameCreateEndTime = mixedFrameCreateEndTime;
       }
