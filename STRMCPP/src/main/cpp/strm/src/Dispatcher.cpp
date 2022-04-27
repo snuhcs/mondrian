@@ -120,6 +120,7 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
       }
     }
   }
+  currFrame->dispatcherProcessEndTime = NowMicros();
   LOGD("Dispatcher%s::process(%d) end, %d, %d", mTag.c_str(), currFrame->frameIndex,
        mCountMixedFrameInference, mUseInferenceResults);
   mPrevFrame = currFrame;

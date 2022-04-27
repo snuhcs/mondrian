@@ -18,6 +18,7 @@ void Logger::logHeader() {
           << "numRoIs" << delim
           << "enqueueTime" << delim
           << "dispatcherProcessStartTime" << delim
+          << "dispatcherProcessEndTime" << delim
           << "fullFrameEnqueueTime" << delim
           << "fullFrameGetResultsTime" << delim
           << "opticalFlowRoIProcessStartTime" << delim
@@ -50,6 +51,7 @@ void Logger::log(Frame* frame) {
           << frame->rois.size() << delim
           << fromBaseTime(frame->enqueueTime) << delim
           << fromBaseTime(frame->dispatcherProcessStartTime) << delim
+          << fromBaseTime(frame->dispatcherProcessEndTime) << delim
           << fromBaseTime(frame->fullFrameEnqueueTime) << delim
           << fromBaseTime(frame->fullFrameGetResultsTime) << delim
           << fromBaseTime(frame->opticalFlowRoIProcessStartTime) << delim
