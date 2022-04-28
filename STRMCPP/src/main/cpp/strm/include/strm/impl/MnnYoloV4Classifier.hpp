@@ -7,9 +7,9 @@
 
 namespace rm {
 
-class YoloV4Classifier {
+class MnnYoloV4Classifier {
  public:
-  YoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny);
+  MnnYoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny);
   std::vector<BoundingBox> recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight);
   int getInputSize() const;
   long long getInferenceTimeMs();

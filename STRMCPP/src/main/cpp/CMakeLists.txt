@@ -36,7 +36,7 @@ add_library(
         strm/src/impl/ImplConfig.cpp
         strm/src/impl/CustomInferenceEngine.cpp
         strm/src/impl/Worker.cpp
-        strm/src/impl/YoloV4Classifier.cpp
+        strm/src/impl/MnnYoloV4Classifier.cpp
         jni/SpatioTemporalRoIMixer_jni.cpp
 )
 

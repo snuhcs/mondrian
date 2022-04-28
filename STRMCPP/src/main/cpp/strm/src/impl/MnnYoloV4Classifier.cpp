@@ -1,4 +1,4 @@
-#include "strm/impl/YoloV4Classifier.hpp"
+#include "strm/impl/MnnYoloV4Classifier.hpp"
 
 #include <chrono>
 #include <map>
@@ -8,10 +8,10 @@
 
 namespace rm {
 
-YoloV4Classifier::YoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny)
+MnnYoloV4Classifier::MnnYoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny)
     : INPUT_SIZE(size), OUTPUT_WIDTH((size / 32) * (size / 32) * 63),
       CONF_THRESHOLD(confThreshold), IOU_THRESHOLD(iouThreshold), inferenceTimeMs(-1) {
-  LOGD("YoloV4 YoloV4Classifier::YoloV4Classifier()");
+  LOGD("YoloV4 MnnYoloV4Classifier::MnnYoloV4Classifier()");
   std::string filepath = "/data/local/tmp/models/yolov4-";
   filepath += (isTiny ? "-tiny" : "") + std::to_string(size) + "-fp16.mnn";
   interpreter = MNN::Interpreter::createFromFile(filepath.c_str());
@@ -59,12 +59,12 @@ YoloV4Classifier::YoloV4Classifier(int size, float confThreshold, float iouThres
   LOGD("YoloV4 outputs : %s", outputInfo.c_str());
 }
 
-std::vector<BoundingBox> YoloV4Classifier::recognizeImage(
+std::vector<BoundingBox> MnnYoloV4Classifier::recognizeImage(
     const cv::Mat& mat, int originalWidth, int originalHeight) {
   return nms(getDetectionsForFull(mat, originalWidth, originalHeight));
 }
 
-std::vector<BoundingBox> YoloV4Classifier::getDetectionsForFull(
+std::vector<BoundingBox> MnnYoloV4Classifier::getDetectionsForFull(
     const cv::Mat& mat, int originalWidth, int originalHeight) {
   MNN::Tensor* inputTensor = interpreter->getSessionInputAll(session).at(INPUT_TENSOR_NAME);
   MNN::Tensor* outputBoxes = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_BOXES);
@@ -110,7 +110,7 @@ std::vector<BoundingBox> YoloV4Classifier::getDetectionsForFull(
   return detections;
 }
 
-std::vector<BoundingBox> YoloV4Classifier::nms(const std::vector<BoundingBox>& boxes) const {
+std::vector<BoundingBox> MnnYoloV4Classifier::nms(const std::vector<BoundingBox>& boxes) const {
   std::vector<BoundingBox> nmsList;
 
   auto comp = [](const BoundingBox& l, const BoundingBox& r) -> bool {
@@ -147,11 +147,11 @@ std::vector<BoundingBox> YoloV4Classifier::nms(const std::vector<BoundingBox>& b
   return nmsList;
 }
 
-int YoloV4Classifier::getInputSize() const {
+int MnnYoloV4Classifier::getInputSize() const {
   return INPUT_SIZE;
 }
 
-long long YoloV4Classifier::getInferenceTimeMs() {
+long long MnnYoloV4Classifier::getInferenceTimeMs() {
   return inferenceTimeMs;
 }
 
