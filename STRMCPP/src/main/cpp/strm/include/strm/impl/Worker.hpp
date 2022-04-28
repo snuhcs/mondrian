@@ -4,15 +4,13 @@
 #include <thread>
 
 #include "strm/impl/CustomInferenceEngine.hpp"
-#include "strm/impl/MnnYoloV4Classifier.hpp"
+#include "strm/impl/models/Classifier.hpp"
 
 namespace rm {
 
 class Worker {
  public:
-  Worker(CustomInferenceEngine* engine,
-         std::unique_ptr<MnnYoloV4Classifier> classifier,
-         std::unique_ptr<MnnYoloV4Classifier> fullClassifier);
+  Worker(CustomInferenceEngine* engine, Classifier* classifier, Classifier* fullClassifier);
 
   ~Worker() {
     isClosed.store(true);
@@ -28,8 +26,8 @@ class Worker {
 
   CustomInferenceEngine* engine;
 
-  std::unique_ptr<MnnYoloV4Classifier> classifier;
-  std::unique_ptr<MnnYoloV4Classifier> fullClassifier;
+  std::unique_ptr<Classifier> classifier;
+  std::unique_ptr<Classifier> fullClassifier;
   std::atomic_bool isClosed;
   std::thread thread;
   cv::Size targetSize;

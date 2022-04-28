@@ -25,7 +25,8 @@
         "class_agnostic_threshold": 160
     },
     "inference_engine": {
-        "model": "yolo_v4",
+        "model": "YOLO_V4",
+        "runtime": "MNN",
         "use_tiny": false,
         "conf_threshold": 0.1,
         "iou_threshold": 0.3,

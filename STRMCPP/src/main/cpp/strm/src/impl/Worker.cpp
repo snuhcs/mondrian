@@ -4,11 +4,9 @@
 
 namespace rm {
 
-Worker::Worker(CustomInferenceEngine* engine,
-               std::unique_ptr<MnnYoloV4Classifier> cls,
-               std::unique_ptr<MnnYoloV4Classifier> fullCls)
-    : engine(engine), classifier(std::move(cls)),
-      fullClassifier(std::move(fullCls)), isClosed(false) {
+Worker::Worker(CustomInferenceEngine* engine, Classifier* cls, Classifier* fullCls)
+    : engine(engine), classifier(cls),
+      fullClassifier(fullCls), isClosed(false) {
   targetSize = cv::Size(classifier->getInputSize(), classifier->getInputSize());
   fullTargetSize = cv::Size(fullClassifier->getInputSize(), fullClassifier->getInputSize());
   LOGD("Worker::Worker()");

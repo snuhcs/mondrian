@@ -2,17 +2,24 @@
 
 #include "strm/Log.hpp"
 #include "strm/impl/Worker.hpp"
+#include "strm/impl/models/MnnYoloV4Classifier.hpp"
+#include "strm/impl/models/TfLiteYoloV4Classifier.hpp"
 
 namespace rm {
 
 CustomInferenceEngine::CustomInferenceEngine(const InferenceEngineConfig& config) : mHandle(0) {
   LOGD("CppInferenceEngine::CppInferenceEngine()");
   for (int i = 0; i < config.NUM_WORKERS; i++) {
-    workers.push_back(std::make_unique<Worker>(
-        this, std::make_unique<MnnYoloV4Classifier>(config.INPUT_SIZE, config.CONF_THRESHOLD,
-                                                    config.IOU_THRESHOLD, config.USE_TINY),
-        std::make_unique<MnnYoloV4Classifier>(config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD,
-                                              config.IOU_THRESHOLD, config.USE_TINY)));
+    Classifier* classifier;
+    Classifier* fullClassifier;
+    if (config.RUNTIME == "MNN") {
+      classifier = new MnnYoloV4Classifier(config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+      fullClassifier = new MnnYoloV4Classifier(config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+    } else if (config.RUNTIME == "TFLITE") {
+      classifier = new TfLiteYoloV4Classifier(config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+      fullClassifier = new TfLiteYoloV4Classifier(config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+    }
+    workers.push_back(std::make_unique<Worker>(this, classifier, fullClassifier));
   }
 }
 

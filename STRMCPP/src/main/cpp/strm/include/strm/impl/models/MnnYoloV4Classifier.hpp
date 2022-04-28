@@ -1,18 +1,18 @@
-#ifndef IMPL_YOLO_V4_CLASSIFIER_HPP_
-#define IMPL_YOLO_V4_CLASSIFIER_HPP_
+#ifndef IMPL_MNN_YOLO_V4_CLASSIFIER_HPP_
+#define IMPL_MNN_YOLO_V4_CLASSIFIER_HPP_
 
 #include "MNN/Interpreter.hpp"
 
-#include "strm/DataType.hpp"
+#include "strm/impl/models/Classifier.hpp"
 
 namespace rm {
 
-class MnnYoloV4Classifier {
+class MnnYoloV4Classifier : public Classifier {
  public:
   MnnYoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny);
-  std::vector<BoundingBox> recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight);
-  int getInputSize() const;
-  long long getInferenceTimeMs();
+  std::vector<BoundingBox> recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight) override;
+  int getInputSize() const override;
+  long long getInferenceTimeMs() const override;
 
  private:
   std::vector<BoundingBox> getDetectionsForFull(
@@ -37,4 +37,4 @@ class MnnYoloV4Classifier {
 
 } // namespace rm
 
-#endif // IMPL_YOLO_V4_CLASSIFIER_HPP_
+#endif // IMPL_MNN_YOLO_V4_CLASSIFIER_HPP_

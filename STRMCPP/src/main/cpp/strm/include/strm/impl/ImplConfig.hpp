@@ -16,6 +16,7 @@ struct ResizeProfileConfig {
 
 struct InferenceEngineConfig {
   std::string MODEL = "YOLO_V4";
+  std::string RUNTIME = "MNN";
   bool USE_TINY = false;
   float CONF_THRESHOLD = 0.1;
   float IOU_THRESHOLD = 0.3;
