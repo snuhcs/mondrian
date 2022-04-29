@@ -30,9 +30,13 @@ PatchReconstructor::~PatchReconstructor() {
 void PatchReconstructor::process(MixedFrame& mixedFrame) {
   LOGD("PatchReconstructor::process(%d) %lu frames packed", mixedFrame.mixedFrameIndex,
        mixedFrame.packedFrames.size());
+  time_us reconstructStartTime;
+  time_us reconstructEndTime;
   if (!mixedFrame.packedMat.empty()) {
     mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
+    reconstructStartTime = NowMicros();
     updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
+    reconstructEndTime = NowMicros();
   } else {
     for (Frame* frame : mixedFrame.packedFrames) {
       for (RoI& roi : frame->rois) {
@@ -42,7 +46,13 @@ void PatchReconstructor::process(MixedFrame& mixedFrame) {
         }
       }
     }
+    reconstructStartTime = NowMicros();
     updateRoIInferenceResults(mixedFrame);
+    reconstructEndTime = NowMicros();
+  }
+  for (Frame*& frame : mixedFrame.packedFrames) {
+    frame->reconstructStartTime = reconstructStartTime;
+    frame->reconstructEndTime = reconstructEndTime;
   }
 }
 

@@ -33,18 +33,24 @@ void RoIExtractor::process(
         prevResults.push_back(bbx);
       }
     }
+    currFrame->opticalFlowRoIProcessStartTime = NowMicros();
     std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame,
                                                           prevResults, mTargetSize);
+    currFrame->opticalFlowRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), opticalFlowRoIs.begin(), opticalFlowRoIs.end());
     currFrame->opticalFlowRoIs = opticalFlowRoIs;
   }
   if (mConfig.PD_ROI) {
+    currFrame->pixelDiffRoIProcessStartTime = NowMicros();
     std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame, mTargetSize);
+    currFrame->pixelDiffRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
   }
   LOGD("Before Merge: %lu", rois.size());
   if (mConfig.MERGE_ROI) {
+    currFrame->mergeRoIStartTime = NowMicros();
     mergeSingleFrameRoIs(rois, currFrame, mConfig.MERGE_THRESHOLD);
+    currFrame->mergeRoIEndTime = NowMicros();
   }
   LOGD("After  Merge: %lu", rois.size());
   currFrame->rois = rois;

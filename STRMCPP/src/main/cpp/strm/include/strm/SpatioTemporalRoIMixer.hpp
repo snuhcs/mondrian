@@ -1,6 +1,7 @@
 #ifndef SPATIO_TEMPORAL_ROI_MIXER_HPP_
 #define SPATIO_TEMPORAL_ROI_MIXER_HPP_
 
+#include <fstream>
 #include <map>
 #include <string>
 
@@ -33,6 +34,10 @@ class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
   void notifyMixedInferenceResults(const MixedFrame& mixedFrame) override;
 
  private:
+  void tryAddDispatcher(const std::string& key);
+
+  const std::unique_ptr<Logger> mLogger;
+
   const ResizeProfile* mResizeProfile;
   const RoIPrioritizer* mRoIPrioritizer;
   InferenceEngine* mInferenceEngine;

@@ -27,10 +27,12 @@ add_library(
         SHARED
         strm/src/Config.cpp
         strm/src/Dispatcher.cpp
+        strm/src/Logger.cpp
         strm/src/PatchMixer.cpp
         strm/src/PatchReconstructor.cpp
         strm/src/RoIExtractor.cpp
         strm/src/SpatioTemporalRoIMixer.cpp
+        strm/src/Time.cpp
         strm/src/impl/ImplConfig.cpp
         strm/src/impl/CustomInferenceEngine.cpp
         strm/src/impl/Worker.cpp

@@ -2,6 +2,7 @@
 #define DISPATCHER_HPP_
 
 #include <climits>
+#include <fstream>
 #include <map>
 #include <utility>
 #include <vector>
@@ -14,6 +15,7 @@
 #include "RoIExtractor.hpp"
 #include "PatchMixer.hpp"
 #include "PatchReconstructorCallback.hpp"
+#include "Logger.hpp"
 
 namespace rm {
 
@@ -25,7 +27,8 @@ class Dispatcher {
              const ResizeProfile* resizeProfile,
              const RoIPrioritizer* roIPrioritizer,
              InferenceEngine* inferenceEngine,
-             PatchMixer* patchMixer);
+             PatchMixer* patchMixer,
+             Logger* logger);
 
   ~Dispatcher();
 
@@ -44,6 +47,7 @@ class Dispatcher {
 
   const std::string mKey;
   const std::string mTag;
+  Logger* mLogger;
 
   int mCountMixedFrameInference;
   bool mUseInferenceResults;
