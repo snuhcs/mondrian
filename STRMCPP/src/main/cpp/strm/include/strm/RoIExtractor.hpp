@@ -27,14 +27,14 @@ class RoIExtractor {
       const std::vector<BoundingBox>& boundingBoxes, const cv::Size& targetSize);
 
   static std::vector<std::pair<int, int>> getBoundingBoxShifts(
-      const cv::Mat prevImage, const cv::Mat currImage,
+      const cv::Mat& prevImage, const cv::Mat& currImage,
       const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize);
 
   static std::vector<RoI> getPixelDiffRoIs(
       const Frame* prevFrame, const Frame* currFrame, const cv::Size& targetSize);
 
   static cv::Mat calculateDiffAndThreshold(
-      const cv::Mat prevMat, const cv::Mat currMat);
+      const cv::Mat& prevMat, const cv::Mat& currMat);
 
   static void cannyEdgeDetection(cv::Mat mat);
 

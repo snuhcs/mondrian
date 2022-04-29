@@ -107,11 +107,11 @@ int PatchMixer::countPackedFrame(const std::string& key) {
   return count;
 }
 
-bool PatchMixer::canFit(std::pair<int, int> wh, Rect rect) {
+bool PatchMixer::canFit(std::pair<int, int> wh, const Rect& rect) {
   return wh.first <= rect.width() && wh.second <= rect.height();
 }
 
-std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, Rect rect) {
+std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, const Rect& rect) {
   int w = wh.first;
   int h = wh.second;
   if (rect.width() > rect.height()) {
