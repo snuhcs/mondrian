@@ -2,14 +2,19 @@
 #define IMPL_TFLITE_YOLO_V4_CLASSIFIER_HPP_
 
 #include "MNN/Interpreter.hpp"
+#include "tensorflow/lite/interpreter.h"
 
 #include "strm/impl/models/Classifier.hpp"
+
+#include "tensorflow/lite/c/common.h"
+#include "tensorflow/lite/interpreter.h"
 
 namespace rm {
 
 class TfLiteYoloV4Classifier : public Classifier {
  public:
   TfLiteYoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny);
+  ~TfLiteYoloV4Classifier();
   std::vector<BoundingBox> recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight) override;
   int getInputSize() const override;
   long long getInferenceTimeMs() const override;
@@ -19,10 +24,6 @@ class TfLiteYoloV4Classifier : public Classifier {
       const cv::Mat& mat, int originalWidth, int originalHeight);
   std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes) const;
 
-  const std::string INPUT_TENSOR_NAME = "x";
-  const std::string OUTPUT_TENSOR_NAME_BOXES = "model/tf.concat_22/concat";
-  const std::string OUTPUT_TENSOR_NAME_CONFS = "model/tf.concat_23/concat";
-
   const int NUM_LABELS = 80;
   const int INPUT_SIZE;
   const int OUTPUT_WIDTH;
@@ -31,8 +32,8 @@ class TfLiteYoloV4Classifier : public Classifier {
 
   long long inferenceTimeMs;
 
-  MNN::Interpreter* interpreter;
-  MNN::Session* session;
+  TfLiteDelegate* delegate;
+  std::unique_ptr<tflite::Interpreter> interpreter;
 };
 
 } // namespace rm

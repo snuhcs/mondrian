@@ -7,6 +7,8 @@ namespace rm {
 
 class Classifier {
  public:
+  virtual ~Classifier() {};
+
   virtual std::vector<BoundingBox> recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight) = 0;
 
   virtual int getInputSize() const = 0;

@@ -50,6 +50,8 @@ target_link_libraries(
         opencv_video
         opencv_imgcodecs
         opencv_imgproc
+        tensorflowlite
+        tensorflowlite_gpu_delegate
         MNN
         MNN_CL
         MNN_Express

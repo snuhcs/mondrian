@@ -13,7 +13,7 @@ MnnYoloV4Classifier::MnnYoloV4Classifier(int size, float confThreshold, float io
       CONF_THRESHOLD(confThreshold), IOU_THRESHOLD(iouThreshold), inferenceTimeMs(-1) {
   LOGD("YoloV4 MnnYoloV4Classifier::MnnYoloV4Classifier()");
   std::string filepath = "/data/local/tmp/models/yolov4-";
-  filepath += (isTiny ? "-tiny" : "") + std::to_string(size) + "-fp16.mnn";
+  filepath += (isTiny ? "tiny-" : "") + std::to_string(size) + "-fp16.mnn";
   interpreter = MNN::Interpreter::createFromFile(filepath.c_str());
   if (interpreter == nullptr) {
     LOGE("YoloV4 interpreter creation failed");
