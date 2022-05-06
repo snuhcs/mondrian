@@ -10,6 +10,7 @@
         "min_roi_area": 5000,
         "optical_flow_roi_confidence_threshold": 0.1,
         "merge_threshold": 0.5,
+        "max_merged_roi_size": 800,
         "of_roi": true,
         "pd_roi": true,
         "merge_roi": true

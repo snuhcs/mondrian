@@ -19,8 +19,8 @@ class RoIExtractor {
   void process(const std::pair<std::pair<std::shared_ptr<Frame>, std::shared_ptr<Frame>>, std::vector<BoundingBox>>& item) const;
 
  private:
-  static void mergeSingleFrameRoIs(
-      std::vector<RoI>& rois, const Frame* frame, const float mergeThreshold);
+  static void mergeSingleFrameRoIs(std::vector<RoI>& rois, const Frame* frame,
+                                   const float mergeThreshold, const int maxMergedRoISize);
 
   static std::vector<RoI> getOpticalFlowRoIs(
       const Frame* prevFrame, const Frame* currFrame,

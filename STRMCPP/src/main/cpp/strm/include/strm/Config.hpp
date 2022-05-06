@@ -19,6 +19,7 @@ struct RoIExtractorConfig {
   int MIN_ROI_AREA = 5000;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1f;
   float MERGE_THRESHOLD = 0.5f;
+  int MAX_MERGED_ROI_SIZE = 800;
   bool OF_ROI = true;
   bool PD_ROI = true;
   bool MERGE_ROI = true;
