@@ -42,7 +42,8 @@ void RoIExtractor::process(
   }
   if (mConfig.PD_ROI) {
     currFrame->pixelDiffRoIProcessStartTime = NowMicros();
-    std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame, mTargetSize);
+    std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame,
+                                                      mTargetSize, mConfig.MIN_ROI_AREA);
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
   }
@@ -189,7 +190,7 @@ std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
 }
 
 std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Frame* currFrame,
-                                                const cv::Size& targetSize) {
+                                                const cv::Size& targetSize, const int mixRoIArea) {
   cv::Mat prevMat = prevFrame->mat.clone();
   cv::Mat currMat = currFrame->mat.clone();
 
@@ -210,11 +211,16 @@ std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Fr
   // replaces get boxes from contours.
   std::vector<Rect> boxes;
   for (const std::vector<cv::Point>& contour : contours) {
-    cv::Rect box = cv::boundingRect(contour);
-    boxes.emplace_back(box.x * currFrame->mat.cols / targetSize.width,
-                       box.y * currFrame->mat.rows / targetSize.height,
-                       (box.x + box.width) * currFrame->mat.cols / targetSize.width,
-                       (box.y + box.height) * currFrame->mat.rows / targetSize.height);
+    double approxDistance = cv::arcLength(contour, true) * 0.02;
+    std::vector<cv::Point> approxCurve;
+    cv::approxPolyDP(contour, approxCurve, approxDistance, true);
+    cv::Rect box = cv::boundingRect(approxCurve);
+    if (box.area() >= mixRoIArea) {
+      boxes.emplace_back(box.x * currFrame->mat.cols / targetSize.width,
+                         box.y * currFrame->mat.rows / targetSize.height,
+                         (box.x + box.width) * currFrame->mat.cols / targetSize.width,
+                         (box.y + box.height) * currFrame->mat.rows / targetSize.height);
+    }
   }
 
   std::vector<RoI> rois;
@@ -238,13 +244,10 @@ cv::Mat RoIExtractor::calculateDiffAndThreshold(
 }
 
 void RoIExtractor::cannyEdgeDetection(cv::Mat mat) {
-  cv::GaussianBlur(mat, mat, cv::Size(3, 3),
-                   0);
-  cv::Canny(mat, mat,
-            120, 255, 3, true);
+  cv::GaussianBlur(mat, mat, cv::Size(3, 3), 0);
+  cv::Canny(mat, mat, 120, 255, 3, true);
   cv::dilate(mat, mat, cv::getStructuringElement(
-      cv::MORPH_RECT, cv::Size(
-          5, 5)), cv::Point(0, 0), 1);
+      cv::MORPH_RECT, cv::Size(5, 5)), cv::Point(0, 0), 1);
 }
 
 } // namespace rm

@@ -16,6 +16,7 @@ struct DispatcherConfig {
 struct RoIExtractorConfig {
   int EXTRACTION_RESIZE_WIDTH = 640;
   int EXTRACTION_RESIZE_HEIGHT = 360;
+  int MIN_ROI_AREA = 5000;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1f;
   float MERGE_THRESHOLD = 0.5f;
   bool OF_ROI = true;

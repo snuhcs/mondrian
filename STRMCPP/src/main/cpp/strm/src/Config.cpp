@@ -28,6 +28,9 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["extraction_resize_height"].isNull()) {
     config.EXTRACTION_RESIZE_HEIGHT = json["extraction_resize_height"].asInt();
   }
+  if (!json["min_roi_area"].isNull()) {
+    config.MIN_ROI_AREA = json["min_roi_area"].asInt();
+  }
   if (!json["optical_flow_roi_confidence_threshold"].isNull()) {
     config.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = json["optical_flow_roi_confidence_threshold"].asFloat();
   }
