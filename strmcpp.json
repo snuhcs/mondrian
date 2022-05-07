@@ -25,6 +25,6 @@
         "max_queue_size": 2,
         "match_padding": 40,
         "frame_boxes_iou_threshold": 0.45,
-        "reconstruct_iou_threshold": 0.1
+        "overlap_threshold": 0.5
     }
 }
