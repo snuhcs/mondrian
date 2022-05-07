@@ -8,11 +8,10 @@
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/delegates/gpu/delegate.h"
 
+#include "strm/Config.hpp"
 #include "strm/Log.hpp"
 
 namespace rm {
-
-constexpr int NUM_LABELS = 80;
 
 TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceThreshold,
                                                float iouThreshold, bool isTiny)

@@ -7,6 +7,8 @@
 
 namespace rm {
 
+constexpr int NUM_LABELS = 80;
+
 struct DispatcherConfig {
   int MAX_QUEUE_SIZE = 2;
   int FULL_INFERENCE_INTERVAL = 4;
@@ -35,7 +37,8 @@ struct PatchMixerConfig {
 struct PatchReconstructorConfig {
   int MAX_QUEUE_SIZE = 2;
   int MATCH_PADDING = 40;
-  float USE_IOU_THRESHOLD = 0.1f;
+  float FRAME_BOXES_IOU_THRESHOLD = 0.45f;
+  float RECONSTRUCT_IOU_THRESHOLD = 0.1f;
 };
 
 struct STRMConfig {

@@ -33,6 +33,7 @@ add_library(
         strm/src/RoIExtractor.cpp
         strm/src/SpatioTemporalRoIMixer.cpp
         strm/src/Time.cpp
+        strm/src/Utils.cpp
         strm/src/impl/ImplConfig.cpp
         strm/src/impl/CustomInferenceEngine.cpp
         strm/src/impl/Worker.cpp

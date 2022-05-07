@@ -1,6 +1,7 @@
 #include "strm/PatchReconstructor.hpp"
 
 #include "strm/Log.hpp"
+#include "strm/Utils.hpp"
 
 namespace rm {
 
@@ -30,13 +31,9 @@ PatchReconstructor::~PatchReconstructor() {
 void PatchReconstructor::process(MixedFrame& mixedFrame) {
   LOGD("PatchReconstructor::process(%d) %lu frames packed", mixedFrame.mixedFrameIndex,
        mixedFrame.packedFrames.size());
-  time_us reconstructStartTime;
-  time_us reconstructEndTime;
-  if (!mixedFrame.packedMat.empty()) {
+  bool isMixedInference = !mixedFrame.packedMat.empty();
+  if (isMixedInference) {
     mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
-    reconstructStartTime = NowMicros();
-    updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
-    reconstructEndTime = NowMicros();
   } else {
     for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
       for (RoI& roi : frame->rois) {
@@ -46,10 +43,17 @@ void PatchReconstructor::process(MixedFrame& mixedFrame) {
         }
       }
     }
-    reconstructStartTime = NowMicros();
-    updateRoIInferenceResults(mixedFrame);
-    reconstructEndTime = NowMicros();
   }
+  time_us reconstructStartTime = NowMicros();
+  if (isMixedInference) {
+    updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.RECONSTRUCT_IOU_THRESHOLD);
+  } else {
+    updateRoIInferenceResults(mixedFrame);
+  }
+  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
+    frame->boxes = nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
+  }
+  time_us reconstructEndTime = NowMicros();
   for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
     frame->reconstructStartTime = reconstructStartTime;
     frame->reconstructEndTime = reconstructEndTime;

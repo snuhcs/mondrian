@@ -4,11 +4,10 @@
 #include <map>
 #include <set>
 
+#include "strm/Config.hpp"
 #include "strm/Log.hpp"
 
 namespace rm {
-
-constexpr int NUM_LABELS = 80;
 
 MnnYoloV4Classifier::MnnYoloV4Classifier(int inputSize, float confidenceThreshold,
                                          float iouThreshold, bool isTiny)

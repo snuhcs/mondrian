@@ -24,6 +24,7 @@
     "patch_reconstructor": {
         "max_queue_size": 2,
         "match_padding": 40,
-        "use_iou_threshold": 0.1
+        "frame_boxes_iou_threshold": 0.45,
+        "reconstruct_iou_threshold": 0.1
     }
 }
