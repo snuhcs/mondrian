@@ -38,7 +38,7 @@ void PatchReconstructor::process(MixedFrame& mixedFrame) {
     updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.USE_IOU_THRESHOLD);
     reconstructEndTime = NowMicros();
   } else {
-    for (Frame* frame : mixedFrame.packedFrames) {
+    for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
       for (RoI& roi : frame->rois) {
         if (roi.isPacked()) {
           assert(roi.handle != -1);
@@ -50,7 +50,7 @@ void PatchReconstructor::process(MixedFrame& mixedFrame) {
     updateRoIInferenceResults(mixedFrame);
     reconstructEndTime = NowMicros();
   }
-  for (Frame*& frame : mixedFrame.packedFrames) {
+  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
     frame->reconstructStartTime = reconstructStartTime;
     frame->reconstructEndTime = reconstructEndTime;
   }
@@ -62,7 +62,7 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
     float maxOverlap = -1;
     Rect maxBoxPos;
     Frame* maxFrame = nullptr;
-    for (Frame*& frame : mixedFrame.packedFrames) {
+    for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
       for (RoI& roi : frame->rois) {
         if (roi.isPacked()) {
           Rect paddedRoIPos(
@@ -90,7 +90,7 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
           if (maxOverlap < overlapRatio) {
             maxOverlap = overlapRatio;
             maxBoxPos = movedAndResizedBoxPos;
-            maxFrame = frame;
+            maxFrame = frame.get();
           }
         }
       }
@@ -99,13 +99,13 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
       maxFrame->boxes.emplace_back(maxBoxPos, box.confidence, box.labelName);
     }
   }
-  for (Frame*& frame : mixedFrame.packedFrames) {
+  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
     frame->isResultReady.store(true);
   }
 }
 
 void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
-  for (Frame*& frame : mixedFrame.packedFrames) {
+  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
     for (RoI& roi : frame->rois) {
       for (const BoundingBox& box : roi.boxes) {
         frame->boxes.emplace_back(

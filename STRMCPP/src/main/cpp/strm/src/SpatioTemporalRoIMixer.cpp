@@ -28,7 +28,7 @@ SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
 void SpatioTemporalRoIMixer::notifyMixedInferenceResults(const MixedFrame& mixedFrame) {
   LOGD("SpatioTemporalRoIMixer::notifyMixedInferenceResults");
   std::set<std::string> keys;
-  for (Frame* frame : mixedFrame.packedFrames) {
+  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
     keys.insert(frame->key);
   }
   std::lock_guard<std::mutex> dispatcherLock(mDispatchersMtx);

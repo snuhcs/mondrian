@@ -107,7 +107,7 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
     }
     currFrame->resizeRoIEndTime = NowMicros();
 
-    PatchMixer::Status status = mPatchMixer->tryPackAndEnqueueMixedFrame(currFrame.get());
+    PatchMixer::Status status = mPatchMixer->tryPackAndEnqueueMixedFrame(currFrame);
     LOGD("PatchMixer::Status: %d", status);
 
     if (status == PatchMixer::ONGOING) {
