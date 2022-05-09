@@ -4,13 +4,7 @@
         "use_local_video": true,
         "video_configs": [
             {
-                "path": "/data/local/tmp/video/VIRAT_S_000001_5256_7056.mp4",
-                "width": 1920,
-                "height": 1080,
-                "fps": 5
-            },
-            {
-                "path": "/data/local/tmp/video/VIRAT_S_000002_1801_3601.mp4",
+                "path": "/data/local/tmp/video/AIC_train_S01_c002.mp4",
                 "width": 1920,
                 "height": 1080,
                 "fps": 5
@@ -26,7 +20,7 @@
     },
     "inference_engine": {
         "model": "YOLO_V4",
-        "runtime": "TFLITE",
+        "runtime": "MNN",
         "use_tiny": false,
         "conf_threshold": 0.1,
         "iou_threshold": 0.45,
