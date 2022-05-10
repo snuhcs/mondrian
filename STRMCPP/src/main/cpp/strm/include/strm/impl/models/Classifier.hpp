@@ -7,13 +7,27 @@ namespace rm {
 
 class Classifier {
  public:
+  Classifier(const int numLabels, const int inputSize, const int outputSize,
+             const float confidenceThreshold, const float iouThreshold);
+
   virtual ~Classifier() {};
 
-  virtual std::vector<BoundingBox> recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight) = 0;
+  std::vector<BoundingBox> recognizeImage(const cv::Mat& mat, int originalWidth,
+                                          int originalHeight);
 
-  virtual int getInputSize() const = 0;
+  int getInputSize() const;
 
-  virtual long long getInferenceTimeMs() const = 0;
+  long long getInferenceTimeMs() const;
+
+ protected:
+  virtual std::pair<float*, float*> inference(const cv::Mat& mat) = 0;
+
+  const int numLabels;
+  const int inputSize;
+  const int outputSize;
+  const float confidenceThreshold;
+  const float iouThreshold;
+  long long inferenceTimeMs = 0;
 };
 
 } // namespace rm

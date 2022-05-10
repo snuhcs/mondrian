@@ -42,22 +42,23 @@ void RoIExtractor::process(
   }
   if (mConfig.PD_ROI) {
     currFrame->pixelDiffRoIProcessStartTime = NowMicros();
-    std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame, mTargetSize);
+    std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame,
+                                                      mTargetSize, mConfig.MIN_ROI_AREA);
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
   }
   LOGD("Before Merge: %lu", rois.size());
   if (mConfig.MERGE_ROI) {
     currFrame->mergeRoIStartTime = NowMicros();
-    mergeSingleFrameRoIs(rois, currFrame, mConfig.MERGE_THRESHOLD);
+    mergeSingleFrameRoIs(rois, currFrame, mConfig.MERGE_THRESHOLD, mConfig.MAX_MERGED_ROI_SIZE);
     currFrame->mergeRoIEndTime = NowMicros();
   }
   LOGD("After  Merge: %lu", rois.size());
   currFrame->rois = rois;
 }
 
-void RoIExtractor::mergeSingleFrameRoIs(
-    std::vector<RoI>& rois, const Frame* frame, const float mergeThreshold) {
+void RoIExtractor::mergeSingleFrameRoIs(std::vector<RoI>& rois, const Frame* frame,
+                                        const float mergeThreshold, const int maxMergedRoISize) {
   while (true) {
     bool updated = false;
     int i, j;
@@ -66,8 +67,13 @@ void RoIExtractor::mergeSingleFrameRoIs(
         const RoI& roi0 = rois[i];
         const RoI& roi1 = rois[j];
         int intersection = roi0.location.intersection(roi1.location);
-        if ((float) intersection / (float) roi0.getArea() < mergeThreshold
-            && (float) intersection / (float) roi1.getArea() < mergeThreshold) {
+        bool isNotOverlap = (float) intersection / (float) roi0.getArea() < mergeThreshold
+                            && (float) intersection / (float) roi1.getArea() < mergeThreshold;
+        bool isTooLarge = (std::max(roi0.location.right, roi1.location.right) -
+                           std::min(roi0.location.left, roi1.location.left) > maxMergedRoISize) ||
+                          (std::max(roi0.location.bottom, roi1.location.bottom) -
+                           std::min(roi0.location.top, roi1.location.top) > maxMergedRoISize);
+        if (isNotOverlap || isTooLarge) {
           continue;
         }
         updated = true;
@@ -189,7 +195,7 @@ std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
 }
 
 std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Frame* currFrame,
-                                                const cv::Size& targetSize) {
+                                                const cv::Size& targetSize, const int mixRoIArea) {
   cv::Mat prevMat = prevFrame->mat.clone();
   cv::Mat currMat = currFrame->mat.clone();
 
@@ -210,11 +216,16 @@ std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Fr
   // replaces get boxes from contours.
   std::vector<Rect> boxes;
   for (const std::vector<cv::Point>& contour : contours) {
-    cv::Rect box = cv::boundingRect(contour);
-    boxes.emplace_back(box.x * currFrame->mat.cols / targetSize.width,
-                       box.y * currFrame->mat.rows / targetSize.height,
-                       (box.x + box.width) * currFrame->mat.cols / targetSize.width,
-                       (box.y + box.height) * currFrame->mat.rows / targetSize.height);
+    double approxDistance = cv::arcLength(contour, true) * 0.02;
+    std::vector<cv::Point> approxCurve;
+    cv::approxPolyDP(contour, approxCurve, approxDistance, true);
+    cv::Rect box = cv::boundingRect(approxCurve);
+    if (box.area() >= mixRoIArea) {
+      boxes.emplace_back(box.x * currFrame->mat.cols / targetSize.width,
+                         box.y * currFrame->mat.rows / targetSize.height,
+                         (box.x + box.width) * currFrame->mat.cols / targetSize.width,
+                         (box.y + box.height) * currFrame->mat.rows / targetSize.height);
+    }
   }
 
   std::vector<RoI> rois;
@@ -238,13 +249,10 @@ cv::Mat RoIExtractor::calculateDiffAndThreshold(
 }
 
 void RoIExtractor::cannyEdgeDetection(cv::Mat mat) {
-  cv::GaussianBlur(mat, mat, cv::Size(3, 3),
-                   0);
-  cv::Canny(mat, mat,
-            120, 255, 3, true);
+  cv::GaussianBlur(mat, mat, cv::Size(3, 3), 0);
+  cv::Canny(mat, mat, 120, 255, 3, true);
   cv::dilate(mat, mat, cv::getStructuringElement(
-      cv::MORPH_RECT, cv::Size(
-          5, 5)), cv::Point(0, 0), 1);
+      cv::MORPH_RECT, cv::Size(5, 5)), cv::Point(0, 0), 1);
 }
 
 } // namespace rm

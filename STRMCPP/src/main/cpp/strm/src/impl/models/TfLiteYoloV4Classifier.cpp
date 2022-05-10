@@ -8,16 +8,18 @@
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/delegates/gpu/delegate.h"
 
+#include "strm/Config.hpp"
 #include "strm/Log.hpp"
 
 namespace rm {
 
-TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int size, float confThreshold, float iouThreshold, bool isTiny)
-    : INPUT_SIZE(size), OUTPUT_WIDTH((size / 32) * (size / 32) * 63),
-      CONF_THRESHOLD(confThreshold), IOU_THRESHOLD(iouThreshold), inferenceTimeMs(-1) {
+TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceThreshold,
+                                               float iouThreshold, bool isTiny)
+    : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
+                 confidenceThreshold, iouThreshold) {
   LOGD("YoloV4 TfLiteYoloV4Classifier::TfLiteYoloV4Classifier()");
   std::string filepath = "/data/local/tmp/models/yolov4-";
-  filepath += (isTiny ? "tiny-" : "") + std::to_string(size) + "-fp16.tflite";
+  filepath += (isTiny ? "tiny-" : "") + std::to_string(inputSize) + "-fp16.tflite";
   auto model = tflite::FlatBufferModel::BuildFromFile(filepath.c_str());
   if (model == nullptr) {
     LOGE("YoloV4 model load failed");
@@ -58,14 +60,7 @@ TfLiteYoloV4Classifier::~TfLiteYoloV4Classifier() {
   TfLiteGpuDelegateV2Delete(delegate);
 }
 
-std::vector<BoundingBox> TfLiteYoloV4Classifier::recognizeImage(
-    const cv::Mat& mat, int originalWidth, int originalHeight) {
-  return nms(getDetectionsForFull(mat, originalWidth, originalHeight));
-}
-
-std::vector<BoundingBox> TfLiteYoloV4Classifier::getDetectionsForFull(
-    const cv::Mat& mat, int originalWidth, int originalHeight) {
-
+std::pair<float*, float*> TfLiteYoloV4Classifier::inference(const cv::Mat& mat) {
   const std::vector<int>& inputs = interpreter->inputs();
   const std::vector<int>& outputs = interpreter->outputs();
   assert(inputs.size() == 1 && outputs.size() == 2);
@@ -81,80 +76,9 @@ std::vector<BoundingBox> TfLiteYoloV4Classifier::getDetectionsForFull(
   inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   LOGV("YoloV4 Inference %lld ms", inferenceTimeMs);
 
-  std::vector<BoundingBox> detections;
-  auto* confidences = interpreter->typed_tensor<float>(outputs[0]);
   auto* bboxes = interpreter->typed_tensor<float>(outputs[1]);
-  for (int i = 0; i < OUTPUT_WIDTH; i++) {
-    float maxConfidence = 0;
-    int maxLabel = -1;
-    for (int label = 0; label < NUM_LABELS; label++) {
-      float confidence = confidences[i * NUM_LABELS + label];
-      if (maxConfidence < confidence) {
-        maxLabel = label;
-        maxConfidence = confidence;
-      }
-    }
-    if (maxLabel == 0 && maxConfidence > CONF_THRESHOLD) {
-      float xPos = bboxes[i * 4 + 0];
-      float yPos = bboxes[i * 4 + 1];
-      float w = bboxes[i * 4 + 2];
-      float h = bboxes[i * 4 + 3];
-      detections.emplace_back(Rect(
-          std::max(0, (int) ((xPos - w / 2) * (float) originalWidth / (float) INPUT_SIZE)),
-          std::max(0, (int) ((yPos - h / 2) * (float) originalHeight / (float) INPUT_SIZE)),
-          std::min(originalWidth,
-                   (int) ((xPos + w / 2) * (float) originalWidth / (float) INPUT_SIZE)),
-          std::min(originalHeight,
-                   (int) ((yPos + h / 2) * (float) originalHeight / (float) INPUT_SIZE))),
-                              maxConfidence, "person");
-    }
-  }
-  return detections;
-}
-
-std::vector<BoundingBox> TfLiteYoloV4Classifier::nms(const std::vector<BoundingBox>& boxes) const {
-  std::vector<BoundingBox> nmsList;
-
-  auto comp = [](const BoundingBox& l, const BoundingBox& r) -> bool {
-    return l.confidence > r.confidence;
-  };
-  for (int k = 0; k < NUM_LABELS; k++) {
-    if (k != 0) {
-      continue;
-    }
-    std::set<BoundingBox, decltype(comp)> sortedBoxes(comp);
-
-    for (const BoundingBox& box : boxes) {
-//      if (box.labelName == <labelName for k>) {
-      if (box.labelName == "person") {
-        sortedBoxes.insert(box);
-      }
-    }
-
-    while (!sortedBoxes.empty()) {
-      auto startIt = sortedBoxes.begin();
-      const BoundingBox& max = *startIt;
-      nmsList.push_back(max);
-      sortedBoxes.erase(startIt);
-
-      for (auto it = sortedBoxes.begin(); it != sortedBoxes.end();) {
-        if (max.location.iou(it->location) >= IOU_THRESHOLD) {
-          it = sortedBoxes.erase(it);
-        } else {
-          it++;
-        }
-      }
-    }
-  }
-  return nmsList;
-}
-
-int TfLiteYoloV4Classifier::getInputSize() const {
-  return INPUT_SIZE;
-}
-
-long long TfLiteYoloV4Classifier::getInferenceTimeMs() const {
-  return inferenceTimeMs;
+  auto* confidences = interpreter->typed_tensor<float>(outputs[0]);
+  return std::make_pair(bboxes, confidences);
 }
 
 } // namespace rm
