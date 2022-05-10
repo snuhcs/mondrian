@@ -50,15 +50,15 @@ void RoIExtractor::process(
   LOGD("Before Merge: %lu", rois.size());
   if (mConfig.MERGE_ROI) {
     currFrame->mergeRoIStartTime = NowMicros();
-    mergeSingleFrameRoIs(rois, currFrame, mConfig.MERGE_THRESHOLD);
+    mergeSingleFrameRoIs(rois, currFrame, mConfig.MERGE_THRESHOLD, mConfig.MAX_MERGED_ROI_SIZE);
     currFrame->mergeRoIEndTime = NowMicros();
   }
   LOGD("After  Merge: %lu", rois.size());
   currFrame->rois = rois;
 }
 
-void RoIExtractor::mergeSingleFrameRoIs(
-    std::vector<RoI>& rois, const Frame* frame, const float mergeThreshold) {
+void RoIExtractor::mergeSingleFrameRoIs(std::vector<RoI>& rois, const Frame* frame,
+                                        const float mergeThreshold, const int maxMergedRoISize) {
   while (true) {
     bool updated = false;
     int i, j;
@@ -67,8 +67,13 @@ void RoIExtractor::mergeSingleFrameRoIs(
         const RoI& roi0 = rois[i];
         const RoI& roi1 = rois[j];
         int intersection = roi0.location.intersection(roi1.location);
-        if ((float) intersection / (float) roi0.getArea() < mergeThreshold
-            && (float) intersection / (float) roi1.getArea() < mergeThreshold) {
+        bool isNotOverlap = (float) intersection / (float) roi0.getArea() < mergeThreshold
+                            && (float) intersection / (float) roi1.getArea() < mergeThreshold;
+        bool isTooLarge = (std::max(roi0.location.right, roi1.location.right) -
+                           std::min(roi0.location.left, roi1.location.left) > maxMergedRoISize) ||
+                          (std::max(roi0.location.bottom, roi1.location.bottom) -
+                           std::min(roi0.location.top, roi1.location.top) > maxMergedRoISize);
+        if (isNotOverlap || isTooLarge) {
           continue;
         }
         updated = true;

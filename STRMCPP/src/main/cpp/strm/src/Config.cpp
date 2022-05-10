@@ -37,6 +37,9 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["merge_threshold"].isNull()) {
     config.MERGE_THRESHOLD = json["merge_threshold"].asFloat();
   }
+  if (!json["max_merged_roi_size"].isNull()) {
+    config.MAX_MERGED_ROI_SIZE = json["max_merged_roi_size"].asInt();
+  }
   if (!json["of_roi"].isNull()) {
     config.OF_ROI = json["of_roi"].asBool();
   }
@@ -74,8 +77,11 @@ PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) 
   if (!json["match_padding"].isNull()) {
     config.MATCH_PADDING = json["match_padding"].asInt();
   }
-  if (!json["use_iou_threshold"].isNull()) {
-    config.USE_IOU_THRESHOLD = json["use_iou_threshold"].asFloat();
+  if (!json["frame_boxes_iou_threshold"].isNull()) {
+    config.FRAME_BOXES_IOU_THRESHOLD = json["frame_boxes_iou_threshold"].asFloat();
+  }
+  if (!json["overlap_threshold"].isNull()) {
+    config.OVERLAP_THRESHOLD = json["overlap_threshold"].asFloat();
   }
   return config;
 }
