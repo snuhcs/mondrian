@@ -80,8 +80,8 @@ PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) 
   if (!json["frame_boxes_iou_threshold"].isNull()) {
     config.FRAME_BOXES_IOU_THRESHOLD = json["frame_boxes_iou_threshold"].asFloat();
   }
-  if (!json["reconstruct_iou_threshold"].isNull()) {
-    config.RECONSTRUCT_IOU_THRESHOLD = json["reconstruct_iou_threshold"].asFloat();
+  if (!json["overlap_threshold"].isNull()) {
+    config.OVERLAP_THRESHOLD = json["overlap_threshold"].asFloat();
   }
   return config;
 }

@@ -46,7 +46,7 @@ void PatchReconstructor::process(MixedFrame& mixedFrame) {
   }
   time_us reconstructStartTime = NowMicros();
   if (isMixedInference) {
-    updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.RECONSTRUCT_IOU_THRESHOLD);
+    updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.OVERLAP_THRESHOLD);
   } else {
     updateRoIInferenceResults(mixedFrame);
   }
@@ -61,7 +61,7 @@ void PatchReconstructor::process(MixedFrame& mixedFrame) {
 }
 
 void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame, int matchPadding,
-                                                          float useIoUThreshold) {
+                                                          float overlapThreshold) {
   for (const BoundingBox& box : mixedFrame.boxes) {
     float maxOverlap = -1;
     Rect maxBoxPos;
@@ -88,9 +88,7 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
                        (int) ((float) (box.location.bottom - roi.packedLocation.second) /
                               roi.scale) + roi.location.top));
           int intersection = paddedRoIPos.intersection(movedAndResizedBoxPos);
-          float overlapRatio = std::max((float) intersection / (float) paddedRoIPos.area(),
-                                        (float) intersection /
-                                        (float) movedAndResizedBoxPos.area());
+          float overlapRatio = (float) intersection / (float) movedAndResizedBoxPos.area();
           if (maxOverlap < overlapRatio) {
             maxOverlap = overlapRatio;
             maxBoxPos = movedAndResizedBoxPos;
@@ -99,7 +97,7 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
         }
       }
     }
-    if (maxFrame != nullptr && maxOverlap > useIoUThreshold) {
+    if (maxFrame != nullptr && maxOverlap > overlapThreshold) {
       maxFrame->boxes.emplace_back(maxBoxPos, box.confidence, box.labelName);
     }
   }

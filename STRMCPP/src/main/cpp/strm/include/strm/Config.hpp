@@ -38,7 +38,7 @@ struct PatchReconstructorConfig {
   int MAX_QUEUE_SIZE = 2;
   int MATCH_PADDING = 40;
   float FRAME_BOXES_IOU_THRESHOLD = 0.45f;
-  float RECONSTRUCT_IOU_THRESHOLD = 0.1f;
+  float OVERLAP_THRESHOLD = 0.5f;
 };
 
 struct STRMConfig {
