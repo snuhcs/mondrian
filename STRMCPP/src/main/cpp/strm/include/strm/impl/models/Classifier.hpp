@@ -19,9 +19,6 @@ class Classifier {
 
   long long getInferenceTimeMs() const;
 
-  static std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
-                                      const int numLabels, const float iouThreshold);
-
  protected:
   virtual std::pair<float*, float*> inference(const cv::Mat& mat) = 0;
 
