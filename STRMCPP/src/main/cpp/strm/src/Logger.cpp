@@ -23,8 +23,25 @@ void Logger::logHeader() {
           << "fullFrameGetResultsTime" << delim
           << "opticalFlowRoIProcessStartTime" << delim
           << "opticalFlowRoIProcessEndTime" << delim
+          << "of0" << delim
+          << "of1" << delim
+          << "of2" << delim
+          << "of3" << delim
+          << "of4" << delim
+          << "of5" << delim
+          << "of6" << delim
           << "pixelDiffRoIProcessStartTime" << delim
           << "pixelDiffRoIProcessEndTime" << delim
+          << "pd0" << delim
+          << "pd1" << delim
+          << "pd2" << delim
+          << "pd3" << delim
+          << "pd4" << delim
+          << "pd5" << delim
+          << "pd6" << delim
+          << "pd7" << delim
+          << "pd8" << delim
+          << "pd9" << delim
           << "mergeRoIStartTime" << delim
           << "mergeRoIEndTime" << delim
           << "resizeRoIStartTime" << delim
@@ -56,8 +73,25 @@ void Logger::log(Frame* frame) {
           << fromBaseTime(frame->fullFrameGetResultsTime) << delim
           << fromBaseTime(frame->opticalFlowRoIProcessStartTime) << delim
           << fromBaseTime(frame->opticalFlowRoIProcessEndTime) << delim
+          << fromBaseTime(frame->of0) << delim
+          << fromBaseTime(frame->of1) << delim
+          << fromBaseTime(frame->of2) << delim
+          << fromBaseTime(frame->of3) << delim
+          << fromBaseTime(frame->of4) << delim
+          << fromBaseTime(frame->of5) << delim
+          << fromBaseTime(frame->of6) << delim
           << fromBaseTime(frame->pixelDiffRoIProcessStartTime) << delim
           << fromBaseTime(frame->pixelDiffRoIProcessEndTime) << delim
+          << fromBaseTime(frame->pd0) << delim
+          << fromBaseTime(frame->pd1) << delim
+          << fromBaseTime(frame->pd2) << delim
+          << fromBaseTime(frame->pd3) << delim
+          << fromBaseTime(frame->pd4) << delim
+          << fromBaseTime(frame->pd5) << delim
+          << fromBaseTime(frame->pd6) << delim
+          << fromBaseTime(frame->pd7) << delim
+          << fromBaseTime(frame->pd8) << delim
+          << fromBaseTime(frame->pd9) << delim
           << fromBaseTime(frame->mergeRoIStartTime) << delim
           << fromBaseTime(frame->mergeRoIEndTime) << delim
           << fromBaseTime(frame->resizeRoIStartTime) << delim
