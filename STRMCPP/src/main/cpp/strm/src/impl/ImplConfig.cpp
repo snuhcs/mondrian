@@ -28,6 +28,9 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   if (!json["model"].isNull()) {
     config.MODEL = json["model"].asString();
   }
+  if (!json["runtime"].isNull()) {
+    config.RUNTIME = json["runtime"].asString();
+  }
   if (!json["use_tiny"].isNull()) {
     config.USE_TINY = json["use_tiny"].asBool();
   }

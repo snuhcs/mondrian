@@ -16,9 +16,10 @@ struct ResizeProfileConfig {
 
 struct InferenceEngineConfig {
   std::string MODEL = "YOLO_V4";
+  std::string RUNTIME = "TFLITE";
   bool USE_TINY = false;
   float CONF_THRESHOLD = 0.1;
-  float IOU_THRESHOLD = 0.3;
+  float IOU_THRESHOLD = 0.45;
   int NUM_WORKERS = 1;
   int INPUT_SIZE = 800;
   int FULL_FRAME_INPUT_SIZE = 800;
