@@ -26,6 +26,18 @@ void RoIExtractor::process(
        currFrame->key.c_str(), currFrame->frameIndex, (int) item.second.size());
 
   std::vector<RoI> rois;
+
+  cv::Mat prevMat = prevFrame->mat;
+  cv::Mat currMat = currFrame->mat;
+
+  if (mConfig.OF_ROI || mConfig.PD_ROI) {
+    cv::cvtColor(prevMat, prevMat, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(currMat, currMat, cv::COLOR_BGR2GRAY);
+
+    cv::resize(prevMat, prevMat, mTargetSize);
+    cv::resize(currMat, currMat, mTargetSize);
+  }
+
   if (mConfig.OF_ROI) {
     std::vector<BoundingBox> prevResults;
     for (const BoundingBox& bbx : item.second) {
