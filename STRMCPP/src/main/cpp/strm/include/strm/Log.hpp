@@ -4,10 +4,24 @@
 #include <android/log.h>
 
 #define TAG "STRMCPP"
-#define LOGV(...)  __android_log_print(ANDROID_LOG_VERBOSE, TAG, __VA_ARGS__)
-#define LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
-#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
-#define LOGW(...)  __android_log_print(ANDROID_LOG_WARN, TAG, __VA_ARGS__)
-#define LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+
+namespace rm {
+
+extern bool LOG_INTERNAL;
+
+#define LOG(prio, ...)                             \
+  do {                                             \
+    if (LOG_INTERNAL) {                            \
+      __android_log_print(prio, TAG, __VA_ARGS__); \
+    }                                              \
+  } while (false)
+
+#define LOGV(...) LOG(ANDROID_LOG_VERBOSE, __VA_ARGS__)
+#define LOGD(...) LOG(ANDROID_LOG_DEBUG, __VA_ARGS__)
+#define LOGI(...) LOG(ANDROID_LOG_INFO, __VA_ARGS__)
+#define LOGW(...) LOG(ANDROID_LOG_WARNING, __VA_ARGS__)
+#define LOGE(...) LOG(ANDROID_LOG_ERROR, __VA_ARGS__)
+
+} // namespace rm
 
 #endif // LOG_HPP_
