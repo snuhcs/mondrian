@@ -27,23 +27,35 @@ void RoIExtractor::process(
 
   std::vector<RoI> rois;
 
-  cv::Mat prevMat = prevFrame->mat;
-  cv::Mat currMat = currFrame->mat;
 
   if (mConfig.OF_ROI || mConfig.PD_ROI) {
-    // need to experiment latency
     const time_us t0 = NowMicros();
-    cv::cvtColor(prevMat, prevMat, cv::COLOR_BGR2GRAY);
-    cv::cvtColor(currMat, currMat, cv::COLOR_BGR2GRAY);
+
+    int prevHit = 1;
+    int currHit = 1;
+
+    if (prevFrame->processedMat.empty()) {
+      prevHit = 0;
+      cv::Mat mat = prevFrame->mat;
+      cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
+      cv::resize(mat, mat, mTargetSize);
+      prevFrame->processedMat = mat;
+    }
+
+    if (currFrame->processedMat.empty()) {
+      currHit = 0;
+      cv::Mat mat = currFrame->mat;
+      cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
+      cv::resize(mat, mat, mTargetSize);
+      currFrame->processedMat = mat;
+    }
 
     const time_us t1 = NowMicros();
-    cv::resize(prevMat, prevMat, mTargetSize);
-    cv::resize(currMat, currMat, mTargetSize);
-
-    const time_us t2 = NowMicros();
-
-    LOGD("XXX: %lu %lu", t1-t0, t2-t1);
+    LOGD("XXX: %lu %d %d", t1-t0, prevHit, currHit);
   }
+
+  cv::Mat prevMat = prevFrame->processedMat;
+  cv::Mat currMat = currFrame->processedMat;
 
   if (mConfig.OF_ROI) {
     std::vector<BoundingBox> prevResults;
@@ -172,8 +184,6 @@ RoIExtractor::getBoundingBoxShifts(const cv::Mat &prevImage, const cv::Mat &curr
   const time_us t0 = NowMicros();
   const cv::Mat& prevMat = prevImage;
   const cv::Mat& currMat = currImage;
-  const time_us t1 = NowMicros();
-  const time_us t2 = NowMicros();
 
   std::vector<cv::Point2f> p0;
   std::vector<cv::Point2f> p1;
@@ -181,6 +191,8 @@ RoIExtractor::getBoundingBoxShifts(const cv::Mat &prevImage, const cv::Mat &curr
   std::vector<uchar> status;
   std::vector<float> err;
 
+  const time_us t1 = NowMicros();
+  const time_us t2 = NowMicros();
   const time_us t3 = NowMicros(); // < 50us
   std::vector<cv::Point> centroids;
   for (const Rect& bbx : boundingBoxes) {
