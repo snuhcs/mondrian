@@ -4,7 +4,7 @@
         "use_local_video": true,
         "video_configs": [
             {
-                "path": "/data/local/tmp/video/AIC_train_S01_c002.mp4",
+                "path": "/data/local/tmp/video/MTA_train_cam_2.mp4",
                 "width": 1920,
                 "height": 1080,
                 "fps": 5
