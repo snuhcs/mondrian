@@ -137,7 +137,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(const Frame *prevFrame, Frame 
   std::vector<RoI> opticalFlowRoIs;
   if (!boundingBoxes.empty()) {
     const std::vector<std::pair<int, int>>& shifts = getBoundingBoxShifts(
-            prevFrame->mat, currFrame->mat, boundingRects, targetSize, currFrame);
+            prevMat, currMat, boundingRects, targetSize, currFrame);
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
       const std::pair<int, int>& shift = shifts.at(boxIndex);
       const BoundingBox& box = boundingBoxes.at(boxIndex);
@@ -163,22 +163,16 @@ RoIExtractor::getBoundingBoxShifts(const cv::Mat &prevImage, const cv::Mat &curr
   assert(!prevImage.empty() && !currImage.empty());
 
   const time_us t0 = NowMicros();
-  cv::Mat prevMat = prevImage.clone();
-  cv::Mat currMat = currImage.clone();
+  const cv::Mat& prevMat = prevImage;
+  const cv::Mat& currMat = currImage;
+  const time_us t1 = NowMicros();
+  const time_us t2 = NowMicros();
 
   std::vector<cv::Point2f> p0;
   std::vector<cv::Point2f> p1;
 
   std::vector<uchar> status;
   std::vector<float> err;
-
-  const time_us t1 = NowMicros();
-  cv::cvtColor(prevMat, prevMat, cv::COLOR_BGR2GRAY);
-  cv::cvtColor(currMat, currMat, cv::COLOR_BGR2GRAY);
-
-  const time_us t2 = NowMicros();
-  cv::resize(prevMat, prevMat, targetSize);
-  cv::resize(currMat, currMat, targetSize);
 
   const time_us t3 = NowMicros(); // < 50us
   std::vector<cv::Point> centroids;
