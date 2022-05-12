@@ -37,16 +37,16 @@ void RoIExtractor::process(
     if (prevFrame->processedMat.empty()) {
       prevHit = 0;
       cv::Mat mat = prevFrame->mat;
-      cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
       cv::resize(mat, mat, mTargetSize);
+      cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
       prevFrame->processedMat = mat;
     }
 
     if (currFrame->processedMat.empty()) {
       currHit = 0;
       cv::Mat mat = currFrame->mat;
-      cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
       cv::resize(mat, mat, mTargetSize);
+      cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
       currFrame->processedMat = mat;
     }
 
