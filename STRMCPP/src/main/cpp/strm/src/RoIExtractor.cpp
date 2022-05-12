@@ -32,11 +32,17 @@ void RoIExtractor::process(
 
   if (mConfig.OF_ROI || mConfig.PD_ROI) {
     // need to experiment latency
+    const time_us t0 = NowMicros();
     cv::cvtColor(prevMat, prevMat, cv::COLOR_BGR2GRAY);
     cv::cvtColor(currMat, currMat, cv::COLOR_BGR2GRAY);
 
+    const time_us t1 = NowMicros();
     cv::resize(prevMat, prevMat, mTargetSize);
     cv::resize(currMat, currMat, mTargetSize);
+
+    const time_us t2 = NowMicros();
+
+    LOGD("XXX: %lu %lu", t1-t0, t2-t1);
   }
 
   if (mConfig.OF_ROI) {
@@ -56,7 +62,8 @@ void RoIExtractor::process(
   if (mConfig.PD_ROI) {
     currFrame->pixelDiffRoIProcessStartTime = NowMicros();
     std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame,
-                                                      mTargetSize, mConfig.MIN_ROI_AREA);
+                                                      mTargetSize, mConfig.MIN_ROI_AREA,
+                                                      prevMat, currMat);
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
   }
@@ -221,20 +228,16 @@ RoIExtractor::getBoundingBoxShifts(const cv::Mat &prevImage, const cv::Mat &curr
   return shifts;
 }
 
-std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame *currFrame,
-                                                const cv::Size& targetSize, const int mixRoIArea) {
+std::vector<RoI>
+RoIExtractor::getPixelDiffRoIs(const Frame *prevFrame, Frame *currFrame, const cv::Size &targetSize,
+                               const int mixRoIArea, const cv::Mat &prevImage,
+                               const cv::Mat &currImage) {
   const time_us t0 = NowMicros();
-  cv::Mat prevMat = prevFrame->mat.clone();
-  cv::Mat currMat = currFrame->mat.clone();
+  const cv::Mat& prevMat = prevImage;
+  const cv::Mat& currMat = currImage;
 
   const time_us t1 = NowMicros();
-  cv::cvtColor(prevMat, prevMat, cv::COLOR_BGR2GRAY);
-  cv::cvtColor(currMat, currMat, cv::COLOR_BGR2GRAY);
-
   const time_us t2 = NowMicros();
-  cv::resize(prevMat, prevMat, targetSize);
-  cv::resize(currMat, currMat, targetSize);
-
   const time_us t3 = NowMicros();
   cv::Mat mat = calculateDiffAndThreshold(prevMat, currMat);
 

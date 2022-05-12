@@ -71,6 +71,7 @@ struct Frame {
   const std::string key;
   const int frameIndex;
   const cv::Mat mat;
+  cv::Mat processedMat;
 
   std::atomic_bool isResultReady;
   std::vector<BoundingBox> boxes;
