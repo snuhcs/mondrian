@@ -31,6 +31,7 @@ void RoIExtractor::process(
   cv::Mat currMat = currFrame->mat;
 
   if (mConfig.OF_ROI || mConfig.PD_ROI) {
+    // need to experiment latency
     cv::cvtColor(prevMat, prevMat, cv::COLOR_BGR2GRAY);
     cv::cvtColor(currMat, currMat, cv::COLOR_BGR2GRAY);
 
@@ -47,7 +48,7 @@ void RoIExtractor::process(
     }
     currFrame->opticalFlowRoIProcessStartTime = NowMicros();
     std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame,
-                                                          prevResults, mTargetSize);
+                                                          prevResults, mTargetSize, prevMat, currMat);
     currFrame->opticalFlowRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), opticalFlowRoIs.begin(), opticalFlowRoIs.end());
     currFrame->opticalFlowRoIs = opticalFlowRoIs;
@@ -120,9 +121,10 @@ void RoIExtractor::mergeSingleFrameRoIs(std::vector<RoI>& rois, const Frame* fra
   }
 }
 
-std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
-        const Frame* prevFrame, Frame *currFrame,
-        const std::vector<BoundingBox>& boundingBoxes, const cv::Size& targetSize) {
+std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(const Frame *prevFrame, Frame *currFrame,
+                                                  const std::vector<BoundingBox> &boundingBoxes,
+                                                  const cv::Size &targetSize,
+                                                  cv::Mat &prevMat, cv::Mat &currMat) {
   int width = currFrame->mat.cols;
   int height = currFrame->mat.rows;
 
