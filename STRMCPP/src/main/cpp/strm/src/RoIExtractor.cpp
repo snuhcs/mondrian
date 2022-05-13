@@ -203,8 +203,8 @@ std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
   return shifts;
 }
 
-std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame *prevFrame, const Frame *currFrame,
-                                                const cv::Size &targetSize, const int mixRoIArea) {
+std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Frame* currFrame,
+                                                const cv::Size& targetSize, const int mixRoIArea) {
   cv::Mat mat = calculateDiffAndThreshold(prevFrame->preProcessedMat, currFrame->preProcessedMat);
   cannyEdgeDetection(mat);
 
