@@ -27,6 +27,7 @@ void RoIExtractor::process(
 
   std::vector<RoI> rois;
 
+  // Preprocess matrices
   if (mConfig.OF_ROI || mConfig.PD_ROI) {
     if (prevFrame->preProcessedMat.empty()) {
       cv::Mat mat = prevFrame->mat;
@@ -125,8 +126,8 @@ void RoIExtractor::mergeSingleFrameRoIs(std::vector<RoI>& rois, const Frame* fra
 }
 
 std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
-        const Frame *prevFrame, const Frame *currFrame,
-        const std::vector<BoundingBox> &boundingBoxes, const cv::Size &targetSize) {
+    const Frame* prevFrame, const Frame* currFrame,
+    const std::vector<BoundingBox>& boundingBoxes, const cv::Size& targetSize) {
   int width = currFrame->mat.cols;
   int height = currFrame->mat.rows;
 
@@ -139,7 +140,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
   std::vector<RoI> opticalFlowRoIs;
   if (!boundingBoxes.empty()) {
     const std::vector<std::pair<int, int>>& shifts = getBoundingBoxShifts(
-            prevFrame->preProcessedMat, currFrame->preProcessedMat, boundingRects, targetSize);
+        prevFrame->preProcessedMat, currFrame->preProcessedMat, boundingRects, targetSize);
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
       const std::pair<int, int>& shift = shifts.at(boxIndex);
       const BoundingBox& box = boundingBoxes.at(boxIndex);
@@ -159,8 +160,8 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
 }
 
 std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
-        const cv::Mat &prevImage, const cv::Mat &currImage,
-        const std::vector<Rect> &boundingBoxes, const cv::Size &targetSize) {
+    const cv::Mat& prevImage, const cv::Mat& currImage,
+    const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
   assert(!prevImage.empty() && !currImage.empty());
 
   std::vector<cv::Point2f> p0;
