@@ -57,12 +57,7 @@ void RoIExtractor::process(
   }
   if (mConfig.PD_ROI) {
     currFrame->pixelDiffRoIProcessStartTime = NowMicros();
-<<<<<<< HEAD
     std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame, mTargetSize, mConfig.MIN_ROI_AREA);
-=======
-    std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame,
-                                                      mTargetSize, mConfig.MIN_ROI_AREA);
->>>>>>> master
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
   }
