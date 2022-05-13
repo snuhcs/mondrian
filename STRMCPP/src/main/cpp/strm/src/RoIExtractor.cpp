@@ -57,7 +57,12 @@ void RoIExtractor::process(
   }
   if (mConfig.PD_ROI) {
     currFrame->pixelDiffRoIProcessStartTime = NowMicros();
+<<<<<<< HEAD
     std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame, mTargetSize, mConfig.MIN_ROI_AREA);
+=======
+    std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame,
+                                                      mTargetSize, mConfig.MIN_ROI_AREA);
+>>>>>>> master
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
   }
@@ -206,9 +211,8 @@ RoIExtractor::getBoundingBoxShifts(const cv::Mat &prevImage, const cv::Mat &curr
   return shifts;
 }
 
-std::vector<RoI>
-RoIExtractor::getPixelDiffRoIs(const Frame *prevFrame, const Frame *currFrame,
-                               const cv::Size &targetSize, const int mixRoIArea) {
+std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame *prevFrame, const Frame *currFrame,
+                                                const cv::Size &targetSize, const int mixRoIArea) {
   cv::Mat mat = calculateDiffAndThreshold(prevFrame->preProcessedMat, currFrame->preProcessedMat);
   cannyEdgeDetection(mat);
 

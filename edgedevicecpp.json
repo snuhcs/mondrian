@@ -20,7 +20,7 @@
     },
     "inference_engine": {
         "model": "YOLO_V4",
-        "runtime": "MNN",
+        "runtime": "TFLITE",
         "use_tiny": false,
         "conf_threshold": 0.1,
         "iou_threshold": 0.45,
