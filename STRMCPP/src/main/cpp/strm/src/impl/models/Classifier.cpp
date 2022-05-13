@@ -26,8 +26,7 @@ Classifier::recognizeImage(const cv::Mat& mat, int originalWidth, int originalHe
         maxConfidence = confidence;
       }
     }
-    //if (1 <= maxLabel && maxLabel <= 8 && maxConfidence > confidenceThreshold) {
-    if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
+    if (1 <= maxLabel && maxLabel <= 8 && maxConfidence > confidenceThreshold) {
       float xPos = bboxes[i * 4 + 0];
       float yPos = bboxes[i * 4 + 1];
       float w = bboxes[i * 4 + 2];

@@ -5,7 +5,7 @@
 
 #define TAG "STRMCPP"
 
-#define INTERNAL_LOG // Log internal or not
+//#define INTERNAL_LOG // Log internal or not
 
 #ifdef INTERNAL_LOG
 #define LOGV(...)  __android_log_print(ANDROID_LOG_VERBOSE, TAG, __VA_ARGS__)

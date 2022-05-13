@@ -27,35 +27,20 @@ void RoIExtractor::process(
 
   std::vector<RoI> rois;
 
-
   if (mConfig.OF_ROI || mConfig.PD_ROI) {
-    const time_us t0 = NowMicros();
-
-    int prevHit = 1;
-    int currHit = 1;
-
-    if (prevFrame->processedMat.empty()) {
-      prevHit = 0;
+    if (prevFrame->preProcessedMat.empty()) {
       cv::Mat mat = prevFrame->mat;
       cv::resize(mat, mat, mTargetSize);
       cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
-      prevFrame->processedMat = mat;
+      prevFrame->preProcessedMat = mat;
     }
-
-    if (currFrame->processedMat.empty()) {
-      currHit = 0;
+    if (currFrame->preProcessedMat.empty()) {
       cv::Mat mat = currFrame->mat;
       cv::resize(mat, mat, mTargetSize);
       cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
-      currFrame->processedMat = mat;
+      currFrame->preProcessedMat = mat;
     }
-
-    const time_us t1 = NowMicros();
-    LOGD("XXX: %lu %d %d", t1-t0, prevHit, currHit);
   }
-
-  cv::Mat prevMat = prevFrame->processedMat;
-  cv::Mat currMat = currFrame->processedMat;
 
   if (mConfig.OF_ROI) {
     std::vector<BoundingBox> prevResults;
@@ -65,17 +50,14 @@ void RoIExtractor::process(
       }
     }
     currFrame->opticalFlowRoIProcessStartTime = NowMicros();
-    std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame,
-                                                          prevResults, mTargetSize, prevMat, currMat);
+    std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame, prevResults, mTargetSize);
     currFrame->opticalFlowRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), opticalFlowRoIs.begin(), opticalFlowRoIs.end());
     currFrame->opticalFlowRoIs = opticalFlowRoIs;
   }
   if (mConfig.PD_ROI) {
     currFrame->pixelDiffRoIProcessStartTime = NowMicros();
-    std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame,
-                                                      mTargetSize, mConfig.MIN_ROI_AREA,
-                                                      prevMat, currMat);
+    std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame, mTargetSize, mConfig.MIN_ROI_AREA);
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
   }
@@ -140,10 +122,10 @@ void RoIExtractor::mergeSingleFrameRoIs(std::vector<RoI>& rois, const Frame* fra
   }
 }
 
-std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(const Frame *prevFrame, Frame *currFrame,
-                                                  const std::vector<BoundingBox> &boundingBoxes,
-                                                  const cv::Size &targetSize,
-                                                  cv::Mat &prevMat, cv::Mat &currMat) {
+std::vector<RoI>
+RoIExtractor::getOpticalFlowRoIs(const Frame *prevFrame, const Frame *currFrame,
+                                 const std::vector<BoundingBox> &boundingBoxes,
+                                 const cv::Size &targetSize) {
   int width = currFrame->mat.cols;
   int height = currFrame->mat.rows;
 
@@ -156,7 +138,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(const Frame *prevFrame, Frame 
   std::vector<RoI> opticalFlowRoIs;
   if (!boundingBoxes.empty()) {
     const std::vector<std::pair<int, int>>& shifts = getBoundingBoxShifts(
-            prevMat, currMat, boundingRects, targetSize, currFrame);
+            prevFrame->preProcessedMat, currFrame->preProcessedMat, boundingRects, targetSize);
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
       const std::pair<int, int>& shift = shifts.at(boxIndex);
       const BoundingBox& box = boundingBoxes.at(boxIndex);
@@ -178,10 +160,8 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(const Frame *prevFrame, Frame 
 std::vector<std::pair<int, int>>
 RoIExtractor::getBoundingBoxShifts(const cv::Mat &prevImage, const cv::Mat &currImage,
                                    const std::vector<Rect> &boundingBoxes,
-                                   const cv::Size &targetSize, Frame *currFrame) {
+                                   const cv::Size &targetSize) {
   assert(!prevImage.empty() && !currImage.empty());
-
-  const time_us t0 = NowMicros();
   const cv::Mat& prevMat = prevImage;
   const cv::Mat& currMat = currImage;
 
@@ -192,7 +172,6 @@ RoIExtractor::getBoundingBoxShifts(const cv::Mat &prevImage, const cv::Mat &curr
   std::vector<float> err;
 
   const time_us t1 = NowMicros();
-  const time_us t2 = NowMicros();
   const time_us t3 = NowMicros(); // < 50us
   std::vector<cv::Point> centroids;
   for (const Rect& bbx : boundingBoxes) {
@@ -204,12 +183,9 @@ RoIExtractor::getBoundingBoxShifts(const cv::Mat &prevImage, const cv::Mat &curr
     // might not work... replaces p0.fromList(centroids); p0 is Point2f,
     p0.push_back(bbxCentroidPoints);
   }
-
-  const time_us t4 = NowMicros(); // actually only calcOpticalFlowPyrLK
   cv::TermCriteria criteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
   cv::calcOpticalFlowPyrLK(prevMat, currMat, p0, p1, status, err, cv::Size(15, 15), 2, criteria);
 
-  const time_us t5 = NowMicros(); // < 50us
   uchar StatusArr[status.size()];
   std::copy(status.begin(), status.end(), StatusArr);
 
@@ -227,43 +203,20 @@ RoIExtractor::getBoundingBoxShifts(const cv::Mat &prevImage, const cv::Mat &curr
       shifts.emplace_back(0, 0);
     }
   }
-  const time_us t6 = NowMicros();
-
-  currFrame->of0 = t0;
-  currFrame->of1 = t1;
-  currFrame->of2 = t2;
-  currFrame->of3 = t3;
-  currFrame->of4 = t4;
-  currFrame->of5 = t5;
-  currFrame->of6 = t6;
-
   return shifts;
 }
 
 std::vector<RoI>
-RoIExtractor::getPixelDiffRoIs(const Frame *prevFrame, Frame *currFrame, const cv::Size &targetSize,
-                               const int mixRoIArea, const cv::Mat &prevImage,
-                               const cv::Mat &currImage) {
-  const time_us t0 = NowMicros();
-  const cv::Mat& prevMat = prevImage;
-  const cv::Mat& currMat = currImage;
-
-  const time_us t1 = NowMicros();
-  const time_us t2 = NowMicros();
-  const time_us t3 = NowMicros();
-  cv::Mat mat = calculateDiffAndThreshold(prevMat, currMat);
-
-  const time_us t4 = NowMicros();
+RoIExtractor::getPixelDiffRoIs(const Frame *prevFrame, const Frame *currFrame,
+                               const cv::Size &targetSize, const int mixRoIArea) {
+  cv::Mat mat = calculateDiffAndThreshold(prevFrame->preProcessedMat, currFrame->preProcessedMat);
   cannyEdgeDetection(mat);
 
-  const time_us t5 = NowMicros();
   std::vector<std::vector<cv::Point>> contours;
   cv::Mat hierarchy;
 
-  const time_us t6 = NowMicros();
   cv::findContours(mat, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-  const time_us t7 = NowMicros();
   // replaces get boxes from contours.
   std::vector<Rect> boxes;
   for (const std::vector<cv::Point>& contour : contours) {
@@ -279,25 +232,11 @@ RoIExtractor::getPixelDiffRoIs(const Frame *prevFrame, Frame *currFrame, const c
     }
   }
 
-  const time_us t8 = NowMicros();
   std::vector<RoI> rois;
   rois.reserve(boxes.size());
   for (Rect& box : boxes) {
     rois.emplace_back(currFrame, box, RoI::PD, "");
   }
-
-  const time_us t9 = NowMicros();
-
-  currFrame->pd0 = t0;
-  currFrame->pd1 = t1;
-  currFrame->pd2 = t2;
-  currFrame->pd3 = t3;
-  currFrame->pd4 = t4;
-  currFrame->pd5 = t5;
-  currFrame->pd6 = t6;
-  currFrame->pd7 = t7;
-  currFrame->pd8 = t8;
-  currFrame->pd9 = t9;
   return rois;
 }
 

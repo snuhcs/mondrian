@@ -22,20 +22,17 @@ class RoIExtractor {
   static void mergeSingleFrameRoIs(std::vector<RoI>& rois, const Frame* frame,
                                    const float mergeThreshold, const int maxMergedRoISize);
 
-  static std::vector<RoI> getOpticalFlowRoIs(const Frame *prevFrame, Frame *currFrame,
-                                             const std::vector<BoundingBox> &boundingBoxes,
-                                             const cv::Size &targetSize,
-                                             cv::Mat &prevMat, cv::Mat &currMat);
+  static std::vector<RoI> getOpticalFlowRoIs(
+    const Frame* prevFrame, const Frame* currFrame,
+    const std::vector<BoundingBox>& boundingBoxes, const cv::Size& targetSize);
 
-  static std::vector<std::pair<int, int>>
-  getBoundingBoxShifts(const cv::Mat &prevImage, const cv::Mat &currImage,
-                       const std::vector<Rect> &boundingBoxes,
-                       const cv::Size &targetSize, Frame *currFrame);
+  static std::vector<std::pair<int, int>> getBoundingBoxShifts(
+    const cv::Mat& prevImage, const cv::Mat& currImage,
+    const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize);
 
-  static std::vector<RoI>
-  getPixelDiffRoIs(const Frame *prevFrame, Frame *currFrame, const cv::Size &targetSize,
-                   const int mixRoIArea, const cv::Mat &prevImage,
-                   const cv::Mat &currImage);
+  static std::vector<RoI> getPixelDiffRoIs(
+      const Frame* prevFrame, const Frame* currFrame, const cv::Size& targetSize,
+      const int mixRoIArea);
 
   static cv::Mat calculateDiffAndThreshold(
       const cv::Mat& prevMat, const cv::Mat& currMat);
