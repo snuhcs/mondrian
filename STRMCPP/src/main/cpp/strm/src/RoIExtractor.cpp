@@ -26,6 +26,23 @@ void RoIExtractor::process(
        currFrame->key.c_str(), currFrame->frameIndex, (int) item.second.size());
 
   std::vector<RoI> rois;
+
+  // Preprocess matrices
+  if (mConfig.OF_ROI || mConfig.PD_ROI) {
+    if (prevFrame->preProcessedMat.empty()) {
+      cv::Mat mat = prevFrame->mat;
+      cv::resize(mat, mat, mTargetSize);
+      cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
+      prevFrame->preProcessedMat = mat;
+    }
+    if (currFrame->preProcessedMat.empty()) {
+      cv::Mat mat = currFrame->mat;
+      cv::resize(mat, mat, mTargetSize);
+      cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
+      currFrame->preProcessedMat = mat;
+    }
+  }
+
   if (mConfig.OF_ROI) {
     std::vector<BoundingBox> prevResults;
     for (const BoundingBox& bbx : item.second) {
@@ -123,7 +140,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
   std::vector<RoI> opticalFlowRoIs;
   if (!boundingBoxes.empty()) {
     const std::vector<std::pair<int, int>>& shifts = getBoundingBoxShifts(
-        prevFrame->mat, currFrame->mat, boundingRects, targetSize);
+        prevFrame, currFrame, boundingRects, targetSize);
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
       const std::pair<int, int>& shift = shifts.at(boxIndex);
       const BoundingBox& box = boundingBoxes.at(boxIndex);
@@ -143,11 +160,12 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
 }
 
 std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
-    const cv::Mat& prevImage, const cv::Mat& currImage,
+    const Frame* prevFrame, const Frame* currFrame,
     const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
-  assert(!prevImage.empty() && !currImage.empty());
-  cv::Mat prevMat = prevImage.clone();
-  cv::Mat currMat = currImage.clone();
+  assert(!prevFrame->preProcessedMat.empty() && !currFrame->preProcessedMat.empty());
+
+  const cv::Mat& prevImage = prevFrame->preProcessedMat;
+  const cv::Mat& currImage = currFrame->preProcessedMat;
 
   std::vector<cv::Point2f> p0;
   std::vector<cv::Point2f> p1;
@@ -155,24 +173,18 @@ std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
   std::vector<uchar> status;
   std::vector<float> err;
 
-  cv::cvtColor(prevMat, prevMat, cv::COLOR_BGR2GRAY);
-  cv::cvtColor(currMat, currMat, cv::COLOR_BGR2GRAY);
-
-  cv::resize(prevMat, prevMat, targetSize);
-  cv::resize(currMat, currMat, targetSize);
-
   std::vector<cv::Point> centroids;
   for (const Rect& bbx : boundingBoxes) {
     int bbxCenterX = bbx.left + bbx.width() / 2;
     int bbxCenterY = bbx.top + bbx.height() / 2;
-    cv::Point bbxCentroidPoints(bbxCenterX * targetSize.width / currImage.cols,
-                                bbxCenterY * targetSize.height / currImage.rows);
+    cv::Point bbxCentroidPoints(bbxCenterX * targetSize.width / currFrame->mat.cols,
+                                bbxCenterY * targetSize.height / currFrame->mat.rows);
     centroids.push_back(bbxCentroidPoints);
     // might not work... replaces p0.fromList(centroids); p0 is Point2f,
     p0.push_back(bbxCentroidPoints);
   }
   cv::TermCriteria criteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
-  cv::calcOpticalFlowPyrLK(prevMat, currMat, p0, p1, status, err, cv::Size(15, 15), 2, criteria);
+  cv::calcOpticalFlowPyrLK(prevImage, currImage, p0, p1, status, err, cv::Size(15, 15), 2, criteria);
 
   uchar StatusArr[status.size()];
   std::copy(status.begin(), status.end(), StatusArr);
@@ -184,9 +196,9 @@ std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
   for (int pointIdx = 0; pointIdx < centroids.size(); pointIdx++) {
     if (StatusArr[pointIdx] == 1) {
       shifts.emplace_back((int) ((p1Arr[pointIdx].x - centroids.at(pointIdx).x)
-                                 * currImage.cols / targetSize.width),
+                                 * currFrame->mat.cols / targetSize.width),
                           (int) ((p1Arr[pointIdx].y - centroids.at(pointIdx).y)
-                                 * currImage.rows / targetSize.height));
+                                 * currFrame->mat.rows / targetSize.height));
     } else {
       shifts.emplace_back(0, 0);
     }
@@ -196,16 +208,7 @@ std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
 
 std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Frame* currFrame,
                                                 const cv::Size& targetSize, const int mixRoIArea) {
-  cv::Mat prevMat = prevFrame->mat.clone();
-  cv::Mat currMat = currFrame->mat.clone();
-
-  cv::cvtColor(prevMat, prevMat, cv::COLOR_BGR2GRAY);
-  cv::cvtColor(currMat, currMat, cv::COLOR_BGR2GRAY);
-
-  cv::resize(prevMat, prevMat, targetSize);
-  cv::resize(currMat, currMat, targetSize);
-
-  cv::Mat mat = calculateDiffAndThreshold(prevMat, currMat);
+  cv::Mat mat = calculateDiffAndThreshold(prevFrame->preProcessedMat, currFrame->preProcessedMat);
   cannyEdgeDetection(mat);
 
   std::vector<std::vector<cv::Point>> contours;
