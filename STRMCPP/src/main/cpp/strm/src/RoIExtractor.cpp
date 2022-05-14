@@ -160,8 +160,8 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
 }
 
 std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
-    const Frame *prevFrame, const Frame *currFrame,
-    const std::vector<Rect> &boundingBoxes, const cv::Size &targetSize) {
+    const Frame* prevFrame, const Frame* currFrame,
+    const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
   assert(!prevFrame->preProcessedMat.empty() && !currFrame->preProcessedMat.empty());
 
   const cv::Mat& prevImage = prevFrame->preProcessedMat;
