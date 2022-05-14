@@ -140,7 +140,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
   std::vector<RoI> opticalFlowRoIs;
   if (!boundingBoxes.empty()) {
     const std::vector<std::pair<int, int>>& shifts = getBoundingBoxShifts(
-        prevFrame->preProcessedMat, currFrame->preProcessedMat, boundingRects, targetSize);
+            prevFrame, currFrame, boundingRects, targetSize);
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
       const std::pair<int, int>& shift = shifts.at(boxIndex);
       const BoundingBox& box = boundingBoxes.at(boxIndex);
@@ -160,9 +160,12 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
 }
 
 std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
-    const cv::Mat& prevImage, const cv::Mat& currImage,
-    const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
-  assert(!prevImage.empty() && !currImage.empty());
+    const Frame *prevFrame, const Frame *currFrame,
+    const std::vector<Rect> &boundingBoxes, const cv::Size &targetSize) {
+  assert(!prevFrame->preProcessedMat.empty() && !currFrame->preProcessedMat.empty());
+
+  const cv::Mat& prevImage = prevFrame->preProcessedMat;
+  const cv::Mat& currImage = currFrame->preProcessedMat;
 
   std::vector<cv::Point2f> p0;
   std::vector<cv::Point2f> p1;
@@ -174,8 +177,8 @@ std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
   for (const Rect& bbx : boundingBoxes) {
     int bbxCenterX = bbx.left + bbx.width() / 2;
     int bbxCenterY = bbx.top + bbx.height() / 2;
-    cv::Point bbxCentroidPoints(bbxCenterX * targetSize.width / currImage.cols,
-                                bbxCenterY * targetSize.height / currImage.rows);
+    cv::Point bbxCentroidPoints(bbxCenterX * targetSize.width / currFrame->mat.cols,
+                                bbxCenterY * targetSize.height / currFrame->mat.rows);
     centroids.push_back(bbxCentroidPoints);
     // might not work... replaces p0.fromList(centroids); p0 is Point2f,
     p0.push_back(bbxCentroidPoints);
@@ -193,9 +196,9 @@ std::vector<std::pair<int, int>> RoIExtractor::getBoundingBoxShifts(
   for (int pointIdx = 0; pointIdx < centroids.size(); pointIdx++) {
     if (StatusArr[pointIdx] == 1) {
       shifts.emplace_back((int) ((p1Arr[pointIdx].x - centroids.at(pointIdx).x)
-                                 * currImage.cols / targetSize.width),
+                                 * currFrame->mat.cols / targetSize.width),
                           (int) ((p1Arr[pointIdx].y - centroids.at(pointIdx).y)
-                                 * currImage.rows / targetSize.height));
+                                 * currFrame->mat.rows / targetSize.height));
     } else {
       shifts.emplace_back(0, 0);
     }
