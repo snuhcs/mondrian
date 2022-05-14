@@ -140,7 +140,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
   std::vector<RoI> opticalFlowRoIs;
   if (!boundingBoxes.empty()) {
     const std::vector<std::pair<int, int>>& shifts = getBoundingBoxShifts(
-            prevFrame, currFrame, boundingRects, targetSize);
+        prevFrame, currFrame, boundingRects, targetSize);
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
       const std::pair<int, int>& shift = shifts.at(boxIndex);
       const BoundingBox& box = boundingBoxes.at(boxIndex);
