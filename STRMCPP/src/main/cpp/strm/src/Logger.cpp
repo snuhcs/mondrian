@@ -2,10 +2,24 @@
 
 #include <utility>
 
+#include "strm/Log.hpp"
+
 namespace rm {
 
-Logger::Logger(const char* logPath)
-: logFile(logPath, std::ofstream::app), baseTime(NowMicros()) {}
+Logger::Logger(const char* logPath) : baseTime(NowMicros()) {
+  if (std::remove(logPath) == 0) {
+    LOGD("Logger %s remove success", logPath);
+  } else {
+    LOGE("Logger %s remove failed", logPath);
+  }
+
+  logFile = std::ofstream(logPath, std::ofstream::app);
+  if (logFile.is_open()) {
+    LOGD("Logger %s create success", logPath);
+  } else {
+    LOGE("Logger %s create failed", logPath);
+  }
+}
 
 void Logger::logHeader() {
   if (!logFile.is_open()) {
