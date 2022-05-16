@@ -76,8 +76,10 @@ std::pair<float*, float*> TfLiteYoloV4Classifier::inference(const cv::Mat& mat) 
   inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   LOGV("YoloV4 Inference %lld ms", inferenceTimeMs);
 
-  auto* bboxes = interpreter->typed_tensor<float>(outputs[1]);
-  auto* confidences = interpreter->typed_tensor<float>(outputs[0]);
+  bool is_bbox_first =
+      interpreter->tensor(outputs[0])->bytes < interpreter->tensor(outputs[1])->bytes;
+  auto* bboxes = interpreter->typed_tensor<float>(outputs[is_bbox_first ? 0 : 1]);
+  auto* confidences = interpreter->typed_tensor<float>(outputs[is_bbox_first ? 1 : 0]);
   return std::make_pair(bboxes, confidences);
 }
 
