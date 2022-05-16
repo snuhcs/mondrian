@@ -14,6 +14,7 @@ import android.widget.TextView;
 import org.json.JSONException;
 import org.webrtc.SurfaceViewRenderer;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
@@ -57,6 +58,14 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
             mConfig = new Config(CONFIG_FILEPATH);
 
             if (mConfig.LOG_PATH != null) {
+                File file = new File(mConfig.LOG_PATH);
+                if (file.exists()) {
+                    if (file.delete()) {
+                        Log.d(TAG, mConfig.LOG_PATH + " deleted");
+                    } else {
+                        Log.e(TAG, mConfig.LOG_PATH + " deletion failed");
+                    }
+                }
                 mLogWriter = new FileWriter(mConfig.LOG_PATH);
             }
 
