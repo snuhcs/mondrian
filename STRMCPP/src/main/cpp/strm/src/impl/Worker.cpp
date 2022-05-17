@@ -34,9 +34,13 @@ void Worker::Work() {
 }
 
 cv::Mat Worker::preprocess(const cv::Mat& mat, const cv::Size& size) {
-  cv::Mat preprocessedMat = mat.clone();
-  cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
-  cv::resize(preprocessedMat, preprocessedMat, size);
+  cv::Mat preprocessedMat;
+  if (mat.cols != size.width || mat.rows != size.height) {
+    cv::resize(mat, preprocessedMat, size);
+    cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
+  } else {
+    cv::cvtColor(mat, preprocessedMat, CV_BGRA2RGB);
+  }
   preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
   return preprocessedMat;
 }
