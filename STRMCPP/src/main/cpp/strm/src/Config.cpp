@@ -99,8 +99,8 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
     return strmConfig;
   }
   LOGD("STRMConfig : %s", json.toStyledString().c_str());
-  if (!json["internal_log"].isNull()) {
-    LOG_INTERNAL = json["internal_log"].asBool();
+  if (!json["log_internal"].isNull()) {
+    LOG_INTERNAL = json["log_internal"].asBool();
   }
   if (!json["dispatcher"].isNull()) {
     strmConfig.dispatcherConfig = parseDispatcherConfig(json["dispatcher"]);
