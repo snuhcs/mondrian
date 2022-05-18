@@ -20,7 +20,6 @@ import org.webrtc.YuvConverter;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -46,20 +45,22 @@ public class VideoSource extends CustomCapturer implements Runnable {
 
     private final SpatioTemporalRoIMixer strm;
 
-    private final Thread drawThread;
+    private final Thread resultThread;
     private final ResultCallback mResultCallback;
+    private final boolean DRAW;
     private final float DRAW_CONFIDENCE;
 
-    VideoSource(SourceConfig.VideoConfig config, SpatioTemporalRoIMixer strm, ResultCallback resultCallback, float drawConfidence) {
+    VideoSource(SourceConfig.VideoConfig config, SpatioTemporalRoIMixer strm, ResultCallback resultCallback, boolean draw, float drawConfidence) {
         VIDEO_PATH = config.PATH;
+        DRAW = draw;
         DRAW_CONFIDENCE = drawConfidence;
         mResultCallback = resultCallback;
         this.strm = strm;
         retriever.setDataSource(VIDEO_PATH);
 
         Log.d(TAG, "Start drawThread");
-        drawThread = new Thread(this);
-        drawThread.start();
+        resultThread = new Thread(this);
+        resultThread.start();
     }
 
     @Override
@@ -68,11 +69,13 @@ public class VideoSource extends CustomCapturer implements Runnable {
             while (true) {
                 int frameIndex = frameIndices.take();
                 List<BoundingBox> results = strm.getResults(VIDEO_PATH, frameIndex);
-                Bitmap bitmap = frames.remove(frameIndex);
                 mResultCallback.log(VIDEO_PATH, frameIndex, results);
-                mResultCallback.drawObjectDetectionResult(drawBoxes(
-                        bitmap, results, DRAW_CONFIDENCE));
-                Thread.sleep(50);
+                if (DRAW) {
+                    Bitmap bitmap = frames.remove(frameIndex);
+                    mResultCallback.drawObjectDetectionResult(drawBoxes(
+                            bitmap, results, DRAW_CONFIDENCE));
+                    Thread.sleep(50);
+                }
             }
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
@@ -98,23 +101,27 @@ public class VideoSource extends CustomCapturer implements Runnable {
                 Log.v(TAG, VIDEO_PATH + " " + frameIndex + " loaded");
                 Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
-                surTexture.getHandler().post(() -> {
-                    GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-                    GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
-                    GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+                if (DRAW) {
+                    surTexture.getHandler().post(() -> {
+                        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+                        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+                        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
-                    VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
+                        VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
 
-                    long frameTime = System.nanoTime() - startTimeNs;
-                    VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
-                    capturerObs.onFrameCaptured(videoFrame);
-                    i420Buf.release();
-                });
+                        long frameTime = System.nanoTime() - startTimeNs;
+                        VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
+                        capturerObs.onFrameCaptured(videoFrame);
+                        i420Buf.release();
+                    });
+                }
 
                 Mat mat = new Mat();
                 Utils.bitmapToMat(bitmap, mat);
                 int index = strm.enqueueImage(VIDEO_PATH, mat);
-                frames.put(index, bitmap);
+                if (DRAW) {
+                    frames.put(index, bitmap);
+                }
                 try {
                     frameIndices.put(index);
                 } catch (InterruptedException e) {
@@ -153,8 +160,8 @@ public class VideoSource extends CustomCapturer implements Runnable {
         try {
             captureThread.interrupt();
             captureThread.join();
-            drawThread.interrupt();
-            drawThread.join();
+            resultThread.interrupt();
+            resultThread.join();
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
