@@ -46,7 +46,7 @@ void PatchReconstructor::process(MixedFrame& mixedFrame) {
   }
   time_us reconstructStartTime = NowMicros();
   if (isMixedInference) {
-    updateMixedFrameInferenceResults(mixedFrame, mConfig.MATCH_PADDING, mConfig.OVERLAP_THRESHOLD);
+    updateMixedFrameInferenceResults(mixedFrame, mConfig.OVERLAP_THRESHOLD);
   } else {
     updateRoIInferenceResults(mixedFrame);
   }
@@ -60,7 +60,7 @@ void PatchReconstructor::process(MixedFrame& mixedFrame) {
   }
 }
 
-void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame, int matchPadding,
+void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame,
                                                           float overlapThreshold) {
   for (const BoundingBox& box : mixedFrame.boxes) {
     float maxOverlap = -1;
@@ -69,11 +69,6 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
     for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
       for (RoI& roi : frame->rois) {
         if (roi.isPacked()) {
-          Rect paddedRoIPos(
-              std::max(0, roi.location.left - matchPadding),
-              std::max(0, roi.location.top - matchPadding),
-              std::min(roi.frame->mat.cols, roi.location.right + matchPadding),
-              std::min(roi.frame->mat.rows, roi.location.bottom + matchPadding));
           Rect movedAndResizedBoxPos(
               std::max(0,
                        (int) ((float) (box.location.left - roi.packedLocation.first) / roi.scale) +
@@ -87,7 +82,7 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
               std::min(roi.frame->mat.rows,
                        (int) ((float) (box.location.bottom - roi.packedLocation.second) /
                               roi.scale) + roi.location.top));
-          int intersection = paddedRoIPos.intersection(movedAndResizedBoxPos);
+          int intersection = roi.location.intersection(movedAndResizedBoxPos);
           float overlapRatio = (float) intersection / (float) movedAndResizedBoxPos.area();
           if (maxOverlap < overlapRatio) {
             maxOverlap = overlapRatio;
@@ -97,7 +92,7 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
         }
       }
     }
-    if (maxFrame != nullptr && maxOverlap > overlapThreshold) {
+    if (maxFrame != nullptr && maxOverlap >= overlapThreshold) {
       maxFrame->boxes.emplace_back(maxBoxPos, box.confidence, box.labelName);
     }
   }

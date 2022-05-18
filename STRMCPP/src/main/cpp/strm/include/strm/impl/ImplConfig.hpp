@@ -9,7 +9,7 @@ namespace rm {
 
 struct ResizeProfileConfig {
   bool FIT_RESIZE = false;
-  bool MERGED_RESIZE = false;
+  bool MERGED_RESIZE = true;
   int PERSON_THRESHOLD = 160;
   int CLASS_AGNOSTIC_THRESHOLD = 160;
 };
@@ -19,7 +19,7 @@ struct InferenceEngineConfig {
   std::string RUNTIME = "TFLITE";
   bool USE_TINY = false;
   float CONF_THRESHOLD = 0.1;
-  float IOU_THRESHOLD = 0.45;
+  float IOU_THRESHOLD = 0.5;
   int NUM_WORKERS = 1;
   int INPUT_SIZE = 800;
   int FULL_FRAME_INPUT_SIZE = 800;

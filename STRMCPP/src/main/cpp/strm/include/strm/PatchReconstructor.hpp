@@ -24,8 +24,7 @@ class PatchReconstructor {
  private:
   void process(MixedFrame& item);
   MixedFrame takeItem();
-  static void updateMixedFrameInferenceResults(
-      MixedFrame& mixedFrame, int matchPadding, float overlapThreshold);
+  static void updateMixedFrameInferenceResults(MixedFrame& mixedFrame, float overlapThreshold);
   static void updateRoIInferenceResults(MixedFrame& mixedFrame);
 
   PatchReconstructorConfig mConfig;

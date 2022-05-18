@@ -19,8 +19,8 @@ struct RoIExtractorConfig {
   int EXTRACTION_RESIZE_WIDTH = 640;
   int EXTRACTION_RESIZE_HEIGHT = 360;
   int MIN_ROI_AREA = 5000;
-  float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1f;
-  float MERGE_THRESHOLD = 0.5f;
+  float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
+  float MERGE_THRESHOLD = 0.5;
   int MAX_MERGED_ROI_SIZE = 800;
   bool OF_ROI = true;
   bool PD_ROI = true;
@@ -36,9 +36,8 @@ struct PatchMixerConfig {
 
 struct PatchReconstructorConfig {
   int MAX_QUEUE_SIZE = 2;
-  int MATCH_PADDING = 40;
-  float FRAME_BOXES_IOU_THRESHOLD = 0.45f;
-  float OVERLAP_THRESHOLD = 0.5f;
+  float FRAME_BOXES_IOU_THRESHOLD = 0.5;
+  float OVERLAP_THRESHOLD = 0.8;
 };
 
 struct STRMConfig {

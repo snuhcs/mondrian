@@ -6,7 +6,7 @@
 
 namespace rm {
 
-bool LOG_INTERNAL = true;
+bool LOG_INTERNAL = false;
 
 DispatcherConfig parseDispatcherConfig(const Json::Value& json) {
   DispatcherConfig config;
@@ -75,9 +75,6 @@ PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) 
   PatchReconstructorConfig config;
   if (!json["max_queue_size"].isNull()) {
     config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
-  }
-  if (!json["match_padding"].isNull()) {
-    config.MATCH_PADDING = json["match_padding"].asInt();
   }
   if (!json["frame_boxes_iou_threshold"].isNull()) {
     config.FRAME_BOXES_IOU_THRESHOLD = json["frame_boxes_iou_threshold"].asFloat();
