@@ -88,10 +88,10 @@ struct Frame {
   time_us opticalFlowRoIProcessEndTime = 0;
   time_us pixelDiffRoIProcessStartTime = 0;
   time_us pixelDiffRoIProcessEndTime = 0;
-  time_us mergeRoIStartTime = 0;
-  time_us mergeRoIEndTime = 0;
   time_us resizeRoIStartTime = 0;
   time_us resizeRoIEndTime = 0;
+  time_us mergeRoIStartTime = 0;
+  time_us mergeRoIEndTime = 0;
   time_us mixingStartTime = 0;
   time_us mixingEndTime = 0;
   time_us mixedFrameCreateStartTime = 0;
@@ -122,7 +122,6 @@ struct RoI {
   Type type;
   std::string labelName;
 
-  int minOriginLength;
   float scale;
   std::pair<int, int> packedLocation;
 
@@ -130,15 +129,13 @@ struct RoI {
   std::vector<BoundingBox> boxes;
 
   RoI(const Frame* frame, const Rect location, const Type type, const std::string labelName)
-      : frame(frame), location(location), type(type), labelName(labelName),
-        minOriginLength(-1), scale(1), packedLocation(std::make_pair(-1, -1)),
-        handle(-1) {};
+      : frame(frame), location(location), type(type), labelName(labelName), scale(1),
+        packedLocation(std::make_pair(-1, -1)), handle(-1) {};
 
   RoI(const Frame* frame, const Rect location, const Type type, const std::string labelName,
-      const int minOriginLength)
-      : frame(frame), location(location), type(type), labelName(labelName),
-        minOriginLength(minOriginLength), scale(1), packedLocation(std::make_pair(-1, -1)),
-        handle(-1) {};
+      const float scale)
+      : frame(frame), location(location), type(type), labelName(labelName), scale(scale),
+        packedLocation(std::make_pair(-1, -1)), handle(-1) {};
 
   bool isPacked() const {
     return packedLocation.first >= 0 && packedLocation.second >= 0;

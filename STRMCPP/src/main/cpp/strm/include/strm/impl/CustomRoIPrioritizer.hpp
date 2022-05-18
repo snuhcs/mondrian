@@ -7,7 +7,7 @@ namespace rm {
 
 class CustomRoIPrioritizer : public RoIPrioritizer {
  public:
-  bool priority(const RoI& roi) const {
+  int priority(const RoI& roi) const {
     return roi.location.area();
   }
 };

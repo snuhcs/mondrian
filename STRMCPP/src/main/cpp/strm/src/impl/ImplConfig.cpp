@@ -11,9 +11,6 @@ ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json) {
   if (!json["fit_resize"].isNull()) {
     config.FIT_RESIZE = json["fit_resize"].asBool();
   }
-  if (!json["merged_resize"].isNull()) {
-    config.MERGED_RESIZE = json["merged_resize"].asBool();
-  }
   if (!json["person_threshold"].isNull()) {
     config.PERSON_THRESHOLD = json["person_threshold"].asInt();
   }

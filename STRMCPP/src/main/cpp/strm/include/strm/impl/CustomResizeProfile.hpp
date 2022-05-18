@@ -11,10 +11,9 @@ class CustomResizeProfile : public ResizeProfile {
   CustomResizeProfile(const ResizeProfileConfig& config)
   : mConfig(config) {}
 
-  float getScale(const std::string& labelName,
-                 int width, int height, int minOriginLength) const {
+  float getScale(const std::string& labelName, int width, int height) const {
     int lengthThreshold = labelName == "person" ? mConfig.PERSON_THRESHOLD : mConfig.CLASS_AGNOSTIC_THRESHOLD;
-    int maxWidthHeight = mConfig.MERGED_RESIZE ? minOriginLength : std::max(width, height);
+    int maxWidthHeight = std::max(width, height);
     if (mConfig.FIT_RESIZE || maxWidthHeight > lengthThreshold) {
       return (float) lengthThreshold / maxWidthHeight;
     }

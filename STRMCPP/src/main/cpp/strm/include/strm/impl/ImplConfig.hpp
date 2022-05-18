@@ -9,7 +9,6 @@ namespace rm {
 
 struct ResizeProfileConfig {
   bool FIT_RESIZE = false;
-  bool MERGED_RESIZE = true;
   int PERSON_THRESHOLD = 160;
   int CLASS_AGNOSTIC_THRESHOLD = 160;
 };

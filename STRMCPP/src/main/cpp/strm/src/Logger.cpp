@@ -39,10 +39,10 @@ void Logger::logHeader() {
           << "opticalFlowRoIProcessEndTime" << delim
           << "pixelDiffRoIProcessStartTime" << delim
           << "pixelDiffRoIProcessEndTime" << delim
-          << "mergeRoIStartTime" << delim
-          << "mergeRoIEndTime" << delim
           << "resizeRoIStartTime" << delim
           << "resizeRoIEndTime" << delim
+          << "mergeRoIStartTime" << delim
+          << "mergeRoIEndTime" << delim
           << "mixingStartTime" << delim
           << "mixingEndTime" << delim
           << "mixedFrameCreateStartTime" << delim
