@@ -64,6 +64,7 @@ std::vector<RoI> RoIExtractor::process(Frame* prevFrame, Frame* currFrame,
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
     rois.insert(rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
   }
+  prevFrame->preProcessedMat.release();
 
   currFrame->resizeRoIStartTime = NowMicros();
   for (auto& roi : rois) {

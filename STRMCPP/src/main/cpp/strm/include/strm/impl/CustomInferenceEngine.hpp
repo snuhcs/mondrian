@@ -4,6 +4,7 @@
 #include <map>
 #include <queue>
 
+#include "strm/impl/models/Classifier.hpp"
 #include "strm/InferenceEngine.hpp"
 #include "strm/impl/ImplConfig.hpp"
 
@@ -27,6 +28,8 @@ class CustomInferenceEngine : public InferenceEngine {
 
  private:
   std::vector<std::unique_ptr<Worker>> workers;
+  std::vector<std::unique_ptr<Classifier>> classifiers;
+  std::vector<std::unique_ptr<Classifier>> fullClassifiers;
 
   int mHandle;
   std::queue<std::tuple<int, const cv::Mat, bool>> inputs;

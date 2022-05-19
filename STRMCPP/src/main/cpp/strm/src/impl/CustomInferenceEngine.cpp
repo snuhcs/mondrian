@@ -11,13 +11,31 @@ CustomInferenceEngine::CustomInferenceEngine(const InferenceEngineConfig& config
   LOGD("CppInferenceEngine::CppInferenceEngine()");
   for (int i = 0; i < config.NUM_WORKERS; i++) {
     if (config.RUNTIME == "MNN") {
-      workers.push_back(std::make_unique<Worker>(
-          this, std::make_unique<MnnYoloV4Classifier>(config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY),
-          std::make_unique<MnnYoloV4Classifier>(config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY)));
+      std::unique_ptr<Classifier> classifer = std::make_unique<MnnYoloV4Classifier>(
+          config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+      if (config.INPUT_SIZE != config.FULL_FRAME_INPUT_SIZE) {
+        std::unique_ptr<Classifier> fullClassifer = std::make_unique<MnnYoloV4Classifier>(
+            config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+        workers.push_back(std::make_unique<Worker>(this, classifer.get(), fullClassifer.get()));
+        classifiers.push_back(std::move(classifer));
+        fullClassifiers.push_back(std::move(fullClassifer));
+      } else {
+        workers.push_back(std::make_unique<Worker>(this, classifer.get(), classifer.get()));
+        classifiers.push_back(std::move(classifer));
+      }
     } else if (config.RUNTIME == "TFLITE") {
-      workers.push_back(std::make_unique<Worker>(
-          this, std::make_unique<TfLiteYoloV4Classifier>(config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY),
-          std::make_unique<TfLiteYoloV4Classifier>(config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY)));
+      std::unique_ptr<Classifier> classifer = std::make_unique<TfLiteYoloV4Classifier>(
+          config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+      if (config.INPUT_SIZE != config.FULL_FRAME_INPUT_SIZE) {
+        std::unique_ptr<Classifier> fullClassifer = std::make_unique<TfLiteYoloV4Classifier>(
+            config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+        workers.push_back(std::make_unique<Worker>(this, classifer.get(), fullClassifer.get()));
+        classifiers.push_back(std::move(classifer));
+        fullClassifiers.push_back(std::move(fullClassifer));
+      } else {
+        workers.push_back(std::make_unique<Worker>(this, classifer.get(), classifer.get()));
+        classifiers.push_back(std::move(classifer));
+      }
     }
   }
 }

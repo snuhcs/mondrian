@@ -1,6 +1,6 @@
 {
     "log_path": "/data/data/hcs.offloading.edgedevicecpp/test.log",
-    "draw": false,
+    "draw": true,
     "source": {
         "use_local_video": true,
         "video_configs": [
@@ -29,10 +29,10 @@
         "model": "YOLO_V4",
         "runtime": "TFLITE",
         "use_tiny": false,
-        "conf_threshold": 0.1,
+        "conf_threshold": 0.8,
         "iou_threshold": 0.5,
         "num_workers": 1,
-        "input_size": 800,
-        "full_frame_input_size": 800
+        "input_size": 640,
+        "full_frame_input_size": 640
     }
 }
