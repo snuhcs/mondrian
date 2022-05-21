@@ -27,7 +27,6 @@ void Worker::Work() {
   cv::Mat preprocessedMat = preprocess(mat, isFull ? fullTargetSize : targetSize);
   std::vector<BoundingBox> boxes = (isFull ? fullClassifier : classifier)->recognizeImage(
       preprocessedMat, originalWidth, originalHeight);
-  LOGD("Boxes: %lu", boxes.size());
   engine->enqueueResults(handle, boxes);
 }
 

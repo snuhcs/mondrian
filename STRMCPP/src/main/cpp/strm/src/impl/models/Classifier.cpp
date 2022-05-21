@@ -13,29 +13,31 @@ Classifier::Classifier(const int numLabels, const int inputSize, const int outpu
 
 std::vector<BoundingBox>
 Classifier::recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight) {
-  auto outputs = inference(mat).first;  // OUTPUT_WIDTH * (xywh, conf, cls confs) => 85
+  auto[bboxes, confidences] = inference(mat);
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
     float maxConfidence = 0;
     int maxLabel = -1;
     for (int label = 0; label < numLabels; label++) {
-      float confidence = outputs[i * (5 + numLabels) + 5 + label];
+      float confidence = confidences[i * numLabels + label];
       if (maxConfidence < confidence) {
         maxLabel = label;
         maxConfidence = confidence;
       }
     }
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
-      float xPos = outputs[i * 85 + 0];
-      float yPos = outputs[i * 85 + 1];
-      float w = outputs[i * 85 + 2];
-      float h = outputs[i * 85 + 3];
+      float xPos = bboxes[i * 4 + 0];
+      float yPos = bboxes[i * 4 + 1];
+      float w = bboxes[i * 4 + 2];
+      float h = bboxes[i * 4 + 3];
       detections.emplace_back(Rect(
-          std::max(0, (int) ((xPos - w / 2) * (float) originalWidth)),
-          std::max(0, (int) ((yPos - h / 2) * (float) originalHeight)),
-          std::min(originalWidth, (int) ((xPos + w / 2) * (float) originalWidth)),
-          std::min(originalHeight, (int) ((yPos + h / 2) * (float) originalHeight))),
+          std::max(0, (int) ((xPos - w / 2) * (float) originalWidth / (float) inputSize)),
+          std::max(0, (int) ((yPos - h / 2) * (float) originalHeight / (float) inputSize)),
+          std::min(originalWidth,
+                   (int) ((xPos + w / 2) * (float) originalWidth / (float) inputSize)),
+          std::min(originalHeight,
+                   (int) ((yPos + h / 2) * (float) originalHeight / (float) inputSize))),
                               maxConfidence, "person");
     }
   }

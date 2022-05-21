@@ -15,12 +15,16 @@ namespace rm {
 
 TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceThreshold,
                                                float iouThreshold, bool isTiny)
-    : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
+    : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
                  confidenceThreshold, iouThreshold) {
   LOGD("YoloV4 TfLiteYoloV4Classifier::TfLiteYoloV4Classifier()");
-  std::string filepath = "/data/local/tmp/models/yolov5m-";
-  filepath += (isTiny ? "tiny-" : "") + std::to_string(inputSize) + "-fp16.tflite";
-  auto model = tflite::FlatBufferModel::BuildFromFile(filepath.c_str());
+  std::stringstream ss;
+  ss << "/data/local/tmp/models/yolov4-";
+  if (isTiny) {
+    ss << "tiny-";
+  }
+  ss << inputSize << "-fp16.tflite";
+  auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
   if (model == nullptr) {
     LOGE("YoloV4 model load failed");
   } else {
@@ -63,7 +67,7 @@ TfLiteYoloV4Classifier::~TfLiteYoloV4Classifier() {
 std::pair<float*, float*> TfLiteYoloV4Classifier::inference(const cv::Mat& mat) {
   const std::vector<int>& inputs = interpreter->inputs();
   const std::vector<int>& outputs = interpreter->outputs();
-  assert(inputs.size() == 1 && outputs.size() == 1);
+  assert(inputs.size() == 1 && outputs.size() == 2);
 
   const size_t input_size = interpreter->tensor(inputs[0])->bytes;
   auto* input = interpreter->typed_tensor<float>(inputs[0]);
@@ -76,10 +80,11 @@ std::pair<float*, float*> TfLiteYoloV4Classifier::inference(const cv::Mat& mat) 
   inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   LOGV("YoloV4 Inference %lld ms", inferenceTimeMs);
 
-  auto* dims = interpreter->tensor(outputs[0])->dims;
-  LOGD("Outputs: %d %d %d", dims->data[0], dims->data[1], dims->data[2]);
-
-  return std::make_pair(interpreter->typed_tensor<float>(outputs[0]), (float*) nullptr);
+  bool is_bbox_first =
+      interpreter->tensor(outputs[0])->bytes < interpreter->tensor(outputs[1])->bytes;
+  auto* bboxes = interpreter->typed_tensor<float>(outputs[is_bbox_first ? 0 : 1]);
+  auto* confidences = interpreter->typed_tensor<float>(outputs[is_bbox_first ? 1 : 0]);
+  return std::make_pair(bboxes, confidences);
 }
 
 } // namespace rm
