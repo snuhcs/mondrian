@@ -1,8 +1,8 @@
 {
-    "log_internal": true,
+    "log_internal": false,
     "dispatcher": {
         "max_queue_size": 2,
-        "full_inference_interval": 0,
+        "full_inference_interval": 4,
         "roi_padding": 10
     },
     "roi_extractor": {
@@ -11,7 +11,7 @@
         "min_roi_area": 5000,
         "optical_flow_roi_confidence_threshold": 0.1,
         "merge_threshold": 0.5,
-        "max_merged_roi_size": 640,
+        "max_merged_roi_size": 800,
         "of_roi": true,
         "pd_roi": true,
         "merge_roi": true
@@ -19,7 +19,7 @@
     "patch_mixer": {
         "packing": true,
         "max_packed_frames": 60,
-        "mixed_frame_size": 640,
+        "mixed_frame_size": 800,
         "latency_slo_ms": 5000
     },
     "patch_reconstructor": {
