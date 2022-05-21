@@ -1,5 +1,5 @@
-#ifndef IMPL_TFLITE_YOLO_V4_CLASSIFIER_HPP_
-#define IMPL_TFLITE_YOLO_V4_CLASSIFIER_HPP_
+#ifndef IMPL_TFLITE_YOLO_V5_CLASSIFIER_HPP_
+#define IMPL_TFLITE_YOLO_V5_CLASSIFIER_HPP_
 
 #include "strm/impl/models/Classifier.hpp"
 
@@ -8,11 +8,11 @@
 
 namespace rm {
 
-class TfLiteYoloV4Classifier : public Classifier {
+class TfLiteYoloV5Classifier : public Classifier {
  public:
-  TfLiteYoloV4Classifier(int inputSize, float confidenceThreshold, float iouThreshold, bool isTiny);
+  TfLiteYoloV5Classifier(int inputSize, float confidenceThreshold, float iouThreshold, bool isTiny);
 
-  ~TfLiteYoloV4Classifier();
+  ~TfLiteYoloV5Classifier();
 
  private:
   void inference(const cv::Mat& mat) override;
@@ -22,10 +22,9 @@ class TfLiteYoloV4Classifier : public Classifier {
   TfLiteDelegate* delegate;
   std::unique_ptr<tflite::Interpreter> interpreter;
 
-  float* boxes; // 1 x outputSize x 4
-  float* confidences; // 1 x outputSize x numLabels
+  float* outputs; // 1 x outputSize x 85 (boxes, maxConf, confidences)
 };
 
 } // namespace rm
 
-#endif // IMPL_TFLITE_YOLO_V4_CLASSIFIER_HPP_
+#endif // IMPL_TFLITE_YOLO_V5_CLASSIFIER_HPP_

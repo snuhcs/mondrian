@@ -4,39 +4,39 @@
 #include "strm/impl/Worker.hpp"
 #include "strm/impl/models/MnnYoloV4Classifier.hpp"
 #include "strm/impl/models/TfLiteYoloV4Classifier.hpp"
+#include "strm/impl/models/TfLiteYoloV5Classifier.hpp"
 
 namespace rm {
 
 CustomInferenceEngine::CustomInferenceEngine(const InferenceEngineConfig& config) : mHandle(0) {
   LOGD("CppInferenceEngine::CppInferenceEngine()");
   for (int i = 0; i < config.NUM_WORKERS; i++) {
-    if (config.RUNTIME == "MNN") {
-      std::unique_ptr<Classifier> classifer = std::make_unique<MnnYoloV4Classifier>(
-          config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
-      if (config.INPUT_SIZE != config.FULL_FRAME_INPUT_SIZE) {
-        std::unique_ptr<Classifier> fullClassifer = std::make_unique<MnnYoloV4Classifier>(
-            config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
-        workers.push_back(std::make_unique<Worker>(this, classifer.get(), fullClassifer.get()));
-        classifiers.push_back(std::move(classifer));
-        fullClassifiers.push_back(std::move(fullClassifer));
-      } else {
-        workers.push_back(std::make_unique<Worker>(this, classifer.get(), classifer.get()));
-        classifiers.push_back(std::move(classifer));
-      }
-    } else if (config.RUNTIME == "TFLITE") {
-      std::unique_ptr<Classifier> classifer = std::make_unique<TfLiteYoloV4Classifier>(
-          config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
-      if (config.INPUT_SIZE != config.FULL_FRAME_INPUT_SIZE) {
-        std::unique_ptr<Classifier> fullClassifer = std::make_unique<TfLiteYoloV4Classifier>(
-            config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
-        workers.push_back(std::make_unique<Worker>(this, classifer.get(), fullClassifer.get()));
-        classifiers.push_back(std::move(classifer));
-        fullClassifiers.push_back(std::move(fullClassifer));
-      } else {
-        workers.push_back(std::make_unique<Worker>(this, classifer.get(), classifer.get()));
-        classifiers.push_back(std::move(classifer));
-      }
+    if (config.MODEL == "YOLO_V4" && config.RUNTIME == "MNN") {
+      initClassifiers<MnnYoloV4Classifier>(config);
+    } else if (config.MODEL == "YOLO_V4" && config.RUNTIME == "TFLITE") {
+      initClassifiers<TfLiteYoloV4Classifier>(config);
+    } else if (config.MODEL == "YOLO_V5" && config.RUNTIME == "TFLITE") {
+      initClassifiers<TfLiteYoloV5Classifier>(config);
+    } else {
+      LOGE("Running %s model with %s runtime is not supported yet",
+           config.MODEL.c_str(), config.RUNTIME.c_str());
     }
+  }
+}
+
+template <typename T>
+void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config) {
+  std::unique_ptr<Classifier> classifier = std::make_unique<T>(
+      config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+  if (config.INPUT_SIZE != config.FULL_FRAME_INPUT_SIZE) {
+    std::unique_ptr<Classifier> fullClassifier = std::make_unique<T>(
+        config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+    workers.push_back(std::make_unique<Worker>(this, classifier.get(), fullClassifier.get()));
+    classifiers.push_back(std::move(classifier));
+    fullClassifiers.push_back(std::move(fullClassifier));
+  } else {
+    workers.push_back(std::make_unique<Worker>(this, classifier.get(), classifier.get()));
+    classifiers.push_back(std::move(classifier));
   }
 }
 

@@ -13,31 +13,33 @@ Classifier::Classifier(const int numLabels, const int inputSize, const int outpu
 
 std::vector<BoundingBox>
 Classifier::recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight) {
-  auto[bboxes, confidences] = inference(mat);
+  inference(mat);
+
+  float widthRatio = (float) originalWidth / (float) inputSize;
+  float heightRatio = (float) originalHeight / (float) inputSize;
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
+    const float* boxes = getBoxes(i);
+    const float* confidences = getConfidences(i);
     float maxConfidence = 0;
     int maxLabel = -1;
     for (int label = 0; label < numLabels; label++) {
-      float confidence = confidences[i * numLabels + label];
-      if (maxConfidence < confidence) {
+      if (maxConfidence < confidences[label]) {
         maxLabel = label;
-        maxConfidence = confidence;
+        maxConfidence = confidences[label];
       }
     }
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
-      float xPos = bboxes[i * 4 + 0];
-      float yPos = bboxes[i * 4 + 1];
-      float w = bboxes[i * 4 + 2];
-      float h = bboxes[i * 4 + 3];
+      float x = boxes[0];
+      float y = boxes[1];
+      float w = boxes[2];
+      float h = boxes[3];
       detections.emplace_back(Rect(
-          std::max(0, (int) ((xPos - w / 2) * (float) originalWidth / (float) inputSize)),
-          std::max(0, (int) ((yPos - h / 2) * (float) originalHeight / (float) inputSize)),
-          std::min(originalWidth,
-                   (int) ((xPos + w / 2) * (float) originalWidth / (float) inputSize)),
-          std::min(originalHeight,
-                   (int) ((yPos + h / 2) * (float) originalHeight / (float) inputSize))),
+          std::max(0, (int) ((x - w / 2) * widthRatio)),
+          std::max(0, (int) ((y - h / 2) * heightRatio)),
+          std::min(originalWidth, (int) ((x + w / 2) * widthRatio)),
+          std::min(originalHeight, (int) ((y + h / 2) * heightRatio))),
                               maxConfidence, "person");
     }
   }

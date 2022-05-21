@@ -14,10 +14,15 @@ class MnnYoloV4Classifier : public Classifier {
   ~MnnYoloV4Classifier();
 
  private:
-  std::pair<float*, float*> inference(const cv::Mat& mat) override;
+  void inference(const cv::Mat& mat) override;
+  const float* getBoxes(const int i) const override;
+  const float* getConfidences(const int i) const override;
 
   MNN::Interpreter* interpreter;
   MNN::Session* session;
+
+  float* boxes; // 1 x outputSize x 4
+  float* confidences; // 1 x outputSize x numLabels
 
   const std::string INPUT_TENSOR_NAME = "x";
   const std::string OUTPUT_TENSOR_NAME_BOXES = "model/tf.concat_22/concat";

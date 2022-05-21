@@ -63,7 +63,7 @@ MnnYoloV4Classifier::MnnYoloV4Classifier(int inputSize, float confidenceThreshol
 
 MnnYoloV4Classifier::~MnnYoloV4Classifier() = default;
 
-std::pair<float*, float*> MnnYoloV4Classifier::inference(const cv::Mat& mat) {
+void MnnYoloV4Classifier::inference(const cv::Mat& mat) {
   MNN::Tensor* inputTensor = interpreter->getSessionInputAll(session).at(INPUT_TENSOR_NAME);
   MNN::Tensor* outputBoxes = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_BOXES);
   MNN::Tensor* outputConfs = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_CONFS);
@@ -77,9 +77,16 @@ std::pair<float*, float*> MnnYoloV4Classifier::inference(const cv::Mat& mat) {
   inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   LOGV("YoloV4 Inference %lld ms", inferenceTimeMs);
 
-  auto* bboxes = outputBoxes->host<float>();
-  auto* confidences = outputConfs->host<float>();
-  return std::make_pair(bboxes, confidences);
+  boxes = outputBoxes->host<float>();
+  confidences = outputConfs->host<float>();
+}
+
+const float* MnnYoloV4Classifier::getBoxes(const int i) const {
+  return &boxes[i * 4];
+}
+
+const float* MnnYoloV4Classifier::getConfidences(const int i) const {
+  return &confidences[i * numLabels];
 }
 
 } // namespace rm

@@ -20,7 +20,9 @@ class Classifier {
   long long getInferenceTimeMs() const;
 
  protected:
-  virtual std::pair<float*, float*> inference(const cv::Mat& mat) = 0;
+  virtual void inference(const cv::Mat& mat) = 0;
+  virtual const float* getBoxes(const int i) const = 0;
+  virtual const float* getConfidences(const int i) const = 0;
 
   const int numLabels;
   const int inputSize;

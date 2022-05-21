@@ -1,4 +1,4 @@
-#include "strm/impl/models/TfLiteYoloV4Classifier.hpp"
+#include "strm/impl/models/TfLiteYoloV5Classifier.hpp"
 
 #include <chrono>
 #include <map>
@@ -13,36 +13,32 @@
 
 namespace rm {
 
-TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceThreshold,
+TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(int inputSize, float confidenceThreshold,
                                                float iouThreshold, bool isTiny)
-    : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
+    : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
                  confidenceThreshold, iouThreshold) {
-  LOGD("YoloV4 TfLiteYoloV4Classifier::TfLiteYoloV4Classifier()");
+  LOGD("YoloV5 TfLiteYoloV5Classifier::TfLiteYoloV5Classifier()");
   std::stringstream ss;
-  ss << "/data/local/tmp/models/yolov4-";
-  if (isTiny) {
-    ss << "tiny-";
-  }
-  ss << inputSize << "-fp16.tflite";
+  ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "m-") << inputSize << "-fp16.tflite";
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
   if (model == nullptr) {
-    LOGE("YoloV4 model load failed");
+    LOGE("YoloV5 model load failed");
   } else {
-    LOGD("YoloV4 model loaded");
+    LOGD("YoloV5 model loaded");
   }
 
   tflite::ops::builtin::BuiltinOpResolver resolver;
   if (tflite::InterpreterBuilder(*model, resolver)(&interpreter) != kTfLiteOk) {
-    LOGE("YoloV4 interpreter creation failed");
+    LOGE("YoloV5 interpreter creation failed");
   } else {
-    LOGD("YoloV4 interpreter created");
+    LOGD("YoloV5 interpreter created");
   }
 
 //  // For CPU (XNNPack)
 //  if (interpreter->AllocateTensors() != kTfLiteOk) {
-//    LOGE("YoloV4 tensor allocation failed");
+//    LOGE("YoloV5 tensor allocation failed");
 //  } else {
-//    LOGD("YoloV4 tensor allocated");
+//    LOGD("YoloV5 tensor allocated");
 //  }
 
   auto options = TfLiteGpuDelegateOptionsV2Default();
@@ -54,20 +50,20 @@ TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceTh
   }
 
   if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk) {
-    LOGE("YoloV4 gpu delegate application failed");
+    LOGE("YoloV5 gpu delegate application failed");
   } else {
-    LOGD("YoloV4 gpu delegate applied");
+    LOGD("YoloV5 gpu delegate applied");
   }
 }
 
-TfLiteYoloV4Classifier::~TfLiteYoloV4Classifier() {
+TfLiteYoloV5Classifier::~TfLiteYoloV5Classifier() {
   TfLiteGpuDelegateV2Delete(delegate);
 }
 
-void TfLiteYoloV4Classifier::inference(const cv::Mat& mat) {
+void TfLiteYoloV5Classifier::inference(const cv::Mat& mat) {
   const std::vector<int>& input_tensor_indices = interpreter->inputs();
   const std::vector<int>& output_tensor_indices = interpreter->outputs();
-  assert(input_tensor_indices.size() == 1 && output_tensor_indices.size() == 2);
+  assert(input_tensor_indices.size() == 1 && output_tensor_indices.size() == 1);
 
   const size_t input_size = interpreter->tensor(input_tensor_indices[0])->bytes;
   auto* input = interpreter->typed_tensor<float>(input_tensor_indices[0]);
@@ -78,20 +74,17 @@ void TfLiteYoloV4Classifier::inference(const cv::Mat& mat) {
   interpreter->Invoke();
   auto end = std::chrono::system_clock::now();
   inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  LOGV("YoloV4 Inference %lld ms", inferenceTimeMs);
+  LOGV("YoloV5 Inference %lld ms", inferenceTimeMs);
 
-  bool is_bbox_first = interpreter->tensor(output_tensor_indices[0])->bytes <
-                       interpreter->tensor(output_tensor_indices[1])->bytes;
-  boxes = interpreter->typed_tensor<float>(output_tensor_indices[is_bbox_first ? 0 : 1]);
-  confidences = interpreter->typed_tensor<float>(output_tensor_indices[is_bbox_first ? 1 : 0]);
+  outputs = interpreter->typed_tensor<float>(output_tensor_indices[0]);
 }
 
-const float* TfLiteYoloV4Classifier::getBoxes(const int i) const {
-  return &boxes[i * 4];
+const float* TfLiteYoloV5Classifier::getBoxes(const int i) const {
+  return &outputs[i * 85];
 }
 
-const float* TfLiteYoloV4Classifier::getConfidences(const int i) const {
-  return &confidences[i * numLabels];
+const float* TfLiteYoloV5Classifier::getConfidences(const int i) const {
+  return &outputs[i * 85 + 5];
 }
 
 } // namespace rm
