@@ -21,6 +21,7 @@ class MnnYoloV4Classifier : public Classifier {
   MNN::Interpreter* interpreter;
   MNN::Session* session;
 
+  float* input;
   float* boxes; // 1 x outputSize x 4
   float* confidences; // 1 x outputSize x numLabels
 

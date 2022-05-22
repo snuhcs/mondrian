@@ -59,26 +59,38 @@ MnnYoloV4Classifier::MnnYoloV4Classifier(int inputSize, float confidenceThreshol
     outputInfo += " | ";
   }
   LOGD("YoloV4 outputs : %s", outputInfo.c_str());
+
+  MNN::Tensor* inputTensor = interpreter->getSessionInputAll(session).at(INPUT_TENSOR_NAME);
+  MNN::Tensor* boxesTensor = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_BOXES);
+  MNN::Tensor* confidencesTensor = interpreter->getSessionOutputAll(session).at(
+      OUTPUT_TENSOR_NAME_CONFS);
+  const std::vector<int>& inputTensorShape = inputTensor->shape();
+  assert(inputTensorShape.size() == 4 && inputTensorShape[0] == 1 &&
+         inputTensorShape[1] == inputSize && inputTensorShape[2] == inputSize &&
+         inputTensorShape[3] == 3);
+  const std::vector<int>& boxesTensorShape = boxesTensor->shape();
+  assert(boxesTensorShape.size() == 3 && boxesTensorShape[0] == 1 &&
+         boxesTensorShape[1] == outputSize && boxesTensorShape[2] == 4);
+  const std::vector<int>& confidencesTensorShape = confidencesTensor->shape();
+  assert(confidencesTensorShape.size() == 3 && confidencesTensorShape[0] == 1 &&
+         confidencesTensorShape[1] == outputSize && confidencesTensorShape[2] == numLabels);
+
+  input = inputTensor->host<float>();
+  boxes = boxesTensor->host<float>();
+  confidences = confidencesTensor->host<float>();
 }
 
 MnnYoloV4Classifier::~MnnYoloV4Classifier() = default;
 
 void MnnYoloV4Classifier::inference(const cv::Mat& mat) {
-  MNN::Tensor* inputTensor = interpreter->getSessionInputAll(session).at(INPUT_TENSOR_NAME);
-  MNN::Tensor* outputBoxes = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_BOXES);
-  MNN::Tensor* outputConfs = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_CONFS);
-
-  assert(inputTensor->size() == mat.total() * mat.elemSize());
-  std::memcpy((void*) inputTensor->host<float>(), (void*) mat.data, inputTensor->size());
+  assert(mat.rows == inputSize && mat.cols == inputSize && mat.type() == CV_32FC3);
+  std::memcpy((void*) input, (void*) mat.data, inputSize * inputSize * mat.elemSize());
 
   auto start = std::chrono::system_clock::now();
   interpreter->runSession(session);
   auto end = std::chrono::system_clock::now();
   inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   LOGV("YoloV4 Inference %lld ms", inferenceTimeMs);
-
-  boxes = outputBoxes->host<float>();
-  confidences = outputConfs->host<float>();
 }
 
 const float* MnnYoloV4Classifier::getBoxes(const int i) const {

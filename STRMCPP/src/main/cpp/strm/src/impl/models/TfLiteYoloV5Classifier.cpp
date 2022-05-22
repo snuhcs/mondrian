@@ -54,6 +54,21 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(int inputSize, float confidenceTh
   } else {
     LOGD("YoloV5 gpu delegate applied");
   }
+
+  const std::vector<int>& inputTensorIndices = interpreter->inputs();
+  const std::vector<int>& outputTensorIndices = interpreter->outputs();
+  assert(inputTensorIndices.size() == 1 && outputTensorIndices.size() == 1);
+
+  auto* inputTensorDims = interpreter->tensor(inputTensorIndices[0])->dims;
+  assert(inputTensorDims->size == 4 && inputTensorDims->data[0] == 1 &&
+         inputTensorDims->data[1] == inputSize && inputTensorDims->data[2] == inputSize &&
+         inputTensorDims->data[3] == 3);
+  auto* outputTensorDims = interpreter->tensor(outputTensorIndices[0])->dims;
+  assert(outputTensorDims->size == 3 && outputTensorDims->data[0] == 1 &&
+         outputTensorDims->data[1] == outputSize && outputTensorDims->data[2] == 85);
+
+  input = interpreter->typed_tensor<float>(inputTensorIndices[0]);
+  outputs = interpreter->typed_tensor<float>(outputTensorIndices[0]);
 }
 
 TfLiteYoloV5Classifier::~TfLiteYoloV5Classifier() {
@@ -61,22 +76,14 @@ TfLiteYoloV5Classifier::~TfLiteYoloV5Classifier() {
 }
 
 void TfLiteYoloV5Classifier::inference(const cv::Mat& mat) {
-  const std::vector<int>& input_tensor_indices = interpreter->inputs();
-  const std::vector<int>& output_tensor_indices = interpreter->outputs();
-  assert(input_tensor_indices.size() == 1 && output_tensor_indices.size() == 1);
-
-  const size_t input_size = interpreter->tensor(input_tensor_indices[0])->bytes;
-  auto* input = interpreter->typed_tensor<float>(input_tensor_indices[0]);
-  assert(input_size == mat.total() * mat.elemSize());
-  std::memcpy((void*) input, (void*) mat.data, input_size);
+  assert(mat.rows == inputSize && mat.cols == inputSize && mat.type() == CV_32FC3);
+  std::memcpy((void*) input, (void*) mat.data, inputSize * inputSize * mat.elemSize());
 
   auto start = std::chrono::system_clock::now();
   interpreter->Invoke();
   auto end = std::chrono::system_clock::now();
   inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   LOGV("YoloV5 Inference %lld ms", inferenceTimeMs);
-
-  outputs = interpreter->typed_tensor<float>(output_tensor_indices[0]);
 }
 
 const float* TfLiteYoloV5Classifier::getBoxes(const int i) const {

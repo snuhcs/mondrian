@@ -22,6 +22,7 @@ class TfLiteYoloV4Classifier : public Classifier {
   TfLiteDelegate* delegate;
   std::unique_ptr<tflite::Interpreter> interpreter;
 
+  float* input;
   float* boxes; // 1 x outputSize x 4
   float* confidences; // 1 x outputSize x numLabels
 };
