@@ -14,19 +14,22 @@ class MnnYoloV4Classifier : public Classifier {
   ~MnnYoloV4Classifier();
 
  private:
+  cv::Mat preprocess(const cv::Mat& mat) override;
+
   void inference(const cv::Mat& mat) override;
 
-  const float* getBoxes(const int i) const override;
+  const float* getBox(const int i) const override;
 
-  const float* getConfidences(const int i) const override;
+  const float getObjectConfidence(const int i) const override;
 
-  std::pair<float, float> getReconstructRatios(const int originalWidth,
-                                               const int originalHeight) override;
+  const float* getClassConfidences(const int i) const override;
+
+  Rect reconstructBox(float x, float y, float w, float h, int imageWidth, int imageHeight) override;
 
   MNN::Interpreter* interpreter;
   MNN::Session* session;
 
-  float* input;
+  float* input; // 1 x inputSize.height x inputSize.width x 3
   float* boxes; // 1 x outputSize x 4
   float* confidences; // 1 x outputSize x numLabels
 

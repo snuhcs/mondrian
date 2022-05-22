@@ -15,19 +15,29 @@ class TfLiteYoloV5Classifier : public Classifier {
   ~TfLiteYoloV5Classifier();
 
  private:
+  cv::Mat preprocess(const cv::Mat& mat) override;
+
   void inference(const cv::Mat& mat) override;
 
-  const float* getBoxes(const int i) const override;
+  const float* getBox(const int i) const override;
 
-  const float* getConfidences(const int i) const override;
+  const float getObjectConfidence(const int i) const override;
 
-  std::pair<float, float> getReconstructRatios(const int originalWidth,
-                                               const int originalHeight) override;
+  const float* getClassConfidences(const int i) const override;
+
+  Rect reconstructBox(float x, float y, float w, float h, int imageWidth, int imageHeight) override;
 
   TfLiteDelegate* delegate;
   std::unique_ptr<tflite::Interpreter> interpreter;
 
-  float* input;
+  int resizeWidth;
+  int resizeHeight;
+  int left;
+  int top;
+  int right;
+  int bottom;
+
+  float* input; // 1 x inputSize.height x inputSize.width x 3
   float* outputs; // 1 x outputSize x 85 (boxes, maxConf, confidences)
 };
 

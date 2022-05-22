@@ -22,16 +22,12 @@ class Worker {
  private:
   void Work();
 
-  static cv::Mat preprocess(const cv::Mat& mat, const cv::Size& size);
-
   CustomInferenceEngine* engine;
-
   Classifier* classifier;
   Classifier* fullClassifier;
+
   std::atomic_bool isClosed;
   std::thread thread;
-  cv::Size targetSize;
-  cv::Size fullTargetSize;
 };
 
 } // namespace rm

@@ -82,30 +82,45 @@ MnnYoloV4Classifier::MnnYoloV4Classifier(int inputSize, float confidenceThreshol
 
 MnnYoloV4Classifier::~MnnYoloV4Classifier() = default;
 
-void MnnYoloV4Classifier::inference(const cv::Mat& mat) {
-  assert(mat.rows == inputSize && mat.cols == inputSize && mat.type() == CV_32FC3);
-  std::memcpy((void*) input, (void*) mat.data, inputSize * inputSize * mat.elemSize());
-
-  auto start = std::chrono::system_clock::now();
-  interpreter->runSession(session);
-  auto end = std::chrono::system_clock::now();
-  inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  LOGV("YoloV4 Inference %lld ms", inferenceTimeMs);
+cv::Mat MnnYoloV4Classifier::preprocess(const cv::Mat& mat) {
+  cv::Mat preprocessedMat;
+  if (mat.cols != inputSize.width || mat.rows != inputSize.height) {
+    cv::resize(mat, preprocessedMat, inputSize);
+    cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
+  } else {
+    cv::cvtColor(mat, preprocessedMat, CV_BGRA2RGB);
+  }
+  preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
+  return preprocessedMat;
 }
 
-const float* MnnYoloV4Classifier::getBoxes(const int i) const {
+void MnnYoloV4Classifier::inference(const cv::Mat& mat) {
+  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_32FC3);
+  std::memcpy((void*) input, (void*) mat.data, inputSize.area() * mat.elemSize());
+  interpreter->runSession(session);
+}
+
+const float* MnnYoloV4Classifier::getBox(const int i) const {
   return &boxes[i * 4];
 }
 
-const float* MnnYoloV4Classifier::getConfidences(const int i) const {
+const float MnnYoloV4Classifier::getObjectConfidence(const int i) const {
+  return 1.0;
+}
+
+const float* MnnYoloV4Classifier::getClassConfidences(const int i) const {
   return &confidences[i * numLabels];
 }
 
-std::pair<float, float> MnnYoloV4Classifier::getReconstructRatios(const int originalWidth,
-                                                                  const int originalHeight) {
-  float widthRatio = (float) originalWidth / (float) inputSize;
-  float heightRatio = (float) originalHeight / (float) inputSize;
-  return std::make_pair(widthRatio, heightRatio);
+Rect MnnYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
+                                         int imageWidth, int imageHeight) {
+  float widthRatio = (float) imageWidth / (float) inputSize.width;
+  float heightRatio = (float) imageHeight / (float) inputSize.height;
+  return Rect(
+      std::max(0, (int) ((x - w / 2) * widthRatio)),
+      std::max(0, (int) ((y - h / 2) * heightRatio)),
+      std::min(imageWidth, (int) ((x + w / 2) * widthRatio)),
+      std::min(imageHeight, (int) ((y + h / 2) * heightRatio)));
 }
 
 } // namespace rm

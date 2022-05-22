@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 
+#include "opencv2/imgproc.hpp"
 #include "tensorflow/lite/model_builder.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/delegates/gpu/delegate.h"
@@ -75,28 +76,65 @@ TfLiteYoloV5Classifier::~TfLiteYoloV5Classifier() {
   TfLiteGpuDelegateV2Delete(delegate);
 }
 
-void TfLiteYoloV5Classifier::inference(const cv::Mat& mat) {
-  assert(mat.rows == inputSize && mat.cols == inputSize && mat.type() == CV_32FC3);
-  std::memcpy((void*) input, (void*) mat.data, inputSize * inputSize * mat.elemSize());
-
-  auto start = std::chrono::system_clock::now();
-  interpreter->Invoke();
-  auto end = std::chrono::system_clock::now();
-  inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  LOGV("YoloV5 Inference %lld ms", inferenceTimeMs);
+cv::Mat TfLiteYoloV5Classifier::preprocess(const cv::Mat& mat) {
+  cv::Mat preprocessedMat;
+  const int& width = mat.cols;
+  const int& height = mat.rows;
+  if (width * inputSize.height > height * inputSize.width) {
+    resizeWidth = inputSize.width;
+    resizeHeight = height * inputSize.width / width;
+    left = 0;
+    right = 0;
+    top = (inputSize.height - resizeHeight) / 2;
+    bottom = (inputSize.height - resizeHeight) - top;
+  } else {
+    resizeHeight = inputSize.height;
+    resizeWidth = width * inputSize.height / height;
+    top = 0;
+    bottom = 0;
+    left = (inputSize.width - resizeWidth) / 2;
+    right = (inputSize.width - resizeWidth) - left;
+  }
+  cv::resize(mat, preprocessedMat, cv::Size(resizeWidth, resizeHeight));
+  cv::copyMakeBorder(preprocessedMat, preprocessedMat, top, bottom, left, right,
+                     cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
+  cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
+  preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
+  return preprocessedMat;
 }
 
-const float* TfLiteYoloV5Classifier::getBoxes(const int i) const {
+void TfLiteYoloV5Classifier::inference(const cv::Mat& mat) {
+  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_32FC3);
+  std::memcpy((void*) input, (void*) mat.data, inputSize.area() * mat.elemSize());
+  interpreter->Invoke();
+}
+
+const float* TfLiteYoloV5Classifier::getBox(const int i) const {
   return &outputs[i * 85];
 }
 
-const float* TfLiteYoloV5Classifier::getConfidences(const int i) const {
+const float TfLiteYoloV5Classifier::getObjectConfidence(const int i) const {
+  return outputs[i * 85 + 4];
+}
+
+const float* TfLiteYoloV5Classifier::getClassConfidences(const int i) const {
   return &outputs[i * 85 + 5];
 }
 
-std::pair<float, float> TfLiteYoloV5Classifier::getReconstructRatios(
-    const int originalWidth, const int originalHeight) {
-  return std::make_pair((float) originalWidth, (float) originalHeight);
+Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
+                                            int imageWidth, int imageHeight) {
+  x *= (float) inputSize.width;
+  y *= (float) inputSize.height;
+  w *= (float) inputSize.width;
+  h *= (float) inputSize.height;
+  float gain = std::min((float) inputSize.width / (float) imageWidth, (float) inputSize.height / (float) imageHeight);
+  float xPad = ((float) inputSize.width - (float) imageWidth * gain) / 2;
+  float yPad = ((float) inputSize.height - (float) imageHeight * gain) / 2;
+  return Rect(
+      std::max(0, (int) ((x - w / 2 - xPad) / gain)),
+      std::max(0, (int) ((y - h / 2 - yPad) / gain)),
+      std::min(imageWidth, (int) ((x + w / 2 - xPad) / gain)),
+      std::min(imageHeight, (int) ((y + h / 2 - yPad) / gain)));
 }
 
 } // namespace rm

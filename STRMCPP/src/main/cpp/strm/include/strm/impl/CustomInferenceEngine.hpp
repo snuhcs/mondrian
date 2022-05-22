@@ -4,9 +4,9 @@
 #include <map>
 #include <queue>
 
-#include "strm/impl/models/Classifier.hpp"
 #include "strm/InferenceEngine.hpp"
 #include "strm/impl/ImplConfig.hpp"
+#include "strm/impl/models/Classifier.hpp"
 
 namespace rm {
 
