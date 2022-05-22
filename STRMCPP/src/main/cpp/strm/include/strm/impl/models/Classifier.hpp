@@ -21,8 +21,13 @@ class Classifier {
 
  protected:
   virtual void inference(const cv::Mat& mat) = 0;
+
   virtual const float* getBoxes(const int i) const = 0;
+
   virtual const float* getConfidences(const int i) const = 0;
+
+  virtual std::pair<float, float> getReconstructRatios(const int originalWidth,
+                                                       const int originalHeight) = 0;
 
   const int numLabels;
   const int inputSize;

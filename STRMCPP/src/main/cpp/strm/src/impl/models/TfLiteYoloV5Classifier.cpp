@@ -94,4 +94,9 @@ const float* TfLiteYoloV5Classifier::getConfidences(const int i) const {
   return &outputs[i * 85 + 5];
 }
 
+std::pair<float, float> TfLiteYoloV5Classifier::getReconstructRatios(
+    const int originalWidth, const int originalHeight) {
+  return std::make_pair((float) originalWidth, (float) originalHeight);
+}
+
 } // namespace rm

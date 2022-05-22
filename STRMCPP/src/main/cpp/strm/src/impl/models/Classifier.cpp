@@ -15,10 +15,8 @@ std::vector<BoundingBox>
 Classifier::recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight) {
   inference(mat);
 
-  float widthRatio = (float) originalWidth / (float) inputSize;
-  float heightRatio = (float) originalHeight / (float) inputSize;
-
   std::vector<BoundingBox> detections;
+  const std::pair<float, float> ratios = getReconstructRatios(originalWidth, originalHeight);
   for (int i = 0; i < outputSize; i++) {
     const float* boxes = getBoxes(i);
     const float* confidences = getConfidences(i);
@@ -36,10 +34,10 @@ Classifier::recognizeImage(const cv::Mat& mat, int originalWidth, int originalHe
       float w = boxes[2];
       float h = boxes[3];
       detections.emplace_back(Rect(
-          std::max(0, (int) ((x - w / 2) * widthRatio)),
-          std::max(0, (int) ((y - h / 2) * heightRatio)),
-          std::min(originalWidth, (int) ((x + w / 2) * widthRatio)),
-          std::min(originalHeight, (int) ((y + h / 2) * heightRatio))),
+          std::max(0, (int) ((x - w / 2) * ratios.first)),
+          std::max(0, (int) ((y - h / 2) * ratios.second)),
+          std::min(originalWidth, (int) ((x + w / 2) * ratios.first)),
+          std::min(originalHeight, (int) ((y + h / 2) * ratios.second))),
                               maxConfidence, "person");
     }
   }

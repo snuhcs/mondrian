@@ -101,4 +101,11 @@ const float* MnnYoloV4Classifier::getConfidences(const int i) const {
   return &confidences[i * numLabels];
 }
 
+std::pair<float, float> MnnYoloV4Classifier::getReconstructRatios(const int originalWidth,
+                                                                  const int originalHeight) {
+  float widthRatio = (float) originalWidth / (float) inputSize;
+  float heightRatio = (float) originalHeight / (float) inputSize;
+  return std::make_pair(widthRatio, heightRatio);
+}
+
 } // namespace rm
