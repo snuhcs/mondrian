@@ -11,7 +11,7 @@
         "min_roi_area": 5000,
         "optical_flow_roi_confidence_threshold": 0.1,
         "merge_threshold": 0.5,
-        "max_merged_roi_size": 800,
+        "max_merged_roi_size": 832,
         "of_roi": true,
         "pd_roi": true,
         "merge_roi": true
@@ -19,7 +19,7 @@
     "patch_mixer": {
         "packing": true,
         "max_packed_frames": 60,
-        "mixed_frame_size": 800,
+        "mixed_frame_size": 832,
         "latency_slo_ms": 5000
     },
     "patch_reconstructor": {
