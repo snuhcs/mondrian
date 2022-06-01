@@ -15,7 +15,8 @@ import java.io.InputStreamReader;
 public class Config {
     private static final String TAG = Config.class.getName();
 
-    public String LOG_PATH;
+    public String LOG_PATH = null;
+    public boolean DRAW = true;
     public final SourceConfig sourceConfig;
 
     public Config(String jsonPath) throws IOException, JSONException {
@@ -24,8 +25,9 @@ public class Config {
 
         if (jsonObject.has("log_path")) {
             LOG_PATH = jsonObject.getString("log_path");
-        } else {
-            LOG_PATH = null;
+        }
+        if (jsonObject.has("draw")) {
+            DRAW = jsonObject.getBoolean("draw");
         }
 
         if (jsonObject.has("source")) {
