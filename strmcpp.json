@@ -1,4 +1,5 @@
 {
+    "internal_log": false,
     "dispatcher": {
         "max_queue_size": 2,
         "full_inference_interval": 4,
