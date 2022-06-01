@@ -9,6 +9,7 @@
 #include "strm/impl/CustomRoIPrioritizer.hpp"
 #include "strm/impl/CustomInferenceEngine.hpp"
 
+static JavaVM* vm;
 static jboolean isCopy = JNI_TRUE;
 static long resizeProfileHandle = (long) nullptr;
 static long roiPrioritizerHandle = (long) nullptr;
@@ -17,13 +18,16 @@ static long inferenceEngineHandle = (long) nullptr;
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(JNIEnv* env,
-                                                                                jobject thiz) {
+                                                                                jobject thiz,
+                                                                                jboolean draw) {
   std::string jsonPath = "/data/local/tmp/strmcpp.json";
   std::string implJsonPath = "/data/local/tmp/edgedevicecpp.json";
   rm::IMPLConfig config = rm::parseIMPLConfig(implJsonPath);
   auto* resizeProfile = new rm::CustomResizeProfile(config.resizeProfileConfig);
   auto* roIPrioritizer = new rm::CustomRoIPrioritizer();
-  auto* inferenceEngine = new rm::CustomInferenceEngine(config.inferenceEngineConfig);
+  env->GetJavaVM(&vm);
+  auto* inferenceEngine = new rm::CustomInferenceEngine(config.inferenceEngineConfig, vm, env, thiz,
+                                                        draw == JNI_TRUE);
   resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
   roiPrioritizerHandle = reinterpret_cast<long>(roIPrioritizer);
   inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);
