@@ -6,7 +6,7 @@
 
 namespace rm {
 
-bool LOG_INTERNAL = false;
+bool LOG_INTERNAL = true;
 
 DispatcherConfig parseDispatcherConfig(const Json::Value& json) {
   DispatcherConfig config;
