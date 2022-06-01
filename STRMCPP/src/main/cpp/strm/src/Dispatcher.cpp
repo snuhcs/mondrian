@@ -18,9 +18,7 @@ Dispatcher::Dispatcher(const std::string& key,
       mKey(key),
       mTag(key.substr(key.size() - 8)),
       mConfig(config),
-      mRoIExtractor(new RoIExtractor(roIExtractorConfig)),
-      mResizeProfile(resizeProfile),
-      mRoIPrioritizer(roIPrioritizer),
+      mRoIExtractor(new RoIExtractor(roIExtractorConfig, resizeProfile, roIPrioritizer)),
       mInferenceEngine(inferenceEngine),
       mPatchMixer(patchMixer),
       mMaxNumItems(config.MAX_QUEUE_SIZE),
@@ -94,18 +92,8 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
     currFrame->isResultReady.store(true);
     notifyResults();
   } else {
-    std::vector<BoundingBox> prevResults = getPrevBoxes(mUseInferenceResults);
-    mRoIExtractor->process(std::make_pair(std::make_pair(mPrevFrame, currFrame), prevResults));
-    std::sort(currFrame->rois.begin(), currFrame->rois.end(),
-              [this](const RoI& lhs, const RoI& rhs) -> bool {
-                return mRoIPrioritizer->priority(lhs) < mRoIPrioritizer->priority(rhs);
-              });
-    currFrame->resizeRoIStartTime = NowMicros();
-    for (auto& roi : currFrame->rois) {
-      roi.scale = mResizeProfile->getScale(roi.labelName, roi.location.width(),
-                                           roi.location.height(), roi.minOriginLength);
-    }
-    currFrame->resizeRoIEndTime = NowMicros();
+    currFrame->rois = mRoIExtractor->process(mPrevFrame.get(), currFrame.get(),
+                                             getPrevBoxes(mUseInferenceResults));
 
     PatchMixer::Status status = mPatchMixer->tryPackAndEnqueueMixedFrame(currFrame);
     LOGD("PatchMixer::Status: %d", status);

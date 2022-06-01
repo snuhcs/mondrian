@@ -5,18 +5,22 @@
 
 #include "opencv2/core/mat.hpp"
 
-#include "Config.hpp"
-#include "DataType.hpp"
+#include "strm/Config.hpp"
+#include "strm/DataType.hpp"
+#include "strm/RoIPrioritizer.hpp"
+#include "strm/ResizeProfile.hpp"
 
 namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(RoIExtractorConfig config);
+  RoIExtractor(RoIExtractorConfig config, const ResizeProfile* resizeProfile,
+               const RoIPrioritizer* roIPrioritizer);
 
   bool useOpticalFlowRoIs() const;
 
-  void process(const std::pair<std::pair<std::shared_ptr<Frame>, std::shared_ptr<Frame>>, std::vector<BoundingBox>>& item) const;
+  std::vector<RoI> process(Frame* prevFrame, Frame* currFrame,
+                           const std::vector<BoundingBox>& prevResults) const;
 
  private:
   static void mergeSingleFrameRoIs(std::vector<RoI>& rois, const Frame* frame,
@@ -41,6 +45,9 @@ class RoIExtractor {
 
   const RoIExtractorConfig mConfig;
   const cv::Size mTargetSize;
+
+  const RoIPrioritizer* mRoIPrioritizer;
+  const ResizeProfile* mResizeProfile;
 };
 
 } // namespace rm

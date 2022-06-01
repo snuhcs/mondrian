@@ -7,15 +7,15 @@
 #include <utility>
 #include <vector>
 
-#include "Config.hpp"
-#include "DataType.hpp"
-#include "ResizeProfile.hpp"
-#include "RoIPrioritizer.hpp"
-#include "InferenceEngine.hpp"
-#include "RoIExtractor.hpp"
-#include "PatchMixer.hpp"
-#include "PatchReconstructorCallback.hpp"
-#include "Logger.hpp"
+#include "strm/Config.hpp"
+#include "strm/DataType.hpp"
+#include "strm/ResizeProfile.hpp"
+#include "strm/RoIPrioritizer.hpp"
+#include "strm/InferenceEngine.hpp"
+#include "strm/RoIExtractor.hpp"
+#include "strm/PatchMixer.hpp"
+#include "strm/PatchReconstructorCallback.hpp"
+#include "strm/Logger.hpp"
 
 namespace rm {
 
@@ -57,8 +57,6 @@ class Dispatcher {
 
   DispatcherConfig mConfig;
   std::unique_ptr<RoIExtractor> mRoIExtractor;
-  const RoIPrioritizer* mRoIPrioritizer;
-  const ResizeProfile* mResizeProfile;
   InferenceEngine* mInferenceEngine;
   PatchMixer* mPatchMixer;
 
