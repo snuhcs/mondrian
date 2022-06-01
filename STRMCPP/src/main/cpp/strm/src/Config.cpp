@@ -76,9 +76,6 @@ PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) 
   if (!json["max_queue_size"].isNull()) {
     config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
   }
-  if (!json["match_padding"].isNull()) {
-    config.MATCH_PADDING = json["match_padding"].asInt();
-  }
   if (!json["frame_boxes_iou_threshold"].isNull()) {
     config.FRAME_BOXES_IOU_THRESHOLD = json["frame_boxes_iou_threshold"].asFloat();
   }
@@ -102,8 +99,8 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
     return strmConfig;
   }
   LOGD("STRMConfig : %s", json.toStyledString().c_str());
-  if (!json["internal_log"].isNull()) {
-    LOG_INTERNAL = json["internal_log"].asBool();
+  if (!json["log_internal"].isNull()) {
+    LOG_INTERNAL = json["log_internal"].asBool();
   }
   if (!json["dispatcher"].isNull()) {
     strmConfig.dispatcherConfig = parseDispatcherConfig(json["dispatcher"]);

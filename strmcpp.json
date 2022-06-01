@@ -1,5 +1,5 @@
 {
-    "internal_log": false,
+    "log_internal": false,
     "dispatcher": {
         "max_queue_size": 2,
         "full_inference_interval": 4,
@@ -18,14 +18,13 @@
     },
     "patch_mixer": {
         "packing": true,
-        "max_packed_frames": 30,
+        "max_packed_frames": 60,
         "mixed_frame_size": 800,
         "latency_slo_ms": 5000
     },
     "patch_reconstructor": {
         "max_queue_size": 2,
-        "match_padding": 40,
-        "frame_boxes_iou_threshold": 0.45,
-        "overlap_threshold": 0.5
+        "frame_boxes_iou_threshold": 0.5,
+        "overlap_threshold": 0.8
     }
 }
