@@ -8,13 +8,13 @@
                 "path": "/data/local/tmp/video/VIRAT_S_000001_5256_5856.mp4",
                 "width": 1920,
                 "height": 1080,
-                "fps": 100
+                "fps": 30
             },
             {
                 "path": "/data/local/tmp/video/VIRAT_S_000002_1801_2401.mp4",
                 "width": 1920,
                 "height": 1080,
-                "fps": 100
+                "fps": 30
             }
         ],
         "draw_confidence": 0.1
