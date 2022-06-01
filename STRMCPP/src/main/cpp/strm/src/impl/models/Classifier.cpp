@@ -2,49 +2,48 @@
 
 #include <set>
 
+#include "strm/Log.hpp"
 #include "strm/Utils.hpp"
 
 namespace rm {
 
 Classifier::Classifier(const int numLabels, const int inputSize, const int outputSize,
                        const float confidenceThreshold, const float iouThreshold)
-    : numLabels(numLabels), inputSize(inputSize), outputSize(outputSize),
+    : numLabels(numLabels), inputSize(inputSize, inputSize), outputSize(outputSize),
       confidenceThreshold(confidenceThreshold), iouThreshold(iouThreshold) {}
 
 std::vector<BoundingBox>
-Classifier::recognizeImage(const cv::Mat& mat, int originalWidth, int originalHeight) {
-  auto[bboxes, confidences] = inference(mat);
+Classifier::recognizeImage(const cv::Mat& mat) {
+  cv::Mat preprocessedMat = preprocess(mat);
+
+  auto start = std::chrono::system_clock::now();
+  inference(preprocessedMat);
+  auto end = std::chrono::system_clock::now();
+  inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  LOGV("Inference time: %lld ms", inferenceTimeMs);
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
+    const float* box = getBox(i);
+    const float* classConfidences = getClassConfidences(i);
     float maxConfidence = 0;
     int maxLabel = -1;
     for (int label = 0; label < numLabels; label++) {
-      float confidence = confidences[i * numLabels + label];
-      if (maxConfidence < confidence) {
+      if (maxConfidence < classConfidences[label]) {
         maxLabel = label;
-        maxConfidence = confidence;
+        maxConfidence = classConfidences[label];
       }
     }
+    maxConfidence *= getObjectConfidence(i);
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
-      float xPos = bboxes[i * 4 + 0];
-      float yPos = bboxes[i * 4 + 1];
-      float w = bboxes[i * 4 + 2];
-      float h = bboxes[i * 4 + 3];
-      detections.emplace_back(Rect(
-          std::max(0, (int) ((xPos - w / 2) * (float) originalWidth / (float) inputSize)),
-          std::max(0, (int) ((yPos - h / 2) * (float) originalHeight / (float) inputSize)),
-          std::min(originalWidth,
-                   (int) ((xPos + w / 2) * (float) originalWidth / (float) inputSize)),
-          std::min(originalHeight,
-                   (int) ((yPos + h / 2) * (float) originalHeight / (float) inputSize))),
+      detections.emplace_back(reconstructBox(box[0], box[1], box[2], box[3], mat.cols, mat.rows),
                               maxConfidence, "person");
     }
   }
   return nms(detections, numLabels, iouThreshold);
 }
 
-int Classifier::getInputSize() const {
+const cv::Size& Classifier::getInputSize() const {
   return inputSize;
 }
 

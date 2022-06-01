@@ -11,7 +11,7 @@ namespace rm {
 
 MnnYoloV4Classifier::MnnYoloV4Classifier(int inputSize, float confidenceThreshold,
                                          float iouThreshold, bool isTiny)
-    : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
+    : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * (isTiny ? 15 : 63),
                  confidenceThreshold, iouThreshold) {
   LOGD("YoloV4 MnnYoloV4Classifier::MnnYoloV4Classifier()");
   std::string filepath = "/data/local/tmp/models/yolov4-";
@@ -59,27 +59,68 @@ MnnYoloV4Classifier::MnnYoloV4Classifier(int inputSize, float confidenceThreshol
     outputInfo += " | ";
   }
   LOGD("YoloV4 outputs : %s", outputInfo.c_str());
+
+  MNN::Tensor* inputTensor = interpreter->getSessionInputAll(session).at(INPUT_TENSOR_NAME);
+  MNN::Tensor* boxesTensor = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_BOXES);
+  MNN::Tensor* confidencesTensor = interpreter->getSessionOutputAll(session).at(
+      OUTPUT_TENSOR_NAME_CONFS);
+  const std::vector<int>& inputTensorShape = inputTensor->shape();
+  assert(inputTensorShape.size() == 4 && inputTensorShape[0] == 1 &&
+         inputTensorShape[1] == inputSize && inputTensorShape[2] == inputSize &&
+         inputTensorShape[3] == 3);
+  const std::vector<int>& boxesTensorShape = boxesTensor->shape();
+  assert(boxesTensorShape.size() == 3 && boxesTensorShape[0] == 1 &&
+         boxesTensorShape[1] == outputSize && boxesTensorShape[2] == 4);
+  const std::vector<int>& confidencesTensorShape = confidencesTensor->shape();
+  assert(confidencesTensorShape.size() == 3 && confidencesTensorShape[0] == 1 &&
+         confidencesTensorShape[1] == outputSize && confidencesTensorShape[2] == numLabels);
+
+  input = inputTensor->host<float>();
+  boxes = boxesTensor->host<float>();
+  confidences = confidencesTensor->host<float>();
 }
 
 MnnYoloV4Classifier::~MnnYoloV4Classifier() = default;
 
-std::pair<float*, float*> MnnYoloV4Classifier::inference(const cv::Mat& mat) {
-  MNN::Tensor* inputTensor = interpreter->getSessionInputAll(session).at(INPUT_TENSOR_NAME);
-  MNN::Tensor* outputBoxes = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_BOXES);
-  MNN::Tensor* outputConfs = interpreter->getSessionOutputAll(session).at(OUTPUT_TENSOR_NAME_CONFS);
+cv::Mat MnnYoloV4Classifier::preprocess(const cv::Mat& mat) {
+  cv::Mat preprocessedMat;
+  if (mat.cols != inputSize.width || mat.rows != inputSize.height) {
+    cv::resize(mat, preprocessedMat, inputSize);
+    cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
+  } else {
+    cv::cvtColor(mat, preprocessedMat, CV_BGRA2RGB);
+  }
+  preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
+  return preprocessedMat;
+}
 
-  assert(inputTensor->size() == mat.total() * mat.elemSize());
-  std::memcpy((void*) inputTensor->host<float>(), (void*) mat.data, inputTensor->size());
-
-  auto start = std::chrono::system_clock::now();
+void MnnYoloV4Classifier::inference(const cv::Mat& mat) {
+  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_32FC3);
+  std::memcpy((void*) input, (void*) mat.data, inputSize.area() * mat.elemSize());
   interpreter->runSession(session);
-  auto end = std::chrono::system_clock::now();
-  inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  LOGV("YoloV4 Inference %lld ms", inferenceTimeMs);
+}
 
-  auto* bboxes = outputBoxes->host<float>();
-  auto* confidences = outputConfs->host<float>();
-  return std::make_pair(bboxes, confidences);
+const float* MnnYoloV4Classifier::getBox(const int i) const {
+  return &boxes[i * 4];
+}
+
+const float MnnYoloV4Classifier::getObjectConfidence(const int i) const {
+  return 1.0;
+}
+
+const float* MnnYoloV4Classifier::getClassConfidences(const int i) const {
+  return &confidences[i * numLabels];
+}
+
+Rect MnnYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
+                                         int imageWidth, int imageHeight) {
+  float widthRatio = (float) imageWidth / (float) inputSize.width;
+  float heightRatio = (float) imageHeight / (float) inputSize.height;
+  return Rect(
+      std::max(0, (int) ((x - w / 2) * widthRatio)),
+      std::max(0, (int) ((y - h / 2) * heightRatio)),
+      std::min(imageWidth, (int) ((x + w / 2) * widthRatio)),
+      std::min(imageHeight, (int) ((y + h / 2) * heightRatio)));
 }
 
 } // namespace rm

@@ -10,9 +10,7 @@ namespace rm {
 
 class Worker {
  public:
-  Worker(CustomInferenceEngine* engine,
-         std::unique_ptr<Classifier> classifier,
-         std::unique_ptr<Classifier> fullClassifier);
+  Worker(CustomInferenceEngine* engine, Classifier* classifier, Classifier* fullClassifier);
 
   ~Worker() {
     isClosed.store(true);
@@ -24,16 +22,12 @@ class Worker {
  private:
   void Work();
 
-  static cv::Mat preprocess(const cv::Mat& mat, const cv::Size& size);
-
   CustomInferenceEngine* engine;
+  Classifier* classifier;
+  Classifier* fullClassifier;
 
-  std::unique_ptr<Classifier> classifier;
-  std::unique_ptr<Classifier> fullClassifier;
   std::atomic_bool isClosed;
   std::thread thread;
-  cv::Size targetSize;
-  cv::Size fullTargetSize;
 };
 
 } // namespace rm

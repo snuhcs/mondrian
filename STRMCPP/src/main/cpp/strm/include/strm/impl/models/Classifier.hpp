@@ -12,18 +12,28 @@ class Classifier {
 
   virtual ~Classifier() {};
 
-  std::vector<BoundingBox> recognizeImage(const cv::Mat& mat, int originalWidth,
-                                          int originalHeight);
+  std::vector<BoundingBox> recognizeImage(const cv::Mat& mat);
 
-  int getInputSize() const;
+  const cv::Size& getInputSize() const;
 
   long long getInferenceTimeMs() const;
 
  protected:
-  virtual std::pair<float*, float*> inference(const cv::Mat& mat) = 0;
+  virtual cv::Mat preprocess(const cv::Mat& mat) = 0;
+
+  virtual void inference(const cv::Mat& mat) = 0;
+
+  virtual const float* getBox(const int i) const = 0;
+
+  virtual const float getObjectConfidence(const int i) const = 0;
+
+  virtual const float* getClassConfidences(const int i) const = 0;
+
+  virtual Rect reconstructBox(float x, float y, float w, float h,
+                              int imageWidth, int imageHeight) = 0;
 
   const int numLabels;
-  const int inputSize;
+  const cv::Size inputSize; // width, height
   const int outputSize;
   const float confidenceThreshold;
   const float iouThreshold;

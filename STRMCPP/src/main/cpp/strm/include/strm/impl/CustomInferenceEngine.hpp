@@ -6,6 +6,7 @@
 
 #include "strm/InferenceEngine.hpp"
 #include "strm/impl/ImplConfig.hpp"
+#include "strm/impl/models/Classifier.hpp"
 
 namespace rm {
 
@@ -26,7 +27,12 @@ class CustomInferenceEngine : public InferenceEngine {
   void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
 
  private:
+  template <typename T>
+  void initClassifiers(const InferenceEngineConfig& config);
+
   std::vector<std::unique_ptr<Worker>> workers;
+  std::vector<std::unique_ptr<Classifier>> classifiers;
+  std::vector<std::unique_ptr<Classifier>> fullClassifiers;
 
   int mHandle;
   std::queue<std::tuple<int, const cv::Mat, bool>> inputs;
