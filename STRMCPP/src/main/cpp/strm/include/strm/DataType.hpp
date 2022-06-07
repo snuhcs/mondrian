@@ -153,7 +153,7 @@ struct RoI {
         features{labelName, type, (float) location.width() / (float) location.height(),
                  shift.first * shift.first + shift.second * shift.second, err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())),
-        targetSize(INT_MAX),
+        targetSize(maxEdgeLength),
         packedLocation(std::make_pair(-1, -1)),
         handle(-1) {};
 
@@ -171,10 +171,9 @@ struct RoI {
                            ? "" : roi0.labelName;
     RoI mergedRoI(roi0.frame, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel,
                   std::make_pair(0, 0), 0, 0);
-    mergedRoI.targetSize = (roi0.maxEdgeLength * roi1.targetSize >
-                            roi1.maxEdgeLength * roi0.targetSize) ?
-                           mergedRoI.maxEdgeLength * roi0.maxEdgeLength / roi0.targetSize :
-                           mergedRoI.maxEdgeLength * roi1.maxEdgeLength / roi1.targetSize;
+    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength > roi1.targetSize * roi0.maxEdgeLength) ?
+                           mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
+                           mergedRoI.maxEdgeLength * roi1.targetSize / roi1.maxEdgeLength;
     return mergedRoI;
   }
 

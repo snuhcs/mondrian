@@ -68,7 +68,7 @@ std::vector<RoI> RoIExtractor::process(Frame* prevFrame, Frame* currFrame,
 
   currFrame->resizeRoIStartTime = NowMicros();
   for (auto& roi : rois) {
-    roi.targetSize = mResizeProfile->getTargetSize(roi.features);
+    roi.targetSize = std::min(roi.maxEdgeLength, mResizeProfile->getTargetSize(roi.features));
   }
   currFrame->resizeRoIEndTime = NowMicros();
 
@@ -109,14 +109,14 @@ void RoIExtractor::mergeSingleFrameRoIs(std::vector<RoI>& rois, const float merg
           continue;
         }
         int newArea = (newRight - newLeft) * (newBottom - newLeft);
-        if (roi0.maxEdgeLength * roi1.targetSize > roi1.maxEdgeLength * roi0.targetSize) {
+        if (roi0.targetSize * roi1.maxEdgeLength > roi1.targetSize * roi0.maxEdgeLength) {
           // If roi0 resizes conservatively than roi1
-          newArea = newArea * roi0.maxEdgeLength * roi0.maxEdgeLength
-                    / roi0.targetSize / roi0.targetSize;
+          newArea = newArea * roi0.targetSize * roi0.targetSize
+                    / roi0.maxEdgeLength / roi0.maxEdgeLength;
         } else {
           // If roi1 resizes conservatively than roi0
-          newArea = newArea * roi1.maxEdgeLength * roi1.maxEdgeLength
-                    / roi1.targetSize / roi1.targetSize;
+          newArea = newArea * roi1.targetSize * roi1.targetSize
+                    / roi1.maxEdgeLength / roi1.maxEdgeLength;
         }
         int originalArea = roi0.getResizedArea() + roi1.getResizedArea();
         if (newArea >= originalArea) {
