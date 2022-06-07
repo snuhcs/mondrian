@@ -71,17 +71,17 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
         if (roi.isPacked()) {
           Rect movedAndResizedBoxPos(
               std::max(0,
-                       (int) ((float) (box.location.left - roi.packedLocation.first) / roi.scale) +
-                       roi.location.left),
+                       (box.location.left - roi.packedLocation.first)
+                       * roi.maxEdgeLength / roi.targetSize + roi.location.left),
               std::max(0,
-                       (int) ((float) (box.location.top - roi.packedLocation.second) / roi.scale) +
-                       roi.location.top),
+                       (box.location.top - roi.packedLocation.second)
+                       * roi.maxEdgeLength / roi.targetSize + roi.location.top),
               std::min(roi.frame->mat.cols,
-                       (int) ((float) (box.location.right - roi.packedLocation.first) / roi.scale) +
-                       roi.location.left),
+                       (box.location.right - roi.packedLocation.first)
+                       * roi.maxEdgeLength / roi.targetSize + roi.location.left),
               std::min(roi.frame->mat.rows,
-                       (int) ((float) (box.location.bottom - roi.packedLocation.second) /
-                              roi.scale) + roi.location.top));
+                       (box.location.bottom - roi.packedLocation.second)
+                       * roi.maxEdgeLength / roi.targetSize + roi.location.top));
           int intersection = roi.location.intersection(movedAndResizedBoxPos);
           float overlapRatio = (float) intersection / (float) movedAndResizedBoxPos.area();
           if (maxOverlap < overlapRatio) {

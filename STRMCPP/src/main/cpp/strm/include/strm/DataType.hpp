@@ -117,37 +117,89 @@ struct RoI {
     PD = 2,
   };
 
+  struct Features {
+    std::string labelName;
+    Type type;
+    float xyRatio;
+    int shift;
+    float err;
+    float diffAreaRatio;
+  };
+
   const Frame* frame;
   Rect location;
   Type type;
   std::string labelName;
+  Features features;
 
-  float scale;
+  int maxEdgeLength;
+  int targetSize;
   std::pair<int, int> packedLocation;
 
   int handle;
   std::vector<BoundingBox> boxes;
 
-  RoI(const Frame* frame, const Rect location, const Type type, const std::string labelName)
-      : frame(frame), location(location), type(type), labelName(labelName), scale(1),
-        packedLocation(std::make_pair(-1, -1)), handle(-1) {};
+  RoI(const Frame* frame,
+      const Rect location,
+      const Type type,
+      const std::string labelName,
+      const std::pair<int, int>& shift,
+      const float err,
+      const float diffAreaRatio)
+      : frame(frame),
+        location(location),
+        type(type),
+        labelName(labelName),
+        features{labelName, type, (float) location.width() / (float) location.height(),
+                 shift.first * shift.first + shift.second * shift.second, err, diffAreaRatio},
+        maxEdgeLength(std::max(location.width(), location.height())),
+        targetSize(INT_MAX),
+        packedLocation(std::make_pair(-1, -1)),
+        handle(-1) {};
 
-  RoI(const Frame* frame, const Rect location, const Type type, const std::string labelName,
-      const float scale)
-      : frame(frame), location(location), type(type), labelName(labelName), scale(scale),
-        packedLocation(std::make_pair(-1, -1)), handle(-1) {};
+  static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
+    assert(roi0.frame == roi1.frame);
+    int newLeft = std::min(roi0.location.left, roi1.location.left);
+    int newTop = std::min(roi0.location.top, roi1.location.top);
+    int newRight = std::max(roi0.location.right, roi1.location.right);
+    int newBottom = std::max(roi0.location.bottom, roi1.location.bottom);
+    RoI::Type roiType = roi0.type == RoI::Type::OF || roi1.type == RoI::Type::OF
+                        ? RoI::Type::OF
+                        : RoI::Type::PD;
+    std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
+                           || roi0.labelName != roi1.labelName
+                           ? "" : roi0.labelName;
+    RoI mergedRoI(roi0.frame, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel,
+                  std::make_pair(0, 0), 0, 0);
+    mergedRoI.targetSize = (roi0.maxEdgeLength * roi1.targetSize >
+                            roi1.maxEdgeLength * roi0.targetSize) ?
+                           mergedRoI.maxEdgeLength * roi0.maxEdgeLength / roi0.targetSize :
+                           mergedRoI.maxEdgeLength * roi1.maxEdgeLength / roi1.targetSize;
+    return mergedRoI;
+  }
 
   bool isPacked() const {
     return packedLocation.first >= 0 && packedLocation.second >= 0;
   }
 
   int getArea() const {
-    return location.width() * location.height();
+    return location.area();
+  }
+
+  int getResizedArea() const {
+    const std::pair<int, int> resizedWH = getResizedWidthHeight();
+    return resizedWH.first * resizedWH.second;
   }
 
   std::pair<int, int> getResizedWidthHeight() const {
-    return std::pair<int, int>(std::max(1, (int) (location.width() * scale)),
-                               std::max(1, (int) (location.height() * scale)));
+    if (maxEdgeLength <= targetSize) {
+      return std::make_pair(location.width(), location.height());
+    }
+    if (location.width() > location.height()) {
+      return std::make_pair(targetSize, location.height() * targetSize / location.width());
+    } else {
+      return std::make_pair(location.width() * targetSize / location.height(), targetSize);
+    }
   }
 
   cv::Mat getMat() const {

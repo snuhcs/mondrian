@@ -4,8 +4,10 @@
 #include "strm/DataType.hpp"
 #include "strm/Log.hpp"
 #include "strm/SpatioTemporalRoIMixer.hpp"
+#include "strm/ResizeProfile.hpp"
 #include "strm/impl/ImplConfig.hpp"
-#include "strm/impl/CustomResizeProfile.hpp"
+#include "strm/impl/AccuracyAwareResizeProfile.hpp"
+#include "strm/impl/StaticResizeProfile.hpp"
 #include "strm/impl/CustomRoIPrioritizer.hpp"
 #include "strm/impl/CustomInferenceEngine.hpp"
 
@@ -23,11 +25,15 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(
   std::string jsonPath = "/data/local/tmp/strmcpp.json";
   std::string implJsonPath = "/data/local/tmp/edgedevicecpp.json";
   rm::IMPLConfig config = rm::parseIMPLConfig(implJsonPath);
-  auto* resizeProfile = new rm::CustomResizeProfile(config.resizeProfileConfig);
-  auto* roIPrioritizer = new rm::CustomRoIPrioritizer();
+  auto* resizeProfile = config.resizeProfileConfig.ACCURACY_AWARE_RESIZE ?
+                        reinterpret_cast<rm::ResizeProfile*>(new rm::AccuracyAwareResizeProfile(
+                            config.resizeProfileConfig.RESIZE_MARGIN)) :
+                        reinterpret_cast<rm::ResizeProfile*>(new rm::StaticResizeProfile(
+                            config.resizeProfileConfig.STATIC_TARGET_SIZE));
+  auto* roIPrioritizer = reinterpret_cast<rm::RoIPrioritizer*>(new rm::CustomRoIPrioritizer());
   env->GetJavaVM(&vm);
-  auto* inferenceEngine = new rm::CustomInferenceEngine(config.inferenceEngineConfig, vm, env, thiz,
-                                                        draw == JNI_TRUE);
+  auto* inferenceEngine = reinterpret_cast<rm::InferenceEngine*>(new rm::CustomInferenceEngine(
+      config.inferenceEngineConfig, vm, env, thiz, draw == JNI_TRUE));
   resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
   roiPrioritizerHandle = reinterpret_cast<long>(roIPrioritizer);
   inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);
@@ -89,9 +95,9 @@ JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_close(JNIEnv* env, jobject thiz,
                                                          jlong handle) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  auto* resizeProfile = (rm::CustomResizeProfile*) resizeProfileHandle;
-  auto* roiPrioritizer = (rm::CustomResizeProfile*) roiPrioritizerHandle;
-  auto* inferenceEngine = (rm::CustomResizeProfile*) inferenceEngineHandle;
+  auto* resizeProfile = (rm::ResizeProfile*) resizeProfileHandle;
+  auto* roiPrioritizer = (rm::RoIPrioritizer*) roiPrioritizerHandle;
+  auto* inferenceEngine = (rm::InferenceEngine*) inferenceEngineHandle;
   delete strm;
   delete resizeProfile;
   delete roiPrioritizer;

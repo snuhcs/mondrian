@@ -20,10 +20,9 @@
         "draw_confidence": 0.1
     },
     "resize_profile": {
-        "fit_resize": false,
-        "merged_resize": true,
-        "person_threshold": 80,
-        "class_agnostic_threshold": 80
+        "accuracy_aware_resize": true,
+        "resize_margin": 10,
+        "static_target_size": 80
     },
     "inference_engine": {
         "model": "YOLO_V5",

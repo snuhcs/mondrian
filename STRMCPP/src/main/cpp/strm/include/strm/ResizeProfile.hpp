@@ -3,11 +3,15 @@
 
 #include <string>
 
+#include "strm/DataType.hpp"
+
 namespace rm {
 
 class ResizeProfile {
  public:
-  virtual float getScale(const std::string& labelName, int width, int height) const = 0;
+  virtual ~ResizeProfile() {}
+
+  virtual int getTargetSize(const RoI::Features& features) const = 0;
 };
 
 }

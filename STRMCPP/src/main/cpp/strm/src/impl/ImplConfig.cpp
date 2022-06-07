@@ -8,14 +8,17 @@ namespace rm {
 
 ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json) {
   ResizeProfileConfig config;
-  if (!json["fit_resize"].isNull()) {
-    config.FIT_RESIZE = json["fit_resize"].asBool();
+  if (!json["accuracy_aware_resize"].isNull()) {
+    config.ACCURACY_AWARE_RESIZE = json["accuracy_aware_resize"].asBool();
   }
-  if (!json["person_threshold"].isNull()) {
-    config.PERSON_THRESHOLD = json["person_threshold"].asInt();
-  }
-  if (!json["class_agnostic_threshold"].isNull()) {
-    config.CLASS_AGNOSTIC_THRESHOLD = json["class_agnostic_threshold"].asInt();
+  if (config.ACCURACY_AWARE_RESIZE) {
+    if (!json["resize_margin"].isNull()) {
+      config.RESIZE_MARGIN = json["resize_margin"].asInt();
+    }
+  } else {
+    if (!json["static_target_size"].isNull()) {
+      config.STATIC_TARGET_SIZE = json["static_target_size"].asInt();
+    }
   }
   return config;
 }
