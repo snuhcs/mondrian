@@ -14,6 +14,8 @@
 
 namespace rm {
 
+typedef unsigned long long int idType;
+
 struct RoI;
 
 struct Rect {
@@ -78,6 +80,7 @@ struct Frame {
 
   std::vector<RoI> rois;
   std::vector<RoI> opticalFlowRoIs;
+  std::vector<RoI> pixelDiffRoIs;
 
   const time_us enqueueTime;
   time_us dispatcherProcessStartTime = 0;

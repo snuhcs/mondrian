@@ -82,6 +82,7 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
    */
   currFrame->dispatcherProcessStartTime = NowMicros();
   if (mCountMixedFrameInference >= mConfig.FULL_INFERENCE_INTERVAL) {
+    // # Full Frame Inference
     mCountMixedFrameInference = 0;
     mUseInferenceResults = true;
     currFrame->fullFrameEnqueueTime = NowMicros();
@@ -92,6 +93,7 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
     currFrame->isResultReady.store(true);
     notifyResults();
   } else {
+    // # Mixed Frame Inference
     currFrame->rois = mRoIExtractor->process(mPrevFrame.get(), currFrame.get(),
                                              getPrevBoxes(mUseInferenceResults));
 
@@ -134,6 +136,9 @@ std::vector<BoundingBox> Dispatcher::getPrevBoxes(bool useInferenceResults) {
     }
   } else {
     for (const RoI& roi : mPrevFrame->opticalFlowRoIs) {
+      prevResults.emplace_back(roi.location, 1.0, roi.labelName);
+    }
+    for (const RoI& roi : mPrevFrame->pixelDiffRoIs) {
       prevResults.emplace_back(roi.location, 1.0, roi.labelName);
     }
   }
