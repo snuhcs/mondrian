@@ -29,16 +29,14 @@ std::vector<RoI> RoIExtractor::process(Frame* prevFrame, Frame* currFrame,
   // Preprocess matrices
   if (mConfig.OF_ROI || mConfig.PD_ROI) {
     if (prevFrame->preProcessedMat.empty()) {
-      cv::Mat mat = prevFrame->mat;
-      cv::resize(mat, mat, mTargetSize);
-      cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
-      prevFrame->preProcessedMat = mat;
+      cv::Mat mat;
+      cv::resize(prevFrame->mat, mat, mTargetSize);
+      cv::cvtColor(mat, prevFrame->preProcessedMat, cv::COLOR_BGR2GRAY);
     }
     if (currFrame->preProcessedMat.empty()) {
-      cv::Mat mat = currFrame->mat;
-      cv::resize(mat, mat, mTargetSize);
-      cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
-      currFrame->preProcessedMat = mat;
+      cv::Mat mat;
+      cv::resize(prevFrame->mat, mat, mTargetSize);
+      cv::cvtColor(mat, currFrame->preProcessedMat, cv::COLOR_BGR2GRAY);
     }
   }
 
