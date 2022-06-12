@@ -64,9 +64,10 @@ struct BoundingBox {
   Rect location;
   float confidence;
   std::string labelName;
+  int targetSize;
 
-  BoundingBox(const Rect location, const float confidence, const std::string labelName)
-      : location(location), confidence(confidence), labelName(labelName) {}
+  BoundingBox(const Rect location, const float confidence, const std::string labelName, int targetSize=-1)
+      : location(location), confidence(confidence), labelName(labelName), targetSize(targetSize) {}
 };
 
 struct Frame {

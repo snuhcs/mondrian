@@ -65,6 +65,7 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
   for (const BoundingBox& box : mixedFrame.boxes) {
     float maxOverlap = -1;
     Rect maxBoxPos;
+    int targetSize;
     Frame* maxFrame = nullptr;
     for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
       for (RoI& roi : frame->rois) {
@@ -87,16 +88,30 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
           if (maxOverlap < overlapRatio) {
             maxOverlap = overlapRatio;
             maxBoxPos = movedAndResizedBoxPos;
+            targetSize = roi.targetSize;
             maxFrame = frame.get();
           }
         }
       }
     }
     if (maxFrame != nullptr && maxOverlap >= overlapThreshold) {
-      maxFrame->boxes.emplace_back(maxBoxPos, box.confidence, box.labelName);
+      maxFrame->boxes.emplace_back(maxBoxPos, box.confidence, box.labelName, targetSize);
     }
   }
-  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
+
+  const std::shared_ptr<Frame>& lastFrame = mixedFrame.packedFrames.back();
+  for (RoI& roi : lastFrame->rois) {
+    // get id of RoI and find corresponding bboxes (maybe 3?)
+    for (const BoundingBox& box : lastFrame->boxes) {
+
+    }
+    // compare IoU and confidence with largest target size, and update resizeProfiler
+
+  }
+
+
+
+      for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
     frame->isResultReady.store(true);
   }
 }
@@ -110,7 +125,7 @@ void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
                  box.location.top + roi.location.top,
                  box.location.right + roi.location.left,
                  box.location.bottom + roi.location.top),
-            box.confidence, box.labelName);
+            box.confidence, box.labelName, box.targetSize);
       }
     }
     frame->isResultReady.store(true);

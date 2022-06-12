@@ -132,7 +132,7 @@ std::vector<BoundingBox> Dispatcher::getPrevBoxes(bool useInferenceResults) {
           box.location.left - mConfig.ROI_PADDING,
           box.location.top - mConfig.ROI_PADDING,
           box.location.right + mConfig.ROI_PADDING,
-          box.location.bottom + mConfig.ROI_PADDING), box.confidence, box.labelName);
+          box.location.bottom + mConfig.ROI_PADDING), box.confidence, box.labelName, box.targetSize);
     }
   } else {
     for (const RoI& roi : mPrevFrame->opticalFlowRoIs) {
