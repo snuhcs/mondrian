@@ -67,10 +67,10 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
   for (const BoundingBox& box : mixedFrame.boxes) {
     float maxOverlap = -1;
     Rect maxBoxPos;
-    RoI *maxRoI = nullptr;
+    RoI* maxRoI = nullptr;
     Frame* maxFrame = nullptr;
-    for (const std::shared_ptr<Frame> &frame : mixedFrame.packedFrames) {
-      for (RoI &roi : frame->rois) {
+    for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
+      for (RoI& roi : frame->rois) {
         if (roi.isPacked()) {
           Rect movedAndResizedBoxPos(
               std::max(0,
@@ -110,7 +110,7 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
   // >>> for debugging
   std::vector<int> boxNum;
   if (runOriginalCode) {
-    for (const std::shared_ptr<Frame> &frame : mixedFrame.packedFrames) {
+    for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
       boxNum.push_back(frame->boxes.size());
     }
   }
@@ -118,13 +118,13 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
 
   if (!runOriginalCode) {
     std::vector<BoundingBox> unassignedBoxes;
-    for (const std::shared_ptr<Frame> &frame : mixedFrame.packedFrames) {
-      for (RoI &roi : frame->rois) {
+    for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
+      for (RoI& roi : frame->rois) {
         if (roi.isPacked()) {
           int maxIntersection = -1;
           int maxIndex = -1;
           for (int i = 0; i < roi.boxes.size(); ++i) {
-            BoundingBox &box = roi.boxes[i];
+            BoundingBox& box = roi.boxes[i];
             int intersection = roi.location.intersection(box.location);
             if (maxIntersection < intersection) {
               maxIntersection = intersection;
@@ -132,7 +132,7 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
             }
           }
           if (maxIndex != -1) {
-            BoundingBox &box = roi.boxes[maxIndex];
+            BoundingBox& box = roi.boxes[maxIndex];
             frame->boxes.emplace_back(roi.id, box.location, box.confidence, box.labelName,
                                       box.targetSize);
             for (int i = 0; i < roi.boxes.size(); ++i) {

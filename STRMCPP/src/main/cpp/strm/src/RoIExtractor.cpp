@@ -94,7 +94,7 @@ std::pair<std::vector<RoI>, std::vector<RoI>> RoIExtractor::process(Frame* prevF
   return std::make_tuple(origRoIs, rois);
 }
 
-void RoIExtractor::mergeSingleFrameRoIs(std::vector<RoI> &origRoIs, std::vector<RoI> &rois,
+void RoIExtractor::mergeSingleFrameRoIs(std::vector<RoI>& origRoIs, std::vector<RoI>& rois,
                                         const float mergeThreshold,
                                         const int maxMergedRoISize) {
   while (true) {

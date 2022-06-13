@@ -125,8 +125,8 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
 }
 
 std::vector<BoundingBox>
-Dispatcher::assignIdsToBoxes(const std::vector<BoundingBox> &boxes, std::vector<RoI>& rois,
-                             float overlapThreshold) {
+Dispatcher::assignIdsToBoxes(
+    const std::vector<BoundingBox>& boxes, std::vector<RoI>& rois, float overlapThreshold) {
   std::vector<BoundingBox> unassignedBoxes;
   std::vector<BoundingBox> assignedBoxes;
 

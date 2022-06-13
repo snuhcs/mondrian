@@ -19,7 +19,7 @@ typedef unsigned long idType;
 
 struct RoI;
 
-  struct Rect {
+struct Rect {
   int left;
   int top;
   int right;
@@ -169,8 +169,7 @@ struct RoI {
         targetSize(maxEdgeLength),
         packedLocation(std::make_pair(-1, -1)),
         handle(-1),
-        parentId(-1)
-        {};
+        parentId(-1) {};
 
   static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
     assert(roi0.frame == roi1.frame);

@@ -44,9 +44,8 @@ class Dispatcher {
 
  private:
   std::vector<BoundingBox> getPrevBoxes(bool useInferenceResults);
-  static std::vector<BoundingBox>
-  assignIdsToBoxes(const std::vector<BoundingBox> &boxes, std::vector<RoI> &rois,
-                   float overlapThreshold);
+  static std::vector<BoundingBox> assignIdsToBoxes(
+      const std::vector<BoundingBox>& boxes, std::vector<RoI>& rois, float overlapThreshold);
 
   const std::string mKey;
   const std::string mTag;
