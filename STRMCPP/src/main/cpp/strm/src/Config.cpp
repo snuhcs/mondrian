@@ -8,22 +8,11 @@ namespace rm {
 
 bool LOG_INTERNAL = true;
 
-DispatcherConfig parseDispatcherConfig(const Json::Value& json) {
-  DispatcherConfig config;
-  if (!json["max_queue_size"].isNull()) {
-    config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
-  }
-  if (!json["full_inference_interval"].isNull()) {
-    config.FULL_INFERENCE_INTERVAL = json["full_inference_interval"].asInt();
-  }
-  if (!json["roi_padding"].isNull()) {
-    config.ROI_PADDING = json["roi_padding"].asInt();
-  }
-  return config;
-}
-
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   RoIExtractorConfig config;
+  if (!json["num_workers"].isNull()) {
+    config.NUM_WORKERS = json["num_workers"].asInt();
+  }
   if (!json["extraction_resize_width"].isNull()) {
     config.EXTRACTION_RESIZE_WIDTH = json["extraction_resize_width"].asInt();
   }
@@ -65,9 +54,6 @@ PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   if (!json["mixed_frame_size"].isNull()) {
     config.MIXED_FRAME_SIZE = json["mixed_frame_size"].asInt();
   }
-  if (!json["latency_slo_ms"].isNull()) {
-    config.LATENCY_SLO_MS = json["latency_slo_ms"].asInt();
-  }
   return config;
 }
 
@@ -86,36 +72,46 @@ PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) 
 }
 
 STRMConfig parseSTRMConfig(const std::string& jsonPath) {
-  STRMConfig strmConfig;
+  STRMConfig config;
   std::ifstream jsonFile(jsonPath, std::ifstream::binary);
   if (!jsonFile.is_open()) {
     LOGE("Cannot open config file");
-    return strmConfig;
+    return config;
   }
   Json::Value json;
   jsonFile >> json;
   if (!json.isObject()) {
     LOGE("Json parsing failed");
-    return strmConfig;
+    return config;
   }
   LOGD("STRMConfig : %s", json.toStyledString().c_str());
   if (!json["log_internal"].isNull()) {
     LOG_INTERNAL = json["log_internal"].asBool();
   }
-  if (!json["dispatcher"].isNull()) {
-    strmConfig.dispatcherConfig = parseDispatcherConfig(json["dispatcher"]);
+  if (!json["max_queue_size"].isNull()) {
+    config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
   }
+  if (!json["full_inference_interval"].isNull()) {
+    config.FULL_INFERENCE_INTERVAL = json["full_inference_interval"].asInt();
+  }
+  if (!json["roi_padding"].isNull()) {
+    config.ROI_PADDING = json["roi_padding"].asInt();
+  }
+  if (!json["latency_slo_ms"].isNull()) {
+    config.LATENCY_SLO_MS = json["latency_slo_ms"].asInt();
+  }
+
   if (!json["roi_extractor"].isNull()) {
-    strmConfig.roIExtractorConfig = parseRoIExtractorConfig(json["roi_extractor"]);
+    config.roIExtractorConfig = parseRoIExtractorConfig(json["roi_extractor"]);
   }
   if (!json["patch_mixer"].isNull()) {
-    strmConfig.patchMixerConfig = parsePatchMixerConfig(json["patch_mixer"]);
+    config.patchMixerConfig = parsePatchMixerConfig(json["patch_mixer"]);
   }
   if (!json["patch_reconstructor"].isNull()) {
-    strmConfig.patchReconstructorConfig = parsePatchReconstructorConfig(
+    config.patchReconstructorConfig = parsePatchReconstructorConfig(
         json["patch_reconstructor"]);
   }
-  return strmConfig;
+  return config;
 }
 
 } // namespace rm

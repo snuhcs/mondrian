@@ -3,24 +3,24 @@
 
 #include <fstream>
 #include <map>
+#include <set>
 #include <string>
 
-#include "Config.hpp"
-#include "ResizeProfile.hpp"
-#include "RoIPrioritizer.hpp"
-#include "InferenceEngine.hpp"
-#include "Dispatcher.hpp"
-#include "RoIExtractor.hpp"
-#include "PatchMixer.hpp"
-#include "PatchReconstructor.hpp"
+#include "strm/Config.hpp"
+#include "strm/Dispatcher.hpp"
+#include "strm/InferenceEngine.hpp"
+#include "strm/ResizeProfile.hpp"
+#include "strm/RoIExtractor.hpp"
+#include "strm/PatchMixer.hpp"
+#include "strm/PatchReconstructor.hpp"
+#include "strm/Utils.hpp"
 
 namespace rm {
 
-class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
+class SpatioTemporalRoIMixer {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
                          const ResizeProfile* resizeProfile,
-                         const RoIPrioritizer* roIPrioritizer,
                          InferenceEngine* inferenceEngine);
 
   ~SpatioTemporalRoIMixer();
@@ -29,26 +29,31 @@ class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
 
   std::vector<BoundingBox> getResults(const std::string& key, int frameIndex);
 
-  void removeSource(const std::string& key);
-
-  void notifyMixedInferenceResults(const MixedFrame& mixedFrame) override;
-
  private:
-  void tryAddDispatcher(const std::string& key);
+  void process();
 
+  const STRMConfig mConfig;
   const std::unique_ptr<Logger> mLogger;
 
-  const ResizeProfile* mResizeProfile;
-  const RoIPrioritizer* mRoIPrioritizer;
-  InferenceEngine* mInferenceEngine;
-
+  std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<PatchMixer> mPatchMixer;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
-  std::map<std::string, std::unique_ptr<Dispatcher>> mDispatchers;
-  std::mutex mDispatchersMtx;
 
-  const DispatcherConfig mDispatcherConfig;
-  const RoIExtractorConfig mRoIExtractorConfig;
+  InferenceEngine* mInferenceEngine;
+
+  std::atomic_bool mbIsClosed;
+  std::thread mThread;
+
+  std::set<std::string> mKeys;
+  std::map<int, Frame> mFrames;
+  std::condition_variable mFramesCv;
+  std::mutex mFramesMtx;
+
+  int mCountMixedFrameInference;
+  bool mUseInferenceResults;
+  std::shared_ptr<Frame> mPrevFrame = nullptr;
+  std::mutex mResultsMtx;
+  std::condition_variable mResultsCv;
 };
 
 } // namespace rm

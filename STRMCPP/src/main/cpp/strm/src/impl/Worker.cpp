@@ -15,7 +15,7 @@ Worker::Worker(CustomInferenceEngine* engine, Classifier* cls, Classifier* fullC
 }
 
 void Worker::Work() {
-  LOGD("Worker::Work()");
+  LOGD("Worker::work()");
   std::tuple<int, const cv::Mat, bool> input = engine->getInput();
   int handle = std::get<0>(input);
   const cv::Mat mat = std::get<1>(input);

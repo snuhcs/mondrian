@@ -6,11 +6,9 @@
 namespace rm {
 
 PatchReconstructor::PatchReconstructor(PatchReconstructorConfig config,
-                                       InferenceEngine* inferenceEngine,
-                                       PatchReconstructorCallback* callback)
+                                       InferenceEngine* inferenceEngine)
     : mConfig(config),
       mInferenceEngine(inferenceEngine),
-      mCallback(callback),
       mMaxNumItems(config.MAX_QUEUE_SIZE),
       isClosed(false) {
   LOGD("PatchReconstructor()");
@@ -18,7 +16,6 @@ PatchReconstructor::PatchReconstructor(PatchReconstructorConfig config,
     while (!isClosed.load()) {
       MixedFrame item = takeItem();
       process(item);
-      mCallback->notifyMixedInferenceResults(item);
     }
   });
 }
@@ -118,7 +115,7 @@ void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
 }
 
 void PatchReconstructor::enqueue(const MixedFrame& item) {
-  LOGD("PatchReconstructor::enqueue(%d)", item.mixedFrameIndex);
+  LOGD("PatchReconstructor::enqueuePDJob(%d)", item.mixedFrameIndex);
   std::unique_lock<std::mutex> lock(mItemsMtx);
   mItemsCV.wait(lock, [this] {
     return mItems.size() < mMaxNumItems;
@@ -126,7 +123,7 @@ void PatchReconstructor::enqueue(const MixedFrame& item) {
   mItems.push(item);
   lock.unlock();
   mItemsCV.notify_all();
-  LOGD("PatchReconstructor::enqueue(%d) end", item.mixedFrameIndex);
+  LOGD("PatchReconstructor::enqueuePDJob(%d) end", item.mixedFrameIndex);
 }
 
 MixedFrame PatchReconstructor::takeItem() {

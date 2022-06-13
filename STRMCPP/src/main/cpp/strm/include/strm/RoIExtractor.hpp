@@ -7,22 +7,32 @@
 
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
-#include "strm/RoIPrioritizer.hpp"
 #include "strm/ResizeProfile.hpp"
+#include "strm/Utils.hpp"
 
 namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(RoIExtractorConfig config, const ResizeProfile* resizeProfile,
-               const RoIPrioritizer* roIPrioritizer);
+  struct Job {
+    Frame* prevFrame;
+    Frame* currFrame;
+  };
 
-  bool useOpticalFlowRoIs() const;
+  RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile);
+
+  void enqueuePDJob(Frame* prevFrame, Frame* currFrame);
+
+  void enqueueOFJob(Frame* prevFrame, Frame* currFrame, std::vector<BoundingBox> boxes);
+
+  std::vector<RoI> getRoIs();
+
+ private:
+  void work();
 
   std::vector<RoI> process(Frame* prevFrame, Frame* currFrame,
                            const std::vector<BoundingBox>& prevResults) const;
 
- private:
   static void mergeSingleFrameRoIs(std::vector<RoI>& rois, const float mergeThreshold,
                                    const int maxMergedRoISize);
 
@@ -46,8 +56,17 @@ class RoIExtractor {
   const RoIExtractorConfig mConfig;
   const cv::Size mTargetSize;
 
-  const RoIPrioritizer* mRoIPrioritizer;
   const ResizeProfile* mResizeProfile;
+
+  std::vector<std::thread> mThreads;
+
+  ConcurrentQueue<Job> mPDJobs;
+  ConcurrentQueue<Job> mOFJobs;
+  ConcurrentQueue<RoI> mRoIs;
+
+  std::mutex mtx;
+  std::condition_variable cv;
+  std::atomic_bool mbStop;
 };
 
 } // namespace rm

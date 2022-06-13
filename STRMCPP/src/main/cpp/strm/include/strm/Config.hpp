@@ -9,13 +9,8 @@ namespace rm {
 
 constexpr int NUM_LABELS = 80;
 
-struct DispatcherConfig {
-  int MAX_QUEUE_SIZE = 2;
-  int FULL_INFERENCE_INTERVAL = 4;
-  int ROI_PADDING = 10;
-};
-
 struct RoIExtractorConfig {
+  int NUM_WORKERS = 1;
   int EXTRACTION_RESIZE_WIDTH = 640;
   int EXTRACTION_RESIZE_HEIGHT = 360;
   int MIN_ROI_AREA = 5000;
@@ -31,7 +26,6 @@ struct PatchMixerConfig {
   bool PACKING = true;
   int MAX_PACKED_FRAMES = 30;
   int MIXED_FRAME_SIZE = 800;
-  int LATENCY_SLO_MS = 5000;
 };
 
 struct PatchReconstructorConfig {
@@ -41,13 +35,15 @@ struct PatchReconstructorConfig {
 };
 
 struct STRMConfig {
-  DispatcherConfig dispatcherConfig;
+  int MAX_QUEUE_SIZE = 2;
+  int FULL_INFERENCE_INTERVAL = 4;
+  int ROI_PADDING = 10;
+  int LATENCY_SLO_MS = 5000;
   RoIExtractorConfig roIExtractorConfig;
   PatchMixerConfig patchMixerConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 };
 
-DispatcherConfig parseDispatcherConfig(const Json::Value& json);
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
 PatchMixerConfig parsePatchMixerConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);

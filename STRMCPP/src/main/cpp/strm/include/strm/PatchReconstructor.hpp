@@ -4,18 +4,16 @@
 #include <queue>
 #include <thread>
 
-#include "Config.hpp"
-#include "DataType.hpp"
-#include "InferenceEngine.hpp"
-#include "PatchReconstructorCallback.hpp"
+#include "strm/Config.hpp"
+#include "strm/DataType.hpp"
+#include "strm/InferenceEngine.hpp"
 
 namespace rm {
 
 class PatchReconstructor {
  public:
   PatchReconstructor(PatchReconstructorConfig config,
-                     InferenceEngine* inferenceEngine,
-                     PatchReconstructorCallback* callback);
+                     InferenceEngine* inferenceEngine);
 
   ~PatchReconstructor();
 
@@ -32,7 +30,6 @@ class PatchReconstructor {
 
   std::atomic_bool isClosed;
   std::thread mThread;
-  PatchReconstructorCallback* mCallback;
 
   int mMaxNumItems;
   std::queue<MixedFrame> mItems;

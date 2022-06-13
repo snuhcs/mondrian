@@ -6,42 +6,13 @@
 
 namespace rm {
 
-Dispatcher::Dispatcher(const std::string& key,
-                       const DispatcherConfig& config,
-                       const RoIExtractorConfig& roIExtractorConfig,
-                       const ResizeProfile* resizeProfile,
-                       const RoIPrioritizer* roIPrioritizer,
-                       InferenceEngine* inferenceEngine,
-                       PatchMixer* patchMixer,
-                       Logger* logger)
-    : mLogger(logger),
-      mKey(key),
-      mTag(key.substr(key.size() - 8)),
-      mConfig(config),
-      mRoIExtractor(new RoIExtractor(roIExtractorConfig, resizeProfile, roIPrioritizer)),
-      mInferenceEngine(inferenceEngine),
-      mPatchMixer(patchMixer),
-      mMaxNumItems(config.MAX_QUEUE_SIZE),
-      isClosed(false),
-      mCountMixedFrameInference(INT_MAX),
-      mUseInferenceResults(true),
-      mPrevFrame(nullptr) {
-  LOGD("Dispatcher%s()", mTag.c_str());
-  mThread = std::thread([this]() {
-    while (!isClosed.load()) {
-      std::shared_ptr<Frame> frame = getFrameToProcess();
-      process(frame);
-    }
-  });
-}
-
 Dispatcher::~Dispatcher() {
   isClosed.store(true);
   mThread.join();
 }
 
 int Dispatcher::enqueue(const cv::Mat& mat) {
-  LOGD("Dispatcher%s::enqueue(Mat(%d, %d, %d))", mTag.c_str(), mat.cols, mat.rows, mat.channels());
+  LOGD("Dispatcher%s::enqueuePDJob(Mat(%d, %d, %d))", mTag.c_str(), mat.cols, mat.rows, mat.channels());
   const time_us enqueueTime = NowMicros();
   std::unique_lock<std::mutex> lock(mFramesMtx);
   mFramesCv.wait(lock, [this] {
@@ -50,7 +21,7 @@ int Dispatcher::enqueue(const cv::Mat& mat) {
   int frameIndex = mEnqueuedFrameIndex++;
   mFrames.insert(std::make_pair(
       frameIndex, std::make_shared<Frame>(mKey, frameIndex, mat, enqueueTime)));
-  LOGD("Dispatcher%s::enqueue(%d) end", mTag.c_str(), frameIndex);
+  LOGD("Dispatcher%s::enqueuePDJob(%d) end", mTag.c_str(), frameIndex);
   lock.unlock();
   mFramesCv.notify_all();
   return frameIndex;
@@ -85,7 +56,7 @@ void Dispatcher::process(const std::shared_ptr<Frame>& currFrame) {
     mCountMixedFrameInference = 0;
     mUseInferenceResults = true;
     currFrame->fullFrameEnqueueTime = NowMicros();
-    int handle = mInferenceEngine->enqueue(currFrame->mat, true);
+    int handle = mInferenceEngine->enqueuePDJob(currFrame->mat, true);
     std::vector<BoundingBox> results = mInferenceEngine->getResults(handle);
     currFrame->fullFrameGetResultsTime = NowMicros();
     currFrame->boxes.insert(currFrame->boxes.end(), results.begin(), results.end());

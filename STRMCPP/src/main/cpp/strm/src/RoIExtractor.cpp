@@ -6,16 +6,34 @@
 
 namespace rm {
 
-RoIExtractor::RoIExtractor(RoIExtractorConfig config, const ResizeProfile* resizeProfile,
-                           const RoIPrioritizer* roIPrioritizer)
+RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile)
     : mConfig(config),
       mTargetSize(cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
-      mResizeProfile(resizeProfile), mRoIPrioritizer(roIPrioritizer) {
+      mResizeProfile(resizeProfile),
+      mbStop(false) {
   LOGD("RoIExtractor()");
+  mThreads.reserve(config.NUM_WORKERS);
+  for (int i = 0; i < config.NUM_WORKERS; i++) {
+    mThreads.emplace_back([this](){ work(); });
+  }
 }
 
-bool RoIExtractor::useOpticalFlowRoIs() const {
-  return mConfig.OF_ROI;
+void RoIExtractor::enqueuePDJob(Frame* prevFrame, Frame* currFrame) {
+  mPDJobs.enqueue(Job{prevFrame, currFrame});
+}
+
+std::vector<RoI> RoIExtractor::getRoIs() {
+  std::lock_guard<std::mutex> lock(mtx);
+
+  return std::vector<RoI>();
+}
+
+void RoIExtractor::enqueueOFJob(Frame* prevFrame, Frame* currFrame) {
+
+}
+
+void RoIExtractor::work() {
+
 }
 
 std::vector<RoI> RoIExtractor::process(Frame* prevFrame, Frame* currFrame,
@@ -80,10 +98,6 @@ std::vector<RoI> RoIExtractor::process(Frame* prevFrame, Frame* currFrame,
   }
   LOGD("After  Merge: %lu", rois.size());
 
-  std::sort(rois.begin(), rois.end(),
-            [this](const RoI& lhs, const RoI& rhs) -> bool {
-              return mRoIPrioritizer->priority(lhs) < mRoIPrioritizer->priority(rhs);
-            });
   return rois;
 }
 
