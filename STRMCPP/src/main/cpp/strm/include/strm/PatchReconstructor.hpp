@@ -4,10 +4,10 @@
 #include <queue>
 #include <thread>
 
-#include "Config.hpp"
-#include "DataType.hpp"
-#include "InferenceEngine.hpp"
-#include "PatchReconstructorCallback.hpp"
+#include "strm/Config.hpp"
+#include "strm/DataType.hpp"
+#include "strm/InferenceEngine.hpp"
+#include "strm/PatchReconstructorCallback.hpp"
 
 namespace rm {
 

@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdint>
 #include <fstream>
+#include <atomic>
 
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -14,11 +15,11 @@
 
 namespace rm {
 
-typedef unsigned long long int idType;
+typedef unsigned long idType;
 
 struct RoI;
 
-struct Rect {
+  struct Rect {
   int left;
   int top;
   int right;
@@ -65,9 +66,10 @@ struct BoundingBox {
   float confidence;
   std::string labelName;
   int targetSize;
+  idType id;
 
-  BoundingBox(const Rect location, const float confidence, const std::string labelName, int targetSize=-1)
-      : location(location), confidence(confidence), labelName(labelName), targetSize(targetSize) {}
+  BoundingBox(idType id, const Rect location, const float confidence, const std::string labelName, int targetSize=-1)
+      : id(id), location(location), confidence(confidence), labelName(labelName), targetSize(targetSize) {}
 };
 
 struct Frame {
@@ -79,6 +81,7 @@ struct Frame {
   std::atomic_bool isResultReady;
   std::vector<BoundingBox> boxes;
 
+  std::vector<RoI> origRoIs;
   std::vector<RoI> rois;
   std::vector<RoI> opticalFlowRoIs;
   std::vector<RoI> pixelDiffRoIs;
@@ -107,8 +110,7 @@ struct Frame {
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
         const time_us& enqueueTime)
-      : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false),
-        enqueueTime(enqueueTime) {}
+      : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false), enqueueTime(enqueueTime){}
 
   ~Frame() {
     endTime = NowMicros();
@@ -136,6 +138,11 @@ struct RoI {
   std::string labelName;
   Features features;
 
+  inline static std::atomic<idType> lastId;
+  idType id;
+  idType parentId;
+  std::vector<idType> childrenId;
+
   int maxEdgeLength;
   int targetSize;
   std::pair<int, int> packedLocation;
@@ -143,14 +150,16 @@ struct RoI {
   int handle;
   std::vector<BoundingBox> boxes;
 
-  RoI(const Frame* frame,
+  RoI(const idType id,
+      const Frame* frame,
       const Rect location,
       const Type type,
       const std::string labelName,
       const std::pair<int, int>& shift,
       const float err,
       const float diffAreaRatio)
-      : frame(frame),
+      : id(id),
+        frame(frame),
         location(location),
         type(type),
         labelName(labelName),
@@ -159,7 +168,9 @@ struct RoI {
         maxEdgeLength(std::max(location.width(), location.height())),
         targetSize(maxEdgeLength),
         packedLocation(std::make_pair(-1, -1)),
-        handle(-1) {};
+        handle(-1),
+        parentId(-1)
+        {};
 
   static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
     assert(roi0.frame == roi1.frame);
@@ -173,16 +184,33 @@ struct RoI {
     std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
                            || roi0.labelName != roi1.labelName
                            ? "" : roi0.labelName;
-    RoI mergedRoI(roi0.frame, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel,
+    RoI mergedRoI(RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel,
                   std::make_pair(0, 0), 0, 0);
+    mergedRoI.childrenId.emplace_back(roi0.id);
+    mergedRoI.childrenId.emplace_back(roi1.id);
     mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength > roi1.targetSize * roi0.maxEdgeLength) ?
                            mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
                            mergedRoI.maxEdgeLength * roi1.targetSize / roi1.maxEdgeLength;
     return mergedRoI;
   }
 
+  static std::pair<idType, idType> getNewIds(unsigned long num) {
+    idType minId = lastId.fetch_add(num);
+    idType maxId = minId + num;
+    // [minId, maxId)
+    return std::pair<idType, idType>(minId, maxId);
+  }
+
   bool isPacked() const {
     return packedLocation.first >= 0 && packedLocation.second >= 0;
+  }
+
+  bool isChild() const {
+    return (parentId != -1);
+  }
+
+  bool isParent() const {
+    return (!childrenId.empty());
   }
 
   int getArea() const {

@@ -19,11 +19,12 @@ class RoIExtractor {
 
   bool useOpticalFlowRoIs() const;
 
-  std::vector<RoI> process(Frame* prevFrame, Frame* currFrame,
-                           const std::vector<BoundingBox>& prevResults) const;
+  std::pair<std::vector<RoI>, std::vector<RoI>> process(Frame* prevFrame, Frame* currFrame,
+                                                        const std::vector<BoundingBox>& prevResults) const;
 
  private:
-  static void mergeSingleFrameRoIs(std::vector<RoI>& rois, const float mergeThreshold,
+  static void mergeSingleFrameRoIs(std::vector<RoI> &origRoIs, std::vector<RoI> &rois,
+                                   const float mergeThreshold,
                                    const int maxMergedRoISize);
 
   static std::vector<RoI> getOpticalFlowRoIs(
@@ -48,6 +49,7 @@ class RoIExtractor {
 
   const RoIPrioritizer* mRoIPrioritizer;
   const ResizeProfile* mResizeProfile;
+
 };
 
 } // namespace rm

@@ -18,6 +18,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       config.patchReconstructorConfig, inferenceEngine, (PatchReconstructorCallback*) this);
   mPatchMixer = std::make_unique<PatchMixer>(
       config.patchMixerConfig, inferenceEngine, mPatchReconstructor.get());
+  RoI::lastId = 1;
 }
 
 SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
