@@ -19,11 +19,6 @@
     "patch_mixer": {
         "packing": true,
         "max_packed_frames": 60,
-        "mixed_frame_sizes": [
-            600,
-            832,
-            1000
-        ],
         "latency_slo_ms": 5000
     },
     "patch_reconstructor": {

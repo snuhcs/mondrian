@@ -62,15 +62,9 @@ PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   if (!json["max_packed_frames"].isNull()) {
     config.MAX_PACKED_FRAMES = json["max_packed_frames"].asInt();
   }
-  if (!json["mixed_frame_size"].isNull()) {
-    config.MIXED_FRAME_SIZE = json["mixed_frame_size"].asInt();
-  }
-  if (!json["mixed_frame_sizes"].isNull()) {
-    const Json::Value mixedFrameSizes =  json["mixed_frame_sizes"];
-    for (const auto & mixedFrameSize : mixedFrameSizes) {
-      config.MIXED_FRAME_SIZES.push_back(mixedFrameSize.asInt());
-    }
-  }
+
+  // mixed_frame_sizes is set at parseSTRMConfig()
+
   if (!json["latency_slo_ms"].isNull()) {
     config.LATENCY_SLO_MS = json["latency_slo_ms"].asInt();
   }
@@ -91,7 +85,7 @@ PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) 
   return config;
 }
 
-STRMConfig parseSTRMConfig(const std::string& jsonPath) {
+STRMConfig parseSTRMConfig(const std::string& jsonPath, const std::vector<int>& inputSizes) {
   STRMConfig strmConfig;
   std::ifstream jsonFile(jsonPath, std::ifstream::binary);
   if (!jsonFile.is_open()) {
@@ -116,6 +110,7 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   }
   if (!json["patch_mixer"].isNull()) {
     strmConfig.patchMixerConfig = parsePatchMixerConfig(json["patch_mixer"]);
+    strmConfig.patchMixerConfig.MIXED_FRAME_SIZES = inputSizes;
   }
   if (!json["patch_reconstructor"].isNull()) {
     strmConfig.patchReconstructorConfig = parsePatchReconstructorConfig(

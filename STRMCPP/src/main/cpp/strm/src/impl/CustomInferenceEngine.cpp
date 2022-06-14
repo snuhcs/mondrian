@@ -41,15 +41,9 @@ CustomInferenceEngine::CustomInferenceEngine(
 
 template <typename T>
 void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config) {
-  std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-      config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
-  if (config.INPUT_SIZE != config.FULL_FRAME_INPUT_SIZE) {
-    std::unique_ptr<Classifier> fullClassifier = std::make_unique<T>(
-        config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
-    workers.push_back(std::make_unique<Worker>(this, classifier.get(), fullClassifier.get()));
-    classifiers.push_back(std::move(classifier));
-    fullClassifiers.push_back(std::move(fullClassifier));
-  } else {
+  for (const auto & inputSize : config.INPUT_SIZES) {
+    std::unique_ptr<Classifier> classifier = std::make_unique<T>(
+        inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
     workers.push_back(std::make_unique<Worker>(this, classifier.get(), classifier.get()));
     classifiers.push_back(std::move(classifier));
   }

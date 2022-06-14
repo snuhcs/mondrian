@@ -6,14 +6,14 @@ PatchMixer::PatchMixer(PatchMixerConfig config, InferenceEngine* inferenceEngine
                        PatchReconstructor* patchReconstructor)
     : mConfig(config), mInferenceEngine(inferenceEngine),
       mPatchReconstructor(patchReconstructor),
-      mFreeRects({Rect(0, 0, config.MIXED_FRAME_SIZE, config.MIXED_FRAME_SIZE)}) {
-  LOGD("PatchMixer() %d %d", config.MIXED_FRAME_SIZE, config.MAX_PACKED_FRAMES);
+      mFreeRects({Rect(0, 0, config.MIXED_FRAME_SIZES.at(0), config.MIXED_FRAME_SIZES.at(0))}) {
+  LOGD("PatchMixer() %d %d", config.MIXED_FRAME_SIZES.at(0), config.MAX_PACKED_FRAMES);
 }
 
 void PatchMixer::reset() {
   mPackedFrames.clear();
   mFreeRects.clear();
-  mFreeRects.emplace_back(0, 0, mConfig.MIXED_FRAME_SIZE, mConfig.MIXED_FRAME_SIZE);
+  mFreeRects.emplace_back(0, 0, mConfig.MIXED_FRAME_SIZES.at(0), mConfig.MIXED_FRAME_SIZES.at(0));
 }
 
 PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(const std::shared_ptr<Frame>& currFrame) {
@@ -65,12 +65,6 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(const std::shared_ptr
   // <<<
   */
 
-  LOGD("XXX: start");
-
-  for (const auto& size : mConfig.MIXED_FRAME_SIZES) {
-    LOGD("XXX: %d", size);
-  }
-
   // >>> Will later replaced by above section of code
   int minPackedFrameIndex = currFrame->frameIndex;
   for (const std::shared_ptr<Frame>& frame : mPackedFrames) {
@@ -98,7 +92,7 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(const std::shared_ptr
       mFinishedKeys.insert(frame->key);
     }
     mFinishedKeys.erase(currFrame->key);
-    enqueueMixedFrame(MixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE,
+    enqueueMixedFrame(MixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZES.at(0),
                                  mConfig.PACKING));
     reset();
   }

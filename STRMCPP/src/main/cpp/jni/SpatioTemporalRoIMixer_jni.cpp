@@ -38,7 +38,7 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(
   roiPrioritizerHandle = reinterpret_cast<long>(roIPrioritizer);
   inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);
   return reinterpret_cast<long>(new rm::SpatioTemporalRoIMixer(
-      rm::parseSTRMConfig(jsonPath), resizeProfile, roIPrioritizer, inferenceEngine));
+      rm::parseSTRMConfig(jsonPath, config.inferenceEngineConfig.INPUT_SIZES), resizeProfile, roIPrioritizer, inferenceEngine));
 }
 
 extern "C"

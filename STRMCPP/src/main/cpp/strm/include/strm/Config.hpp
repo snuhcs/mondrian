@@ -31,8 +31,7 @@ struct RoIExtractorConfig {
 struct PatchMixerConfig {
   bool PACKING = true;
   int MAX_PACKED_FRAMES = 30;
-  int MIXED_FRAME_SIZE = 800;
-  std::vector<int> MIXED_FRAME_SIZES;
+  std::vector<int> MIXED_FRAME_SIZES = {800};
   int LATENCY_SLO_MS = 5000;
 };
 
@@ -53,7 +52,7 @@ DispatcherConfig parseDispatcherConfig(const Json::Value& json);
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
 PatchMixerConfig parsePatchMixerConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
-STRMConfig parseSTRMConfig(const std::string& jsonPath);
+STRMConfig parseSTRMConfig(const std::string& jsonPath, const std::vector<int>& inputSizes);
 
 } // namespace rm
 
