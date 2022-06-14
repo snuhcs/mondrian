@@ -8,13 +8,11 @@
 #include "strm/impl/ImplConfig.hpp"
 #include "strm/impl/AccuracyAwareResizeProfile.hpp"
 #include "strm/impl/StaticResizeProfile.hpp"
-#include "strm/impl/CustomRoIPrioritizer.hpp"
 #include "strm/impl/CustomInferenceEngine.hpp"
 
 static JavaVM* vm;
 static jboolean isCopy = JNI_TRUE;
 static long resizeProfileHandle = (long) nullptr;
-static long roiPrioritizerHandle = (long) nullptr;
 static long inferenceEngineHandle = (long) nullptr;
 
 extern "C"
@@ -30,15 +28,13 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(
                             config.resizeProfileConfig.RESIZE_MARGIN)) :
                         reinterpret_cast<rm::ResizeProfile*>(new rm::StaticResizeProfile(
                             config.resizeProfileConfig.STATIC_TARGET_SIZE));
-  auto* roIPrioritizer = reinterpret_cast<rm::RoIPrioritizer*>(new rm::CustomRoIPrioritizer());
   env->GetJavaVM(&vm);
   auto* inferenceEngine = reinterpret_cast<rm::InferenceEngine*>(new rm::CustomInferenceEngine(
       config.inferenceEngineConfig, vm, env, thiz, draw == JNI_TRUE));
   resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
-  roiPrioritizerHandle = reinterpret_cast<long>(roIPrioritizer);
   inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);
   return reinterpret_cast<long>(new rm::SpatioTemporalRoIMixer(
-      rm::parseSTRMConfig(jsonPath), resizeProfile, roIPrioritizer, inferenceEngine));
+      rm::parseSTRMConfig(jsonPath), resizeProfile, inferenceEngine));
 }
 
 extern "C"
@@ -83,23 +79,12 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_getResults(JNIEnv* env, jobje
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_removeSource(JNIEnv* env, jobject thiz,
-                                                                jlong handle, jstring key) {
-  auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  const char* k = env->GetStringUTFChars(key, &isCopy);
-  strm->removeSource(std::string(k));
-}
-
-extern "C"
-JNIEXPORT void JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_close(JNIEnv* env, jobject thiz,
                                                          jlong handle) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   auto* resizeProfile = (rm::ResizeProfile*) resizeProfileHandle;
-  auto* roiPrioritizer = (rm::RoIPrioritizer*) roiPrioritizerHandle;
   auto* inferenceEngine = (rm::InferenceEngine*) inferenceEngineHandle;
   delete strm;
   delete resizeProfile;
-  delete roiPrioritizer;
   delete inferenceEngine;
 }

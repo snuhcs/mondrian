@@ -31,15 +31,6 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["max_merged_roi_size"].isNull()) {
     config.MAX_MERGED_ROI_SIZE = json["max_merged_roi_size"].asInt();
   }
-  if (!json["of_roi"].isNull()) {
-    config.OF_ROI = json["of_roi"].asBool();
-  }
-  if (!json["pd_roi"].isNull()) {
-    config.PD_ROI = json["pd_roi"].asBool();
-  }
-  if (!json["merge_roi"].isNull()) {
-    config.MERGE_ROI = json["merge_roi"].asBool();
-  }
   return config;
 }
 
@@ -88,11 +79,8 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["log_internal"].isNull()) {
     LOG_INTERNAL = json["log_internal"].asBool();
   }
-  if (!json["max_queue_size"].isNull()) {
-    config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
-  }
-  if (!json["full_inference_interval"].isNull()) {
-    config.FULL_INFERENCE_INTERVAL = json["full_inference_interval"].asInt();
+  if (!json["buffer_size"].isNull()) {
+    config.BUFFER_SIZE = json["buffer_size"].asInt();
   }
   if (!json["roi_padding"].isNull()) {
     config.ROI_PADDING = json["roi_padding"].asInt();

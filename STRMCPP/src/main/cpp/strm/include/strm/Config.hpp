@@ -17,9 +17,6 @@ struct RoIExtractorConfig {
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
   float MERGE_THRESHOLD = 0.5;
   int MAX_MERGED_ROI_SIZE = 800;
-  bool OF_ROI = true;
-  bool PD_ROI = true;
-  bool MERGE_ROI = true;
 };
 
 struct PatchMixerConfig {
@@ -35,10 +32,9 @@ struct PatchReconstructorConfig {
 };
 
 struct STRMConfig {
-  int MAX_QUEUE_SIZE = 2;
-  int FULL_INFERENCE_INTERVAL = 4;
+  int BUFFER_SIZE = 1000;
   int ROI_PADDING = 10;
-  int LATENCY_SLO_MS = 5000;
+  int LATENCY_SLO_MS = 10000;
   RoIExtractorConfig roIExtractorConfig;
   PatchMixerConfig patchMixerConfig;
   PatchReconstructorConfig patchReconstructorConfig;

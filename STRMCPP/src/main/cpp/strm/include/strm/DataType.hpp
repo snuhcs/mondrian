@@ -67,17 +67,32 @@ struct BoundingBox {
       : location(location), confidence(confidence), labelName(labelName) {}
 };
 
+enum RoIExtractionStatus {
+  PD_WAITING = 1,
+  PD_EXTRACTING = 2,
+  OF_WAITING = 3,
+  OF_EXTRACTING = 4,
+  ROI_EXTRACTED = 5,
+};
+
 struct Frame {
   const std::string key;
   const int frameIndex;
   const cv::Mat mat;
+  Frame* prevFrame;
+  Frame* nextFrame;
   cv::Mat preProcessedMat;
 
-  std::atomic_bool isResultReady;
+  bool isResultReady;
   std::vector<BoundingBox> boxes;
 
+  // For next frame OF roi extraction
+  bool isOFReady;
+  std::vector<BoundingBox> boxesToTrack;
+
+  RoIExtractionStatus roiExtractionStatus;
   std::vector<RoI> rois;
-  std::vector<RoI> opticalFlowRoIs;
+  std::vector<RoI> mergedRoIs;
 
   const time_us enqueueTime;
   time_us dispatcherProcessStartTime = 0;
@@ -102,12 +117,17 @@ struct Frame {
   time_us endTime = 0;
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
-        const time_us& enqueueTime)
-      : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false),
+        Frame* prevFrame, const time_us& enqueueTime)
+      : key(key), frameIndex(frameIndex), mat(mat), prevFrame(prevFrame),
+        isResultReady(false), isOFReady(false), roiExtractionStatus(PD_WAITING),
         enqueueTime(enqueueTime) {}
 
   ~Frame() {
     endTime = NowMicros();
+  }
+
+  bool readyForExtraction() const {
+    return roiExtractionStatus == PD_WAITING || (roiExtractionStatus == OF_WAITING && prevFrame->isOFReady);
   }
 };
 

@@ -38,10 +38,6 @@ public class SpatioTemporalRoIMixer {
         return getResults(handle, key, frameIndex);
     }
 
-    public void removeSource(String key) {
-        removeSource(handle, key);
-    }
-
     public void close() {
         close(handle);
     }
@@ -51,8 +47,6 @@ public class SpatioTemporalRoIMixer {
     private native int enqueueImage(long handle, String key, long matAddr);
 
     private native List<BoundingBox> getResults(long handle, String key, int frameIndex);
-
-    private native void removeSource(long handle, String key);
 
     private native void close(long handle);
 }

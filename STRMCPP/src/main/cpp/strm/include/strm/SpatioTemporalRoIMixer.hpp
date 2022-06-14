@@ -1,21 +1,45 @@
 #ifndef SPATIO_TEMPORAL_ROI_MIXER_HPP_
 #define SPATIO_TEMPORAL_ROI_MIXER_HPP_
 
+#include <condition_variable>
 #include <fstream>
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "strm/Config.hpp"
-#include "strm/Dispatcher.hpp"
 #include "strm/InferenceEngine.hpp"
 #include "strm/ResizeProfile.hpp"
 #include "strm/RoIExtractor.hpp"
 #include "strm/PatchMixer.hpp"
 #include "strm/PatchReconstructor.hpp"
 #include "strm/Utils.hpp"
+#include "strm/Logger.hpp"
 
 namespace rm {
+
+class FrameBuffer {
+ public:
+  FrameBuffer(const std::string& key, int capacity,
+              const cv::Mat& firstMat, const std::vector<BoundingBox>& firstBoxes);
+
+  int enqueue(const cv::Mat& mat);
+
+  void pop();
+
+  Frame* getFrame(int frameIndex);
+
+ private:
+  const std::string key;
+  const int capacity;
+
+  std::mutex mtx;
+  std::condition_variable cv;
+  std::vector<std::unique_ptr<Frame>> frames;
+  int begin;
+  int end;
+};
 
 class SpatioTemporalRoIMixer {
  public:
@@ -30,30 +54,27 @@ class SpatioTemporalRoIMixer {
   std::vector<BoundingBox> getResults(const std::string& key, int frameIndex);
 
  private:
-  void process();
+  void work();
 
   const STRMConfig mConfig;
+  std::thread mThread;
+  bool mbStop;
+
   const std::unique_ptr<Logger> mLogger;
+  InferenceEngine* mInferenceEngine;
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<PatchMixer> mPatchMixer;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 
-  InferenceEngine* mInferenceEngine;
 
-  std::atomic_bool mbIsClosed;
-  std::thread mThread;
+  std::mutex mFrameBuffersMtx;
+  std::condition_variable mFrameBuffersCv;
+  std::map<std::string, std::unique_ptr<FrameBuffer>> mFrameBuffers;
 
-  std::set<std::string> mKeys;
-  std::map<int, Frame> mFrames;
-  std::condition_variable mFramesCv;
-  std::mutex mFramesMtx;
-
-  int mCountMixedFrameInference;
-  bool mUseInferenceResults;
-  std::shared_ptr<Frame> mPrevFrame = nullptr;
   std::mutex mResultsMtx;
   std::condition_variable mResultsCv;
+  std::map<std::pair<std::string, int>, std::vector<BoundingBox>> mResults;
 };
 
 } // namespace rm

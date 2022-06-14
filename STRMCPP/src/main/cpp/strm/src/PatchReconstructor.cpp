@@ -94,7 +94,7 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
     }
   }
   for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
-    frame->isResultReady.store(true);
+    frame->isResultReady = true;
   }
 }
 
@@ -110,7 +110,7 @@ void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
             box.confidence, box.labelName);
       }
     }
-    frame->isResultReady.store(true);
+    frame->isResultReady = true;
   }
 }
 

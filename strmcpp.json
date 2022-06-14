@@ -1,10 +1,9 @@
 {
     "log_internal": false,
-    "dispatcher": {
-        "max_queue_size": 2,
-        "full_inference_interval": 4,
-        "roi_padding": 10
-    },
+    "buffer_size": 1000,
+    "full_inference_interval": 4,
+    "roi_padding": 10,
+    "latency_slo_ms": 10000,
     "roi_extractor": {
         "extraction_resize_width": 640,
         "extraction_resize_height": 360,

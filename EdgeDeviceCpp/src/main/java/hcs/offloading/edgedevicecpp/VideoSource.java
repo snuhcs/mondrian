@@ -156,7 +156,6 @@ public class VideoSource extends CustomCapturer implements Runnable {
     }
 
     public void close() {
-        strm.removeSource(VIDEO_PATH);
         try {
             captureThread.interrupt();
             captureThread.join();
