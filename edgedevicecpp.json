@@ -1,6 +1,6 @@
 {
     "log_path": "/data/data/hcs.offloading.edgedevicecpp/test.log",
-    "draw": false,
+    "draw": true,
     "source": {
         "use_local_video": true,
         "video_configs": [
@@ -31,7 +31,7 @@
         "conf_threshold": 0.1,
         "iou_threshold": 0.5,
         "num_workers": 1,
-        "input_size": 832,
-        "full_frame_input_size": 832
+        #"input_size": 832,
+        #"full_frame_input_size": 832
     }
 }

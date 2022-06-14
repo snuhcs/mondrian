@@ -65,6 +65,12 @@ PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(const std::shared_ptr
   // <<<
   */
 
+  LOGD("XXX: start");
+
+  for (const auto& size : mConfig.MIXED_FRAME_SIZES) {
+    LOGD("XXX: %d", size);
+  }
+
   // >>> Will later replaced by above section of code
   int minPackedFrameIndex = currFrame->frameIndex;
   for (const std::shared_ptr<Frame>& frame : mPackedFrames) {

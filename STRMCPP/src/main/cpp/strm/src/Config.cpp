@@ -65,6 +65,12 @@ PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   if (!json["mixed_frame_size"].isNull()) {
     config.MIXED_FRAME_SIZE = json["mixed_frame_size"].asInt();
   }
+  if (!json["mixed_frame_sizes"].isNull()) {
+    const Json::Value mixedFrameSizes =  json["mixed_frame_sizes"];
+    for (const auto & mixedFrameSize : mixedFrameSizes) {
+      config.MIXED_FRAME_SIZES.push_back(mixedFrameSize.asInt());
+    }
+  }
   if (!json["latency_slo_ms"].isNull()) {
     config.LATENCY_SLO_MS = json["latency_slo_ms"].asInt();
   }

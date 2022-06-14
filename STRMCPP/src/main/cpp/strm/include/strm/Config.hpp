@@ -2,6 +2,7 @@
 #define CONFIG_HPP_
 
 #include <string>
+#include <vector>
 
 #include <json/json.h>
 
@@ -31,6 +32,7 @@ struct PatchMixerConfig {
   bool PACKING = true;
   int MAX_PACKED_FRAMES = 30;
   int MIXED_FRAME_SIZE = 800;
+  std::vector<int> MIXED_FRAME_SIZES;
   int LATENCY_SLO_MS = 5000;
 };
 
