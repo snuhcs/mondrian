@@ -6,10 +6,11 @@
 
 namespace rm {
 
-RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile)
+RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile,
+                           const cv::Size& maxRoISize)
     : mConfig(config),
       mTargetSize(cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
-      mResizeProfile(resizeProfile), mbStop(false) {
+      mResizeProfile(resizeProfile), mMaxRoISize(maxRoISize), mbStop(false) {
   LOGD("RoIExtractor()");
   mThreads.reserve(config.NUM_WORKERS);
   for (int i = 0; i < config.NUM_WORKERS; i++) {
@@ -19,7 +20,7 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile
 
 void RoIExtractor::enqueue(Frame* frame) {
   std::lock_guard<std::mutex> lock(mFramesMtx);
-  mFrames.push(frame);
+  mFrames.push_back(frame);
   mFramesCv.notify_one();
 }
 
@@ -93,7 +94,8 @@ void RoIExtractor::process(Frame* currFrame) const {
     currFrame->preProcessedMat = mat;
   }
 
-  assert(currFrame->roiExtractionStatus == PD_EXTRACTING || currFrame->roiExtractionStatus == OF_EXTRACTING);
+  assert(currFrame->roiExtractionStatus == PD_EXTRACTING ||
+         currFrame->roiExtractionStatus == OF_EXTRACTING);
 
   // PD RoI Extraction
   if (currFrame->roiExtractionStatus == PD_EXTRACTING) {
@@ -102,6 +104,8 @@ void RoIExtractor::process(Frame* currFrame) const {
                                                       mTargetSize, mConfig.MIN_ROI_AREA);
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
     currFrame->rois.insert(currFrame->rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
+
+    currFrame->roiExtractionStatus = OF_WAITING;
 
   } else { // OF RoI Extraction
     std::vector<BoundingBox> reliablePrevBoxes;
@@ -114,10 +118,11 @@ void RoIExtractor::process(Frame* currFrame) const {
     std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame,
                                                           reliablePrevBoxes, mTargetSize);
     currFrame->opticalFlowRoIProcessEndTime = NowMicros();
-    std::transform(opticalFlowRoIs.begin(), opticalFlowRoIs.end(), std::back_inserter(currFrame->boxesToTrack),
-                   [](RoI& roi){
-      return BoundingBox{roi.location, 1, roi.labelName};
-    });
+    std::transform(opticalFlowRoIs.begin(), opticalFlowRoIs.end(),
+                   std::back_inserter(currFrame->boxesToTrack),
+                   [](RoI& roi) {
+                     return BoundingBox{roi.location, 1, roi.labelName};
+                   });
     currFrame->rois.insert(currFrame->rois.end(), opticalFlowRoIs.begin(), opticalFlowRoIs.end());
 
     currFrame->resizeRoIStartTime = NowMicros();
@@ -127,16 +132,18 @@ void RoIExtractor::process(Frame* currFrame) const {
     currFrame->resizeRoIEndTime = NowMicros();
 
     currFrame->mergeRoIStartTime = NowMicros();
-    currFrame->mergedRoIs = mergeRoIs(currFrame->rois, mConfig.MERGE_THRESHOLD, mConfig.MAX_MERGED_ROI_SIZE);
+    currFrame->mergedRoIs = mergeRoIs(currFrame->rois, mConfig.MERGE_THRESHOLD, mMaxRoISize);
     currFrame->mergeRoIEndTime = NowMicros();
     LOGD("Merge: %lu => %lu", currFrame->rois.size(), currFrame->mergedRoIs.size());
 
     prevFrame->preProcessedMat.release();
+
+    currFrame->roiExtractionStatus = ROI_EXTRACTED;
   }
 }
 
 std::vector<RoI> RoIExtractor::mergeRoIs(const std::vector<RoI>& rois, const float mergeThreshold,
-                                         const int maxMergedRoISize) {
+                                         const cv::Size& maxSize) {
   std::vector<RoI> mergedRoIs = rois;
   while (true) {
     bool updated = false;
@@ -154,7 +161,7 @@ std::vector<RoI> RoIExtractor::mergeRoIs(const std::vector<RoI>& rois, const flo
         int newTop = std::min(roi0.location.top, roi1.location.top);
         int newRight = std::max(roi0.location.right, roi1.location.right);
         int newBottom = std::max(roi0.location.bottom, roi1.location.bottom);
-        if (newRight - newLeft > maxMergedRoISize || newBottom - newTop > maxMergedRoISize) {
+        if (newRight - newLeft > maxSize.width || newBottom - newTop > maxSize.height) {
           continue;
         }
         int newArea = (newRight - newLeft) * (newBottom - newLeft);

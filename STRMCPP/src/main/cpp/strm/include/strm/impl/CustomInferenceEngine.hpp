@@ -25,6 +25,8 @@ class CustomInferenceEngine : public InferenceEngine {
 
   std::vector<BoundingBox> getResults(const int handle) override;
 
+  const cv::Size& getInputSize() const override;
+
   long long getInferenceTimeMs() override;
 
  private:

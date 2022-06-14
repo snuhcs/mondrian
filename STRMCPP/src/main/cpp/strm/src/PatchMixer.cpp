@@ -2,114 +2,44 @@
 
 namespace rm {
 
-PatchMixer::PatchMixer(PatchMixerConfig config, InferenceEngine* inferenceEngine,
-                       PatchReconstructor* patchReconstructor)
-    : mConfig(config), mInferenceEngine(inferenceEngine),
-      mPatchReconstructor(patchReconstructor),
-      mFreeRects({Rect(0, 0, config.MIXED_FRAME_SIZE, config.MIXED_FRAME_SIZE)}) {
-  LOGD("PatchMixer() %d %d", config.MIXED_FRAME_SIZE, config.MAX_PACKED_FRAMES);
-}
+int PatchMixer::mixedFrameIndex = 0;
 
-void PatchMixer::reset() {
-  mPackedFrames.clear();
-  mFreeRects.clear();
-  mFreeRects.emplace_back(0, 0, mConfig.MIXED_FRAME_SIZE, mConfig.MIXED_FRAME_SIZE);
-}
+std::vector<MixedFrame> PatchMixer::pack(const std::vector<Frame*>& frames, const cv::Size& size) {
+  LOGD("PatchMixer::pack() %lu", frames.size());
 
-PatchMixer::Status PatchMixer::tryPackAndEnqueueMixedFrame(const std::shared_ptr<Frame>& currFrame) {
-  assert(currFrame != nullptr);
-  LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d)", currFrame->key.c_str(),
-       currFrame->frameIndex);
-  std::lock_guard<std::mutex> patchMixerLock(mPatchMixerMtx);
+  std::vector<Rect> freeRects({Rect(0, 0, size.width, size.height)});
 
-  auto finishedKeysIt = mFinishedKeys.find(currFrame->key);
-  if (finishedKeysIt != mFinishedKeys.end()) {
-    mFinishedKeys.erase(finishedKeysIt);
-    LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(),
-         currFrame->frameIndex, DONE_BUT_NEED_REPROCESS);
-    return DONE_BUT_NEED_REPROCESS;
+  std::vector<RoI*> rois;
+  for (auto& frame : frames) {
+    for (RoI& roi : frame->rois) {
+      rois.push_back(&roi);
+    }
   }
 
-  currFrame->mixingStartTime = NowMicros();
-  bool isAllPacked = true;
-  for (RoI& roi : currFrame->rois) {
-    std::pair<int, int> wh = roi.getResizedWidthHeight();
-    bool isPacked = false;
-    for (auto it = mFreeRects.begin(); it != mFreeRects.end(); it++) {
+  time_us mixingStartTime = NowMicros();
+  for (RoI* roi : rois) {
+    std::pair<int, int> wh = roi->getResizedWidthHeight();
+    for (auto it = freeRects.begin(); it != freeRects.end(); it++) {
       const Rect freeRect = *it;
       if (canFit(wh, freeRect)) {
-        mFreeRects.erase(it);
-        roi.packedLocation = std::make_pair(freeRect.left, freeRect.top);
+        freeRects.erase(it);
+        roi->packedLocation = std::make_pair(freeRect.left, freeRect.top);
         std::pair<Rect, Rect> newFreeRectPair = splitFreeRect(wh, freeRect);
-        mFreeRects.push_back(newFreeRectPair.first);
-        mFreeRects.push_back(newFreeRectPair.second);
-        isPacked = true;
+        freeRects.push_back(newFreeRectPair.first);
+        freeRects.push_back(newFreeRectPair.second);
         break;
       }
     }
-    isAllPacked &= isPacked;
   }
-  currFrame->mixingEndTime = NowMicros();
+  time_us mixingEndTime = NowMicros();
 
-  /*
-  // >>> Will later replace numPackedFrames
-  std::chrono::system_clock::time_point oldestBirthTime = currFrame->birthTime;
-  for (const Frame* frame : mPackedFrames) {
-    if (oldestBirthTime > frame->birthTime) {
-      oldestBirthTime = frame->birthTime;
-    }
-  }
-  long long inferenceTimeMs = mInferenceEngine->getInferenceTimeMs();
-  long long oldestRoIAge = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - oldestBirthTime).count();
-  bool tooOld = oldestRoIAge > (mConfig.LATENCY_SLO_MS - inferenceTimeMs);
-  // <<<
-  */
-
-  // >>> Will later replaced by above section of code
-  int minPackedFrameIndex = currFrame->frameIndex;
-  for (const std::shared_ptr<Frame>& frame : mPackedFrames) {
-    if (minPackedFrameIndex > frame->frameIndex) {
-      minPackedFrameIndex = frame->frameIndex;
-    }
-  }
-  int numPackedFrames = currFrame->frameIndex - minPackedFrameIndex + 1;
-  bool tooOld = (numPackedFrames >= mConfig.MAX_PACKED_FRAMES);
-  // <<<
-
-  bool doEnqueue = !isAllPacked || tooOld;
-  Status status = (!doEnqueue) ? ONGOING :
-                  (countPackedFrame(currFrame->key) == 0) ? DONE_BUT_DROPPED_FEW_ROIS
-                                                          : DONE_BUT_NEED_REPROCESS;
-  bool packCurrFrame = isAllPacked || (status == DONE_BUT_DROPPED_FEW_ROIS);
-
-  if (packCurrFrame) {
-    mPackedFrames.push_back(currFrame);
+  for (auto& frame : frames) {
+    frame->mixingStartTime = mixingStartTime;
+    frame->mixingEndTime = mixingEndTime;
   }
 
-  if (doEnqueue) {
-    mFinishedKeys.clear();
-    for (const std::shared_ptr<Frame>& frame : mPackedFrames) {
-      mFinishedKeys.insert(frame->key);
-    }
-    mFinishedKeys.erase(currFrame->key);
-    enqueueMixedFrame(MixedFrame(mixedFrameIndex++, mPackedFrames, mConfig.MIXED_FRAME_SIZE,
-                                 mConfig.PACKING));
-    reset();
-  }
-
-  LOGD("PatchMixer::tryPackAndEnqueueMixedFrame(%s, %d) end %d", currFrame->key.c_str(),
-       currFrame->frameIndex, status);
-  return status;
-}
-
-int PatchMixer::countPackedFrame(const std::string& key) {
-  int count = 0;
-  for (const std::shared_ptr<Frame>& frame : mPackedFrames) {
-    if (frame->key == key) {
-      count++;
-    }
-  }
-  return count;
+  MixedFrame mixedFrame(mixedFrameIndex++, frames, size);
+  return {mixedFrame};
 }
 
 bool PatchMixer::canFit(std::pair<int, int> wh, const Rect& rect) {
@@ -126,25 +56,6 @@ std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, const Re
     return std::make_pair(Rect(rect.left, rect.top + h, rect.right, rect.bottom),
                           Rect(rect.left + w, rect.top, rect.right, rect.top + h));
   }
-}
-
-void PatchMixer::enqueueMixedFrame(MixedFrame mixedFrame) {
-  const time_us mixedFrameEnqueueTime = NowMicros();
-  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
-    frame->mixedFrameEnqueueTime = mixedFrameEnqueueTime;
-  }
-  if (mConfig.PACKING) {
-    mixedFrame.handle = mInferenceEngine->enqueue(mixedFrame.packedMat, false);
-  } else {
-    for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
-      for (RoI& roi : frame->rois) {
-        if (roi.isPacked()) {
-          roi.handle = mInferenceEngine->enqueue(roi.getMat(), false);
-        }
-      }
-    }
-  }
-  mPatchReconstructor->enqueue(mixedFrame);
 }
 
 } // namespace rm

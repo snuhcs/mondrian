@@ -5,65 +5,16 @@
 
 namespace rm {
 
-PatchReconstructor::PatchReconstructor(PatchReconstructorConfig config,
-                                       InferenceEngine* inferenceEngine)
-    : mConfig(config),
-      mInferenceEngine(inferenceEngine),
-      mMaxNumItems(config.MAX_QUEUE_SIZE),
-      isClosed(false) {
-  LOGD("PatchReconstructor()");
-  mThread = std::thread([this]() {
-    while (!isClosed.load()) {
-      MixedFrame item = takeItem();
-      process(item);
-    }
-  });
-}
+PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config) : mConfig(config) {}
 
-PatchReconstructor::~PatchReconstructor() {
-  isClosed.store(true);
-  mThread.join();
-}
-
-void PatchReconstructor::process(MixedFrame& mixedFrame) {
-  LOGD("PatchReconstructor::process(%d) %lu frames packed", mixedFrame.mixedFrameIndex,
-       mixedFrame.packedFrames.size());
-  bool isMixedInference = !mixedFrame.packedMat.empty();
-  if (isMixedInference) {
-    mixedFrame.boxes = mInferenceEngine->getResults(mixedFrame.handle);
-  } else {
-    for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
-      for (RoI& roi : frame->rois) {
-        if (roi.isPacked()) {
-          assert(roi.handle != -1);
-          roi.boxes = mInferenceEngine->getResults(roi.handle);
-        }
-      }
-    }
-  }
+void PatchReconstructor::reconstructResults(
+    MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const {
   time_us reconstructStartTime = NowMicros();
-  if (isMixedInference) {
-    updateMixedFrameInferenceResults(mixedFrame, mConfig.OVERLAP_THRESHOLD);
-  } else {
-    updateRoIInferenceResults(mixedFrame);
-  }
-  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
-    frame->boxes = nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
-  }
-  time_us reconstructEndTime = NowMicros();
-  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
-    frame->reconstructStartTime = reconstructStartTime;
-    frame->reconstructEndTime = reconstructEndTime;
-  }
-}
-
-void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame,
-                                                          float overlapThreshold) {
-  for (const BoundingBox& box : mixedFrame.boxes) {
+  for (const BoundingBox& box : results) {
     float maxOverlap = -1;
     Rect maxBoxPos;
     Frame* maxFrame = nullptr;
-    for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
+    for (Frame* frame : mixedFrame.frames) {
       for (RoI& roi : frame->rois) {
         if (roi.isPacked()) {
           Rect movedAndResizedBoxPos(
@@ -84,61 +35,45 @@ void PatchReconstructor::updateMixedFrameInferenceResults(MixedFrame& mixedFrame
           if (maxOverlap < overlapRatio) {
             maxOverlap = overlapRatio;
             maxBoxPos = movedAndResizedBoxPos;
-            maxFrame = frame.get();
+            maxFrame = frame;
           }
         }
       }
     }
-    if (maxFrame != nullptr && maxOverlap >= overlapThreshold) {
+    if (maxFrame != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
       maxFrame->boxes.emplace_back(maxBoxPos, box.confidence, box.labelName);
     }
   }
-  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
-    frame->isResultReady = true;
-  }
-}
-
-void PatchReconstructor::updateRoIInferenceResults(MixedFrame& mixedFrame) {
-  for (const std::shared_ptr<Frame>& frame : mixedFrame.packedFrames) {
-    for (RoI& roi : frame->rois) {
-      for (const BoundingBox& box : roi.boxes) {
-        frame->boxes.emplace_back(
-            Rect(box.location.left + roi.location.left,
-                 box.location.top + roi.location.top,
-                 box.location.right + roi.location.left,
-                 box.location.bottom + roi.location.top),
-            box.confidence, box.labelName);
-      }
+  std::map<std::string, Frame*> lastFrames;
+  for (Frame* frame : mixedFrame.frames) {
+    frame->boxes = nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
+    if (lastFrames.find(frame->key) == lastFrames.end() ||
+        lastFrames.at(frame->key)->frameIndex < frame->frameIndex) {
+      lastFrames[frame->key] = frame;
     }
+  }
+  for (auto it = lastFrames.begin(); it != lastFrames.end(); it++) {
+    Frame* frame = it->second;
+    std::transform(frame->boxes.begin(), frame->boxes.end(),
+                   std::back_inserter(frame->boxesToTrack),
+                   [this, &frame](const BoundingBox& box) {
+                     return BoundingBox{Rect(
+                         std::max(0, box.location.left - mConfig.ROI_PADDING),
+                         std::max(0, box.location.top - mConfig.ROI_PADDING),
+                         std::min(frame->width, box.location.right + mConfig.ROI_PADDING),
+                         std::min(frame->height, box.location.bottom + mConfig.ROI_PADDING)),
+                                        box.confidence, box.labelName};
+                   });
     frame->isResultReady = true;
   }
-}
-
-void PatchReconstructor::enqueue(const MixedFrame& item) {
-  LOGD("PatchReconstructor::enqueuePDJob(%d)", item.mixedFrameIndex);
-  std::unique_lock<std::mutex> lock(mItemsMtx);
-  mItemsCV.wait(lock, [this] {
-    return mItems.size() < mMaxNumItems;
-  });
-  mItems.push(item);
-  lock.unlock();
-  mItemsCV.notify_all();
-  LOGD("PatchReconstructor::enqueuePDJob(%d) end", item.mixedFrameIndex);
-}
-
-MixedFrame PatchReconstructor::takeItem() {
-  LOGD("PatchReconstructor::takeItem()");
-  std::unique_lock<std::mutex> lock(mItemsMtx);
-  mItemsCV.wait(lock, [this] {
-    return !mItems.empty();
-  });
-  MixedFrame item = mItems.front();
-  mItems.pop();
-  lock.unlock();
-  mItemsCV.notify_all();
-  LOGD("PatchReconstructor::takeItem() end : %d", item.mixedFrameIndex);
-  return item;
+  time_us reconstructEndTime = NowMicros();
+  for (Frame* frame : mixedFrame.frames) {
+    frame->reconstructStartTime = reconstructStartTime;
+    frame->reconstructEndTime = reconstructEndTime;
+  }
+  for (Frame* frame : mixedFrame.frames) {
+    frame->isResultReady = true;
+  }
 }
 
 } // namespace rm
-

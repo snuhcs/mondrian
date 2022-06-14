@@ -78,10 +78,13 @@ enum RoIExtractionStatus {
 struct Frame {
   const std::string key;
   const int frameIndex;
-  const cv::Mat mat;
+  cv::Mat mat;
   Frame* prevFrame;
   Frame* nextFrame;
   cv::Mat preProcessedMat;
+
+  const int width;
+  const int height;
 
   bool isResultReady;
   std::vector<BoundingBox> boxes;
@@ -118,16 +121,17 @@ struct Frame {
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime)
-      : key(key), frameIndex(frameIndex), mat(mat), prevFrame(prevFrame),
-        isResultReady(false), isOFReady(false), roiExtractionStatus(PD_WAITING),
-        enqueueTime(enqueueTime) {}
+      : key(key), frameIndex(frameIndex), mat(mat), width(mat.cols), height(mat.rows),
+        prevFrame(prevFrame), isResultReady(false), isOFReady(false),
+        roiExtractionStatus(PD_WAITING), enqueueTime(enqueueTime) {}
 
   ~Frame() {
     endTime = NowMicros();
   }
 
   bool readyForExtraction() const {
-    return roiExtractionStatus == PD_WAITING || (roiExtractionStatus == OF_WAITING && prevFrame->isOFReady);
+    return roiExtractionStatus == PD_WAITING ||
+           (roiExtractionStatus == OF_WAITING && prevFrame->isOFReady);
   }
 };
 
@@ -191,7 +195,8 @@ struct RoI {
                            ? "" : roi0.labelName;
     RoI mergedRoI(roi0.frame, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel,
                   std::make_pair(0, 0), 0, 0);
-    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength > roi1.targetSize * roi0.maxEdgeLength) ?
+    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength >
+                            roi1.targetSize * roi0.maxEdgeLength) ?
                            mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
                            mergedRoI.maxEdgeLength * roi1.targetSize / roi1.maxEdgeLength;
     return mergedRoI;
@@ -237,32 +242,27 @@ struct RoI {
 struct MixedFrame {
   const int mixedFrameIndex;
   cv::Mat packedMat;
-  std::vector<std::shared_ptr<Frame>> packedFrames;
+  std::vector<Frame*> frames;
 
-  int handle;
-  std::vector<BoundingBox> boxes;
-
-  MixedFrame(const int mixedFrameIndex, const std::vector<std::shared_ptr<Frame>> packedFrames,
-             const int mixedFrameSize, const bool mixing)
-      : mixedFrameIndex(mixedFrameIndex), packedFrames(packedFrames) {
-    if (mixing) {
-      const time_us mixedFrameCreateStartTime = NowMicros();
-      packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
-      for (std::shared_ptr<Frame> frame : packedFrames) {
-        for (RoI& roi : frame->rois) {
-          if (roi.isPacked()) {
-            std::pair<int, int> wh = roi.getResizedWidthHeight();
-            roi.getResizedMat().copyTo(
-                packedMat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second,
-                                   wh.first, wh.second)));
-          }
+  MixedFrame(const int mixedFrameIndex, const std::vector<Frame*>& frames, const cv::Size& size)
+      : mixedFrameIndex(mixedFrameIndex), frames(frames) {
+    const time_us mixedFrameCreateStartTime = NowMicros();
+    packedMat = cv::Mat::zeros(size.width, size.height, CV_8UC4);
+    for (Frame* frame : frames) {
+      for (RoI& roi : frame->rois) {
+        if (roi.isPacked()) {
+          std::pair<int, int> wh = roi.getResizedWidthHeight();
+          roi.getResizedMat().copyTo(
+              packedMat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second,
+                                 wh.first, wh.second)));
         }
       }
-      const time_us mixedFrameCreateEndTime = NowMicros();
-      for (std::shared_ptr<Frame> frame : packedFrames) {
-        frame->mixedFrameCreateStartTime = mixedFrameCreateStartTime;
-        frame->mixedFrameCreateEndTime = mixedFrameCreateEndTime;
-      }
+      frame->mat.release();
+    }
+    const time_us mixedFrameCreateEndTime = NowMicros();
+    for (Frame* frame : frames) {
+      frame->mixedFrameCreateStartTime = mixedFrameCreateStartTime;
+      frame->mixedFrameCreateEndTime = mixedFrameCreateEndTime;
     }
   }
 };

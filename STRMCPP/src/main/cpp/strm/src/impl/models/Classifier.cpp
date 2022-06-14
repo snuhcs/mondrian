@@ -35,9 +35,9 @@ Classifier::recognizeImage(const cv::Mat& mat) {
       }
     }
     maxConfidence *= getObjectConfidence(i);
-    if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
+    if (maxConfidence > confidenceThreshold) {
       detections.emplace_back(reconstructBox(box[0], box[1], box[2], box[3], mat.cols, mat.rows),
-                              maxConfidence, "person");
+                              maxConfidence, COCO_LABELS[maxLabel]);
     }
   }
   return nms(detections, numLabels, iouThreshold);

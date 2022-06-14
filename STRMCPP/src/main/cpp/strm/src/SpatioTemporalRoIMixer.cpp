@@ -42,14 +42,11 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
                                                InferenceEngine* inferenceEngine)
     : mConfig(config), mbStop(false),
       mLogger(new Logger("/data/data/hcs.offloading.edgedevicecpp/execution_log.csv")),
-      mInferenceEngine(inferenceEngine),
-      mRoIExtractor(new RoIExtractor(config.roIExtractorConfig, resizeProfile)) {
+      mInferenceEngine(inferenceEngine), mMixedFrameSize(inferenceEngine->getInputSize()),
+      mRoIExtractor(new RoIExtractor(config.roIExtractorConfig, resizeProfile, mMixedFrameSize)) {
   LOGD("SpatioTemporalRoIMixer()");
   mLogger->logHeader();
-  mPatchReconstructor = std::make_unique<PatchReconstructor>(config.patchReconstructorConfig,
-                                                             inferenceEngine);
-  mPatchMixer = std::make_unique<PatchMixer>(config.patchMixerConfig, inferenceEngine,
-                                             mPatchReconstructor.get());
+  mPatchReconstructor = std::make_unique<PatchReconstructor>(config.patchReconstructorConfig);
 
   mThread = std::thread([this]() {
     LOGD("SpatioTemporalRoIMixer::work() start at %lu us", NowMicros());
@@ -64,16 +61,40 @@ SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
 
 void SpatioTemporalRoIMixer::work() {
   std::this_thread::sleep_for(std::chrono::milliseconds(mConfig.LATENCY_SLO_MS));
-  time_us startTime = NowMicros();
-  time_us roiCollectionTime;
-  time_us leftInferenceTime;
+  time_us startTime, roiGettingTime;
   while (!mbStop) {
-    std::vector<RoI> rois = mRoIExtractor->getRoIs();
-    roiCollectionTime = NowMicros();
-    leftInferenceTime = mConfig.LATENCY_SLO_MS - (roiCollectionTime - startTime);
-    startTime = roiCollectionTime;
+    startTime = NowMicros();
+    std::vector<Frame*> frames = mRoIExtractor->getExtractedFrames();
+    roiGettingTime = NowMicros();
 
-//     std::vector<MixedFrame> mixedFrames = mPatchMixer.schedule(rois, leftInferenceTime);
+    // TODO: Handle leftInferenceTime = mConfig.LATENCY_SLO_MS - (roiGettingTime - startTime)
+    std::vector<MixedFrame> mixedFrames = PatchMixer::pack(frames, mMixedFrameSize);
+    std::vector<int> handles(mixedFrames.size());
+    std::transform(mixedFrames.begin(), mixedFrames.end(), std::back_inserter(handles),
+                   [this](const MixedFrame& mixedFrame) {
+                     return mInferenceEngine->enqueue(mixedFrame.packedMat, false);
+                   });
+    for (int i = 0; i < mixedFrames.size(); i++) {
+      std::vector<BoundingBox> results = mInferenceEngine->getResults(handles[i]);
+      mixedFrames[i].packedMat.release();
+      mPatchReconstructor->reconstructResults(mixedFrames[i], results);
+      {
+        std::lock_guard<std::mutex> lock(mFrameBuffersMtx);
+        for (Frame* frame : mixedFrames[i].frames) {
+          mFrameBuffers.at(frame->key)->pop();
+        }
+      }
+      {
+        std::lock_guard<std::mutex> lock(mResultsMtx);
+        for (Frame* frame : mixedFrames[i].frames) {
+          mResults[{frame->key, frame->frameIndex}] = frame->boxes;
+        }
+      }
+    }
+    mResultsCv.notify_all();
+
+    std::this_thread::sleep_for(
+        std::chrono::microseconds(NowMicros() - startTime - mConfig.LATENCY_SLO_MS * 1000));
   }
 }
 

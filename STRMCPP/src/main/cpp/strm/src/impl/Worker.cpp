@@ -25,7 +25,7 @@ void Worker::Work() {
   engine->enqueueResults(handle, boxes);
 }
 
-long long Worker::getInferenceTimeMs(){
+long long Worker::getInferenceTimeMs() {
   return classifier->getInferenceTimeMs();
 }
 

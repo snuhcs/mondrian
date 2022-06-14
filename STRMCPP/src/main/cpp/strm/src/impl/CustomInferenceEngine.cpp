@@ -125,6 +125,10 @@ void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
   jvm->DetachCurrentThread();
 }
 
+const cv::Size& CustomInferenceEngine::getInputSize() const {
+  return classifiers[0]->getInputSize();
+}
+
 long long CustomInferenceEngine::getInferenceTimeMs() {
   long long inferenceTime = 0;
   int cnt = 0;

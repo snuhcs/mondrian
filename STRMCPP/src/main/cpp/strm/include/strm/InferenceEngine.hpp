@@ -17,6 +17,8 @@ class InferenceEngine {
 
   virtual std::vector<BoundingBox> getResults(const int handle) = 0;
 
+  virtual const cv::Size& getInputSize() const = 0;
+
   virtual long long getInferenceTimeMs() = 0;
 };
 

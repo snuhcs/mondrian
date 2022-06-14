@@ -3,11 +3,11 @@
 
 #include <android/log.h>
 
+#include "strm/Config.hpp"
+
 #define TAG "STRMCPP"
 
 namespace rm {
-
-extern bool LOG_INTERNAL;
 
 #define LOG(prio, ...)                             \
   do {                                             \

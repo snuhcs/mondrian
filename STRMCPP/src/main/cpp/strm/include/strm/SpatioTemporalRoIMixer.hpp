@@ -1,7 +1,6 @@
 #ifndef SPATIO_TEMPORAL_ROI_MIXER_HPP_
 #define SPATIO_TEMPORAL_ROI_MIXER_HPP_
 
-#include <condition_variable>
 #include <fstream>
 #include <map>
 #include <set>
@@ -62,14 +61,12 @@ class SpatioTemporalRoIMixer {
 
   const std::unique_ptr<Logger> mLogger;
   InferenceEngine* mInferenceEngine;
+  const cv::Size mMixedFrameSize;
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
-  std::unique_ptr<PatchMixer> mPatchMixer;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 
-
   std::mutex mFrameBuffersMtx;
-  std::condition_variable mFrameBuffersCv;
   std::map<std::string, std::unique_ptr<FrameBuffer>> mFrameBuffers;
 
   std::mutex mResultsMtx;

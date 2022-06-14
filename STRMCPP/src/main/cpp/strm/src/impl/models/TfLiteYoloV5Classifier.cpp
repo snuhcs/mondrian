@@ -127,7 +127,8 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
   y *= (float) inputSize.height;
   w *= (float) inputSize.width;
   h *= (float) inputSize.height;
-  float gain = std::min((float) inputSize.width / (float) imageWidth, (float) inputSize.height / (float) imageHeight);
+  float gain = std::min((float) inputSize.width / (float) imageWidth,
+                        (float) inputSize.height / (float) imageHeight);
   float xPad = ((float) inputSize.width - (float) imageWidth * gain) / 2;
   float yPad = ((float) inputSize.height - (float) imageHeight * gain) / 2;
   return Rect(
