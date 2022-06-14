@@ -19,9 +19,11 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile
 }
 
 void RoIExtractor::enqueue(Frame* frame) {
+  LOGD("RoIExtractor::enqueue(%d) start", frame->frameIndex);
   std::lock_guard<std::mutex> lock(mFramesMtx);
   mFrames.push_back(frame);
   mFramesCv.notify_one();
+  LOGD("RoIExtractor::enqueue(%d) end", frame->frameIndex);
 }
 
 std::vector<Frame*> RoIExtractor::getExtractedFrames() {
@@ -37,6 +39,7 @@ std::vector<Frame*> RoIExtractor::getExtractedFrames() {
 }
 
 void RoIExtractor::work() {
+  LOGD("RoIExtractor::work()");
   while (!mbStop) {
     std::unique_lock<std::mutex> lock(mFramesMtx);
     mFramesCv.wait(lock, [this]() {
@@ -44,6 +47,7 @@ void RoIExtractor::work() {
              (!mFrames.empty() && !mFrames.back()->readyForExtraction());
     });
 
+    LOGD("RoIExtractor process start");
     Frame* frameToProcess;
     if (!mFramesToTake.empty() && !mFramesToTake.back()->readyForExtraction()) {
       for (auto& frame : mFramesToTake) {
@@ -52,7 +56,7 @@ void RoIExtractor::work() {
           break;
         }
       }
-    } else {
+    } else { // !mFrames.empty() && !mFrames.back()->readyForExtraction()
       for (auto& frame : mFrames) {
         if (frame->readyForExtraction()) {
           frameToProcess = frame;
