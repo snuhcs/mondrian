@@ -45,6 +45,7 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   }
   if (!json["input_sizes"].isNull()) {
     const Json::Value inputSizes =  json["input_sizes"];
+    config.INPUT_SIZES.clear();
     for (const auto & size : inputSizes) {
       config.INPUT_SIZES.push_back(size.asInt());
     }

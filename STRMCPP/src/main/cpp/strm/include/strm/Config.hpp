@@ -52,7 +52,7 @@ DispatcherConfig parseDispatcherConfig(const Json::Value& json);
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
 PatchMixerConfig parsePatchMixerConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
-STRMConfig parseSTRMConfig(const std::string& jsonPath, const std::vector<int>& inputSizes);
+STRMConfig parseSTRMConfig(const std::string& jsonPath);
 
 } // namespace rm
 

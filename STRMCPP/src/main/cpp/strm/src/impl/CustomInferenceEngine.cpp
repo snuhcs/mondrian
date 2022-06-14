@@ -10,7 +10,7 @@ namespace rm {
 
 CustomInferenceEngine::CustomInferenceEngine(
     const InferenceEngineConfig& config, JavaVM* vm, JNIEnv* env, jobject strm, bool draw)
-    : mHandle(0), jvm(vm), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
+    : mConfig(config), mHandle(0), jvm(vm), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
   LOGD("CppInferenceEngine::CppInferenceEngine()");
 
   class_SpatioTemporalRoIMixer = reinterpret_cast<jclass>(env->NewGlobalRef(
@@ -44,6 +44,7 @@ void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config)
   for (const auto & inputSize : config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
         inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+    classifier->setInferenceTimeMs(classifier->profileInferenceTime());
     workers.push_back(std::make_unique<Worker>(this, classifier.get(), classifier.get()));
     classifiers.push_back(std::move(classifier));
   }
@@ -132,5 +133,9 @@ long long CustomInferenceEngine::getInferenceTimeMs() {
   inferenceTime /= cnt;
   return inferenceTime;
 }
+
+  std::vector<int> CustomInferenceEngine::getInputSizes() {
+    return mConfig.INPUT_SIZES;
+  }
 
 } // namespace rm

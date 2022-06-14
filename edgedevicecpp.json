@@ -32,9 +32,9 @@
         "iou_threshold": 0.5,
         "num_workers": 1,
         "input_sizes": [
-            832,
+            320,
             640,
-            896
+            832
         ]
     }
 }

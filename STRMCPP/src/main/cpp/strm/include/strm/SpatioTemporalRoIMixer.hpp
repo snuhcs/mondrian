@@ -48,7 +48,7 @@ class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
   std::mutex mDispatchersMtx;
 
   const DispatcherConfig mDispatcherConfig;
-  const RoIExtractorConfig mRoIExtractorConfig;
+  RoIExtractorConfig mRoIExtractorConfig;
 };
 
 } // namespace rm

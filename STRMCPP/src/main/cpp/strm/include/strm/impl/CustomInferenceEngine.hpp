@@ -27,6 +27,8 @@ class CustomInferenceEngine : public InferenceEngine {
 
   long long getInferenceTimeMs() override;
 
+  std::vector<int> getInputSizes();
+
  private:
   std::tuple<int, const cv::Mat, bool> getInput();
 
@@ -37,9 +39,10 @@ class CustomInferenceEngine : public InferenceEngine {
   template <typename T>
   void initClassifiers(const InferenceEngineConfig& config);
 
+  const InferenceEngineConfig mConfig;
+
   std::vector<std::unique_ptr<Worker>> workers;
   std::vector<std::unique_ptr<Classifier>> classifiers;
-  std::vector<std::unique_ptr<Classifier>> fullClassifiers;
 
   const bool draw;
   JavaVM* jvm;

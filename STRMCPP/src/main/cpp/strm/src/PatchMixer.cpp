@@ -5,9 +5,10 @@ namespace rm {
 PatchMixer::PatchMixer(PatchMixerConfig config, InferenceEngine* inferenceEngine,
                        PatchReconstructor* patchReconstructor)
     : mConfig(config), mInferenceEngine(inferenceEngine),
-      mPatchReconstructor(patchReconstructor),
-      mFreeRects({Rect(0, 0, config.MIXED_FRAME_SIZES.at(0), config.MIXED_FRAME_SIZES.at(0))}) {
+      mPatchReconstructor(patchReconstructor) {
   LOGD("PatchMixer() %d %d", config.MIXED_FRAME_SIZES.at(0), config.MAX_PACKED_FRAMES);
+  mConfig.MIXED_FRAME_SIZES = inferenceEngine->getInputSizes();
+  mFreeRects.emplace_back(0, 0, mConfig.MIXED_FRAME_SIZES.at(0), mConfig.MIXED_FRAME_SIZES.at(0));
 }
 
 void PatchMixer::reset() {

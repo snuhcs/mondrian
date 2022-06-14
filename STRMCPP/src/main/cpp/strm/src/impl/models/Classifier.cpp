@@ -19,7 +19,9 @@ Classifier::recognizeImage(const cv::Mat& mat) {
   auto start = std::chrono::system_clock::now();
   inference(preprocessedMat);
   auto end = std::chrono::system_clock::now();
-  inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  long long currentInferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  float weight = 0.9;
+  inferenceTimeMs = weight * currentInferenceTimeMs + (1-weight) * inferenceTimeMs;
   LOGV("Inference time: %lld ms", inferenceTimeMs);
 
   std::vector<BoundingBox> detections;
@@ -49,6 +51,10 @@ const cv::Size& Classifier::getInputSize() const {
 
 long long Classifier::getInferenceTimeMs() const {
   return inferenceTimeMs;
+}
+
+void Classifier::setInferenceTimeMs(long long inferenceTime) {
+  inferenceTimeMs = inferenceTime;
 }
 
 } // namespace rm
