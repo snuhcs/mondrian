@@ -13,28 +13,35 @@ FrameBuffer::FrameBuffer(const std::string& key, int capacity,
       key, 0, firstMat, nullptr, NowMicros());
   frames[0]->boxes = firstBoxes;
   frames[0]->isResultReady = true;
+  frames[0]->updateBoxesToTrackWithInferenceResult();
 }
 
 int FrameBuffer::enqueue(const cv::Mat& mat) {
+  LOGD("FrameBuffer::enqueue() start");
   std::unique_lock<std::mutex> lock(mtx);
   cv.wait(lock, [this]() { return end - begin < capacity; });
-  Frame* prevFrame = getFrame(end = 1);
+  Frame* prevFrame = frames[(end - 1) % capacity].get();
   frames[end % capacity] = std::make_unique<Frame>(
       key, end, mat, prevFrame, NowMicros());
   prevFrame->nextFrame = frames[end % capacity].get();
+  LOGD("FrameBuffer::enqueue() end");
   return end++;
 }
 
 void FrameBuffer::pop() {
+  LOGD("FrameBuffer::pop() start");
   std::lock_guard<std::mutex> lock(mtx);
   frames[begin % capacity].reset();
   begin++;
   cv.notify_one();
+  LOGD("FrameBuffer::pop() end");
 }
 
 Frame* FrameBuffer::getFrame(int frameIndex) {
+  LOGD("FrameBuffer::getFrame(%d) start", frameIndex);
   std::lock_guard<std::mutex> lock(mtx);
   return frames[frameIndex % capacity].get();
+  LOGD("FrameBuffer::getFrame(%d) end", frameIndex);
 }
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
@@ -48,10 +55,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
   mLogger->logHeader();
   mPatchReconstructor = std::make_unique<PatchReconstructor>(config.patchReconstructorConfig);
 
-  mThread = std::thread([this]() {
-    LOGD("SpatioTemporalRoIMixer::work() start at %lu us", NowMicros());
-    work();
-  });
+  mThread = std::thread([this]() { work(); });
 }
 
 SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
@@ -60,11 +64,16 @@ SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
 }
 
 void SpatioTemporalRoIMixer::work() {
-  std::this_thread::sleep_for(std::chrono::milliseconds(mConfig.LATENCY_SLO_MS));
+  LOGD("SpatioTemporalRoIMixer::work(), %lu us", NowMicros());
   time_us startTime, roiGettingTime;
   while (!mbStop) {
     startTime = NowMicros();
     std::vector<Frame*> frames = mRoIExtractor->getExtractedFrames();
+    LOGD("Extracted frames: %lu", frames.size());
+    if (frames.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(mConfig.LATENCY_SLO_MS / 2));
+      continue;
+    }
     roiGettingTime = NowMicros();
 
     // TODO: Handle leftInferenceTime = mConfig.LATENCY_SLO_MS - (roiGettingTime - startTime)
@@ -78,6 +87,17 @@ void SpatioTemporalRoIMixer::work() {
       std::vector<BoundingBox> results = mInferenceEngine->getResults(handles[i]);
       mixedFrames[i].packedMat.release();
       mPatchReconstructor->reconstructResults(mixedFrames[i], results);
+
+      std::map<std::string, Frame*> lastFrames;
+      for (Frame* frame : mixedFrames[i].frames) {
+        if (lastFrames.find(frame->key) == lastFrames.end() ||
+            lastFrames.at(frame->key)->frameIndex < frame->frameIndex) {
+          lastFrames[frame->key] = frame;
+        }
+      }
+      for (auto& lastFrame : lastFrames) {
+        lastFrame.second->updateBoxesToTrackWithInferenceResult();
+      }
       {
         std::lock_guard<std::mutex> lock(mFrameBuffersMtx);
         for (Frame* frame : mixedFrames[i].frames) {
@@ -105,8 +125,10 @@ int SpatioTemporalRoIMixer::enqueueImage(
   assert(!mat.empty());
   std::unique_lock<std::mutex> lock(mFrameBuffersMtx);
   if (mFrameBuffers.find(key) == mFrameBuffers.end()) {
+    LOGD("First Frame Inference Start: %s", key.c_str());
     std::vector<BoundingBox> firstBoxes = mInferenceEngine->getResults(
         mInferenceEngine->enqueue(mat, true));
+    LOGD("First Frame Inference End  : %s, %lu Boxes", key.c_str(), firstBoxes.size());
     mFrameBuffers[key] = std::make_unique<FrameBuffer>(key, mConfig.BUFFER_SIZE, mat, firstBoxes);
     lock.unlock();
 
@@ -115,7 +137,9 @@ int SpatioTemporalRoIMixer::enqueueImage(
     mResultsCv.notify_all();
     return 0;
   } else {
-    return mFrameBuffers.at(key)->enqueue(mat);
+    int frameIndex = mFrameBuffers.at(key)->enqueue(mat);
+    mRoIExtractor->enqueue(mFrameBuffers.at(key)->getFrame(frameIndex));
+    return frameIndex;
   }
 }
 

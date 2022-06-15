@@ -28,6 +28,7 @@ add_library(
         strmcpp
         SHARED
         strm/src/Config.cpp
+        strm/src/DataType.cpp
         strm/src/Logger.cpp
         strm/src/PatchMixer.cpp
         strm/src/PatchReconstructor.cpp

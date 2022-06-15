@@ -1,9 +1,10 @@
 {
     "log_internal": true,
+    "roi_padding": 10,
     "buffer_size": 1000,
     "latency_slo_ms": 10000,
     "roi_extractor": {
-        "num_workers": 1,
+        "num_workers": 2,
         "extraction_resize_width": 640,
         "extraction_resize_height": 360,
         "min_roi_area": 5000,
@@ -12,7 +13,6 @@
     },
     "patch_reconstructor": {
         "frame_boxes_iou_threshold": 0.5,
-        "overlap_threshold": 0.8,
-        "roi_padding": 10
+        "overlap_threshold": 0.8
     }
 }

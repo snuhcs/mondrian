@@ -44,27 +44,8 @@ void PatchReconstructor::reconstructResults(
       maxFrame->boxes.emplace_back(maxBoxPos, box.confidence, box.labelName);
     }
   }
-  std::map<std::string, Frame*> lastFrames;
   for (Frame* frame : mixedFrame.frames) {
     frame->boxes = nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
-    if (lastFrames.find(frame->key) == lastFrames.end() ||
-        lastFrames.at(frame->key)->frameIndex < frame->frameIndex) {
-      lastFrames[frame->key] = frame;
-    }
-  }
-  for (auto it = lastFrames.begin(); it != lastFrames.end(); it++) {
-    Frame* frame = it->second;
-    std::transform(frame->boxes.begin(), frame->boxes.end(),
-                   std::back_inserter(frame->boxesToTrack),
-                   [this, &frame](const BoundingBox& box) {
-                     return BoundingBox{Rect(
-                         std::max(0, box.location.left - mConfig.ROI_PADDING),
-                         std::max(0, box.location.top - mConfig.ROI_PADDING),
-                         std::min(frame->width, box.location.right + mConfig.ROI_PADDING),
-                         std::min(frame->height, box.location.bottom + mConfig.ROI_PADDING)),
-                                        box.confidence, box.labelName};
-                   });
-    frame->isResultReady = true;
   }
   time_us reconstructEndTime = NowMicros();
   for (Frame* frame : mixedFrame.frames) {

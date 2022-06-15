@@ -1,5 +1,7 @@
 #include "strm/RoIExtractor.hpp"
 
+#include <set>
+
 #include "opencv2/video/tracking.hpp"
 
 #include "strm/Log.hpp"
@@ -18,65 +20,83 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile
   }
 }
 
+RoIExtractor::~RoIExtractor() {
+  mbStop = true;
+  cv.notify_all();
+  for (auto& thread : mThreads) {
+    thread.join();
+  }
+}
+
 void RoIExtractor::enqueue(Frame* frame) {
   LOGD("RoIExtractor::enqueue(%d) start", frame->frameIndex);
-  std::lock_guard<std::mutex> lock(mFramesMtx);
-  mFrames.push_back(frame);
-  mFramesCv.notify_one();
+  std::lock_guard<std::mutex> lock(mtx);
+  mFramesForPD.push_back(frame);
+  cv.notify_one();
+
+  std::set<std::string> keys;
+  for (Frame* frame : mFramesForPD) {
+    keys.insert(frame->key);
+  }
+
+  for (const std::string& key : keys) {
+    std::stringstream index, state, ready;
+    state << "RoIExtractor State " << key << " : ";
+    ready << "RoIExtractor Ready " << key << " : ";
+    for (Frame* frame : mFramesForPD) {
+      if (frame->key == key) {
+        state << frame->roiExtractionStatus << " ";
+        ready << (frame->prevFrame == nullptr ? "-" : std::to_string(frame->prevFrame->isOFReady)) << " ";
+      }
+    }
+    LOGD("%s", state.str().c_str());
+    LOGD("%s", index.str().c_str());
+    LOGD("");
+  }
   LOGD("RoIExtractor::enqueue(%d) end", frame->frameIndex);
 }
 
 std::vector<Frame*> RoIExtractor::getExtractedFrames() {
-  std::unique_lock<std::mutex> lock(mFramesMtx);
-  mFramesToTake.clear();
-  mFramesToTake.insert(mFramesToTake.end(), mFrames.begin(), mFrames.end());
-  mFrames.clear();
-  mFramesCv.wait(lock,
-                 [this]() { return mFramesToTake.back()->roiExtractionStatus == ROI_EXTRACTED; });
-  std::vector<Frame*> frames(mFramesToTake.begin(), mFramesToTake.end());
-  mFramesToTake.clear();
-  return frames;
+  std::unique_lock<std::mutex> lock(mtx);
+  std::vector<Frame*> extractedFrames = std::move(mOFProcessingStartedFrames);
+  mOFProcessingStartedFrames.clear();
+  cv.wait(lock, [extractedFrames]() {
+    return !extractedFrames.empty() && extractedFrames.back()->roiExtractionStatus == OF_EXTRACTED;
+  });
+  return extractedFrames;
 }
 
 void RoIExtractor::work() {
   LOGD("RoIExtractor::work()");
-  while (!mbStop) {
-    std::unique_lock<std::mutex> lock(mFramesMtx);
-    mFramesCv.wait(lock, [this]() {
-      return (!mFramesToTake.empty() && !mFramesToTake.back()->readyForExtraction()) ||
-             (!mFrames.empty() && !mFrames.back()->readyForExtraction());
-    });
-
-    LOGD("RoIExtractor process start");
-    Frame* frameToProcess;
-    if (!mFramesToTake.empty() && !mFramesToTake.back()->readyForExtraction()) {
-      for (auto& frame : mFramesToTake) {
-        if (frame->readyForExtraction()) {
-          frameToProcess = frame;
-          break;
-        }
-      }
-    } else { // !mFrames.empty() && !mFrames.back()->readyForExtraction()
-      for (auto& frame : mFrames) {
-        if (frame->readyForExtraction()) {
-          frameToProcess = frame;
-          break;
-        }
-      }
+  while (true) {
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [this]() { return mbStop || !mFramesForOF.empty() || !mFramesForPD.empty(); });
+    if (mbStop) {
+      return;
     }
 
-    if (frameToProcess->roiExtractionStatus == PD_WAITING) {
-      frameToProcess->roiExtractionStatus = PD_EXTRACTING;
-    } else {
+    LOGD("RoIExtractor process start");
+    time_us startTime = NowMicros();
+    Frame* frameToProcess;
+    if (!mFramesForOF.empty()) {
+      frameToProcess = mFramesForOF.front();
       frameToProcess->roiExtractionStatus = OF_EXTRACTING;
+      mOFProcessingStartedFrames.push_back(frameToProcess);
+      mFramesForOF.pop_front();
+    } else {
+      frameToProcess = mFramesForPD.front();
+      mFramesForPD.pop_front();
     }
     lock.unlock();
 
     process(frameToProcess);
+    cv.notify_all();
   }
 }
 
 void RoIExtractor::process(Frame* currFrame) const {
+  assert(currFrame->roiExtractionStatus == OF_WAITING || currFrame->roiExtractionStatus == OF_EXTRACTING);
+
   Frame* prevFrame = currFrame->prevFrame;
   LOGD("RoIExtractor::process((%s, %d), (%s, %d), %d)", prevFrame->key.c_str(),
        prevFrame->frameIndex, currFrame->key.c_str(), currFrame->frameIndex,
@@ -98,11 +118,8 @@ void RoIExtractor::process(Frame* currFrame) const {
     currFrame->preProcessedMat = mat;
   }
 
-  assert(currFrame->roiExtractionStatus == PD_EXTRACTING ||
-         currFrame->roiExtractionStatus == OF_EXTRACTING);
-
   // PD RoI Extraction
-  if (currFrame->roiExtractionStatus == PD_EXTRACTING) {
+  if (currFrame->roiExtractionStatus != OF_EXTRACTING) {
     currFrame->pixelDiffRoIProcessStartTime = NowMicros();
     std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame,
                                                       mTargetSize, mConfig.MIN_ROI_AREA);
@@ -122,11 +139,7 @@ void RoIExtractor::process(Frame* currFrame) const {
     std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame,
                                                           reliablePrevBoxes, mTargetSize);
     currFrame->opticalFlowRoIProcessEndTime = NowMicros();
-    std::transform(opticalFlowRoIs.begin(), opticalFlowRoIs.end(),
-                   std::back_inserter(currFrame->boxesToTrack),
-                   [](RoI& roi) {
-                     return BoundingBox{roi.location, 1, roi.labelName};
-                   });
+    currFrame->updateBoxesToTrackWithOFRoIs(opticalFlowRoIs);
     currFrame->rois.insert(currFrame->rois.end(), opticalFlowRoIs.begin(), opticalFlowRoIs.end());
 
     currFrame->resizeRoIStartTime = NowMicros();
@@ -142,7 +155,7 @@ void RoIExtractor::process(Frame* currFrame) const {
 
     prevFrame->preProcessedMat.release();
 
-    currFrame->roiExtractionStatus = ROI_EXTRACTED;
+    currFrame->roiExtractionStatus = OF_EXTRACTED;
   }
 }
 

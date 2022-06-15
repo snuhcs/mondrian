@@ -97,7 +97,7 @@ public class EdgeDevice implements WebRTCCallback {
         for (SourceConfig.VideoConfig videoConfig : mConfig.sourceConfig.VIDEO_CONFIGS) {
             VideoSource videoSource = new VideoSource(
                     videoConfig, mSpatioTemporalRoIMixer, mResultCallback, mConfig.DRAW, mConfig.sourceConfig.DRAW_CONFIDENCE);
-            Log.d(TAG, "VideoSource Added : " + videoConfig.PATH + " " + videoConfig.PATH.hashCode());
+            Log.d(TAG, "VideoSource Added : " + videoConfig.PATH);
 
             Pair<VideoCapturer, VideoTrack> capturerAndTrack =
                     mWebRTCManager.createSavedVideoTrack(videoConfig.PATH, videoSource);

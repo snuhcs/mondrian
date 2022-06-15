@@ -56,7 +56,7 @@ void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config)
 }
 
 int CustomInferenceEngine::enqueue(const cv::Mat mat, const bool isFull) {
-  LOGD("CppInferenceEngine::enqueuePDJob(Mat(%d, %d, %d))", mat.cols, mat.rows, mat.channels());
+  LOGD("CppInferenceEngine::enqueue(Mat(%d, %d, %d))", mat.cols, mat.rows, mat.channels());
   std::unique_lock<std::mutex> inputLock(inputMtx);
   inputs.push(std::make_tuple(mHandle, mat, isFull));
   inputLock.unlock();

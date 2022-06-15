@@ -12,7 +12,7 @@ constexpr int NUM_LABELS = 80;
 extern bool LOG_INTERNAL;
 
 struct RoIExtractorConfig {
-  int NUM_WORKERS = 1;
+  int NUM_WORKERS = 2;
   int EXTRACTION_RESIZE_WIDTH = 640;
   int EXTRACTION_RESIZE_HEIGHT = 360;
   int MIN_ROI_AREA = 5000;
@@ -23,7 +23,6 @@ struct RoIExtractorConfig {
 struct PatchReconstructorConfig {
   float FRAME_BOXES_IOU_THRESHOLD = 0.5;
   float OVERLAP_THRESHOLD = 0.8;
-  int ROI_PADDING = 10;
 };
 
 struct STRMConfig {

@@ -1,7 +1,7 @@
 #ifndef ROI_EXTRACTOR_HPP_
 #define ROI_EXTRACTOR_HPP_
 
-#include <deque>
+#include <list>
 #include <queue>
 #include <thread>
 #include <utility>
@@ -19,6 +19,8 @@ class RoIExtractor {
  public:
   RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile,
                const cv::Size& maxRoISize);
+
+  ~RoIExtractor();
 
   void enqueue(Frame* frame);
 
@@ -57,10 +59,11 @@ class RoIExtractor {
   const cv::Size mTargetSize;
   const ResizeProfile* mResizeProfile;
 
-  std::mutex mFramesMtx;
-  std::condition_variable mFramesCv;
-  std::deque<Frame*> mFrames;
-  std::deque<Frame*> mFramesToTake;
+  std::mutex mtx;
+  std::condition_variable cv;
+  std::list<Frame*> mFramesForPD;
+  std::list<Frame*> mFramesForOF;
+  std::vector<Frame*> mOFProcessingStartedFrames;
 };
 
 } // namespace rm

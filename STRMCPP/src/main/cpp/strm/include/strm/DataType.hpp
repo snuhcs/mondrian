@@ -68,14 +68,14 @@ struct BoundingBox {
 };
 
 enum RoIExtractionStatus {
-  PD_WAITING = 1,
-  PD_EXTRACTING = 2,
-  OF_WAITING = 3,
-  OF_EXTRACTING = 4,
-  ROI_EXTRACTED = 5,
+  OF_WAITING = 1,
+  OF_EXTRACTING = 2,
+  OF_EXTRACTED = 3,
 };
 
 struct Frame {
+  static int ROI_PADDING;
+
   const std::string key;
   const int frameIndex;
   cv::Mat mat;
@@ -123,16 +123,17 @@ struct Frame {
         Frame* prevFrame, const time_us& enqueueTime)
       : key(key), frameIndex(frameIndex), mat(mat), width(mat.cols), height(mat.rows),
         prevFrame(prevFrame), isResultReady(false), isOFReady(false),
-        roiExtractionStatus(PD_WAITING), enqueueTime(enqueueTime) {}
+        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime) {}
 
   ~Frame() {
     endTime = NowMicros();
   }
 
-  bool readyForExtraction() const {
-    return roiExtractionStatus == PD_WAITING ||
-           (roiExtractionStatus == OF_WAITING && prevFrame->isOFReady);
-  }
+  void updateBoxesToTrackWithInferenceResult();
+
+  void updateBoxesToTrackWithOFRoIs(const std::vector<RoI>& opticalFlowRoIs);
+
+  bool readyForExtraction() const;
 };
 
 struct RoI {

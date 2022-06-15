@@ -2,11 +2,13 @@
 
 #include <fstream>
 
+#include "strm/DataType.hpp"
 #include "strm/Log.hpp"
 
 namespace rm {
 
 bool LOG_INTERNAL = true;
+int Frame::ROI_PADDING = 10;
 
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   RoIExtractorConfig config;
@@ -39,9 +41,6 @@ PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) 
   if (!json["overlap_threshold"].isNull()) {
     config.OVERLAP_THRESHOLD = json["overlap_threshold"].asFloat();
   }
-  if (!json["roi_padding"].isNull()) {
-    config.ROI_PADDING = json["roi_padding"].asInt();
-  }
   return config;
 }
 
@@ -61,6 +60,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   LOGD("STRMConfig : %s", json.toStyledString().c_str());
   if (!json["log_internal"].isNull()) {
     LOG_INTERNAL = json["log_internal"].asBool();
+  }
+  if (!json["roi_padding"].isNull()) {
+    Frame::ROI_PADDING = json["roi_padding"].asInt();
   }
   if (!json["buffer_size"].isNull()) {
     config.BUFFER_SIZE = json["buffer_size"].asInt();
