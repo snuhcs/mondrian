@@ -129,11 +129,15 @@ struct Frame {
     endTime = NowMicros();
   }
 
+  std::string shortKey() const {
+    return key.substr(key.size() - 8);
+  }
+
   void updateBoxesToTrackWithInferenceResult();
 
   void updateBoxesToTrackWithOFRoIs(const std::vector<RoI>& opticalFlowRoIs);
 
-  bool readyForExtraction() const;
+  bool readyForOFExtraction() const;
 };
 
 struct RoI {

@@ -29,7 +29,7 @@ class RoIExtractor {
  private:
   void work();
 
-  void process(Frame* currFrame) const;
+  void process(Frame* currFrame);
 
   static std::vector<RoI> mergeRoIs(const std::vector<RoI>& rois, const float mergeThreshold,
                                     const cv::Size& maxSize);

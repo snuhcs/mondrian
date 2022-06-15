@@ -121,7 +121,7 @@ void SpatioTemporalRoIMixer::work() {
 int SpatioTemporalRoIMixer::enqueueImage(
     const std::string& key, const cv::Mat& mat) {
   LOGD("SpatioTemporalRoIMixer::enqueueImage(%s, Mat(%d, %d, %d))",
-       key.c_str(), mat.cols, mat.rows, mat.channels());
+       key.substr(key.size() - 8).c_str(), mat.cols, mat.rows, mat.channels());
   assert(!mat.empty());
   std::unique_lock<std::mutex> lock(mFrameBuffersMtx);
   if (mFrameBuffers.find(key) == mFrameBuffers.end()) {

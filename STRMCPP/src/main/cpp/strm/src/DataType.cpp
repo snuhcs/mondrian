@@ -22,9 +22,8 @@ void Frame::updateBoxesToTrackWithOFRoIs(const std::vector<RoI>& opticalFlowRoIs
   isOFReady = true;
 }
 
-bool Frame::readyForExtraction() const {
-  return roiExtractionStatus == PD_WAITING ||
-         (roiExtractionStatus == OF_WAITING && prevFrame->isOFReady);
+bool Frame::readyForOFExtraction() const {
+  return roiExtractionStatus == OF_WAITING && prevFrame->isOFReady;
 }
 
 } // namespace rm

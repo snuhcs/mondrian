@@ -41,12 +41,13 @@ void RoIExtractor::enqueue(Frame* frame) {
 
   for (const std::string& key : keys) {
     std::stringstream index, state, ready;
-    state << "RoIExtractor State " << key << " : ";
-    ready << "RoIExtractor Ready " << key << " : ";
+    state << "RoIExtractor state " << key.substr(key.size() - 8) << " : ";
+    ready << "RoIExtractor ready " << key.substr(key.size() - 8) << " : ";
     for (Frame* frame : mFramesForPD) {
       if (frame->key == key) {
         state << frame->roiExtractionStatus << " ";
-        ready << (frame->prevFrame == nullptr ? "-" : std::to_string(frame->prevFrame->isOFReady)) << " ";
+        ready << (frame->prevFrame == nullptr ? "-" : std::to_string(frame->prevFrame->isOFReady))
+              << " ";
       }
     }
     LOGD("%s", state.str().c_str());
@@ -67,42 +68,81 @@ std::vector<Frame*> RoIExtractor::getExtractedFrames() {
 }
 
 void RoIExtractor::work() {
+  /*
+   *    Frame Status           Containing data structure    Frame Status
+   * 1. Before PD extraction | mFramesForPD               | OF_WAITING
+   * 2. Extracting PD        | -                          | OF_WAITING
+   * 3. Before OF extraction | mFramesForOF               | OF_WAITING
+   * 4. Extracting OF        | mOFProcessingStartedFrames | OF_EXTRACTING
+   * 5. OF extraction ended  | mOFProcessingStartedFrames | OF_EXTRACTED
+   */
   LOGD("RoIExtractor::work()");
+
+  auto isPDJobReady = [this]() {
+    return !mFramesForPD.empty();
+  };
+  auto isOFJobReady = [this]() {
+    return !mFramesForOF.empty() && mFramesForOF.front()->readyForOFExtraction();
+  };
+  bool processOF;
+  Frame* frame;
+
   while (true) {
     std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [this]() { return mbStop || !mFramesForOF.empty() || !mFramesForPD.empty(); });
+    cv.wait(lock, [this, &processOF, &isOFJobReady, &isPDJobReady]() {
+      processOF = isOFJobReady();
+      return mbStop || processOF || isPDJobReady();
+    });
     if (mbStop) {
       return;
     }
 
-    LOGD("RoIExtractor process start");
-    time_us startTime = NowMicros();
-    Frame* frameToProcess;
-    if (!mFramesForOF.empty()) {
-      frameToProcess = mFramesForOF.front();
-      frameToProcess->roiExtractionStatus = OF_EXTRACTING;
-      mOFProcessingStartedFrames.push_back(frameToProcess);
+    if (processOF) {
+      frame = mFramesForOF.front();
+      frame->roiExtractionStatus = OF_EXTRACTING;
+      mOFProcessingStartedFrames.push_back(frame);
       mFramesForOF.pop_front();
     } else {
-      frameToProcess = mFramesForPD.front();
+      frame = mFramesForPD.front();
       mFramesForPD.pop_front();
     }
     lock.unlock();
 
-    process(frameToProcess);
+    process(frame);
+
+    if (processOF) {
+      frame->roiExtractionStatus = OF_EXTRACTED;
+    } else {
+      frame->resizeRoIStartTime = NowMicros();
+      for (auto& roi : frame->rois) {
+        roi.targetSize = std::min(roi.maxEdgeLength, mResizeProfile->getTargetSize(roi.features));
+      }
+      frame->resizeRoIEndTime = NowMicros();
+
+      frame->mergeRoIStartTime = NowMicros();
+      frame->mergedRoIs = mergeRoIs(frame->rois, mConfig.MERGE_THRESHOLD, mMaxRoISize);
+      frame->mergeRoIEndTime = NowMicros();
+      LOGD("Merge: %lu => %lu", frame->rois.size(), frame->mergedRoIs.size());
+
+      frame->prevFrame->preProcessedMat.release();
+
+      lock.lock();
+      mFramesForOF.push_back(frame);
+      lock.unlock();
+    }
     cv.notify_all();
   }
 }
 
-void RoIExtractor::process(Frame* currFrame) const {
-  assert(currFrame->roiExtractionStatus == OF_WAITING || currFrame->roiExtractionStatus == OF_EXTRACTING);
+void RoIExtractor::process(Frame* currFrame) {
+  assert(currFrame->roiExtractionStatus == OF_WAITING ||
+         currFrame->roiExtractionStatus == OF_EXTRACTING);
 
-  Frame* prevFrame = currFrame->prevFrame;
-  LOGD("RoIExtractor::process((%s, %d), (%s, %d), %d)", prevFrame->key.c_str(),
-       prevFrame->frameIndex, currFrame->key.c_str(), currFrame->frameIndex,
-       currFrame->roiExtractionStatus);
+  LOGD("RoIExtractor::process(%s, %d) %s", currFrame->shortKey().c_str(), currFrame->frameIndex,
+       (currFrame->roiExtractionStatus == OF_WAITING ? "PD" : "OF"));
 
   std::vector<RoI> rois;
+  Frame* prevFrame = currFrame->prevFrame;
 
   // Preprocess matrices
   if (prevFrame->preProcessedMat.empty()) {
@@ -126,8 +166,6 @@ void RoIExtractor::process(Frame* currFrame) const {
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
     currFrame->rois.insert(currFrame->rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
 
-    currFrame->roiExtractionStatus = OF_WAITING;
-
   } else { // OF RoI Extraction
     std::vector<BoundingBox> reliablePrevBoxes;
     for (const BoundingBox& bbx : currFrame->prevFrame->boxesToTrack) {
@@ -141,21 +179,6 @@ void RoIExtractor::process(Frame* currFrame) const {
     currFrame->opticalFlowRoIProcessEndTime = NowMicros();
     currFrame->updateBoxesToTrackWithOFRoIs(opticalFlowRoIs);
     currFrame->rois.insert(currFrame->rois.end(), opticalFlowRoIs.begin(), opticalFlowRoIs.end());
-
-    currFrame->resizeRoIStartTime = NowMicros();
-    for (auto& roi : currFrame->rois) {
-      roi.targetSize = std::min(roi.maxEdgeLength, mResizeProfile->getTargetSize(roi.features));
-    }
-    currFrame->resizeRoIEndTime = NowMicros();
-
-    currFrame->mergeRoIStartTime = NowMicros();
-    currFrame->mergedRoIs = mergeRoIs(currFrame->rois, mConfig.MERGE_THRESHOLD, mMaxRoISize);
-    currFrame->mergeRoIEndTime = NowMicros();
-    LOGD("Merge: %lu => %lu", currFrame->rois.size(), currFrame->mergedRoIs.size());
-
-    prevFrame->preProcessedMat.release();
-
-    currFrame->roiExtractionStatus = OF_EXTRACTED;
   }
 }
 
