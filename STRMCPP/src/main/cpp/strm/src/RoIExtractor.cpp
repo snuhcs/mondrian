@@ -33,36 +33,24 @@ void RoIExtractor::enqueue(Frame* frame) {
   std::lock_guard<std::mutex> lock(mtx);
   mFramesForPD.push_back(frame);
   cv.notify_one();
+  LOGD("RoIExtractor::enqueue(%d) end %lu %lu %lu", frame->frameIndex,
+       mFramesForPD.size(), mFramesForOF.size(), mOFProcessingStartedFrames.size());
+}
 
-  std::set<std::string> keys;
-  for (Frame* frame : mFramesForPD) {
-    keys.insert(frame->key);
-  }
-
-  for (const std::string& key : keys) {
-    std::stringstream index, state, ready;
-    state << "RoIExtractor state " << key.substr(key.size() - 8) << " : ";
-    ready << "RoIExtractor ready " << key.substr(key.size() - 8) << " : ";
-    for (Frame* frame : mFramesForPD) {
-      if (frame->key == key) {
-        state << frame->roiExtractionStatus << " ";
-        ready << (frame->prevFrame == nullptr ? "-" : std::to_string(frame->prevFrame->isOFReady))
-              << " ";
-      }
-    }
-    LOGD("%s", state.str().c_str());
-    LOGD("%s", index.str().c_str());
-    LOGD("");
-  }
-  LOGD("RoIExtractor::enqueue(%d) end", frame->frameIndex);
+void RoIExtractor::preprocess(Frame* frame) const {
+  cv::resize(frame->mat, frame->preProcessedMat, mTargetSize);
+  cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGR2GRAY);
 }
 
 std::vector<Frame*> RoIExtractor::getExtractedFrames() {
+  LOGD("RoIExtractor::getExtractedFrames()");
   std::unique_lock<std::mutex> lock(mtx);
   std::vector<Frame*> extractedFrames = std::move(mOFProcessingStartedFrames);
   mOFProcessingStartedFrames.clear();
+  LOGD("RoIExtractor::getExtractedFrames() extractedFrames.back() == %d",
+       extractedFrames.empty() ? -1 : extractedFrames.back()->frameIndex);
   cv.wait(lock, [extractedFrames]() {
-    return !extractedFrames.empty() && extractedFrames.back()->roiExtractionStatus == OF_EXTRACTED;
+    return extractedFrames.empty() || extractedFrames.back()->roiExtractionStatus == OF_EXTRACTED;
   });
   return extractedFrames;
 }
@@ -111,8 +99,6 @@ void RoIExtractor::work() {
     process(frame);
 
     if (processOF) {
-      frame->roiExtractionStatus = OF_EXTRACTED;
-    } else {
       frame->resizeRoIStartTime = NowMicros();
       for (auto& roi : frame->rois) {
         roi.targetSize = std::min(roi.maxEdgeLength, mResizeProfile->getTargetSize(roi.features));
@@ -126,6 +112,8 @@ void RoIExtractor::work() {
 
       frame->prevFrame->preProcessedMat.release();
 
+      frame->roiExtractionStatus = OF_EXTRACTED;
+    } else {
       lock.lock();
       mFramesForOF.push_back(frame);
       lock.unlock();
@@ -145,14 +133,7 @@ void RoIExtractor::process(Frame* currFrame) {
   Frame* prevFrame = currFrame->prevFrame;
 
   // Preprocess matrices
-  if (prevFrame->preProcessedMat.empty()) {
-    cv::resize(prevFrame->mat, prevFrame->preProcessedMat, mTargetSize);
-    cv::cvtColor(prevFrame->preProcessedMat, prevFrame->preProcessedMat, cv::COLOR_BGR2GRAY);
-  }
-  if (currFrame->preProcessedMat.empty()) {
-    cv::resize(currFrame->mat, currFrame->preProcessedMat, mTargetSize);
-    cv::cvtColor(currFrame->preProcessedMat, currFrame->preProcessedMat, cv::COLOR_BGR2GRAY);
-  }
+  preprocess(currFrame);
 
   // PD RoI Extraction
   if (currFrame->roiExtractionStatus != OF_EXTRACTING) {
@@ -274,7 +255,8 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
 std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErrors(
     const Frame* prevFrame, const Frame* currFrame,
     const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
-  assert(!prevFrame->preProcessedMat.empty() && !currFrame->preProcessedMat.empty());
+  assert(!prevFrame->preProcessedMat.empty());
+  assert(!currFrame->preProcessedMat.empty());
 
   const cv::Mat& prevImage = prevFrame->preProcessedMat;
   const cv::Mat& currImage = currFrame->preProcessedMat;

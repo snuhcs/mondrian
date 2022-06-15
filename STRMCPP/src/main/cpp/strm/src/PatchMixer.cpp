@@ -10,8 +10,8 @@ std::vector<MixedFrame> PatchMixer::pack(const std::vector<Frame*>& frames, cons
   std::vector<Rect> freeRects({Rect(0, 0, size.width, size.height)});
 
   std::vector<RoI*> rois;
-  for (auto& frame : frames) {
-    for (RoI& roi : frame->rois) {
+  for (auto it = frames.rbegin(); it != frames.rend(); it++) {
+    for (RoI& roi : (*it)->rois) {
       rois.push_back(&roi);
     }
   }

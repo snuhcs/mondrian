@@ -86,7 +86,6 @@ struct Frame {
   const int width;
   const int height;
 
-  bool isResultReady;
   std::vector<BoundingBox> boxes;
 
   // For next frame OF roi extraction
@@ -122,8 +121,8 @@ struct Frame {
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime)
       : key(key), frameIndex(frameIndex), mat(mat), width(mat.cols), height(mat.rows),
-        prevFrame(prevFrame), isResultReady(false), isOFReady(false),
-        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime) {}
+        prevFrame(prevFrame), isOFReady(false), roiExtractionStatus(OF_WAITING),
+        enqueueTime(enqueueTime) {}
 
   ~Frame() {
     endTime = NowMicros();

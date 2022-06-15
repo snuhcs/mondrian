@@ -20,8 +20,7 @@ namespace rm {
 
 class FrameBuffer {
  public:
-  FrameBuffer(const std::string& key, int capacity,
-              const cv::Mat& firstMat, const std::vector<BoundingBox>& firstBoxes);
+  FrameBuffer(std::string key, int capacity, std::unique_ptr<Frame> firstFrame);
 
   int enqueue(const cv::Mat& mat);
 

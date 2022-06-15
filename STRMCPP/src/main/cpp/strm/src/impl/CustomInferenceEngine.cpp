@@ -56,12 +56,14 @@ void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config)
 }
 
 int CustomInferenceEngine::enqueue(const cv::Mat mat, const bool isFull) {
-  LOGD("CppInferenceEngine::enqueue(Mat(%d, %d, %d))", mat.cols, mat.rows, mat.channels());
+  LOGD("CppInferenceEngine::enqueue() start");
   std::unique_lock<std::mutex> inputLock(inputMtx);
-  inputs.push(std::make_tuple(mHandle, mat, isFull));
+  int handle = mHandle++;
+  inputs.push(std::make_tuple(handle, mat, isFull));
   inputLock.unlock();
   inputCv.notify_all();
-  return mHandle++;
+  LOGD("CppInferenceEngine::enqueue() end %d", handle);
+  return handle;
 }
 
 std::vector<BoundingBox> CustomInferenceEngine::getResults(const int handle) {

@@ -9,6 +9,7 @@ PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config) :
 
 void PatchReconstructor::reconstructResults(
     MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const {
+  LOGD("PatchReconstructor::reconstructResults() start %lu %lu", mixedFrame.frames.size(), results.size());
   time_us reconstructStartTime = NowMicros();
   for (const BoundingBox& box : results) {
     float maxOverlap = -1;
@@ -52,9 +53,7 @@ void PatchReconstructor::reconstructResults(
     frame->reconstructStartTime = reconstructStartTime;
     frame->reconstructEndTime = reconstructEndTime;
   }
-  for (Frame* frame : mixedFrame.frames) {
-    frame->isResultReady = true;
-  }
+  LOGD("PatchReconstructor::reconstructResults() end");
 }
 
 } // namespace rm
