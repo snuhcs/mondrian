@@ -146,16 +146,12 @@ void RoIExtractor::process(Frame* currFrame) {
 
   // Preprocess matrices
   if (prevFrame->preProcessedMat.empty()) {
-    cv::Mat mat = prevFrame->mat;
-    cv::resize(mat, mat, mTargetSize);
-    cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
-    prevFrame->preProcessedMat = mat;
+    cv::resize(prevFrame->mat, prevFrame->preProcessedMat, mTargetSize);
+    cv::cvtColor(prevFrame->preProcessedMat, prevFrame->preProcessedMat, cv::COLOR_BGR2GRAY);
   }
   if (currFrame->preProcessedMat.empty()) {
-    cv::Mat mat = currFrame->mat;
-    cv::resize(mat, mat, mTargetSize);
-    cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
-    currFrame->preProcessedMat = mat;
+    cv::resize(currFrame->mat, currFrame->preProcessedMat, mTargetSize);
+    cv::cvtColor(currFrame->preProcessedMat, currFrame->preProcessedMat, cv::COLOR_BGR2GRAY);
   }
 
   // PD RoI Extraction

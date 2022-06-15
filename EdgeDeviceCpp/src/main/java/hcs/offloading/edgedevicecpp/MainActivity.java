@@ -151,7 +151,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bitmap);
         mInferenceOutputView.post(() -> mInferenceOutputView.setImageBitmap(
-                VideoSource.drawBoxes(bitmap, results, 0f)));
+                DrawUtil.drawBoxes(bitmap, results, 0f)));
     }
 
     @Override

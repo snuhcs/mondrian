@@ -72,7 +72,7 @@ public class VideoSource extends CustomCapturer implements Runnable {
                 mResultCallback.log(VIDEO_PATH, frameIndex, results);
                 if (DRAW) {
                     Bitmap bitmap = frames.remove(frameIndex);
-                    mResultCallback.drawObjectDetectionResult(drawBoxes(
+                    mResultCallback.drawObjectDetectionResult(DrawUtil.drawBoxes(
                             bitmap, results, DRAW_CONFIDENCE));
                     Thread.sleep(50);
                 }
@@ -139,20 +139,6 @@ public class VideoSource extends CustomCapturer implements Runnable {
             }
         });
         captureThread.start();
-    }
-
-    public static Bitmap drawBoxes(Bitmap bitmap, List<BoundingBox> boxes, float drawConfidence) {
-        final Canvas canvas = new Canvas(bitmap);
-        final Paint paint = new Paint();
-        paint.setColor(Color.HSVToColor(new float[]{120f, 1f, 1f}));
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(5.0f);
-        for (BoundingBox box : boxes) {
-            if (box.confidence >= drawConfidence) {
-                canvas.drawRect(new Rect(box.left, box.top, box.right, box.bottom), paint);
-            }
-        }
-        return bitmap;
     }
 
     public void close() {
