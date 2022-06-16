@@ -9,8 +9,10 @@ namespace rm {
 
 PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config) : mConfig(config) {}
 
-void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) {
-  LOGD("PatchReconstructor::reconstructResults() start %lu %lu", mixedFrame.packedRoIs.size(), results.size());
+void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
+                                            const std::vector<BoundingBox>& results) const {
+  LOGD("PatchReconstructor::reconstructResults() start %lu %lu", mixedFrame.packedRoIs.size(),
+       results.size());
 
   bool runOriginalCode = false;
 
@@ -47,11 +49,13 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame, const std::v
     }
     if (runOriginalCode) {
       if (maxFrame != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
-        maxFrame->boxes.emplace_back(UNASSIGNED_ID, maxBoxPos, box.confidence, box.labelName, maxRoI->targetSize);
+        maxFrame->boxes.emplace_back(UNASSIGNED_ID, maxBoxPos, box.confidence, box.labelName,
+                                     maxRoI->targetSize);
       }
     } else {
       if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
-        maxRoI->boxes.emplace_back(UNASSIGNED_ID, maxBoxPos, box.confidence, box.labelName, maxRoI->targetSize);
+        maxRoI->boxes.emplace_back(UNASSIGNED_ID, maxBoxPos, box.confidence, box.labelName,
+                                   maxRoI->targetSize);
       }
     }
   }
@@ -93,13 +97,12 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame, const std::v
         assert(id < idRange.second);
         BoundingBox& box = unassignedBox.first;
         Frame* frame = unassignedBox.second;
-        frame->boxes.emplace_back(id++, box.location, box.confidence, box.labelName, box.targetSize);
+        frame->boxes.emplace_back(id++, box.location, box.confidence, box.labelName,
+                                  box.targetSize);
       }
     }
   }
-  std::set<Frame*> packedFrames;
-  std::transform(mixedFrame.packedRoIs.begin(), mixedFrame.packedRoIs.end(), std::back_inserter(packedFrames),
-                 [](const RoI* roi) { return roi->frame; });
+  std::set<Frame*> packedFrames = mixedFrame.getPackedFrames();
   for (Frame* frame : packedFrames) {
     frame->boxes = nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
   }

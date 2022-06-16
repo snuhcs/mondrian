@@ -1,5 +1,5 @@
 {
-    "log_internal": false,
+    "log_internal": true,
     "roi_padding": 10,
     "buffer_size": 500,
     "latency_slo_ms": 2500,

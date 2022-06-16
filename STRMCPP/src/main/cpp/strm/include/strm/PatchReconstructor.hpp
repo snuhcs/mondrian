@@ -15,7 +15,7 @@ class PatchReconstructor {
   PatchReconstructor(const PatchReconstructorConfig& config);
 
   void reconstructResults(
-      MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) ;
+      MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const ;
 
  private:
   PatchReconstructorConfig mConfig;

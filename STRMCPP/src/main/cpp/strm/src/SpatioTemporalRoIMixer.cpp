@@ -44,8 +44,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
                                                InferenceEngine* inferenceEngine)
     : mConfig(config), mbStop(false),
       mLogger(new Logger("/data/data/hcs.offloading.edgedevicecpp/execution_log.csv")),
-      mInferenceEngine(inferenceEngine), mMixedFrameSize(inferenceEngine->getInputSize()),
-      mRoIExtractor(new RoIExtractor(config.roIExtractorConfig, resizeProfile, mMixedFrameSize)) {
+      mInferenceEngine(inferenceEngine), mRoIExtractor(new RoIExtractor(config.roIExtractorConfig, resizeProfile, inferenceEngine->getInputSizes()[0])) {
   LOGD("SpatioTemporalRoIMixer()");
   mLogger->logHeader();
   mPatchReconstructor = std::make_unique<PatchReconstructor>(config.patchReconstructorConfig);
@@ -78,8 +77,8 @@ void SpatioTemporalRoIMixer::work() {
     fullFrameInferenceEndTime = NowMicros();
 
     int numMixedFrames = (mConfig.LATENCY_SLO_MS / 2 - (fullFrameInferenceEndTime - startTime))
-        / mInferenceEngine->getInferenceTimeMs();
-    std::vector<MixedFrame> mixedFrames = PatchMixer::pack(frames, mMixedFrameSize, numMixedFrames);
+                         / mInferenceEngine->getInferenceTimeMs();
+    std::vector<MixedFrame> mixedFrames = PatchMixer::pack(frames, mInferenceEngine->getInputSizes()[0], numMixedFrames);
     std::vector<int> handles;
     std::transform(mixedFrames.begin(), mixedFrames.end(), std::back_inserter(handles),
                    [this](const MixedFrame& mixedFrame) {
@@ -93,7 +92,7 @@ void SpatioTemporalRoIMixer::work() {
 
     std::unique_lock<std::mutex> resultLock(mResultsMtx);
     for (auto& mixedFrame : mixedFrames) {
-      for (Frame* frame : mixedFrame.frames) {
+      for (Frame* frame : mixedFrame.getPackedFrames()) {
         mResults[{frame->key, frame->frameIndex}] = frame->boxes;
       }
     }
@@ -102,7 +101,7 @@ void SpatioTemporalRoIMixer::work() {
 
     for (auto& mixedFrame : mixedFrames) {
       std::map<std::string, Frame*> lastFrames;
-      for (Frame* frame : mixedFrame.frames) {
+      for (Frame* frame : mixedFrame.getPackedFrames()) {
         if (lastFrames.find(frame->key) == lastFrames.end() ||
             lastFrames.at(frame->key)->frameIndex < frame->frameIndex) {
           lastFrames[frame->key] = frame;
@@ -115,7 +114,7 @@ void SpatioTemporalRoIMixer::work() {
 
     for (auto& mixedFrame : mixedFrames) {
       std::unique_lock<std::mutex> framesLock(mFrameBuffersMtx);
-      for (Frame* frame : mixedFrame.frames) {
+      for (Frame* frame : mixedFrame.getPackedFrames()) {
         mFrameBuffers.at(frame->key)->pop();
       }
       framesLock.unlock();
@@ -221,7 +220,7 @@ std::vector<BoundingBox> SpatioTemporalRoIMixer::assignIdsToBoxes(
   for (RoI& roi : rois) {
     int maxIntersection = -1;
     int maxIndex = -1;
-    for (int i = 0; i<roi.boxes.size(); ++i) {
+    for (int i = 0; i < roi.boxes.size(); ++i) {
       BoundingBox& box = roi.boxes[i];
       int intersection = roi.location.intersection(box.location);
       if (maxIntersection < intersection) {
@@ -232,7 +231,7 @@ std::vector<BoundingBox> SpatioTemporalRoIMixer::assignIdsToBoxes(
     if (maxIndex != -1) {
       BoundingBox& box = roi.boxes[maxIndex];
       assignedBoxes.emplace_back(roi.id, box.location, box.confidence, box.labelName);
-      for (int i = 0; i<roi.boxes.size(); ++i) {
+      for (int i = 0; i < roi.boxes.size(); ++i) {
         if (i == maxIndex) continue;
         unassignedBoxes.emplace_back(UNASSIGNED_ID, box.location, box.confidence, box.labelName);
       }

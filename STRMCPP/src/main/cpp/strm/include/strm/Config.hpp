@@ -2,6 +2,7 @@
 #define CONFIG_HPP_
 
 #include <string>
+#include <vector>
 
 #include <json/json.h>
 

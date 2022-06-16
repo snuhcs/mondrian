@@ -18,6 +18,10 @@ class Classifier {
 
   long long getInferenceTimeMs() const;
 
+  virtual long long int profileInferenceTime() = 0;
+
+  void setInferenceTimeMs(long long inferenceTime);
+
  protected:
   virtual cv::Mat preprocess(const cv::Mat& mat) = 0;
 

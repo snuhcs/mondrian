@@ -10,7 +10,8 @@ namespace rm {
 
 CustomInferenceEngine::CustomInferenceEngine(
     const InferenceEngineConfig& config, JavaVM* vm, JNIEnv* env, jobject strm, bool draw)
-    : mHandle(0), jvm(vm), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
+    : mConfig(config), mHandle(0), jvm(vm),
+      strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
   LOGD("CppInferenceEngine::CppInferenceEngine()");
 
   class_SpatioTemporalRoIMixer = reinterpret_cast<jclass>(env->NewGlobalRef(
@@ -39,17 +40,12 @@ CustomInferenceEngine::CustomInferenceEngine(
   }
 }
 
-template <typename T>
+template<typename T>
 void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config) {
-  std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-      config.INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
-  if (config.INPUT_SIZE != config.FULL_FRAME_INPUT_SIZE) {
-    std::unique_ptr<Classifier> fullClassifier = std::make_unique<T>(
-        config.FULL_FRAME_INPUT_SIZE, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
-    workers.push_back(std::make_unique<Worker>(this, classifier.get(), fullClassifier.get()));
-    classifiers.push_back(std::move(classifier));
-    fullClassifiers.push_back(std::move(fullClassifier));
-  } else {
+  for (const auto& inputSize : config.INPUT_SIZES) {
+    std::unique_ptr<Classifier> classifier = std::make_unique<T>(
+        inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+    classifier->setInferenceTimeMs(classifier->profileInferenceTime());
     workers.push_back(std::make_unique<Worker>(this, classifier.get(), classifier.get()));
     classifiers.push_back(std::move(classifier));
   }
@@ -127,10 +123,6 @@ void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
   jvm->DetachCurrentThread();
 }
 
-const cv::Size& CustomInferenceEngine::getInputSize() const {
-  return classifiers[0]->getInputSize();
-}
-
 long long CustomInferenceEngine::getInferenceTimeMs() {
   long long inferenceTime = 0;
   int cnt = 0;
@@ -143,6 +135,10 @@ long long CustomInferenceEngine::getInferenceTimeMs() {
   }
   inferenceTime /= cnt;
   return inferenceTime;
+}
+
+std::vector<int> CustomInferenceEngine::getInputSizes() const {
+  return mConfig.INPUT_SIZES;
 }
 
 } // namespace rm

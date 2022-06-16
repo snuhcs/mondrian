@@ -123,4 +123,16 @@ Rect MnnYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
       std::min(imageHeight, (int) ((y + h / 2) * heightRatio)));
 }
 
+long long int MnnYoloV4Classifier::profileInferenceTime() {
+  // Warmup
+  interpreter->runSession(session);
+  interpreter->runSession(session);
+
+  auto start = std::chrono::system_clock::now();
+  interpreter->runSession(session);
+  auto end = std::chrono::system_clock::now();
+  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+}
+
+
 } // namespace rm

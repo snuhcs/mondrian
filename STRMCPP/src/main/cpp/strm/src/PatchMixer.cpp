@@ -4,14 +4,13 @@ namespace rm {
 
 int PatchMixer::mMixedFrameIndex = 0;
 
-std::vector<MixedFrame> PatchMixer::pack(const std::vector<Frame*>& frames, const cv::Size& size,
-                                         int numMixedFrames) {
+std::vector<MixedFrame> PatchMixer::pack(const std::vector<Frame*>& frames, int mixedFrameSize, int numMixedFrames) {
   LOGD("PatchMixer::pack() %lu", frames.size());
 
   std::map<int, std::vector<Rect>> freeRectsMap;
   std::map<int, std::vector<RoI*>> packedRoIs;
   for (int i = 0; i < numMixedFrames; i++) {
-    freeRectsMap[i].emplace_back(0, 0, size.width, size.height);
+    freeRectsMap[i].emplace_back(0, 0, mixedFrameSize, mixedFrameSize);
   }
 
   std::vector<RoI*> rois;
@@ -50,7 +49,7 @@ std::vector<MixedFrame> PatchMixer::pack(const std::vector<Frame*>& frames, cons
   std::vector<MixedFrame> mixedFrames;
   mixedFrames.reserve(numMixedFrames);
   for (int i = 0; i < numMixedFrames; i++) {
-    mixedFrames.emplace_back(mMixedFrameIndex++, packedRoIs[i], size);
+    mixedFrames.emplace_back(mMixedFrameIndex++, packedRoIs[i], mixedFrameSize);
   }
   time_us mixedFrameCreateEndTime = NowMicros();
 

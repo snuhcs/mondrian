@@ -1,12 +1,13 @@
 #ifndef DATA_TYPE_HPP_
 #define DATA_TYPE_HPP_
 
+#include <atomic>
 #include <string>
 #include <vector>
 #include <chrono>
 #include <cstdint>
 #include <fstream>
-#include <atomic>
+#include <set>
 
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -161,6 +162,7 @@ struct RoI {
     float diffAreaRatio;
   };
 
+  const Frame* constFrame;
   Frame* frame;
   Rect location;
   Type type;
@@ -188,7 +190,7 @@ struct RoI {
       const float err,
       const float diffAreaRatio)
       : id(id),
-        frame(frame),
+        constFrame(frame),
         location(location),
         type(type),
         labelName(labelName),
@@ -198,10 +200,12 @@ struct RoI {
         targetSize(maxEdgeLength),
         packedLocation(std::make_pair(-1, -1)),
         handle(-1),
-        parentId(-1) {};
+        parentId(-1) {
+    frame = const_cast<Frame*>(constFrame);
+  };
 
   static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
-    assert(roi0.frame == roi1.frame);
+    assert(roi0.constFrame == roi1.constFrame);
     int newLeft = std::min(roi0.location.left, roi1.location.left);
     int newTop = std::min(roi0.location.top, roi1.location.top);
     int newRight = std::max(roi0.location.right, roi1.location.right);
@@ -279,9 +283,9 @@ struct MixedFrame {
   cv::Mat packedMat;
   std::vector<RoI*> packedRoIs;
 
-  MixedFrame(const int mixedFrameIndex, std::vector<RoI*> packedRoIs, const cv::Size& size)
+  MixedFrame(const int mixedFrameIndex, std::vector<RoI*> packedRoIs, int mixedFrameSize)
       : mixedFrameIndex(mixedFrameIndex), packedRoIs(packedRoIs) {
-    packedMat = cv::Mat::zeros(size.width, size.height, CV_8UC4);
+    packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
     for (RoI* roi : packedRoIs) {
       if (roi->isPacked()) {
         std::pair<int, int> wh = roi->getResizedWidthHeight();
@@ -290,6 +294,14 @@ struct MixedFrame {
                                wh.first, wh.second)));
       }
     }
+  }
+
+  std::set<Frame*> getPackedFrames() {
+    std::set<Frame*> packedFrames;
+    for (RoI* roi : packedRoIs) {
+      packedFrames.insert(roi->frame);
+    }
+    return packedFrames;
   }
 };
 

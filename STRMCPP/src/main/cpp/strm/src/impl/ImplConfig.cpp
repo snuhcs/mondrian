@@ -43,11 +43,13 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   if (!json["num_workers"].isNull()) {
     config.NUM_WORKERS = json["num_workers"].asInt();
   }
-  if (!json["input_size"].isNull()) {
-    config.INPUT_SIZE = json["input_size"].asInt();
-  }
-  if (!json["full_frame_input_size"].isNull()) {
-    config.FULL_FRAME_INPUT_SIZE = json["full_frame_input_size"].asInt();
+  if (!json["input_sizes"].isNull()) {
+    const Json::Value inputSizes = json["input_sizes"];
+    config.INPUT_SIZES.clear();
+    for (const auto& size : inputSizes) {
+      config.INPUT_SIZES.push_back(size.asInt());
+    }
+    std::sort(config.INPUT_SIZES.begin(), config.INPUT_SIZES.end());
   }
   return config;
 }

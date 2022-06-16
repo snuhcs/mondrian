@@ -19,7 +19,10 @@ Classifier::recognizeImage(const cv::Mat& mat) {
   auto start = std::chrono::system_clock::now();
   inference(preprocessedMat);
   auto end = std::chrono::system_clock::now();
-  inferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  long long currentInferenceTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+      end - start).count();
+  float weight = 0.9;
+  inferenceTimeMs = weight * currentInferenceTimeMs + (1 - weight) * inferenceTimeMs;
   LOGV("Inference time: %lld ms", inferenceTimeMs);
 
   std::vector<BoundingBox> detections;
@@ -36,7 +39,8 @@ Classifier::recognizeImage(const cv::Mat& mat) {
     }
     maxConfidence *= getObjectConfidence(i);
     if (maxConfidence > confidenceThreshold) {
-      detections.emplace_back(UNASSIGNED_ID, reconstructBox(box[0], box[1], box[2], box[3], mat.cols, mat.rows),
+      detections.emplace_back(UNASSIGNED_ID,
+                              reconstructBox(box[0], box[1], box[2], box[3], mat.cols, mat.rows),
                               maxConfidence, COCO_LABELS[maxLabel]);
     }
   }
@@ -49,6 +53,10 @@ const cv::Size& Classifier::getInputSize() const {
 
 long long Classifier::getInferenceTimeMs() const {
   return inferenceTimeMs;
+}
+
+void Classifier::setInferenceTimeMs(long long inferenceTime) {
+  inferenceTimeMs = inferenceTime;
 }
 
 } // namespace rm

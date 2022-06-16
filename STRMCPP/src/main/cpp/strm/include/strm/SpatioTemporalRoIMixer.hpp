@@ -68,7 +68,6 @@ class SpatioTemporalRoIMixer {
 
   const std::unique_ptr<Logger> mLogger;
   InferenceEngine* mInferenceEngine;
-  const cv::Size mMixedFrameSize;
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;

@@ -17,8 +17,7 @@ namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile,
-               const cv::Size& maxRoISize);
+  RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile, int maxRoISize);
 
   ~RoIExtractor();
 
@@ -35,8 +34,7 @@ class RoIExtractor {
 
   void process(Frame* currFrame);
 
-  static std::vector<RoI>
-  mergeRoIs(std::vector<RoI>& origRois, const float mergeThreshold, const cv::Size& maxSize);
+  static std::vector<RoI> mergeRoIs(std::vector<RoI>& origRoIs, const float mergeThreshold, int maxSize);
 
   static std::vector<RoI> getOpticalFlowRoIs(
       const Frame* prevFrame, const Frame* currFrame,
@@ -56,7 +54,7 @@ class RoIExtractor {
   static void cannyEdgeDetection(cv::Mat mat);
 
   const RoIExtractorConfig mConfig;
-  const cv::Size mMaxRoISize;
+  const int mMaxRoISize;
   std::vector<std::thread> mThreads;
   bool mbStop;
 
