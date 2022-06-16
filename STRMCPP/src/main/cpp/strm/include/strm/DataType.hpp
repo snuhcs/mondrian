@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdint>
 #include <fstream>
+#include <atomic>
 
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -13,6 +14,10 @@
 #include "strm/Time.hpp"
 
 namespace rm {
+
+typedef unsigned long idType;
+
+extern const idType UNASSIGNED_ID;
 
 struct RoI;
 
@@ -62,9 +67,11 @@ struct BoundingBox {
   Rect location;
   float confidence;
   std::string labelName;
+  int targetSize;
+  idType id;
 
-  BoundingBox(const Rect location, const float confidence, const std::string labelName)
-      : location(location), confidence(confidence), labelName(labelName) {}
+  BoundingBox(idType id, const Rect location, const float confidence, const std::string labelName, int targetSize=-1)
+      : id(id), location(location), confidence(confidence), labelName(labelName), targetSize(targetSize) {}
 };
 
 enum RoIExtractionStatus {
@@ -93,8 +100,8 @@ struct Frame {
   std::vector<BoundingBox> boxesToTrack;
 
   RoIExtractionStatus roiExtractionStatus;
+  std::vector<RoI> origRoIs;
   std::vector<RoI> rois;
-  std::vector<RoI> mergedRoIs;
 
   const time_us enqueueTime;
   time_us dispatcherProcessStartTime = 0;
@@ -134,7 +141,7 @@ struct Frame {
 
   void updateBoxesToTrackWithInferenceResult();
 
-  void updateBoxesToTrackWithOFRoIs(const std::vector<RoI>& opticalFlowRoIs);
+  void updateBoxesToTrackWithRoIs();
 
   bool readyForOFExtraction() const;
 };
@@ -154,11 +161,16 @@ struct RoI {
     float diffAreaRatio;
   };
 
-  const Frame* frame;
+  Frame* frame;
   Rect location;
   Type type;
   std::string labelName;
   Features features;
+
+  inline static std::atomic<idType> lastId;
+  idType id;
+  idType parentId;
+  std::vector<idType> childrenId;
 
   int maxEdgeLength;
   int targetSize;
@@ -167,14 +179,16 @@ struct RoI {
   int handle;
   std::vector<BoundingBox> boxes;
 
-  RoI(const Frame* frame,
+  RoI(const idType id,
+      const Frame* frame,
       const Rect location,
       const Type type,
       const std::string labelName,
       const std::pair<int, int>& shift,
       const float err,
       const float diffAreaRatio)
-      : frame(frame),
+      : id(id),
+        frame(frame),
         location(location),
         type(type),
         labelName(labelName),
@@ -183,7 +197,8 @@ struct RoI {
         maxEdgeLength(std::max(location.width(), location.height())),
         targetSize(maxEdgeLength),
         packedLocation(std::make_pair(-1, -1)),
-        handle(-1) {};
+        handle(-1),
+        parentId(-1) {};
 
   static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
     assert(roi0.frame == roi1.frame);
@@ -197,17 +212,33 @@ struct RoI {
     std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
                            || roi0.labelName != roi1.labelName
                            ? "" : roi0.labelName;
-    RoI mergedRoI(roi0.frame, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel,
+    RoI mergedRoI(RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel,
                   std::make_pair(0, 0), 0, 0);
-    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength >
-                            roi1.targetSize * roi0.maxEdgeLength) ?
+    mergedRoI.childrenId.emplace_back(roi0.id);
+    mergedRoI.childrenId.emplace_back(roi1.id);
+    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength > roi1.targetSize * roi0.maxEdgeLength) ?
                            mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
                            mergedRoI.maxEdgeLength * roi1.targetSize / roi1.maxEdgeLength;
     return mergedRoI;
   }
 
+  static std::pair<idType, idType> getNewIds(unsigned long num) {
+    idType minId = lastId.fetch_add(num);
+    idType maxId = minId + num;
+    // [minId, maxId)
+    return std::pair<idType, idType>(minId, maxId);
+  }
+
   bool isPacked() const {
     return packedLocation.first >= 0 && packedLocation.second >= 0;
+  }
+
+  bool isChild() const {
+    return (parentId != -1);
+  }
+
+  bool isParent() const {
+    return (!childrenId.empty());
   }
 
   int getArea() const {
@@ -246,12 +277,12 @@ struct RoI {
 struct MixedFrame {
   const int mixedFrameIndex;
   cv::Mat packedMat;
-  std::vector<RoI*> rois;
+  std::vector<RoI*> packedRoIs;
 
-  MixedFrame(const int mixedFrameIndex, std::vector<RoI*> rois, const cv::Size& size)
-      : mixedFrameIndex(mixedFrameIndex), rois(rois) {
+  MixedFrame(const int mixedFrameIndex, std::vector<RoI*> packedRoIs, const cv::Size& size)
+      : mixedFrameIndex(mixedFrameIndex), packedRoIs(packedRoIs) {
     packedMat = cv::Mat::zeros(size.width, size.height, CV_8UC4);
-    for (RoI* roi : rois) {
+    for (RoI* roi : packedRoIs) {
       if (roi->isPacked()) {
         std::pair<int, int> wh = roi->getResizedWidthHeight();
         roi->getResizedMat().copyTo(

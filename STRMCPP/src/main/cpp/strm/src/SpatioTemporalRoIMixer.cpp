@@ -49,6 +49,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
   LOGD("SpatioTemporalRoIMixer()");
   mLogger->logHeader();
   mPatchReconstructor = std::make_unique<PatchReconstructor>(config.patchReconstructorConfig);
+  RoI::lastId = 1;
 
   mThread = std::thread([this]() { work(); });
 }
@@ -78,8 +79,7 @@ void SpatioTemporalRoIMixer::work() {
 
     int numMixedFrames = (mConfig.LATENCY_SLO_MS / 2 - (fullFrameInferenceEndTime - startTime))
         / mInferenceEngine->getInferenceTimeMs();
-    std::vector<MixedFrame> mixedFrames = PatchMixer::pack(
-        frames, mMixedFrameSize, );
+    std::vector<MixedFrame> mixedFrames = PatchMixer::pack(frames, mMixedFrameSize, numMixedFrames);
     std::vector<int> handles;
     std::transform(mixedFrames.begin(), mixedFrames.end(), std::back_inserter(handles),
                    [this](const MixedFrame& mixedFrame) {
@@ -190,6 +190,67 @@ std::vector<BoundingBox> SpatioTemporalRoIMixer::getResults(const std::string& k
   LOGD("SpatioTemporalRoIMixer::getResults(%s, %d) end %lu",
        key.substr(key.size() - 8).c_str(), frameIndex, results.size());
   return results;
+}
+
+std::vector<BoundingBox> SpatioTemporalRoIMixer::assignIdsToBoxes(
+    const std::vector<BoundingBox>& boxes, std::vector<RoI>& rois, float overlapThreshold) {
+  std::vector<BoundingBox> unassignedBoxes;
+  std::vector<BoundingBox> assignedBoxes;
+
+  // Match Boxes to RoI. Boxes can be unmatched. (if overlap ratio lower than threshold)
+  for (const BoundingBox& box : boxes) {
+    float maxOverlap = -1;
+    RoI* maxRoI = nullptr;
+    for (RoI& roi : rois) {
+      int intersection = roi.location.intersection(box.location);
+      assert(box.location.area() != 0);
+      float overlapRatio = (float) intersection / (float) box.location.area();
+      if (maxOverlap < overlapRatio) {
+        maxOverlap = overlapRatio;
+        maxRoI = &roi;
+      }
+    }
+    if (maxRoI != nullptr && maxOverlap >= overlapThreshold) {
+      maxRoI->boxes.emplace_back(UNASSIGNED_ID, box.location, box.confidence, box.labelName);
+    } else {
+      unassignedBoxes.emplace_back(UNASSIGNED_ID, box.location, box.confidence, box.labelName);
+    }
+  }
+
+  // Let RoIs find their most well corresponding Box
+  for (RoI& roi : rois) {
+    int maxIntersection = -1;
+    int maxIndex = -1;
+    for (int i = 0; i<roi.boxes.size(); ++i) {
+      BoundingBox& box = roi.boxes[i];
+      int intersection = roi.location.intersection(box.location);
+      if (maxIntersection < intersection) {
+        maxIntersection = intersection;
+        maxIndex = i;
+      }
+    }
+    if (maxIndex != -1) {
+      BoundingBox& box = roi.boxes[maxIndex];
+      assignedBoxes.emplace_back(roi.id, box.location, box.confidence, box.labelName);
+      for (int i = 0; i<roi.boxes.size(); ++i) {
+        if (i == maxIndex) continue;
+        unassignedBoxes.emplace_back(UNASSIGNED_ID, box.location, box.confidence, box.labelName);
+      }
+    }
+  }
+
+  // If unassigned Boxes exist (1. those who does not match with any RoI 2. those who lost competition between other Boxes in single RoI),
+  // classify them as newly appeared objects and assign new Id
+  if (!unassignedBoxes.empty()) {
+    std::pair<idType, idType> idRange = RoI::getNewIds(unassignedBoxes.size());
+    idType id = idRange.first;
+    for (const BoundingBox& box : unassignedBoxes) {
+      assert(id < idRange.second);
+      assignedBoxes.emplace_back(id++, box.location, box.confidence, box.labelName);
+    }
+  }
+
+  return assignedBoxes;
 }
 
 } // namespace rm

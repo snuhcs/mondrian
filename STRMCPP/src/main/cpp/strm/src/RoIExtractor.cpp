@@ -110,9 +110,9 @@ void RoIExtractor::work() {
       frame->resizeRoIEndTime = NowMicros();
 
       frame->mergeRoIStartTime = NowMicros();
-      frame->mergedRoIs = mergeRoIs(frame->rois, mConfig.MERGE_THRESHOLD, mMaxRoISize);
+      frame->rois = mergeRoIs(frame->origRoIs, mConfig.MERGE_THRESHOLD, mMaxRoISize);
       frame->mergeRoIEndTime = NowMicros();
-      LOGD("Merge: %lu => %lu", frame->rois.size(), frame->mergedRoIs.size());
+      LOGD("Merge: %lu => %lu", frame->origRoIs.size(), frame->rois.size());
 
       frame->prevFrame->preProcessedMat.release();
 
@@ -145,7 +145,8 @@ void RoIExtractor::process(Frame* currFrame) {
     std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame,
                                                       mTargetSize, mConfig.MIN_ROI_AREA);
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
-    currFrame->rois.insert(currFrame->rois.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
+    currFrame->origRoIs.insert(currFrame->origRoIs.end(), pixelDiffRoIs.begin(),
+                               pixelDiffRoIs.end());
 
   } else { // OF RoI Extraction
     std::vector<BoundingBox> reliablePrevBoxes;
@@ -158,21 +159,22 @@ void RoIExtractor::process(Frame* currFrame) {
     std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame,
                                                           reliablePrevBoxes, mTargetSize);
     currFrame->opticalFlowRoIProcessEndTime = NowMicros();
-    currFrame->updateBoxesToTrackWithOFRoIs(opticalFlowRoIs);
-    currFrame->rois.insert(currFrame->rois.end(), opticalFlowRoIs.begin(), opticalFlowRoIs.end());
+    currFrame->origRoIs.insert(currFrame->origRoIs.end(), opticalFlowRoIs.begin(),
+                               opticalFlowRoIs.end());
+    currFrame->updateBoxesToTrackWithRoIs();
   }
 }
 
-std::vector<RoI> RoIExtractor::mergeRoIs(const std::vector<RoI>& rois, const float mergeThreshold,
+std::vector<RoI> RoIExtractor::mergeRoIs(std::vector<RoI>& origRois, const float mergeThreshold,
                                          const cv::Size& maxSize) {
-  std::vector<RoI> mergedRoIs = rois;
+  std::vector<RoI> rois = origRois;
   while (true) {
     bool updated = false;
     int i, j;
-    for (i = 0; i < mergedRoIs.size(); i++) {
-      for (j = i + 1; j < mergedRoIs.size(); j++) {
-        const RoI& roi0 = mergedRoIs[i];
-        const RoI& roi1 = mergedRoIs[j];
+    for (i = 0; i < rois.size(); i++) {
+      for (j = i + 1; j < rois.size(); j++) {
+        const RoI& roi0 = rois[i];
+        const RoI& roi1 = rois[j];
         int intersection = roi0.location.intersection(roi1.location);
         if ((float) intersection / (float) roi0.getArea() < mergeThreshold &&
             (float) intersection / (float) roi1.getArea() < mergeThreshold) {
@@ -209,17 +211,17 @@ std::vector<RoI> RoIExtractor::mergeRoIs(const std::vector<RoI>& rois, const flo
     if (!updated) {
       break;
     }
-    const RoI& roi0 = mergedRoIs[i];
-    const RoI& roi1 = mergedRoIs[j];
+    const RoI& roi0 = rois[i];
+    const RoI& roi1 = rois[j];
     std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
                            || roi0.labelName != roi1.labelName
                            ? "" : roi0.labelName;
-    mergedRoIs.push_back(RoI::mergeRoIs(roi0, roi1));
+    rois.push_back(RoI::mergeRoIs(roi0, roi1));
     assert(j > i);
-    mergedRoIs.erase(mergedRoIs.begin() + j);
-    mergedRoIs.erase(mergedRoIs.begin() + i);
+    rois.erase(rois.begin() + j);
+    rois.erase(rois.begin() + i);
   }
-  return mergedRoIs;
+  return rois;
 }
 
 std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
@@ -248,7 +250,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
       int newRight = std::min(width, loc.right + shift.first);
       int newBottom = std::min(height, loc.bottom + shift.second);
       if (newLeft < newRight && newTop < newBottom) {
-        opticalFlowRoIs.emplace_back(currFrame, Rect(newLeft, newTop, newRight, newBottom),
+        opticalFlowRoIs.emplace_back(box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
                                      RoI::Type::OF, box.labelName, shift, err, 0);
       }
     }
@@ -338,6 +340,7 @@ std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Fr
   rois.reserve(boxAndFeatures.size());
   for (const std::pair<Rect, float>& boxAndFeature : boxAndFeatures) {
     rois.emplace_back(
+        RoI::getNewIds(1).first,
         currFrame,
         boxAndFeature.first,
         RoI::PD,
