@@ -1,8 +1,24 @@
 #include "strm/Utils.hpp"
 
+#include <map>
 #include <set>
 
 namespace rm {
+
+std::set<Frame*> filterLastFrames(std::set<Frame*>& frames) {
+  std::map<std::string, Frame*> lastFrameMap;
+  for (Frame* frame : frames) {
+    if (lastFrameMap.find(frame->key) == lastFrameMap.end() ||
+        lastFrameMap.at(frame->key)->frameIndex < frame->frameIndex) {
+      lastFrameMap[frame->key] = frame;
+    }
+  }
+  std::set<Frame*> lastFrames;
+  for (auto& it : lastFrameMap) {
+    lastFrames.insert(it.second);
+  }
+  return lastFrames;
+}
 
 std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
                              const int numLabels, const float iouThreshold) {

@@ -17,7 +17,7 @@ namespace rm {
 
 class PatchMixer {
  public:
-  static std::vector<MixedFrame> pack(const std::vector<Frame*>& frames, int mixedFrameSize, int numMixedFrames);
+  static std::vector<MixedFrame> pack(const std::set<Frame*>& frames, int mixedFrameSize, int numMixedFrames);
 
  private:
   static bool canFit(std::pair<int, int> wh, const Rect& rect);

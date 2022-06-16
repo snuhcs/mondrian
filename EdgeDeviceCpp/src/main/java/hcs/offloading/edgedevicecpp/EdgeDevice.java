@@ -52,7 +52,7 @@ public class EdgeDevice implements WebRTCCallback {
         mInputView = inputView;
         mInputView.init(eglBase.getEglBaseContext(), null);
 
-        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer(mConfig.DRAW ? inferenceViewCallback : null);
+        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer(mConfig.DRAW_INFERENCE_RESULT ? inferenceViewCallback : null);
 
         if (!mConfig.sourceConfig.USE_LOCAL_VIDEO) {
             mMqttManager = new DeviceMqttManager(context, uri, Device.EDGE, scheduleTopicHandler, webrtcTopicHandler);
@@ -96,7 +96,7 @@ public class EdgeDevice implements WebRTCCallback {
         startEdgeDevice();
         for (SourceConfig.VideoConfig videoConfig : mConfig.sourceConfig.VIDEO_CONFIGS) {
             VideoSource videoSource = new VideoSource(
-                    videoConfig, mSpatioTemporalRoIMixer, mResultCallback, mConfig.DRAW, mConfig.sourceConfig.DRAW_CONFIDENCE);
+                    videoConfig, mSpatioTemporalRoIMixer, mResultCallback, mConfig.DRAW_VIDEO, mConfig.sourceConfig.DRAW_CONFIDENCE);
             Log.d(TAG, "VideoSource Added : " + videoConfig.PATH);
 
             Pair<VideoCapturer, VideoTrack> capturerAndTrack =

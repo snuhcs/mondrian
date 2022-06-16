@@ -20,16 +20,17 @@ namespace rm {
 
 class FrameBuffer {
  public:
-  FrameBuffer(std::string key, int capacity);
+  FrameBuffer(const std::string& key, int capacity);
 
   int enqueue(const cv::Mat& mat);
 
-  void pop();
+  void pop(int numFrames);
 
   Frame* getFrame(int frameIndex);
 
  private:
   const std::string key;
+  const std::string shortKey;
   const int capacity;
 
   std::mutex mtx;
@@ -56,7 +57,7 @@ class SpatioTemporalRoIMixer {
 
   void fullFrameInference(Frame* frame);
 
-  static Frame* getFullFrameInferenceFrame(const std::vector<Frame*>& frames,
+  static Frame* getFullFrameInferenceFrame(const std::set<Frame*>& lastFrames,
                                            int fullFrameInferenceStreamIndex);
 
   static std::vector<BoundingBox> assignIdsToBoxes(

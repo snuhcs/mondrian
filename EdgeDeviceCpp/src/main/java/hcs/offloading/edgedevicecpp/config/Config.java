@@ -16,7 +16,8 @@ public class Config {
     private static final String TAG = Config.class.getName();
 
     public String LOG_PATH = null;
-    public boolean DRAW = true;
+    public boolean DRAW_VIDEO = false;
+    public boolean DRAW_INFERENCE_RESULT = true;
     public final SourceConfig sourceConfig;
 
     public Config(String jsonPath) throws IOException, JSONException {
@@ -26,8 +27,11 @@ public class Config {
         if (jsonObject.has("log_path")) {
             LOG_PATH = jsonObject.getString("log_path");
         }
-        if (jsonObject.has("draw")) {
-            DRAW = jsonObject.getBoolean("draw");
+        if (jsonObject.has("draw_video")) {
+            DRAW_VIDEO = jsonObject.getBoolean("draw_video");
+        }
+        if (jsonObject.has("draw_inference_result")) {
+            DRAW_INFERENCE_RESULT = jsonObject.getBoolean("draw_inference_result");
         }
 
         if (jsonObject.has("source")) {

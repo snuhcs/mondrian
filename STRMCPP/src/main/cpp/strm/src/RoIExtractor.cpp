@@ -8,7 +8,8 @@
 
 namespace rm {
 
-RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile, int maxRoISize)
+RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile,
+                           int maxRoISize)
     : mConfig(config),
       mTargetSize(cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
       mResizeProfile(resizeProfile), mMaxRoISize(maxRoISize), mbStop(false) {
@@ -28,12 +29,12 @@ RoIExtractor::~RoIExtractor() {
 }
 
 void RoIExtractor::enqueue(Frame* frame) {
-  LOGD("RoIExtractor::enqueue(%d) start", frame->frameIndex);
   std::lock_guard<std::mutex> lock(mtx);
   mFramesForPD.push_back(frame);
   cv.notify_one();
-  LOGD("RoIExtractor::enqueue(%d) end %lu %lu %lu", frame->frameIndex,
-       mFramesForPD.size(), mFramesForOF.size(), mOFProcessingStartedFrames.size());
+  LOGD("RoIExtractor::enqueue  (%s, %4d)               // PD %lu | OF %lu | Processed %lu",
+       frame->shortKey.c_str(), frame->frameIndex, mFramesForPD.size(), mFramesForOF.size(),
+       mOFProcessingStartedFrames.size());
 }
 
 void RoIExtractor::notify() {
@@ -42,19 +43,22 @@ void RoIExtractor::notify() {
 
 void RoIExtractor::preprocess(Frame* frame) const {
   assert(frame != nullptr);
-  cv::resize(frame->mat, frame->preProcessedMat, mTargetSize);
-  cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGR2GRAY);
+  // TODO: handle exceptional cases (!preProcessedMet.empty() == true)
+  if (frame->preProcessedMat.empty()) {
+    cv::resize(frame->mat, frame->preProcessedMat, mTargetSize);
+    cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGR2GRAY);
+  }
+  assert(frame->preProcessedMat.size() == mTargetSize);
+  assert(frame->preProcessedMat.channels() == 1);
 }
 
-std::vector<Frame*> RoIExtractor::getExtractedFrames() {
-  LOGD("RoIExtractor::getExtractedFrames()");
+std::set<Frame*> RoIExtractor::getExtractedFrames() {
   std::unique_lock<std::mutex> lock(mtx);
-  std::vector<Frame*> extractedFrames = std::move(mOFProcessingStartedFrames);
+  std::set<Frame*> extractedFrames = std::move(mOFProcessingStartedFrames);
   mOFProcessingStartedFrames.clear();
-  LOGD("RoIExtractor::getExtractedFrames() extractedFrames.back() == %d",
-       extractedFrames.empty() ? -1 : extractedFrames.back()->frameIndex);
-  cv.wait(lock, [extractedFrames]() {
-    return extractedFrames.empty() || extractedFrames.back()->roiExtractionStatus == OF_EXTRACTED;
+  cv.wait(lock, [&extractedFrames]() {
+    return extractedFrames.empty() ||
+           (*extractedFrames.rbegin())->roiExtractionStatus == OF_EXTRACTED;
   });
   return extractedFrames;
 }
@@ -68,7 +72,6 @@ void RoIExtractor::work() {
    * 4. Extracting OF        | mOFProcessingStartedFrames | OF_EXTRACTING
    * 5. OF extraction ended  | mOFProcessingStartedFrames | OF_EXTRACTED
    */
-  LOGD("RoIExtractor::work()");
 
   auto isPDJobReady = [this]() {
     return !mFramesForPD.empty();
@@ -76,23 +79,23 @@ void RoIExtractor::work() {
   auto isOFJobReady = [this]() {
     return !mFramesForOF.empty() && mFramesForOF.front()->readyForOFExtraction();
   };
-  bool processOF;
+  bool isOF;
   Frame* frame;
 
   while (true) {
     std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [this, &processOF, &isOFJobReady, &isPDJobReady]() {
-      processOF = isOFJobReady();
-      return mbStop || processOF || isPDJobReady();
+    cv.wait(lock, [this, &isOF, &isOFJobReady, &isPDJobReady]() {
+      isOF = isOFJobReady();
+      return mbStop || isOF || isPDJobReady();
     });
     if (mbStop) {
       return;
     }
 
-    if (processOF) {
+    if (isOF) {
       frame = mFramesForOF.front();
       frame->roiExtractionStatus = OF_EXTRACTING;
-      mOFProcessingStartedFrames.push_back(frame);
+      mOFProcessingStartedFrames.insert(frame);
       mFramesForOF.pop_front();
     } else {
       frame = mFramesForPD.front();
@@ -100,11 +103,22 @@ void RoIExtractor::work() {
     }
     lock.unlock();
 
-    process(frame);
+    // Preprocess matrices
+    if (!isOF) {
+      preprocess(frame);
+    }
 
-    if (processOF) {
+    if (isOF) {
+      processOF(frame);
+    } else {
+      processPD(frame);
+    }
+
+    if (isOF) {
+      frame->updateBoxesToTrackWithRoIs();
+
       frame->resizeRoIStartTime = NowMicros();
-      for (auto& roi : frame->rois) {
+      for (auto& roi : frame->origRoIs) {
         roi.targetSize = std::min(roi.maxEdgeLength, mResizeProfile->getTargetSize(roi.features));
       }
       frame->resizeRoIEndTime = NowMicros();
@@ -112,10 +126,11 @@ void RoIExtractor::work() {
       frame->mergeRoIStartTime = NowMicros();
       frame->rois = mergeRoIs(frame->origRoIs, mConfig.MERGE_THRESHOLD, mMaxRoISize);
       frame->mergeRoIEndTime = NowMicros();
-      LOGD("Merge: %lu => %lu", frame->origRoIs.size(), frame->rois.size());
+      LOGD("RoIExtractor::mergeRoIs(%s, %4d) took %4lu us  // %lu => %lu", frame->shortKey.c_str(),
+           frame->frameIndex, frame->mergeRoIEndTime - frame->mergeRoIStartTime,
+           frame->origRoIs.size(), frame->rois.size());
 
       frame->prevFrame->preProcessedMat.release();
-
       frame->roiExtractionStatus = OF_EXTRACTED;
     } else {
       lock.lock();
@@ -126,52 +141,41 @@ void RoIExtractor::work() {
   }
 }
 
-void RoIExtractor::process(Frame* currFrame) {
-  assert(currFrame->roiExtractionStatus == OF_WAITING ||
-         currFrame->roiExtractionStatus == OF_EXTRACTING);
-
-  LOGD("RoIExtractor::process(%s, %d) %s", currFrame->shortKey().c_str(), currFrame->frameIndex,
-       (currFrame->roiExtractionStatus == OF_WAITING ? "PD" : "OF"));
-
-  std::vector<RoI> rois;
+void RoIExtractor::processPD(Frame* currFrame) {
+  assert(currFrame->roiExtractionStatus == OF_WAITING);
   Frame* prevFrame = currFrame->prevFrame;
-
-  // Preprocess matrices
-  // TODO
-  if (prevFrame->preProcessedMat.empty()) {
-    preprocess(prevFrame);
-  }
-  if (currFrame->preProcessedMat.empty()) {
-    preprocess(currFrame);
-  }
-
-  // PD RoI Extraction
-  if (currFrame->roiExtractionStatus != OF_EXTRACTING) {
-    currFrame->pixelDiffRoIProcessStartTime = NowMicros();
-    std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame,
-                                                      mTargetSize, mConfig.MIN_ROI_AREA);
-    currFrame->pixelDiffRoIProcessEndTime = NowMicros();
-    currFrame->origRoIs.insert(currFrame->origRoIs.end(), pixelDiffRoIs.begin(),
-                               pixelDiffRoIs.end());
-
-  } else { // OF RoI Extraction
-    std::vector<BoundingBox> reliablePrevBoxes;
-    for (const BoundingBox& bbx : currFrame->prevFrame->boxesToTrack) {
-      if (bbx.confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
-        reliablePrevBoxes.push_back(bbx);
-      }
-    }
-    currFrame->opticalFlowRoIProcessStartTime = NowMicros();
-    std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame,
-                                                          reliablePrevBoxes, mTargetSize);
-    currFrame->opticalFlowRoIProcessEndTime = NowMicros();
-    currFrame->origRoIs.insert(currFrame->origRoIs.end(), opticalFlowRoIs.begin(),
-                               opticalFlowRoIs.end());
-    currFrame->updateBoxesToTrackWithRoIs();
-  }
+  currFrame->pixelDiffRoIProcessStartTime = NowMicros();
+  std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame, mTargetSize,
+                                                    mConfig.MIN_ROI_AREA);
+  currFrame->pixelDiffRoIProcessEndTime = NowMicros();
+  currFrame->origRoIs.insert(currFrame->origRoIs.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
+  LOGD("RoIExtractor::processPD(%s, %4d) took %4lu us", currFrame->shortKey.c_str(),
+       currFrame->frameIndex,
+       currFrame->pixelDiffRoIProcessEndTime - currFrame->pixelDiffRoIProcessStartTime);
 }
 
-std::vector<RoI> RoIExtractor::mergeRoIs(std::vector<RoI>& origRoIs, const float mergeThreshold, int maxSize) {
+void RoIExtractor::processOF(Frame* currFrame) {
+  assert(currFrame->roiExtractionStatus == OF_EXTRACTING);
+  Frame* prevFrame = currFrame->prevFrame;
+  std::vector<BoundingBox> reliablePrevBoxes;
+  for (const BoundingBox& bbx : currFrame->prevFrame->boxesToTrack) {
+    if (bbx.confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
+      reliablePrevBoxes.push_back(bbx);
+    }
+  }
+  currFrame->opticalFlowRoIProcessStartTime = NowMicros();
+  std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes,
+                                                        mTargetSize);
+  currFrame->opticalFlowRoIProcessEndTime = NowMicros();
+  currFrame->origRoIs.insert(currFrame->origRoIs.end(), opticalFlowRoIs.begin(),
+                             opticalFlowRoIs.end());
+  LOGD("RoIExtractor::processOF(%s, %4d) took %4lu us", currFrame->shortKey.c_str(),
+       currFrame->frameIndex,
+       currFrame->opticalFlowRoIProcessEndTime - currFrame->opticalFlowRoIProcessStartTime);
+}
+
+std::vector<RoI>
+RoIExtractor::mergeRoIs(std::vector<RoI>& origRoIs, const float mergeThreshold, int maxSize) {
   std::vector<RoI> rois = origRoIs;
   while (true) {
     bool updated = false;
@@ -276,6 +280,7 @@ std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErro
     const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
   assert(!prevFrame->preProcessedMat.empty());
   assert(!currFrame->preProcessedMat.empty());
+  assert(prevFrame->preProcessedMat.channels() == currFrame->preProcessedMat.channels());
 
   const cv::Mat& prevImage = prevFrame->preProcessedMat;
   const cv::Mat& currImage = currFrame->preProcessedMat;
@@ -290,8 +295,8 @@ std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErro
   for (const Rect& bbx : boundingBoxes) {
     int bbxCenterX = bbx.left + bbx.width() / 2;
     int bbxCenterY = bbx.top + bbx.height() / 2;
-    cv::Point bbxCentroidPoints(bbxCenterX * targetSize.width / currFrame->mat.cols,
-                                bbxCenterY * targetSize.height / currFrame->mat.rows);
+    cv::Point bbxCentroidPoints(bbxCenterX * targetSize.width / currFrame->width,
+                                bbxCenterY * targetSize.height / currFrame->height);
     centroids.push_back(bbxCentroidPoints);
     // might not work... replaces p0.fromList(centroids); p0 is Point2f,
     p0.push_back(bbxCentroidPoints);
@@ -310,9 +315,9 @@ std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErro
   for (int pointIdx = 0; pointIdx < centroids.size(); pointIdx++) {
     if (StatusArr[pointIdx] == 1) {
       shiftAndErrors.emplace_back(std::make_pair(
-          (int) ((p1Arr[pointIdx].x - centroids.at(pointIdx).x) * currFrame->mat.cols /
+          (int) ((p1Arr[pointIdx].x - centroids.at(pointIdx).x) * currFrame->width /
                  targetSize.width),
-          (int) ((p1Arr[pointIdx].y - centroids.at(pointIdx).y) * currFrame->mat.rows /
+          (int) ((p1Arr[pointIdx].y - centroids.at(pointIdx).y) * currFrame->height /
                  targetSize.height)),
                                   err[pointIdx]);
     } else {
@@ -324,8 +329,9 @@ std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErro
 
 std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
                                                 const cv::Size& targetSize, const int mixRoIArea) {
-  int prevChannels = prevFrame->preProcessedMat.channels();
-  int currChannels = currFrame->preProcessedMat.channels();
+  assert(!prevFrame->preProcessedMat.empty());
+  assert(!currFrame->preProcessedMat.empty());
+  assert(prevFrame->preProcessedMat.channels() == currFrame->preProcessedMat.channels());
   cv::Mat mat = calculateDiffAndThreshold(prevFrame->preProcessedMat, currFrame->preProcessedMat);
   cannyEdgeDetection(mat);
 

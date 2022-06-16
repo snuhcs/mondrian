@@ -17,7 +17,8 @@ namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile, int maxRoISize);
+  RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile,
+               int maxRoISize);
 
   ~RoIExtractor();
 
@@ -27,14 +28,17 @@ class RoIExtractor {
 
   void preprocess(Frame* frame) const;
 
-  std::vector<Frame*> getExtractedFrames();
+  std::set<Frame*> getExtractedFrames();
 
  private:
   void work();
 
-  void process(Frame* currFrame);
+  void processPD(Frame* currFrame);
 
-  static std::vector<RoI> mergeRoIs(std::vector<RoI>& origRoIs, const float mergeThreshold, int maxSize);
+  void processOF(Frame* currFrame);
+
+  static std::vector<RoI>
+  mergeRoIs(std::vector<RoI>& origRoIs, const float mergeThreshold, int maxSize);
 
   static std::vector<RoI> getOpticalFlowRoIs(
       const Frame* prevFrame, Frame* currFrame,
@@ -65,7 +69,7 @@ class RoIExtractor {
   std::condition_variable cv;
   std::list<Frame*> mFramesForPD;
   std::list<Frame*> mFramesForOF;
-  std::vector<Frame*> mOFProcessingStartedFrames;
+  std::set<Frame*> mOFProcessingStartedFrames;
 };
 
 } // namespace rm

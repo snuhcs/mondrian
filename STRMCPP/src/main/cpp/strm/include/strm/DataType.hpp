@@ -71,8 +71,10 @@ struct BoundingBox {
   int targetSize;
   idType id;
 
-  BoundingBox(idType id, const Rect location, const float confidence, const std::string labelName, int targetSize=-1)
-      : id(id), location(location), confidence(confidence), labelName(labelName), targetSize(targetSize) {}
+  BoundingBox(idType id, const Rect location, const float confidence, const std::string labelName,
+              int targetSize = -1)
+      : id(id), location(location), confidence(confidence), labelName(labelName),
+        targetSize(targetSize) {}
 };
 
 enum RoIExtractionStatus {
@@ -85,6 +87,7 @@ struct Frame {
   static int ROI_PADDING;
 
   const std::string key;
+  const std::string shortKey;
   const int frameIndex;
   cv::Mat mat;
   Frame* prevFrame;
@@ -128,17 +131,19 @@ struct Frame {
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime)
-      : key(key), frameIndex(frameIndex), mat(mat), width(mat.cols), height(mat.rows),
-        prevFrame(prevFrame), isOFReady(false), roiExtractionStatus(OF_WAITING),
-        enqueueTime(enqueueTime) {}
+      : key(key), shortKey(key.substr(key.size() - 5, 1)), frameIndex(frameIndex), mat(mat),
+        width(mat.cols), height(mat.rows), prevFrame(prevFrame), isOFReady(false),
+        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime) {}
 
   ~Frame() {
     endTime = NowMicros();
   }
 
-  std::string shortKey() const {
-    return key.substr(key.size() - 8);
+  bool operator<(const Frame& frame) const {
+    return frameIndex < frame.frameIndex;
   }
+
+  bool isAllRoIPrepared() const;
 
   void updateBoxesToTrackWithInferenceResult();
 
@@ -168,7 +173,7 @@ struct RoI {
   std::string labelName;
   Features features;
 
-  inline static std::atomic<idType> lastId;
+  inline static std::atomic<idType> lastId = 1;
   idType id;
   idType parentId;
   std::vector<idType> childrenId;
@@ -177,7 +182,7 @@ struct RoI {
   int targetSize;
   std::pair<int, int> packedLocation;
 
-  int handle;
+  bool isDone;
   std::vector<BoundingBox> boxes;
 
   RoI(const idType id,
@@ -198,7 +203,7 @@ struct RoI {
         maxEdgeLength(std::max(location.width(), location.height())),
         targetSize(maxEdgeLength),
         packedLocation(std::make_pair(-1, -1)),
-        handle(-1),
+        isDone(false),
         parentId(-1) {};
 
   static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
@@ -213,11 +218,13 @@ struct RoI {
     std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
                            || roi0.labelName != roi1.labelName
                            ? "" : roi0.labelName;
-    RoI mergedRoI(RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel,
+    RoI mergedRoI(RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom),
+                  roiType, roiLabel,
                   std::make_pair(0, 0), 0, 0);
     mergedRoI.childrenId.emplace_back(roi0.id);
     mergedRoI.childrenId.emplace_back(roi1.id);
-    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength > roi1.targetSize * roi0.maxEdgeLength) ?
+    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength >
+                            roi1.targetSize * roi0.maxEdgeLength) ?
                            mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
                            mergedRoI.maxEdgeLength * roi1.targetSize / roi1.maxEdgeLength;
     return mergedRoI;

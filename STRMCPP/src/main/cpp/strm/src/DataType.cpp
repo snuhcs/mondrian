@@ -4,6 +4,14 @@ namespace rm {
 
 const idType UNASSIGNED_ID = 0;
 
+bool Frame::isAllRoIPrepared() const {
+  bool prepared = true;
+  for (const RoI& roi : rois) {
+    prepared &= roi.isDone;
+  }
+  return prepared;
+}
+
 void Frame::updateBoxesToTrackWithInferenceResult() {
   std::transform(boxes.begin(), boxes.end(),
                  std::back_inserter(boxesToTrack),

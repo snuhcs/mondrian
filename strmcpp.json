@@ -2,7 +2,7 @@
     "log_internal": true,
     "roi_padding": 10,
     "buffer_size": 500,
-    "latency_slo_ms": 2500,
+    "latency_slo_ms": 5000,
     "roi_extractor": {
         "num_workers": 2,
         "extraction_resize_width": 640,

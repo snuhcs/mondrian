@@ -49,8 +49,10 @@ public class VideoSource extends CustomCapturer implements Runnable {
     private final ResultCallback mResultCallback;
     private final boolean DRAW;
     private final float DRAW_CONFIDENCE;
+    private final int FPS;
 
     VideoSource(SourceConfig.VideoConfig config, SpatioTemporalRoIMixer strm, ResultCallback resultCallback, boolean draw, float drawConfidence) {
+        FPS = config.FPS;
         VIDEO_PATH = config.PATH;
         DRAW = draw;
         DRAW_CONFIDENCE = drawConfidence;
@@ -67,6 +69,7 @@ public class VideoSource extends CustomCapturer implements Runnable {
     public void run() {
         try {
             while (true) {
+                long startTime = System.nanoTime();
                 int frameIndex = frameIndices.take();
                 List<BoundingBox> results = strm.getResults(VIDEO_PATH, frameIndex);
                 mResultCallback.log(VIDEO_PATH, frameIndex, results);
@@ -74,7 +77,7 @@ public class VideoSource extends CustomCapturer implements Runnable {
                     Bitmap bitmap = frames.remove(frameIndex);
                     mResultCallback.drawObjectDetectionResult(DrawUtil.drawBoxes(
                             bitmap, results, DRAW_CONFIDENCE));
-                    Thread.sleep(50);
+                    Thread.sleep((int) (1e9 / FPS - (System.nanoTime() - startTime) / 1e3));
                 }
             }
         } catch (InterruptedException e) {

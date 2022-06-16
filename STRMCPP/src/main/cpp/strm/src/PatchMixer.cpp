@@ -4,15 +4,8 @@ namespace rm {
 
 int PatchMixer::mMixedFrameIndex = 0;
 
-std::vector<MixedFrame> PatchMixer::pack(const std::vector<Frame*>& frames, int mixedFrameSize, int numMixedFrames) {
-  LOGD("PatchMixer::pack() %lu", frames.size());
-
-  std::map<int, std::vector<Rect>> freeRectsMap;
-  std::map<int, std::vector<RoI*>> packedRoIs;
-  for (int i = 0; i < numMixedFrames; i++) {
-    freeRectsMap[i].emplace_back(0, 0, mixedFrameSize, mixedFrameSize);
-  }
-
+std::vector<MixedFrame> PatchMixer::pack(const std::set<Frame*>& frames, int mixedFrameSize, int numMixedFrames) {
+  // Collect RoIs. Later frame RoIs come first.
   std::vector<RoI*> rois;
   for (auto it = frames.rbegin(); it != frames.rend(); it++) {
     for (RoI& roi : (*it)->rois) {
@@ -20,10 +13,16 @@ std::vector<MixedFrame> PatchMixer::pack(const std::vector<Frame*>& frames, int 
     }
   }
 
+  std::vector<RoI*> droppedRoIs;
+  std::map<int, std::vector<RoI*>> packedRoIs;
+  std::map<int, std::vector<Rect>> freeRectsMap;
+  for (int i = 0; i < numMixedFrames; i++) {
+    freeRectsMap[i].emplace_back(0, 0, mixedFrameSize, mixedFrameSize);
+  }
   time_us mixingStartTime = NowMicros();
   for (RoI* roi : rois) {
     std::pair<int, int> wh = roi->getResizedWidthHeight();
-    for (auto indexAndFreeRects: freeRectsMap) {
+    for (auto& indexAndFreeRects : freeRectsMap) {
       int index = indexAndFreeRects.first;
       std::vector<Rect>& freeRects = indexAndFreeRects.second;
       for (auto it = freeRects.begin(); it != freeRects.end(); it++) {
@@ -41,6 +40,10 @@ std::vector<MixedFrame> PatchMixer::pack(const std::vector<Frame*>& frames, int 
         packedRoIs[index].push_back(roi);
         break;
       }
+    }
+    if (!roi->isPacked()) {
+      roi->isDone = true;
+      droppedRoIs.push_back(roi);
     }
   }
   time_us mixingEndTime = NowMicros();
@@ -60,6 +63,9 @@ std::vector<MixedFrame> PatchMixer::pack(const std::vector<Frame*>& frames, int 
     frame->mixedFrameCreateStartTime = mixedFrameCreateStartTime;
     frame->mixedFrameCreateEndTime = mixedFrameCreateEndTime;
   }
+  LOGD("PatchMixer::pack(%lu, %d, %d) took %lu and %lu us : %lu / %lu dropped", frames.size(),
+       mixedFrameSize, numMixedFrames, mixingEndTime - mixingStartTime,
+       mixedFrameCreateEndTime - mixedFrameCreateStartTime, rois.size(), droppedRoIs.size());
   return mixedFrames;
 }
 

@@ -11,9 +11,6 @@ PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config) :
 
 void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
                                             const std::vector<BoundingBox>& results) const {
-  LOGD("PatchReconstructor::reconstructResults() start %lu %lu", mixedFrame.packedRoIs.size(),
-       results.size());
-
   bool runOriginalCode = false;
 
   time_us reconstructStartTime = NowMicros();
@@ -110,7 +107,8 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
     frame->reconstructStartTime = reconstructStartTime;
     frame->reconstructEndTime = reconstructEndTime;
   }
-  LOGD("PatchReconstructor::reconstructResults() end");
+  LOGD("PatchReconstructor::reconstructResults(%lu, %lu) took %lu us", mixedFrame.packedRoIs.size(),
+       results.size(), reconstructEndTime - reconstructStartTime);
 }
 
 } // namespace rm

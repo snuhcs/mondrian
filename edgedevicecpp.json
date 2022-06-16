@@ -1,6 +1,7 @@
 {
     "log_path": "/data/data/hcs.offloading.edgedevicecpp/test.log",
-    "draw": true,
+    "draw_video": false,
+    "draw_inference_result": true,
     "source": {
         "use_local_video": true,
         "video_configs": [
