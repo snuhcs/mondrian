@@ -162,7 +162,6 @@ struct RoI {
     float diffAreaRatio;
   };
 
-  const Frame* constFrame;
   Frame* frame;
   Rect location;
   Type type;
@@ -182,7 +181,7 @@ struct RoI {
   std::vector<BoundingBox> boxes;
 
   RoI(const idType id,
-      const Frame* frame,
+      Frame* frame,
       const Rect location,
       const Type type,
       const std::string labelName,
@@ -190,7 +189,7 @@ struct RoI {
       const float err,
       const float diffAreaRatio)
       : id(id),
-        constFrame(frame),
+        frame(frame),
         location(location),
         type(type),
         labelName(labelName),
@@ -200,12 +199,10 @@ struct RoI {
         targetSize(maxEdgeLength),
         packedLocation(std::make_pair(-1, -1)),
         handle(-1),
-        parentId(-1) {
-    frame = const_cast<Frame*>(constFrame);
-  };
+        parentId(-1) {};
 
   static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
-    assert(roi0.constFrame == roi1.constFrame);
+    assert(roi0.frame == roi1.frame);
     int newLeft = std::min(roi0.location.left, roi1.location.left);
     int newTop = std::min(roi0.location.top, roi1.location.top);
     int newRight = std::max(roi0.location.right, roi1.location.right);

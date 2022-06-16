@@ -13,7 +13,7 @@ class InferenceEngine {
  public:
   virtual ~InferenceEngine() {}
 
-  virtual int enqueue(const cv::Mat mat, const bool isFull) = 0;
+  virtual int enqueue(const cv::Mat mat) = 0;
 
   virtual std::vector<BoundingBox> getResults(const int handle) = 0;
 

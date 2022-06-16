@@ -4,8 +4,8 @@
 
 namespace rm {
 
-Worker::Worker(CustomInferenceEngine* engine, Classifier* cls, Classifier* fullCls)
-    : engine(engine), classifier(cls), fullClassifier(fullCls), isClosed(false) {
+Worker::Worker(CustomInferenceEngine* engine, Classifier* cls)
+    : engine(engine), classifier(cls), isClosed(false) {
   LOGD("Worker::Worker()");
   thread = std::thread([this]() {
     while (!isClosed.load()) {
@@ -16,11 +16,10 @@ Worker::Worker(CustomInferenceEngine* engine, Classifier* cls, Classifier* fullC
 
 void Worker::Work() {
   LOGD("Worker::work()");
-  std::tuple<int, const cv::Mat, bool> input = engine->getInput();
+  std::tuple<int, const cv::Mat> input = engine->getInput();
   int handle = std::get<0>(input);
   const cv::Mat mat = std::get<1>(input);
-  bool isFull = std::get<2>(input);
-  std::vector<BoundingBox> boxes = (isFull ? fullClassifier : classifier)->recognizeImage(mat);
+  std::vector<BoundingBox> boxes = classifier->recognizeImage(mat);
   engine->drawInferenceResult(mat, boxes);
   engine->enqueueResults(handle, boxes);
 }

@@ -42,7 +42,6 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
         if (maxOverlap < overlapRatio) {
           maxOverlap = overlapRatio;
           maxBoxPos = movedAndResizedBoxPos;
-          maxFrame = roi->frame;
           maxRoI = roi;
         }
       }

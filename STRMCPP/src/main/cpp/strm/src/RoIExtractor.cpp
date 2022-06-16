@@ -41,6 +41,7 @@ void RoIExtractor::notify() {
 }
 
 void RoIExtractor::preprocess(Frame* frame) const {
+  assert(frame != nullptr);
   cv::resize(frame->mat, frame->preProcessedMat, mTargetSize);
   cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGR2GRAY);
 }
@@ -136,7 +137,13 @@ void RoIExtractor::process(Frame* currFrame) {
   Frame* prevFrame = currFrame->prevFrame;
 
   // Preprocess matrices
-  preprocess(currFrame);
+  // TODO
+  if (prevFrame->preProcessedMat.empty()) {
+    preprocess(prevFrame);
+  }
+  if (currFrame->preProcessedMat.empty()) {
+    preprocess(currFrame);
+  }
 
   // PD RoI Extraction
   if (currFrame->roiExtractionStatus != OF_EXTRACTING) {
@@ -144,12 +151,6 @@ void RoIExtractor::process(Frame* currFrame) {
     std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame,
                                                       mTargetSize, mConfig.MIN_ROI_AREA);
     currFrame->pixelDiffRoIProcessEndTime = NowMicros();
-    if (!pixelDiffRoIs.empty()) {
-      Frame* framge = pixelDiffRoIs[0].frame;
-      for (RoI& roi : pixelDiffRoIs) {
-        assert(roi.frame == framge);
-      }
-    }
     currFrame->origRoIs.insert(currFrame->origRoIs.end(), pixelDiffRoIs.begin(),
                                pixelDiffRoIs.end());
 
@@ -164,12 +165,6 @@ void RoIExtractor::process(Frame* currFrame) {
     std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame,
                                                           reliablePrevBoxes, mTargetSize);
     currFrame->opticalFlowRoIProcessEndTime = NowMicros();
-    if (!opticalFlowRoIs.empty()) {
-      const Frame* framge = opticalFlowRoIs[0].constFrame;
-      for (RoI& roi : opticalFlowRoIs) {
-        assert(roi.constFrame == framge);
-      }
-    }
     currFrame->origRoIs.insert(currFrame->origRoIs.end(), opticalFlowRoIs.begin(),
                                opticalFlowRoIs.end());
     currFrame->updateBoxesToTrackWithRoIs();
@@ -243,7 +238,7 @@ std::vector<RoI> RoIExtractor::mergeRoIs(std::vector<RoI>& origRoIs, const float
 }
 
 std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
-    const Frame* prevFrame, const Frame* currFrame,
+    const Frame* prevFrame, Frame* currFrame,
     const std::vector<BoundingBox>& boundingBoxes, const cv::Size& targetSize) {
   int width = currFrame->mat.cols;
   int height = currFrame->mat.rows;
@@ -327,8 +322,10 @@ std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErro
   return shiftAndErrors;
 }
 
-std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Frame* currFrame,
+std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
                                                 const cv::Size& targetSize, const int mixRoIArea) {
+  int prevChannels = prevFrame->preProcessedMat.channels();
+  int currChannels = currFrame->preProcessedMat.channels();
   cv::Mat mat = calculateDiffAndThreshold(prevFrame->preProcessedMat, currFrame->preProcessedMat);
   cannyEdgeDetection(mat);
 
@@ -349,7 +346,7 @@ std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, const Fr
                               box.y * currFrame->mat.rows / targetSize.height,
                               (box.x + box.width) * currFrame->mat.cols / targetSize.width,
                               (box.y + box.height) * currFrame->mat.rows / targetSize.height);
-      float diffAreaRatio = cv::contourArea(approxCurve) / box.area();
+      float diffAreaRatio = (float) cv::contourArea(approxCurve) / (float) box.area();
       boxAndFeatures.emplace_back(originalBox, diffAreaRatio);
     }
   }

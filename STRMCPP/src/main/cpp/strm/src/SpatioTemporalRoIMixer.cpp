@@ -76,13 +76,13 @@ void SpatioTemporalRoIMixer::work() {
     fullFrameInference(getFullFrameInferenceFrame(frames, fullFrameInferenceStreamIndex++));
     fullFrameInferenceEndTime = NowMicros();
 
-    int numMixedFrames = (mConfig.LATENCY_SLO_MS / 2 - (fullFrameInferenceEndTime - startTime))
-                         / mInferenceEngine->getInferenceTimeMs();
+    int numMixedFrames = (mConfig.LATENCY_SLO_MS / 2 - (fullFrameInferenceEndTime - startTime) / 1000) / mInferenceEngine->getInferenceTimeMs();
+    if (numMixedFrames <= 0) numMixedFrames = 1; // TODO : handle numMixedFrames <= 0 case
     std::vector<MixedFrame> mixedFrames = PatchMixer::pack(frames, mInferenceEngine->getInputSizes()[0], numMixedFrames);
     std::vector<int> handles;
     std::transform(mixedFrames.begin(), mixedFrames.end(), std::back_inserter(handles),
                    [this](const MixedFrame& mixedFrame) {
-                     return mInferenceEngine->enqueue(mixedFrame.packedMat, false);
+                     return mInferenceEngine->enqueue(mixedFrame.packedMat);
                    });
     for (int i = 0; i < mixedFrames.size(); i++) {
       std::vector<BoundingBox> results = mInferenceEngine->getResults(handles[i]);
@@ -127,7 +127,7 @@ void SpatioTemporalRoIMixer::work() {
 
 void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   mRoIExtractor->preprocess(frame);
-  frame->boxes = mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat, true));
+  frame->boxes = mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat));
   frame->updateBoxesToTrackWithInferenceResult();
 
   std::unique_lock<std::mutex> resultLock(mResultsMtx);
@@ -146,7 +146,7 @@ Frame* SpatioTemporalRoIMixer::getFullFrameInferenceFrame(const std::vector<Fram
     }
   }
   auto it = lastFrames.begin();
-  for (int i = 0; i < fullFrameInferenceStreamIndex; i++) {
+  for (int i = 0; i < fullFrameInferenceStreamIndex % lastFrames.size(); i++) {
     it++;
   }
   return it->second;

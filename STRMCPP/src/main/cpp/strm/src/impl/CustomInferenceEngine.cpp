@@ -42,20 +42,21 @@ CustomInferenceEngine::CustomInferenceEngine(
 
 template<typename T>
 void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config) {
+  // TODO: Handle workers for multiple input sizes
   for (const auto& inputSize : config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
         inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
     classifier->setInferenceTimeMs(classifier->profileInferenceTime());
-    workers.push_back(std::make_unique<Worker>(this, classifier.get(), classifier.get()));
+    workers.push_back(std::make_unique<Worker>(this, classifier.get()));
     classifiers.push_back(std::move(classifier));
   }
 }
 
-int CustomInferenceEngine::enqueue(const cv::Mat mat, const bool isFull) {
+int CustomInferenceEngine::enqueue(const cv::Mat mat) {
   LOGD("CppInferenceEngine::enqueue() start");
   std::unique_lock<std::mutex> inputLock(inputMtx);
   int handle = mHandle++;
-  inputs.push(std::make_tuple(handle, mat, isFull));
+  inputs.push(std::make_tuple(handle, mat));
   inputLock.unlock();
   inputCv.notify_all();
   LOGD("CppInferenceEngine::enqueue() end %d", handle);
@@ -74,13 +75,13 @@ std::vector<BoundingBox> CustomInferenceEngine::getResults(const int handle) {
   return boxes;
 }
 
-std::tuple<int, const cv::Mat, bool> CustomInferenceEngine::getInput() {
+std::tuple<int, const cv::Mat> CustomInferenceEngine::getInput() {
   LOGD("CppInferenceEngine::getInput()");
   std::unique_lock<std::mutex> inputLock(inputMtx);
   inputCv.wait(inputLock, [this]() {
     return !inputs.empty();
   });
-  std::tuple<int, const cv::Mat, bool> input = inputs.front();
+  std::tuple<int, const cv::Mat> input = inputs.front();
   inputs.pop();
   LOGD("CppInferenceEngine::getInput(%d, Mat(%d, %d, %d))",
        std::get<0>(input), std::get<1>(input).cols, std::get<1>(input).rows,
