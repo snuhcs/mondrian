@@ -23,14 +23,14 @@ class RoIExtractor {
                            const std::vector<BoundingBox>& prevResults) const;
 
  private:
-  static void mergeSingleFrameRoIs(std::vector<RoI>& rois, const Frame* frame,
-                                   const float mergeThreshold, const int maxMergedRoISize);
+  static void mergeSingleFrameRoIs(std::vector<RoI>& rois, const float mergeThreshold,
+                                   const int maxMergedRoISize);
 
   static std::vector<RoI> getOpticalFlowRoIs(
       const Frame* prevFrame, const Frame* currFrame,
       const std::vector<BoundingBox>& boundingBoxes, const cv::Size& targetSize);
 
-  static std::vector<std::pair<int, int>> getBoundingBoxShifts(
+  static std::vector<std::pair<std::pair<int, int>, float>> getShiftAndErrors(
       const Frame* prevFrame, const Frame* currFrame,
       const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize);
 

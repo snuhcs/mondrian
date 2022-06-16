@@ -8,9 +8,9 @@
 namespace rm {
 
 struct ResizeProfileConfig {
-  bool FIT_RESIZE = false;
-  int PERSON_THRESHOLD = 160;
-  int CLASS_AGNOSTIC_THRESHOLD = 160;
+  bool ACCURACY_AWARE_RESIZE = true;
+  int RESIZE_MARGIN = 10;
+  int STATIC_TARGET_SIZE = 80;
 };
 
 struct InferenceEngineConfig {
