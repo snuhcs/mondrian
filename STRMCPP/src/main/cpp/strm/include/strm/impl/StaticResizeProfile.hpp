@@ -8,12 +8,16 @@ class StaticResizeProfile : public ResizeProfile {
   StaticResizeProfile(int staticTargetSize)
       : STATIC_TARGET_SIZE(staticTargetSize) {}
 
-  int getTargetSize(const RoI::Features& features) const {
+  int getTargetSize(const idType id, const RoI::Features& features) const override {
     return STATIC_TARGET_SIZE;
   }
 
+  void updateTable(RoI& roi) override {
+    return;
+  }
+
  private:
-  const int STATIC_TARGET_SIZE;
+  int STATIC_TARGET_SIZE;
 };
 
 } // namespace rm

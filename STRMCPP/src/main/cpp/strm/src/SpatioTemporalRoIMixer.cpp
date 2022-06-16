@@ -40,14 +40,14 @@ Frame* FrameBuffer::getFrame(int frameIndex) {
 }
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
-                                               const ResizeProfile* resizeProfile,
+                                               ResizeProfile* resizeProfile,
                                                InferenceEngine* inferenceEngine)
     : mConfig(config), mbStop(false),
       mLogger(new Logger("/data/data/hcs.offloading.edgedevicecpp/execution_log.csv")),
       mInferenceEngine(inferenceEngine), mRoIExtractor(new RoIExtractor(config.roIExtractorConfig, resizeProfile, inferenceEngine->getInputSizes()[0])) {
   LOGD("SpatioTemporalRoIMixer()");
   mLogger->logHeader();
-  mPatchReconstructor = std::make_unique<PatchReconstructor>(config.patchReconstructorConfig);
+  mPatchReconstructor = std::make_unique<PatchReconstructor>(config.patchReconstructorConfig, resizeProfile);
   RoI::lastId = 1;
 
   mThread = std::thread([this]() { work(); });

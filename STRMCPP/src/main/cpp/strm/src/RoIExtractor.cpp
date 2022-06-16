@@ -104,8 +104,9 @@ void RoIExtractor::work() {
 
     if (processOF) {
       frame->resizeRoIStartTime = NowMicros();
-      for (auto& roi : frame->rois) {
-        roi.targetSize = std::min(roi.maxEdgeLength, mResizeProfile->getTargetSize(roi.features));
+      for (auto& roi : frame->origRoIs) {
+        roi.targetSize = std::min(roi.maxEdgeLength,
+                                  mResizeProfile->getTargetSize(roi.id, roi.features));
       }
       frame->resizeRoIEndTime = NowMicros();
 

@@ -157,9 +157,13 @@ struct RoI {
     std::string labelName;
     Type type;
     float xyRatio;
-    int shift;
+    std::pair<int, int> shift;
     float err;
     float diffAreaRatio;
+
+    int getShiftSize() const {
+      return shift.first * shift.first + shift.second * shift.second;
+    }
   };
 
   Frame* frame;
@@ -167,6 +171,7 @@ struct RoI {
   Type type;
   std::string labelName;
   Features features;
+  std::vector<RoI> roisForProbing;
 
   inline static std::atomic<idType> lastId;
   idType id;
@@ -177,7 +182,7 @@ struct RoI {
   int targetSize;
   std::pair<int, int> packedLocation;
 
-  int handle;
+  bool isDone;
   std::vector<BoundingBox> boxes;
 
   RoI(const idType id,
@@ -194,11 +199,11 @@ struct RoI {
         type(type),
         labelName(labelName),
         features{labelName, type, (float) location.width() / (float) location.height(),
-                 shift.first * shift.first + shift.second * shift.second, err, diffAreaRatio},
+                 std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())),
         targetSize(maxEdgeLength),
         packedLocation(std::make_pair(-1, -1)),
-        handle(-1),
+        isDone(false),
         parentId(-1) {};
 
   static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
@@ -272,6 +277,10 @@ struct RoI {
     cv::Mat resizedMat;
     cv::resize(getMat(), resizedMat, cv::Size(wh.first, wh.second));
     return resizedMat;
+  }
+
+  bool operator < (const RoI& roi) const {
+    return (targetSize < roi.targetSize);
   }
 };
 

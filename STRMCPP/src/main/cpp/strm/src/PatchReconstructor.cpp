@@ -7,7 +7,7 @@
 
 namespace rm {
 
-PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config) : mConfig(config) {}
+PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config, ResizeProfile* resizeProfile): mConfig(config), mResizeProfile(resizeProfile) {}
 
 void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
                                             const std::vector<BoundingBox>& results) const {
@@ -86,6 +86,9 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
         }
       }
     }
+    for (RoI* roi : mixedFrame.packedRoIs) {
+      roi->isDone = true;
+    }
 
     // If new Boxes exist (those who lost competition between other Boxes in single RoI),
     // classify them as newly appeared objects and assign new Id
@@ -102,6 +105,39 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
     }
   }
   std::set<Frame*> packedFrames = mixedFrame.getPackedFrames();
+
+  // find last frames from packed frames
+  std::vector<Frame*> lastFrames;
+  for (auto frame : packedFrames) {
+    bool inLastFrames = false;
+    for (auto it = lastFrames.begin(); it != lastFrames.end(); it++) {
+      Frame* lastFrame = (*it);
+      if (lastFrame->key == frame->key) {
+        inLastFrames = true;
+        if (lastFrame->frameIndex < frame->frameIndex) {
+          lastFrames.erase(it);
+          lastFrames.push_back(frame);
+        }
+        break;
+      }
+    }
+    if (!inLastFrames) {
+      lastFrames.push_back(frame);
+    }
+  }
+
+  for (auto lastFrame : lastFrames) {
+    for (RoI& roi : lastFrame->origRoIs) {
+      bool allDone = true;
+      for (RoI& probeRoI : roi.roisForProbing) {
+        allDone &= probeRoI.isDone;
+      }
+      if (allDone) {
+        mResizeProfile->updateTable(roi);
+      }
+    }
+  }
+
   for (Frame* frame : packedFrames) {
     frame->boxes = nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
   }

@@ -14,6 +14,43 @@ std::vector<MixedFrame> PatchMixer::pack(const std::vector<Frame*>& frames, int 
   }
 
   std::vector<RoI*> rois;
+
+  std::vector<Frame*> lastFrames;
+  for (auto frame : frames) {
+    bool inLastFrames = false;
+    for (auto it = lastFrames.begin(); it != lastFrames.end(); it++) {
+      Frame* lastFrame = (*it);
+      if (lastFrame->key == frame->key) {
+        inLastFrames = true;
+        if (lastFrame->frameIndex < frame->frameIndex) {
+          lastFrames.erase(it);
+          lastFrames.push_back(frame);
+        }
+        break;
+      }
+    }
+    if (!inLastFrames) {
+      lastFrames.push_back(frame);
+    }
+  }
+
+  int probeStep = 4;
+  int probeRoINum = 1; // total (2 * probeRoINum) number of probeRoIs
+  for (auto lastFrame : lastFrames) {
+    for (RoI& roi : lastFrame->origRoIs) {
+      for (int i=0; i<2*probeRoINum+1; i++) {
+        roi.roisForProbing.emplace_back(roi.id, roi.frame, roi.location, roi.type, roi.labelName, roi.features.shift, roi.features.err, roi.features.diffAreaRatio);
+      }
+      int probe = - probeStep * probeRoINum;
+      for (RoI& probeRoI : roi.roisForProbing) {
+        probeRoI.targetSize = roi.targetSize + probe;
+        probe += probeStep;
+        rois.push_back(&probeRoI);
+      }
+      std::sort(roi.roisForProbing.begin(), roi.roisForProbing.end());
+    }
+  }
+
   for (auto it = frames.rbegin(); it != frames.rend(); it++) {
     for (RoI& roi : (*it)->rois) {
       rois.push_back(&roi);
