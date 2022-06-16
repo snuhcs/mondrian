@@ -20,8 +20,7 @@ struct InferenceEngineConfig {
   float CONF_THRESHOLD = 0.1;
   float IOU_THRESHOLD = 0.5;
   int NUM_WORKERS = 1;
-  int INPUT_SIZE = 800;
-  int FULL_FRAME_INPUT_SIZE = 800;
+  std::vector<int> INPUT_SIZES = {800};
 };
 
 struct IMPLConfig {

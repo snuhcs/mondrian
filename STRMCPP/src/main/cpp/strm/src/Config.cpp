@@ -39,9 +39,6 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["merge_threshold"].isNull()) {
     config.MERGE_THRESHOLD = json["merge_threshold"].asFloat();
   }
-  if (!json["max_merged_roi_size"].isNull()) {
-    config.MAX_MERGED_ROI_SIZE = json["max_merged_roi_size"].asInt();
-  }
   if (!json["of_roi"].isNull()) {
     config.OF_ROI = json["of_roi"].asBool();
   }
@@ -62,9 +59,9 @@ PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   if (!json["max_packed_frames"].isNull()) {
     config.MAX_PACKED_FRAMES = json["max_packed_frames"].asInt();
   }
-  if (!json["mixed_frame_size"].isNull()) {
-    config.MIXED_FRAME_SIZE = json["mixed_frame_size"].asInt();
-  }
+
+  // mixed_frame_sizes is set at parseSTRMConfig()
+
   if (!json["latency_slo_ms"].isNull()) {
     config.LATENCY_SLO_MS = json["latency_slo_ms"].asInt();
   }
