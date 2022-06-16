@@ -36,7 +36,7 @@ Classifier::recognizeImage(const cv::Mat& mat) {
     }
     maxConfidence *= getObjectConfidence(i);
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
-      detections.emplace_back(reconstructBox(box[0], box[1], box[2], box[3], mat.cols, mat.rows),
+      detections.emplace_back(0, reconstructBox(box[0], box[1], box[2], box[3], mat.cols, mat.rows),
                               maxConfidence, "person");
     }
   }
