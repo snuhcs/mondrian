@@ -246,27 +246,18 @@ struct RoI {
 struct MixedFrame {
   const int mixedFrameIndex;
   cv::Mat packedMat;
-  std::vector<Frame*> frames;
+  std::vector<RoI*> rois;
 
-  MixedFrame(const int mixedFrameIndex, const std::vector<Frame*>& frames, const cv::Size& size)
-      : mixedFrameIndex(mixedFrameIndex), frames(frames) {
-    const time_us mixedFrameCreateStartTime = NowMicros();
+  MixedFrame(const int mixedFrameIndex, std::vector<RoI*> rois, const cv::Size& size)
+      : mixedFrameIndex(mixedFrameIndex), rois(rois) {
     packedMat = cv::Mat::zeros(size.width, size.height, CV_8UC4);
-    for (Frame* frame : frames) {
-      for (RoI& roi : frame->rois) {
-        if (roi.isPacked()) {
-          std::pair<int, int> wh = roi.getResizedWidthHeight();
-          roi.getResizedMat().copyTo(
-              packedMat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second,
-                                 wh.first, wh.second)));
-        }
+    for (RoI* roi : rois) {
+      if (roi->isPacked()) {
+        std::pair<int, int> wh = roi->getResizedWidthHeight();
+        roi->getResizedMat().copyTo(
+            packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
+                               wh.first, wh.second)));
       }
-      frame->mat.release();
-    }
-    const time_us mixedFrameCreateEndTime = NowMicros();
-    for (Frame* frame : frames) {
-      frame->mixedFrameCreateStartTime = mixedFrameCreateStartTime;
-      frame->mixedFrameCreateEndTime = mixedFrameCreateEndTime;
     }
   }
 };

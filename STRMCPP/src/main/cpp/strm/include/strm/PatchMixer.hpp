@@ -17,14 +17,15 @@ namespace rm {
 
 class PatchMixer {
  public:
-  static std::vector<MixedFrame> pack(const std::vector<Frame*>& frames, const cv::Size& size);
+  static std::vector<MixedFrame> pack(const std::vector<Frame*>& frames, const cv::Size& size,
+                                      int numMixedFrames);
 
  private:
   static bool canFit(std::pair<int, int> wh, const Rect& rect);
 
   static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, const Rect& rect);
 
-  static int mixedFrameIndex;
+  static int mMixedFrameIndex;
 };
 
 } // namespace rm

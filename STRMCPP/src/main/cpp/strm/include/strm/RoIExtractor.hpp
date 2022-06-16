@@ -24,6 +24,8 @@ class RoIExtractor {
 
   void enqueue(Frame* frame);
 
+  void notify();
+
   void preprocess(Frame* frame) const;
 
   std::vector<Frame*> getExtractedFrames();

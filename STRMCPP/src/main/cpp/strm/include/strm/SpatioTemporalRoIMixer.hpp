@@ -20,7 +20,7 @@ namespace rm {
 
 class FrameBuffer {
  public:
-  FrameBuffer(std::string key, int capacity, std::unique_ptr<Frame> firstFrame);
+  FrameBuffer(std::string key, int capacity);
 
   int enqueue(const cv::Mat& mat);
 
@@ -53,6 +53,11 @@ class SpatioTemporalRoIMixer {
 
  private:
   void work();
+
+  void fullFrameInference(Frame* frame);
+
+  static Frame* getFullFrameInferenceFrame(const std::vector<Frame*>& frames,
+                                           int fullFrameInferenceStreamIndex);
 
   const STRMConfig mConfig;
   std::thread mThread;

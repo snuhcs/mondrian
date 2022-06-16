@@ -37,6 +37,10 @@ void RoIExtractor::enqueue(Frame* frame) {
        mFramesForPD.size(), mFramesForOF.size(), mOFProcessingStartedFrames.size());
 }
 
+void RoIExtractor::notify() {
+  cv.notify_all();
+}
+
 void RoIExtractor::preprocess(Frame* frame) const {
   cv::resize(frame->mat, frame->preProcessedMat, mTargetSize);
   cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGR2GRAY);
