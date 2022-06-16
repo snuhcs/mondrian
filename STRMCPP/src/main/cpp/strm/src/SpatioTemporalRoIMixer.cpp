@@ -19,6 +19,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
   mPatchMixer = std::make_unique<PatchMixer>(
       config.patchMixerConfig, inferenceEngine, mPatchReconstructor.get());
   mRoIExtractorConfig.MAX_MERGED_ROI_SIZE = *std::min_element(inferenceEngine->getInputSizes().begin(), inferenceEngine->getInputSizes().end());
+  RoI::lastId = 1;
 }
 
 SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {

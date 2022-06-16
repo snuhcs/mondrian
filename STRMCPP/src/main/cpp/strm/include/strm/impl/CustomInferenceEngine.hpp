@@ -27,7 +27,7 @@ class CustomInferenceEngine : public InferenceEngine {
 
   long long getInferenceTimeMs() override;
 
-  std::vector<int> getInputSizes();
+  std::vector<int> getInputSizes() override;
 
  private:
   std::tuple<int, const cv::Mat, bool> getInput();
@@ -43,6 +43,18 @@ class CustomInferenceEngine : public InferenceEngine {
 
   std::vector<std::unique_ptr<Worker>> workers;
   std::vector<std::unique_ptr<Classifier>> classifiers;
+
+  const bool draw;
+  JavaVM* jvm;
+  JNIEnv* env;
+  jobject strm;
+  jclass class_SpatioTemporalRoIMixer;
+  jmethodID SpatioTemporalRoIMixer_drawInferenceResult;
+  jclass class_ArrayList;
+  jmethodID ArrayList_init;
+  jmethodID ArrayList_add;
+  jclass class_BoundingBox;
+  jmethodID BoundingBox_init;
 
   const bool draw;
   JavaVM* jvm;
