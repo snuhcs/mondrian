@@ -127,7 +127,10 @@ void SpatioTemporalRoIMixer::work() {
 
 void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   mRoIExtractor->preprocess(frame);
-  frame->boxes = mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat));
+  std::vector<RoI> emptyRoIs;
+  frame->boxes = assignIdsToBoxes(mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat)),
+                                  frame->prevFrame == nullptr ? emptyRoIs : frame->prevFrame->origRoIs,
+                                  mConfig.patchReconstructorConfig.OVERLAP_THRESHOLD);
   frame->updateBoxesToTrackWithInferenceResult();
 
   std::unique_lock<std::mutex> resultLock(mResultsMtx);
