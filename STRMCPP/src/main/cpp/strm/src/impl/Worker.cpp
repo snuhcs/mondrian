@@ -21,6 +21,7 @@ void Worker::Work() {
   const cv::Mat mat = std::get<1>(input);
   bool isFull = std::get<2>(input);
   std::vector<BoundingBox> boxes = (isFull ? fullClassifier : classifier)->recognizeImage(mat);
+  engine->drawInferenceResult(mat, boxes);
   engine->enqueueResults(handle, boxes);
 }
 

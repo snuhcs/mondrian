@@ -8,8 +8,23 @@
 
 namespace rm {
 
-CustomInferenceEngine::CustomInferenceEngine(const InferenceEngineConfig& config) : mHandle(0) {
+CustomInferenceEngine::CustomInferenceEngine(
+    const InferenceEngineConfig& config, JavaVM* vm, JNIEnv* env, jobject strm, bool draw)
+    : mHandle(0), jvm(vm), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
   LOGD("CppInferenceEngine::CppInferenceEngine()");
+
+  class_SpatioTemporalRoIMixer = reinterpret_cast<jclass>(env->NewGlobalRef(
+      env->FindClass("hcs/offloading/strmcpp/SpatioTemporalRoIMixer")));
+  SpatioTemporalRoIMixer_drawInferenceResult = env->GetMethodID(
+      class_SpatioTemporalRoIMixer, "drawInferenceResult", "(JLjava/util/List;)V");
+  class_ArrayList = reinterpret_cast<jclass>(env->NewGlobalRef(
+      env->FindClass("java/util/ArrayList")));
+  ArrayList_init = env->GetMethodID(class_ArrayList, "<init>", "()V");
+  ArrayList_add = env->GetMethodID(class_ArrayList, "add", "(ILjava/lang/Object;)V");
+  class_BoundingBox = reinterpret_cast<jclass>(env->NewGlobalRef(
+      env->FindClass("hcs/offloading/strmcpp/BoundingBox")));
+  BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIFLjava/lang/String;)V");
+
   for (int i = 0; i < config.NUM_WORKERS; i++) {
     if (config.MODEL == "YOLO_V4" && config.RUNTIME == "MNN") {
       initClassifiers<MnnYoloV4Classifier>(config);
@@ -82,6 +97,32 @@ CustomInferenceEngine::enqueueResults(const int handle, const std::vector<Boundi
   results.insert(std::make_pair(handle, boxes));
   resultLock.unlock();
   resultCv.notify_all();
+}
+
+void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
+                                                const std::vector<BoundingBox>& boxes) {
+  if (!draw) {
+    return;
+  }
+  if (jvm->AttachCurrentThread(&env, nullptr) != 0) {
+    return;
+  }
+
+  jobject jBoxes = env->NewObject(class_ArrayList, ArrayList_init);
+  for (int i = 0; i < boxes.size(); i++) {
+    const rm::BoundingBox& b = boxes.at(i);
+    jstring labelName = env->NewStringUTF(b.labelName.c_str());
+    jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
+                                 b.location.left, b.location.top, b.location.right,
+                                 b.location.bottom,
+                                 b.confidence, labelName);
+    env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
+  }
+  auto* jMat = new cv::Mat();
+  mat.copyTo(*jMat);
+  env->CallVoidMethod(strm, SpatioTemporalRoIMixer_drawInferenceResult, (long) jMat, jBoxes);
+
+  jvm->DetachCurrentThread();
 }
 
 long long CustomInferenceEngine::getInferenceTimeMs() {

@@ -18,9 +18,16 @@ public class SpatioTemporalRoIMixer {
     }
 
     private final long handle;
+    private final InferenceViewCallback inferenceViewCallback;
 
-    public SpatioTemporalRoIMixer() {
-        handle = createSpatioTemporalRoIMixer();
+    public SpatioTemporalRoIMixer(InferenceViewCallback inferenceViewCallback) {
+        boolean draw = inferenceViewCallback != null;
+        handle = createSpatioTemporalRoIMixer(draw);
+        this.inferenceViewCallback = inferenceViewCallback;
+    }
+
+    public void drawInferenceResult(long addr, List<BoundingBox> results) {
+        inferenceViewCallback.drawInferenceResult(addr, results);
     }
 
     public int enqueueImage(String key, Mat mat) {
@@ -39,7 +46,7 @@ public class SpatioTemporalRoIMixer {
         close(handle);
     }
 
-    private native long createSpatioTemporalRoIMixer();
+    private native long createSpatioTemporalRoIMixer(boolean draw);
 
     private native int enqueueImage(long handle, String key, long matAddr);
 

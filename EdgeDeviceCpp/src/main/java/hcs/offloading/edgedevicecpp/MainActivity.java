@@ -12,6 +12,8 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import org.json.JSONException;
+import org.opencv.android.Utils;
+import org.opencv.core.Mat;
 import org.webrtc.SurfaceViewRenderer;
 
 import java.io.File;
@@ -23,8 +25,9 @@ import java.util.stream.Collectors;
 import hcs.offloading.edgedevicecpp.config.Config;
 import hcs.offloading.edgedevicecpp.databinding.ActivityMainBinding;
 import hcs.offloading.strmcpp.BoundingBox;
+import hcs.offloading.strmcpp.InferenceViewCallback;
 
-public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ResultCallback {
+public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ResultCallback, InferenceViewCallback {
     private static final String TAG = MainActivity.class.getName();
 
     private static final String CONFIG_FILEPATH = "/data/local/tmp/edgedevicecpp.json";
@@ -100,12 +103,8 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         int port = Integer.parseInt(mPortInput.getText().toString());
         String uri = "tcp://" + ip + ":" + port;
         try {
-            mEdgeDevice = new EdgeDevice(
-                    mConfig,
-                    getApplicationContext(),
-                    uri,
-                    mInputView,
-                    this);
+            mEdgeDevice = new EdgeDevice(mConfig, getApplicationContext(), uri,
+                    mInputView, this, this);
         } catch (IllegalArgumentException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
             mEdgeDevice = null;
@@ -147,8 +146,12 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
     }
 
     @Override
-    public void drawInferenceResult(Bitmap bitmap) {
-        mInferenceOutputView.post(() -> mInferenceOutputView.setImageBitmap(bitmap));
+    public void drawInferenceResult(long addr, List<BoundingBox> results) {
+        Mat mat = new Mat(addr);
+        Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(mat, bitmap);
+        mInferenceOutputView.post(() -> mInferenceOutputView.setImageBitmap(
+                VideoSource.drawBoxes(bitmap, results, 0f)));
     }
 
     @Override

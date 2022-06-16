@@ -22,6 +22,7 @@ import hcs.offloading.network.mqtt.datatypes.PacketHandler;
 import hcs.offloading.network.mqtt.datatypes.WebRTCHeader;
 import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
+import hcs.offloading.strmcpp.InferenceViewCallback;
 import hcs.offloading.strmcpp.SpatioTemporalRoIMixer;
 
 public class EdgeDevice implements WebRTCCallback {
@@ -42,7 +43,8 @@ public class EdgeDevice implements WebRTCCallback {
     private final Map<String, WebRTCSource> mWebRTCSources = new ConcurrentHashMap<>();
     private SpatioTemporalRoIMixer mSpatioTemporalRoIMixer;
 
-    EdgeDevice(Config config, Context context, String uri, SurfaceViewRenderer inputView, ResultCallback resultCallback) {
+    EdgeDevice(Config config, Context context, String uri, SurfaceViewRenderer inputView,
+               ResultCallback resultCallback, InferenceViewCallback inferenceViewCallback) {
         mConfig = config;
         mResultCallback = resultCallback;
 
@@ -50,7 +52,7 @@ public class EdgeDevice implements WebRTCCallback {
         mInputView = inputView;
         mInputView.init(eglBase.getEglBaseContext(), null);
 
-        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer();
+        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer(mConfig.DRAW ? inferenceViewCallback : null);
 
         if (!mConfig.sourceConfig.USE_LOCAL_VIDEO) {
             mMqttManager = new DeviceMqttManager(context, uri, Device.EDGE, scheduleTopicHandler, webrtcTopicHandler);
