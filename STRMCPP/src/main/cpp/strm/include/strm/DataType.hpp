@@ -36,6 +36,13 @@ struct Rect {
   Rect(const Rect& r)
       : left(r.left), top(r.top), right(r.right), bottom(r.bottom) {};
 
+  Rect(const std::pair<int, int> center, const int width, const int height) {
+    left = center.first - width/2;
+    right = center.first + width/2;
+    top = center.second - height/2;
+    bottom = center.second + height/2;
+  }
+
   int width() const {
     return right - left;
   }
@@ -46,6 +53,10 @@ struct Rect {
 
   int area() const {
     return width() * height();
+  }
+
+  std::pair<int, int> center() const {
+    return std::make_pair((int)(right-left)/2,(int)(bottom-top)/2);
   }
 
   int intersection(const Rect& other) const {
@@ -168,6 +179,8 @@ struct RoI {
   std::string labelName;
   Features features;
 
+  std::pair<int, int> mv;
+
   inline static std::atomic<idType> lastId;
   idType id;
   idType parentId;
@@ -196,6 +209,7 @@ struct RoI {
         features{labelName, type, (float) location.width() / (float) location.height(),
                  shift.first * shift.first + shift.second * shift.second, err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())),
+        mv(shift),
         targetSize(maxEdgeLength),
         packedLocation(std::make_pair(-1, -1)),
         handle(-1),
@@ -240,6 +254,19 @@ struct RoI {
 
   bool isParent() const {
     return (!childrenId.empty());
+  }
+
+  bool isDropped() const {
+    return boxes.empty();
+  }
+
+  BoundingBox* getMatchedBbx() {
+    for(auto bbx : boxes) {
+      if(bbx.id == id) {
+        return &bbx;
+      }
+    }
+    return nullptr;
   }
 
   int getArea() const {

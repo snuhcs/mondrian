@@ -191,6 +191,128 @@ std::vector<BoundingBox> SpatioTemporalRoIMixer::getResults(const std::string& k
   return results;
 }
 
+std::set<idType> getRoIIds(std::vector<Frame*> frames) {
+  std::set<idType> ids;
+  for(const Frame* frame : frames) {
+      for(const RoI& roi : frame->origRoIs) {
+        ids.insert(roi.id);
+      }
+  }
+  return ids;
+}
+
+std::vector<RoI*> getRoIStream(std::vector<Frame*> frames, idType roIId) {
+  std::vector<RoI*> rois;
+  for(const Frame* frame : frames) {
+    for(RoI roi : frame->origRoIs) {
+      if(roi.id == roIId) {
+        rois.push_back(&roi);
+      }
+    }
+  }
+  return rois;
+}
+
+std::vector<int> findValidRoIs(std::vector<RoI*> rois) {
+  std::vector<int> indices;
+  for(int i = 0; i < rois.size(); i++) {
+    if(!rois.at(i)->isDropped()) {
+      indices.push_back(i);
+    }
+  }
+  return indices;
+}
+
+std::pair<int, int> sumMotionVectors(std::vector<RoI*> rois, int start, int end) {
+  int xShift = 0, yShift = 0;
+  for(int i = start+1; i <= end; i++) {
+    xShift += rois.at(i)->mv.first;
+    yShift += rois.at(i)->mv.second;
+  }
+  return std::make_pair(xShift, yShift);
+}
+
+std::pair<int, int> getBbxShift(std::vector<RoI*> rois, int start, int end) {
+  BoundingBox* bbx1 = rois.at(start)->getMatchedBbx();
+  std::pair<int, int> c1 = bbx1->location.center();
+  BoundingBox* bbx2 = rois.at(end)->getMatchedBbx();
+  std::pair<int, int> c2 = bbx2->location.center();
+  return std::make_pair(c2.first - c1.first, c2.second - c2.first);
+}
+
+void extrapolateLeft(std::vector<RoI*> rois, int idx) {
+  RoI* prevRoI = rois.at(idx);
+  std::pair<int, int> prevCenter = prevRoI->getMatchedBbx()->location.center();
+  for(int current = idx-1; current >= 0; current--) {
+    RoI* currRoI = rois.at(current);
+    std::pair<int, int> shift = prevRoI->mv;
+    std::pair<int, int> newCenter = std::make_pair(prevCenter.first - shift.first, prevCenter.second - shift.second);
+    int newWidth = prevRoI->getMatchedBbx()->location.width();
+    int newHeight = prevRoI->getMatchedBbx()->location.height();
+    Rect newBox(newCenter, newWidth, newHeight);
+    currRoI->boxes.emplace_back(prevRoI->id, newBox, 1, prevRoI->labelName);
+    prevRoI = currRoI;
+    prevCenter = newCenter;
+  }
+}
+
+void extrapolateRight(std::vector<RoI*> rois, int idx) {
+  RoI* prevRoI = rois.at(idx);
+  std::pair<int, int> prevCenter = prevRoI->getMatchedBbx()->location.center();
+  for(int current = idx+1; current < rois.size(); current++) {
+    RoI* currRoI = rois.at(current);
+    std::pair<int, int> shift = currRoI->mv;
+    std::pair<int, int> newCenter = std::make_pair(prevCenter.first+shift.first, prevCenter.second+shift.second);
+    int newWidth = prevRoI->getMatchedBbx()->location.width();
+    int newHeight = prevRoI->getMatchedBbx()->location.height();
+    Rect newBox(newCenter, newWidth, newHeight);
+    currRoI->boxes.emplace_back(prevRoI->id, newBox, 1, prevRoI->labelName);
+    prevRoI = currRoI;
+    prevCenter = newCenter;
+  }
+}
+
+void interpolateBetween(std::vector<RoI*> rois, int leftIdx, int rightIdx) {
+  std::pair<int, int> totalShift = sumMotionVectors(rois, leftIdx, rightIdx);
+  std::pair<int, int> bbxShift = getBbxShift(rois, leftIdx, rightIdx);
+  float xRatio = bbxShift.first / totalShift.first;
+  float yRatio = bbxShift.second / totalShift.second;
+
+  RoI* prevRoI = rois.at(leftIdx);
+  std::pair<int, int> prevCenter = prevRoI->getMatchedBbx()->location.center();
+  for(int current = leftIdx+1; current < rightIdx; current++) {
+    RoI* currRoI = rois.at(current);
+    std::pair<int, int> shift = currRoI->mv;
+    std::pair<int, int> newCenter = std::make_pair(prevCenter.first + shift.first * xRatio, prevCenter.second + shift.second * yRatio);
+    int newWidth = prevRoI->getMatchedBbx()->location.width();
+    int newHeight = prevRoI->getMatchedBbx()->location.height();
+    Rect newBox(newCenter, newWidth, newHeight);
+    currRoI->boxes.emplace_back(currRoI->id, newBox, 1, currRoI->labelName);
+    prevRoI = currRoI;
+    prevCenter = newCenter;
+  }
+}
+
+void SpatioTemporalRoIMixer::interpolate(std::set<Frame*> frameSet) {
+  std::vector<Frame*> frameVector(frameSet.begin(), frameSet.end());
+  std::sort(frameVector.begin(), frameVector.end(),[](const Frame* a, const Frame* b) -> bool {return a->frameIndex < b->frameIndex;});
+  std::set<idType> roIIds = getRoIIds(frameVector);
+  for(auto id : roIIds) {
+    std::vector<RoI*> rois = getRoIStream(frameVector, id);
+    std::vector<int> validIndices = findValidRoIs(rois);
+    if(!validIndices.empty()) {
+      extrapolateLeft(rois, validIndices.at(0));
+      for(int i = 0; i < validIndices.size() - 1; i++) {
+        int leftIdx = validIndices.at(i);
+        int rightIdx = validIndices.at(i+1);
+        if(rightIdx - leftIdx == 1) continue;
+        interpolateBetween(rois, leftIdx, rightIdx);
+      }
+      extrapolateRight(rois, validIndices.at(validIndices.size()-1));
+    }
+  }
+}
+
 std::vector<BoundingBox> SpatioTemporalRoIMixer::assignIdsToBoxes(
     const std::vector<BoundingBox>& boxes, std::vector<RoI>& rois, float overlapThreshold) {
   std::vector<BoundingBox> unassignedBoxes;
