@@ -101,6 +101,8 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
     }
   }
   for (RoI* roi : mixedFrame.packedRoIs) {
+    assert(std::any_of(roi->boxes.begin(), roi->boxes.end(),
+                       [](const BoundingBox& box){ return box.id != UNASSIGNED_ID; }));
     roi->isBoxReady = true;
   }
 

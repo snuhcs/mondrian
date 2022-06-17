@@ -185,6 +185,7 @@ void SpatioTemporalRoIMixer::work() {
 void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   mRoIExtractor->preprocess(frame);
   std::vector<RoI> emptyRoIs;
+  // TODO: use currFrame->origRoIs for ID mapping
   frame->boxes = assignIdsToBoxes(
       mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat)),
       frame->prevFrame == nullptr ? emptyRoIs : frame->prevFrame->origRoIs,
@@ -284,6 +285,7 @@ std::vector<BoundingBox> SpatioTemporalRoIMixer::assignIdsToBoxes(
       }
     }
   }
+
 
   // If unassigned Boxes exist (1. those who does not match with any RoI 2. those who lost competition between other Boxes in single RoI),
   // classify them as newly appeared objects and assign new Id
