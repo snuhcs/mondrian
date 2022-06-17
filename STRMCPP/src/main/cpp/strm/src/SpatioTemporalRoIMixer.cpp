@@ -34,7 +34,7 @@ void FrameBuffer::pop(int numFrames) {
   begin += numFrames;
   lock.unlock();
   cv.notify_all();
-  LOGD("FrameBuffer%s::pop(%d)                          // begin = %d, end = %d", shortKey.c_str(),
+  LOGD("FrameBuffer%s::pop(%2d)                          // begin = %d, end = %d", shortKey.c_str(),
        numFrames, begin, end);
 }
 
@@ -49,14 +49,14 @@ Frame* FrameBuffer::getFrame(int frameIndex) {
 }
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
-                                               const ResizeProfile* resizeProfile,
+                                               ResizeProfile* resizeProfile,
                                                InferenceEngine* inferenceEngine)
     : mConfig(config), mbStop(false),
       mLogger(new Logger("/data/data/hcs.offloading.edgedevicecpp/execution_log.csv")),
       mInferenceEngine(inferenceEngine),
       mRoIExtractor(new RoIExtractor(config.roIExtractorConfig, resizeProfile,
                                      inferenceEngine->getInputSizes()[0])),
-      mPatchReconstructor(new PatchReconstructor(config.patchReconstructorConfig)) {
+      mPatchReconstructor(new PatchReconstructor(config.patchReconstructorConfig, resizeProfile)) {
   LOGD("SpatioTemporalRoIMixer()");
   mLogger->logHeader();
   mThread = std::thread([this]() { work(); });
@@ -101,6 +101,9 @@ void SpatioTemporalRoIMixer::work() {
 
     // Full Frame Inference
     std::set<Frame*> lastFrames = filterLastFrames(frames);
+    for (Frame* frame : lastFrames) {
+      frame->boxesToTrack.clear();
+    }
     Frame* fullFrameTarget = getFullFrameInferenceFrame(lastFrames,
                                                         fullFrameInferenceStreamIndex++);
     lastFrames.erase(lastFrames.find(fullFrameTarget));
@@ -117,9 +120,8 @@ void SpatioTemporalRoIMixer::work() {
 
     // TODO : handle numMixedFrames <= 0 case
     int numMixedFrames = remainingTime > inferenceTimeUs ? (int) (remainingTime / inferenceTimeUs) : 1;
-    std::vector<MixedFrame> mixedFrames = PatchMixer::pack(frames,
-                                                           mInferenceEngine->getInputSizes()[0],
-                                                           numMixedFrames);
+    std::vector<MixedFrame> mixedFrames = PatchMixer::pack(
+        frames, lastFrames, mInferenceEngine->getInputSizes()[0], numMixedFrames);
 
     // Inference Mixed Frames
     std::vector<int> handles;
@@ -134,26 +136,26 @@ void SpatioTemporalRoIMixer::work() {
       mixedFrames[i].packedMat.release();
       mPatchReconstructor->reconstructResults(mixedFrames[i], results);
 
-      std::set<Frame*> preparedFrames;
+      std::set<Frame*> readyFrames;
       for (Frame* frame : mixedFrames[i].getPackedFrames()) {
         if (frame->isAllRoIPrepared() && processedFrames.find(frame) == processedFrames.end()) {
           if (lastFrames.find(frame) != lastFrames.end()) {
             frame->updateBoxesToTrackWithInferenceResult();
           }
-          preparedFrames.insert(frame);
+          readyFrames.insert(frame);
         }
       }
-      processedFrames.insert(preparedFrames.begin(), preparedFrames.end());
+      processedFrames.insert(readyFrames.begin(), readyFrames.end());
 
       std::unique_lock<std::mutex> resultLock(mResultsMtx);
-      for (Frame* frame : preparedFrames) {
+      for (Frame* frame : readyFrames) {
         mResults[{frame->key, frame->frameIndex}] = frame->boxes;
       }
       resultLock.unlock();
       mResultsCv.notify_all();
     }
-    assert(std::includes(lastFrames.begin(), lastFrames.end(), processedFrames.begin(),
-                         processedFrames.end()));
+    assert(std::includes(processedFrames.begin(), processedFrames.end(),
+                         lastFrames.begin(), lastFrames.end()));
 
     // TODO: Remove this part after implementing interpolation
     std::unique_lock<std::mutex> resultLock(mResultsMtx);

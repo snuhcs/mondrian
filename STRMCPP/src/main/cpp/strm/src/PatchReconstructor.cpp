@@ -7,7 +7,7 @@
 
 namespace rm {
 
-PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config) : mConfig(config) {}
+PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config, ResizeProfile* resizeProfile): mConfig(config), mResizeProfile(resizeProfile) {}
 
 void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
                                             const std::vector<BoundingBox>& results) const {
@@ -83,6 +83,9 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
         }
       }
     }
+    for (RoI* roi : mixedFrame.packedRoIs) {
+      roi->isBoxReady = true;
+    }
 
     // If new Boxes exist (those who lost competition between other Boxes in single RoI),
     // classify them as newly appeared objects and assign new Id
@@ -98,10 +101,21 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
       }
     }
   }
+
   std::set<Frame*> packedFrames = mixedFrame.getPackedFrames();
   for (Frame* frame : packedFrames) {
     frame->boxes = nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
   }
+
+  std::set<Frame*> lastFrames = filterLastFrames(packedFrames);
+  for (auto lastFrame : lastFrames) {
+    for (RoI& roi : lastFrame->origRoIs) {
+      if (roi.isProbingReady()) {
+        mResizeProfile->updateTable(roi);
+      }
+    }
+  }
+
   time_us reconstructEndTime = NowMicros();
   for (Frame* frame : packedFrames) {
     frame->reconstructStartTime = reconstructStartTime;

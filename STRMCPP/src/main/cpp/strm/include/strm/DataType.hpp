@@ -143,6 +143,8 @@ struct Frame {
     return frameIndex < frame.frameIndex;
   }
 
+  bool isAllRoIPacked() const;
+
   bool isAllRoIPrepared() const;
 
   void updateBoxesToTrackWithInferenceResult();
@@ -162,9 +164,13 @@ struct RoI {
     std::string labelName;
     Type type;
     float xyRatio;
-    int shift;
+    std::pair<int, int> shift;
     float err;
     float diffAreaRatio;
+
+    int getShiftSize() const {
+      return shift.first * shift.first + shift.second * shift.second;
+    }
   };
 
   Frame* frame;
@@ -172,6 +178,7 @@ struct RoI {
   Type type;
   std::string labelName;
   Features features;
+  std::vector<RoI> roisForProbing;
 
   inline static std::atomic<idType> lastId = 1;
   idType id;
@@ -181,8 +188,9 @@ struct RoI {
   int maxEdgeLength;
   int targetSize;
   std::pair<int, int> packedLocation;
+  static const std::pair<int, int> NOT_PACKED;
 
-  bool isDone;
+  bool isBoxReady;
   std::vector<BoundingBox> boxes;
 
   RoI(const idType id,
@@ -193,18 +201,11 @@ struct RoI {
       const std::pair<int, int>& shift,
       const float err,
       const float diffAreaRatio)
-      : id(id),
-        frame(frame),
-        location(location),
-        type(type),
-        labelName(labelName),
+      : id(id), frame(frame), location(location), type(type), labelName(labelName),
         features{labelName, type, (float) location.width() / (float) location.height(),
-                 shift.first * shift.first + shift.second * shift.second, err, diffAreaRatio},
-        maxEdgeLength(std::max(location.width(), location.height())),
-        targetSize(maxEdgeLength),
-        packedLocation(std::make_pair(-1, -1)),
-        isDone(false),
-        parentId(-1) {};
+                 std::make_pair(shift.first, shift.second), err, diffAreaRatio},
+        maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
+        packedLocation(NOT_PACKED), isBoxReady(false), parentId(-1) {};
 
   static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
     assert(roi0.frame == roi1.frame);
@@ -237,8 +238,28 @@ struct RoI {
     return std::pair<idType, idType>(minId, maxId);
   }
 
+  BoundingBox* matchingBox() {
+    for (BoundingBox& box : boxes) {
+      if (box.id != UNASSIGNED_ID) {
+        return &box;
+      }
+    }
+    return nullptr;
+  }
+
+  bool isProbingReady() const {
+    if (roisForProbing.empty()) {
+      return false;
+    }
+    bool ready = true;
+    for (const RoI& roi : roisForProbing) {
+      ready &= roi.isBoxReady;
+    }
+    return ready;
+  }
+
   bool isPacked() const {
-    return packedLocation.first >= 0 && packedLocation.second >= 0;
+    return packedLocation != NOT_PACKED;
   }
 
   bool isChild() const {
@@ -279,6 +300,10 @@ struct RoI {
     cv::Mat resizedMat;
     cv::resize(getMat(), resizedMat, cv::Size(wh.first, wh.second));
     return resizedMat;
+  }
+
+  bool operator < (const RoI& roi) const {
+    return (targetSize < roi.targetSize);
   }
 };
 

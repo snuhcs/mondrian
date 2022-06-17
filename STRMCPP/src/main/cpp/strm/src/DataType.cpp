@@ -4,15 +4,19 @@ namespace rm {
 
 const idType UNASSIGNED_ID = 0;
 
+const std::pair<int, int> RoI::NOT_PACKED = std::make_pair(-1, -1);
+
+bool Frame::isAllRoIPacked() const {
+  return std::all_of(rois.begin(), rois.end(), [](const RoI& roi) { return roi.isPacked(); });
+}
+
 bool Frame::isAllRoIPrepared() const {
-  bool prepared = true;
-  for (const RoI& roi : rois) {
-    prepared &= roi.isDone;
-  }
-  return prepared;
+  return std::all_of(rois.begin(), rois.end(), [](const RoI& roi) { return roi.isBoxReady; });
 }
 
 void Frame::updateBoxesToTrackWithInferenceResult() {
+  // assert(boxesToTrack.empty());  TODO: uncomment assert
+  boxesToTrack.clear();
   std::transform(boxes.begin(), boxes.end(),
                  std::back_inserter(boxesToTrack),
                  [this](const BoundingBox& box) {
@@ -28,6 +32,8 @@ void Frame::updateBoxesToTrackWithInferenceResult() {
 }
 
 void Frame::updateBoxesToTrackWithRoIs() {
+  // assert(boxesToTrack.empty());  TODO: uncomment assert
+  boxesToTrack.clear();
   std::transform(origRoIs.begin(), origRoIs.end(), std::back_inserter(boxesToTrack),
                  [](const RoI& roi) {
                    return BoundingBox{roi.id, roi.location, 1, roi.labelName};

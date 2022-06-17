@@ -4,12 +4,43 @@ namespace rm {
 
 int PatchMixer::mMixedFrameIndex = 0;
 
-std::vector<MixedFrame> PatchMixer::pack(const std::set<Frame*>& frames, int mixedFrameSize, int numMixedFrames) {
+std::vector<MixedFrame> PatchMixer::pack(const std::set<Frame*>& frames,
+                                         const std::set<Frame*>& lastFrames,
+                                         int mixedFrameSize, int numMixedFrames) {
   // Collect RoIs. Later frame RoIs come first.
   std::vector<RoI*> rois;
-  for (auto it = frames.rbegin(); it != frames.rend(); it++) {
-    for (RoI& roi : (*it)->rois) {
+
+  // 1. Insert probe RoIs
+  int probeStep = 4;
+  int probeRoINum = 1; // total 2 * probeRoINum + 1 number of probeRoIs
+  for (auto lastFrame : lastFrames) {
+    for (RoI& roi : lastFrame->origRoIs) {
+      for (int i = 0; i < 2 * probeRoINum + 1; i++) {
+        roi.roisForProbing.emplace_back(roi.id, roi.frame, roi.location, roi.type, roi.labelName,
+                                        roi.features.shift, roi.features.err,
+                                        roi.features.diffAreaRatio);
+      }
+      int probe = -probeStep * probeRoINum;
+      for (RoI& probeRoI : roi.roisForProbing) {
+        probeRoI.targetSize = roi.targetSize + probe;
+        probe += probeStep;
+        rois.push_back(&probeRoI);
+      }
+      std::sort(roi.roisForProbing.begin(), roi.roisForProbing.end());
+    }
+  }
+  // 2. Insert last frame RoIs
+  for (Frame* frame : lastFrames) {
+    for (RoI& roi : frame->rois) {
       rois.push_back(&roi);
+    }
+  }
+  // 3. Insert others
+  for (Frame* frame : frames) {
+    if (lastFrames.find(frame) == lastFrames.cend()) {
+      for (RoI& roi : frame->rois) {
+        rois.push_back(&roi);
+      }
     }
   }
 
@@ -21,32 +52,11 @@ std::vector<MixedFrame> PatchMixer::pack(const std::set<Frame*>& frames, int mix
   }
   time_us mixingStartTime = NowMicros();
   for (RoI* roi : rois) {
-    std::pair<int, int> wh = roi->getResizedWidthHeight();
-    for (auto& indexAndFreeRects : freeRectsMap) {
-      int index = indexAndFreeRects.first;
-      std::vector<Rect>& freeRects = indexAndFreeRects.second;
-      for (auto it = freeRects.begin(); it != freeRects.end(); it++) {
-        const Rect freeRect = *it;
-        if (canFit(wh, freeRect)) {
-          freeRects.erase(it);
-          roi->packedLocation = std::make_pair(freeRect.left, freeRect.top);
-          std::pair<Rect, Rect> newFreeRectPair = splitFreeRect(wh, freeRect);
-          freeRects.push_back(newFreeRectPair.first);
-          freeRects.push_back(newFreeRectPair.second);
-          break;
-        }
-      }
-      if (roi->isPacked()) {
-        packedRoIs[index].push_back(roi);
-        break;
-      }
-    }
-    if (!roi->isPacked()) {
-      roi->isDone = true;
-      droppedRoIs.push_back(roi);
-    }
+    tryPackRoI(roi, freeRectsMap, packedRoIs, droppedRoIs);
   }
   time_us mixingEndTime = NowMicros();
+  assert(std::all_of(lastFrames.cbegin(), lastFrames.cend(),
+                     [](const Frame* frame) { return frame->isAllRoIPacked(); }));
 
   time_us mixedFrameCreateStartTime = NowMicros();
   std::vector<MixedFrame> mixedFrames;
@@ -67,6 +77,35 @@ std::vector<MixedFrame> PatchMixer::pack(const std::set<Frame*>& frames, int mix
        mixedFrameSize, numMixedFrames, mixingEndTime - mixingStartTime,
        mixedFrameCreateEndTime - mixedFrameCreateStartTime, rois.size(), droppedRoIs.size());
   return mixedFrames;
+}
+
+void PatchMixer::tryPackRoI(RoI* roi,
+                            std::map<int, std::vector<Rect>>& freeRectsMap,
+                            std::map<int, std::vector<RoI*>>& packedRoIs,
+                            std::vector<RoI*>& droppedRoIs) {
+  std::pair<int, int> wh = roi->getResizedWidthHeight();
+  for (auto& indexAndFreeRects : freeRectsMap) {
+    int index = indexAndFreeRects.first;
+    std::vector<Rect>& freeRects = indexAndFreeRects.second;
+    for (auto it = freeRects.begin(); it != freeRects.end(); it++) {
+      const Rect freeRect = *it;
+      if (canFit(wh, freeRect)) {
+        freeRects.erase(it);
+        roi->packedLocation = std::make_pair(freeRect.left, freeRect.top);
+        packedRoIs[index].push_back(roi);
+        std::pair<Rect, Rect> newFreeRectPair = splitFreeRect(wh, freeRect);
+        freeRects.push_back(newFreeRectPair.first);
+        freeRects.push_back(newFreeRectPair.second);
+        break;
+      }
+    }
+    if (roi->isPacked()) {
+      break;
+    }
+  }
+  if (!roi->isPacked()) {
+    droppedRoIs.push_back(roi);
+  }
 }
 
 bool PatchMixer::canFit(std::pair<int, int> wh, const Rect& rect) {

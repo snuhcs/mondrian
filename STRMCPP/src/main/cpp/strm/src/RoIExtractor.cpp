@@ -60,6 +60,9 @@ std::set<Frame*> RoIExtractor::getExtractedFrames() {
     return extractedFrames.empty() ||
            (*extractedFrames.rbegin())->roiExtractionStatus == OF_EXTRACTED;
   });
+  for (Frame* frame : extractedFrames) {
+    frame->isOFReady = false;
+  }
   return extractedFrames;
 }
 
@@ -119,16 +122,22 @@ void RoIExtractor::work() {
 
       frame->resizeRoIStartTime = NowMicros();
       for (auto& roi : frame->origRoIs) {
-        roi.targetSize = std::min(roi.maxEdgeLength, mResizeProfile->getTargetSize(roi.features));
+        roi.targetSize = std::min(roi.maxEdgeLength,
+                                  mResizeProfile->getTargetSize(roi.id, roi.features));
       }
       frame->resizeRoIEndTime = NowMicros();
 
       frame->mergeRoIStartTime = NowMicros();
       frame->rois = mergeRoIs(frame->origRoIs, mConfig.MERGE_THRESHOLD, mMaxRoISize);
       frame->mergeRoIEndTime = NowMicros();
-      LOGD("RoIExtractor::mergeRoIs(%s, %4d) took %4lu us  // %lu => %lu", frame->shortKey.c_str(),
+      LOGD("RoIExtractor::mergeRoIs(%s, %4d) took %4lu us  // %lu + %lu => %lu",
+           frame->shortKey.c_str(),
            frame->frameIndex, frame->mergeRoIEndTime - frame->mergeRoIStartTime,
-           frame->origRoIs.size(), frame->rois.size());
+           std::count_if(frame->origRoIs.begin(), frame->origRoIs.end(),
+                         [](const RoI& roi) { return roi.type == RoI::Type::PD; }),
+           std::count_if(frame->origRoIs.begin(), frame->origRoIs.end(),
+                         [](const RoI& roi) { return roi.type == RoI::Type::OF; }),
+           frame->rois.size());
 
       frame->prevFrame->preProcessedMat.release();
       frame->roiExtractionStatus = OF_EXTRACTED;

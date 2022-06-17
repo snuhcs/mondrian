@@ -43,7 +43,7 @@ class FrameBuffer {
 class SpatioTemporalRoIMixer {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
-                         const ResizeProfile* resizeProfile,
+                         ResizeProfile* resizeProfile,
                          InferenceEngine* inferenceEngine);
 
   ~SpatioTemporalRoIMixer();
