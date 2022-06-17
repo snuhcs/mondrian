@@ -36,6 +36,13 @@ struct Rect {
   Rect(const Rect& r)
       : left(r.left), top(r.top), right(r.right), bottom(r.bottom) {};
 
+  Rect(const std::pair<int, int> center, const int width, const int height) {
+    left = center.first - width/2;
+    right = center.first + width/2;
+    top = center.second - height/2;
+    bottom = center.second + height/2;
+  }
+
   int width() const {
     return right - left;
   }
@@ -46,6 +53,10 @@ struct Rect {
 
   int area() const {
     return width() * height();
+  }
+
+  std::pair<int, int> center() const {
+    return std::make_pair((int)(right-left)/2,(int)(bottom-top)/2);
   }
 
   int intersection(const Rect& other) const {
@@ -104,7 +115,7 @@ struct Frame {
   std::vector<BoundingBox> boxesToTrack;
 
   RoIExtractionStatus roiExtractionStatus;
-  std::vector<RoI> origRoIs;
+  std::vector<RoI> origRoIs; // => box
   std::vector<RoI> rois;
 
   const time_us enqueueTime;
@@ -182,8 +193,7 @@ struct RoI {
 
   inline static std::atomic<idType> lastId = 1;
   idType id;
-  idType parentId;
-  std::vector<idType> childrenId;
+  std::vector<RoI*> childrenRoIs;
 
   int maxEdgeLength;
   int targetSize;
@@ -205,9 +215,9 @@ struct RoI {
         features{labelName, type, (float) location.width() / (float) location.height(),
                  std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
-        packedLocation(NOT_PACKED), isBoxReady(false), parentId(-1) {};
+        packedLocation(NOT_PACKED), isBoxReady(false) {};
 
-  static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
+  static RoI mergeRoIs(RoI& roi0, RoI& roi1) {
     assert(roi0.frame == roi1.frame);
     int newLeft = std::min(roi0.location.left, roi1.location.left);
     int newTop = std::min(roi0.location.top, roi1.location.top);
@@ -222,8 +232,6 @@ struct RoI {
     RoI mergedRoI(RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom),
                   roiType, roiLabel,
                   std::make_pair(0, 0), 0, 0);
-    mergedRoI.childrenId.emplace_back(roi0.id);
-    mergedRoI.childrenId.emplace_back(roi1.id);
     mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength >
                             roi1.targetSize * roi0.maxEdgeLength) ?
                            mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
@@ -239,12 +247,18 @@ struct RoI {
   }
 
   BoundingBox* matchingBox() {
+    if (boxes.empty()) {
+      return nullptr;
+    }
+    BoundingBox* matchedBox = nullptr;
     for (BoundingBox& box : boxes) {
       if (box.id != UNASSIGNED_ID) {
-        return &box;
+        matchedBox = &box;
+        break;
       }
     }
-    return nullptr;
+    assert(matchedBox != nullptr);
+    return matchedBox;
   }
 
   bool isProbingReady() const {
@@ -262,12 +276,23 @@ struct RoI {
     return packedLocation != NOT_PACKED;
   }
 
-  bool isChild() const {
-    return (parentId != -1);
+  bool isParent() const {
+    return childrenRoIs.size() > 1;
   }
 
-  bool isParent() const {
-    return (!childrenId.empty());
+  BoundingBox* getMatchedBbx() {
+    if (boxes.empty()) {
+      return nullptr;
+    }
+    BoundingBox* matchedBox = nullptr;
+    for(auto& bbx : boxes) {
+      if(bbx.id == id) {
+        matchedBox = &bbx;
+        break;
+      }
+    }
+    assert(matchedBox != nullptr);
+    return matchedBox;
   }
 
   int getArea() const {

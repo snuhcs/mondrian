@@ -128,7 +128,8 @@ void RoIExtractor::work() {
       frame->resizeRoIEndTime = NowMicros();
 
       frame->mergeRoIStartTime = NowMicros();
-      frame->rois = mergeRoIs(frame->origRoIs, mConfig.MERGE_THRESHOLD, mMaxRoISize);
+      frame->rois = frame->origRoIs;
+      mergeRoIs(frame->origRoIs, frame->rois, mConfig.MERGE_THRESHOLD, mMaxRoISize);
       frame->mergeRoIEndTime = NowMicros();
       LOGD("RoIExtractor::mergeRoIs(%s, %4d) took %4lu us  // %lu + %lu => %lu",
            frame->shortKey.c_str(),
@@ -138,6 +139,20 @@ void RoIExtractor::work() {
            std::count_if(frame->origRoIs.begin(), frame->origRoIs.end(),
                          [](const RoI& roi) { return roi.type == RoI::Type::OF; }),
            frame->rois.size());
+
+      std::set<idType> origIDs;
+      for (RoI& origRoI : frame->origRoIs) {
+        assert(origIDs.find(origRoI.id) == origIDs.end());
+        origIDs.insert(origRoI.id);
+      }
+      std::set<idType> childIDs;
+      for (RoI& roi : frame->rois) {
+        for (RoI* origRoI : roi.childrenRoIs) {
+          assert(childIDs.find(origRoI->id) == childIDs.end());
+          childIDs.insert(origRoI->id);
+        }
+      }
+      assert(origIDs == childIDs);
 
       frame->prevFrame->preProcessedMat.release();
       frame->roiExtractionStatus = OF_EXTRACTED;
@@ -183,9 +198,15 @@ void RoIExtractor::processOF(Frame* currFrame) {
        currFrame->opticalFlowRoIProcessEndTime - currFrame->opticalFlowRoIProcessStartTime);
 }
 
-std::vector<RoI>
-RoIExtractor::mergeRoIs(std::vector<RoI>& origRoIs, const float mergeThreshold, int maxSize) {
-  std::vector<RoI> rois = origRoIs;
+void RoIExtractor::mergeRoIs(std::vector<RoI>& origRoIs, std::vector<RoI>& rois, const float mergeThreshold, int maxSize) {
+  // Match roi <=> origRoI ID before merge
+  for (RoI& roi : rois) {
+    for (RoI& origRoI : origRoIs) {
+      if (origRoI.id == roi.id) {
+        roi.childrenRoIs.push_back(&origRoI);
+      }
+    }
+  }
   while (true) {
     bool updated = false;
     int i, j;
@@ -229,25 +250,17 @@ RoIExtractor::mergeRoIs(std::vector<RoI>& origRoIs, const float mergeThreshold, 
     if (!updated) {
       break;
     }
-    const RoI& roi0 = rois[i];
-    const RoI& roi1 = rois[j];
-    std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
-                           || roi0.labelName != roi1.labelName
-                           ? "" : roi0.labelName;
-    const RoI& mergedRoI = RoI::mergeRoIs(roi0, roi1);
-
-    // Connect children & parent
-    for (auto& roi : origRoIs) {
-      if (roi.id == roi0.id || roi.id == roi1.id) {
-        roi.parentId = mergedRoI.id;
-      }
-    }
-
+    rois.push_back(RoI::mergeRoIs(rois[i], rois[j]));
+    // Match child parent
+    RoI* mergedRoI = &(*rois.rbegin());
+    mergedRoI->childrenRoIs.insert(mergedRoI->childrenRoIs.end(),
+                                   rois[i].childrenRoIs.begin(), rois[i].childrenRoIs.end());
+    mergedRoI->childrenRoIs.insert(mergedRoI->childrenRoIs.end(),
+                                   rois[j].childrenRoIs.begin(), rois[j].childrenRoIs.end());
     assert(j > i);
     rois.erase(rois.begin() + j);
     rois.erase(rois.begin() + i);
   }
-  return rois;
 }
 
 std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(

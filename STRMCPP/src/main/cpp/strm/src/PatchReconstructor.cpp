@@ -11,14 +11,11 @@ PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config, R
 
 void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
                                             const std::vector<BoundingBox>& results) const {
-  bool runOriginalCode = false;
-
   time_us reconstructStartTime = NowMicros();
   for (const BoundingBox& box : results) {
     float maxOverlap = -1;
     Rect maxBoxPos;
     RoI* maxRoI = nullptr;
-    Frame* maxFrame = nullptr;
     for (RoI* roi : mixedFrame.packedRoIs) {
       if (roi->isPacked()) {
         Rect movedAndResizedBoxPos(
@@ -43,50 +40,52 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
         }
       }
     }
-    if (runOriginalCode) {
-      if (maxFrame != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
-        maxFrame->boxes.emplace_back(UNASSIGNED_ID, maxBoxPos, box.confidence, box.labelName,
-                                     maxRoI->targetSize);
+    if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
+      maxRoI->boxes.emplace_back(UNASSIGNED_ID, maxBoxPos, box.confidence, box.labelName, maxRoI->targetSize);
+      float maxOrigOverlap = -1;
+      RoI* maxOrigRoI = nullptr;
+      for (RoI* origRoI : maxRoI->childrenRoIs) {
+        int intersection = origRoI->location.intersection(maxBoxPos);
+        float overlapRatio = (float) intersection / (float) maxBoxPos.area();
+        if (maxOrigOverlap < overlapRatio) {
+          maxOrigOverlap = overlapRatio;
+          maxOrigRoI = origRoI;
+        }
       }
-    } else {
-      if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
-        maxRoI->boxes.emplace_back(UNASSIGNED_ID, maxBoxPos, box.confidence, box.labelName,
-                                   maxRoI->targetSize);
+      if (maxOrigRoI != nullptr && maxOrigOverlap >= mConfig.OVERLAP_THRESHOLD) {
+        maxOrigRoI->boxes.emplace_back(maxOrigRoI->id, maxBoxPos, box.confidence, box.labelName, maxOrigRoI->targetSize);
       }
     }
   }
 
-  if (!runOriginalCode) {
-    std::vector<std::pair<BoundingBox, Frame*>> unassignedBoxes;
-    for (RoI* roi : mixedFrame.packedRoIs) {
-      if (roi->isPacked()) {
+  std::vector<std::pair<BoundingBox, Frame*>> unassignedBoxes;
+  for (RoI* roi : mixedFrame.packedRoIs) {
+    if (roi->isPacked()) {
+      for (RoI* origRoI : roi->childrenRoIs) {
         int maxIntersection = -1;
         int maxIndex = -1;
-        for (int i = 0; i < roi->boxes.size(); ++i) {
-          BoundingBox& box = roi->boxes[i];
-          int intersection = roi->location.intersection(box.location);
+        for (int i = 0; i < origRoI->boxes.size(); ++i) {
+          BoundingBox& box = origRoI->boxes[i];
+          int intersection = origRoI->location.intersection(box.location);
           if (maxIntersection < intersection) {
             maxIntersection = intersection;
             maxIndex = i;
           }
         }
+
         if (maxIndex != -1) {
           BoundingBox& box = roi->boxes[maxIndex];
           roi->frame->boxes.emplace_back(roi->id, box.location, box.confidence, box.labelName,
                                          box.targetSize);
           for (int i = 0; i < roi->boxes.size(); ++i) {
             if (i == maxIndex) continue;
-            unassignedBoxes.emplace_back(
-                BoundingBox{UNASSIGNED_ID, box.location, box.confidence, box.labelName, box.targetSize},
+            unassignedBoxes.emplace_back(BoundingBox{
+              UNASSIGNED_ID, box.location, box.confidence, box.labelName, box.targetSize},
                 roi->frame);
           }
         }
       }
     }
-    for (RoI* roi : mixedFrame.packedRoIs) {
-      roi->isBoxReady = true;
-    }
-
     // If new Boxes exist (those who lost competition between other Boxes in single RoI),
     // classify them as newly appeared objects and assign new Id
     if (!unassignedBoxes.empty()) {
@@ -100,6 +99,9 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
                                   box.targetSize);
       }
     }
+  }
+  for (RoI* roi : mixedFrame.packedRoIs) {
+    roi->isBoxReady = true;
   }
 
   std::set<Frame*> packedFrames = mixedFrame.getPackedFrames();

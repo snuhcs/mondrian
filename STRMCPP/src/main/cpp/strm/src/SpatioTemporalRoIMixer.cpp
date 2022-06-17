@@ -3,6 +3,8 @@
 #include <memory>
 #include <utility>
 
+#include "strm/Interpolator.hpp"
+
 namespace rm {
 
 FrameBuffer::FrameBuffer(const std::string& key, int capacity)
@@ -136,26 +138,18 @@ void SpatioTemporalRoIMixer::work() {
       mixedFrames[i].packedMat.release();
       mPatchReconstructor->reconstructResults(mixedFrames[i], results);
 
-      std::set<Frame*> readyFrames;
       for (Frame* frame : mixedFrames[i].getPackedFrames()) {
         if (frame->isAllRoIPrepared() && processedFrames.find(frame) == processedFrames.end()) {
+          processedFrames.insert(frame);
           if (lastFrames.find(frame) != lastFrames.end()) {
             frame->updateBoxesToTrackWithInferenceResult();
           }
-          readyFrames.insert(frame);
         }
       }
-      processedFrames.insert(readyFrames.begin(), readyFrames.end());
-
-      std::unique_lock<std::mutex> resultLock(mResultsMtx);
-      for (Frame* frame : readyFrames) {
-        mResults[{frame->key, frame->frameIndex}] = frame->boxes;
-      }
-      resultLock.unlock();
-      mResultsCv.notify_all();
     }
-    assert(std::includes(processedFrames.begin(), processedFrames.end(),
-                         lastFrames.begin(), lastFrames.end()));
+
+    frames.insert(fullFrameTarget);
+    Interpolator::interpolate(frames);
 
     // TODO: Remove this part after implementing interpolation
     std::unique_lock<std::mutex> resultLock(mResultsMtx);
