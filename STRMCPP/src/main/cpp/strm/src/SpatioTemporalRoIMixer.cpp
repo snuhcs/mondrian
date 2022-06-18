@@ -70,7 +70,7 @@ SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
 }
 
 void SpatioTemporalRoIMixer::work() {
-  int scheduleID = 0;
+  int scheduleID = 1;
   int fullFrameInferenceStreamIndex = 0;
   time_us scheduleInterval = mConfig.LATENCY_SLO_MS * 1000 / 2;
   time_us startTime, roiGettingTime, fullFrameInferenceTime, mixedFrameInferenceTime;
@@ -103,21 +103,22 @@ void SpatioTemporalRoIMixer::work() {
 
     // Full Frame Inference
     FrameSet lastFrames = filterLastFrames(frames);
-    Frame* fullFrameTarget = getFullFrameInferenceFrame(lastFrames,
-                                                        fullFrameInferenceStreamIndex++);
-    lastFrames.erase(lastFrames.find(fullFrameTarget));
-    frames.erase(frames.find(fullFrameTarget));
-    fullFrameInference(fullFrameTarget);
+    Frame* fullFrameTarget = nullptr;
+    if (scheduleID % mConfig.FULL_FRAME_INTERVAL) {
+      fullFrameTarget = getFullFrameInferenceFrame(lastFrames,
+                                                   fullFrameInferenceStreamIndex++);
+      lastFrames.erase(lastFrames.find(fullFrameTarget));
+      frames.erase(frames.find(fullFrameTarget));
+      fullFrameInference(fullFrameTarget);
+    }
     fullFrameInferenceTime = NowMicros();
-    std::this_thread::sleep_for(std::chrono::seconds (30));
-
     remainingTime = scheduleInterval < (fullFrameInferenceTime - startTime) ? 0 :
                     scheduleInterval - (fullFrameInferenceTime - startTime);
     long long inferenceTimeUs = mInferenceEngine->getInferenceTimeMs() * 1000;
     LOGD(
-        "SpatioTemporalRoIMixer::work() fullFrameInference() took %lu us, %lu us remains %lld us for inference  // %lu boxes",
+        "SpatioTemporalRoIMixer::work() fullFrameInference() took %lu us, %lu us remains %lld us for inference  // %d boxes",
         fullFrameInferenceTime - roiGettingTime, remainingTime, inferenceTimeUs,
-        fullFrameTarget->boxes.size());
+        fullFrameTarget == nullptr ? -1 : (int) fullFrameTarget->boxes.size());
 
     // TODO : handle numMixedFrames <= 0 case
     int numMixedFrames = remainingTime > inferenceTimeUs ? (int) (remainingTime / inferenceTimeUs) : 1;
@@ -148,8 +149,10 @@ void SpatioTemporalRoIMixer::work() {
       }
     }
 
-    frames.insert(fullFrameTarget);
-//    Interpolator::interpolate(frames);
+    if (fullFrameTarget != nullptr) {
+      frames.insert(fullFrameTarget);
+    }
+    Interpolator::interpolate(frames);
 
     std::unique_lock<std::mutex> resultLock(mResultsMtx);
     for (Frame* frame : frames) {

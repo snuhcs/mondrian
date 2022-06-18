@@ -28,6 +28,7 @@ struct PatchReconstructorConfig {
 };
 
 struct STRMConfig {
+  int FULL_FRAME_INTERVAL = 2;
   int BUFFER_SIZE = 1000;
   int LATENCY_SLO_MS = 10000;
   RoIExtractorConfig roIExtractorConfig;

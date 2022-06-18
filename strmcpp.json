@@ -1,6 +1,6 @@
 {
     "log_internal": true,
-    "roi_padding": 10,
+    "full_frame_interval": 2,
     "buffer_size": 500,
     "latency_slo_ms": 5000,
     "roi_extractor": {
@@ -8,6 +8,7 @@
         "extraction_resize_width": 640,
         "extraction_resize_height": 360,
         "min_roi_area": 5000,
+        "roi_padding": 10,
         "optical_flow_roi_confidence_threshold": 0.1,
         "merge_threshold": 0.5
     },
