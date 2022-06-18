@@ -16,7 +16,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
     float maxOverlap = -1;
     Rect maxBoxPos;
     RoI* maxRoI = nullptr;
-    for (RoI* roi : mixedFrame.packedRoIs) {
+    for (RoI* roi : mixedFrame.rois) {
       if (roi->isPacked()) {
         Rect movedAndResizedBoxPos(
             std::max(0,
@@ -59,7 +59,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
   }
 
   std::vector<std::pair<BoundingBox, Frame*>> unassignedBoxes;
-  for (RoI* roi : mixedFrame.packedRoIs) {
+  for (RoI* roi : mixedFrame.rois) {
     if (roi->isPacked()) {
       for (RoI* origRoI : roi->childrenRoIs) {
         int maxIntersection = -1;
@@ -100,7 +100,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
       }
     }
   }
-  for (RoI* roi : mixedFrame.packedRoIs) {
+  for (RoI* roi : mixedFrame.rois) {
     assert(std::any_of(roi->boxes.begin(), roi->boxes.end(),
                        [](const BoundingBox& box){ return box.id != UNASSIGNED_ID; }));
     roi->isBoxReady = true;
@@ -125,7 +125,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
     frame->reconstructStartTime = reconstructStartTime;
     frame->reconstructEndTime = reconstructEndTime;
   }
-  LOGD("PatchReconstructor::reconstructResults(%lu, %lu) took %lu us", mixedFrame.packedRoIs.size(),
+  LOGD("PatchReconstructor::reconstructResults(%lu, %lu) took %lu us", mixedFrame.rois.size(),
        results.size(), reconstructEndTime - reconstructStartTime);
 }
 

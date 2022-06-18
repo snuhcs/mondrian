@@ -335,12 +335,12 @@ struct RoI {
 struct MixedFrame {
   const int mixedFrameIndex;
   cv::Mat packedMat;
-  std::vector<RoI*> packedRoIs;
+  std::vector<RoI*> rois;
 
-  MixedFrame(const int mixedFrameIndex, std::vector<RoI*> packedRoIs, int mixedFrameSize)
-      : mixedFrameIndex(mixedFrameIndex), packedRoIs(packedRoIs) {
+  MixedFrame(const int mixedFrameIndex, std::vector<RoI*> rois, int mixedFrameSize)
+      : mixedFrameIndex(mixedFrameIndex), rois(rois) {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
-    for (RoI* roi : packedRoIs) {
+    for (RoI* roi : rois) {
       if (roi->isPacked()) {
         std::pair<int, int> wh = roi->getResizedWidthHeight();
         roi->getResizedMat().copyTo(
@@ -352,7 +352,7 @@ struct MixedFrame {
 
   std::set<Frame*> getPackedFrames() {
     std::set<Frame*> packedFrames;
-    for (RoI* roi : packedRoIs) {
+    for (RoI* roi : rois) {
       packedFrames.insert(roi->frame);
     }
     return packedFrames;
