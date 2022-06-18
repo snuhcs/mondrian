@@ -74,14 +74,14 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
         }
 
         if (maxIndex != -1) {
-          BoundingBox& box = roi->boxes[maxIndex];
-          roi->frame->boxes.emplace_back(roi->id, box.location, box.confidence, box.labelName,
-                                         box.targetSize);
-          for (int i = 0; i < roi->boxes.size(); ++i) {
+          BoundingBox& box = origRoI->boxes[maxIndex];
+          origRoI->frame->boxes.emplace_back(origRoI->id, box.location, box.confidence,
+                                             box.labelName, box.targetSize);
+          for (int i = 0; i < origRoI->boxes.size(); ++i) {
             if (i == maxIndex) continue;
-            unassignedBoxes.emplace_back(BoundingBox{
-              UNASSIGNED_ID, box.location, box.confidence, box.labelName, box.targetSize},
-                roi->frame);
+            unassignedBoxes.emplace_back(
+                BoundingBox{UNASSIGNED_ID, box.location, box.confidence, box.labelName,
+                            box.targetSize}, origRoI->frame);
           }
         }
       }
