@@ -1,6 +1,8 @@
 #ifndef SPATIO_TEMPORAL_ROI_MIXER_HPP_
 #define SPATIO_TEMPORAL_ROI_MIXER_HPP_
 
+#include <jni.h>
+
 #include <fstream>
 #include <map>
 #include <set>
@@ -24,7 +26,7 @@ class FrameBuffer {
 
   Frame* enqueue(const cv::Mat& mat);
 
-  void freeImage(const std::vector<int>& frameIndices);
+  void freeImage(const std::vector<int>& frameIndices, Logger* logger);
 
  private:
   const std::string key;
@@ -42,29 +44,36 @@ class SpatioTemporalRoIMixer {
   SpatioTemporalRoIMixer(const STRMConfig& config,
                          ResizeProfile* resizeProfile,
                          InferenceEngine* inferenceEngine,
-                         int numSourceVideos);
+                         int numSourceVideos,
+                         JavaVM* vm, JNIEnv* env, jobject strm, bool draw,
+                         bool probing);
 
   ~SpatioTemporalRoIMixer();
 
   int enqueueImage(const std::string& key, const cv::Mat& mat);
 
-  std::vector<BoundingBox> getResults(const std::string& key, int frameIndex);
-
  private:
   void work();
+
+  void outputWork();
 
   void fullFrameInference(Frame* frame);
 
   static Frame* getFullFrameInferenceFrame(const std::map<std::string, SortedFrames>& lastFrames,
                                            int fullFrameInferenceStreamIndex);
 
+  void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
+
   const STRMConfig mConfig;
   std::thread mThread;
   bool mbStop;
 
-  const std::unique_ptr<Logger> mLogger;
+  std::thread mResultThread;
+  std::unique_ptr<Logger> mResultLogger;
+  std::unique_ptr<Logger> mLogger;
   InferenceEngine* mInferenceEngine;
 
+  bool mProbing;
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 
@@ -78,7 +87,19 @@ class SpatioTemporalRoIMixer {
 
   std::mutex mResultsMtx;
   std::condition_variable mResultsCv;
-  std::map<std::pair<std::string, int>, std::vector<BoundingBox>> mResults;
+  std::list<std::tuple<std::string, int, time_us, cv::Mat, std::vector<BoundingBox>>> mResults;
+
+  const bool draw;
+  JavaVM* jvm;
+  JNIEnv* env;
+  jobject strm;
+  jclass class_SpatioTemporalRoIMixer;
+  jmethodID SpatioTemporalRoIMixer_drawObjectDetectionResult;
+  jclass class_ArrayList;
+  jmethodID ArrayList_init;
+  jmethodID ArrayList_add;
+  jclass class_BoundingBox;
+  jmethodID BoundingBox_init;
 };
 
 } // namespace rm

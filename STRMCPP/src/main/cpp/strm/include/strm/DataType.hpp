@@ -78,14 +78,14 @@ struct Rect {
 struct BoundingBox {
   Rect location;
   float confidence;
-  std::string labelName;
+  int label;
   int targetSize;
   idType id;
   RoI* srcRoI;
 
-  BoundingBox(idType id, const Rect location, const float confidence, const std::string labelName,
+  BoundingBox(idType id, const Rect location, const float confidence, int label,
               int targetSize = -1)
-      : id(id), location(location), confidence(confidence), labelName(labelName),
+      : id(id), location(location), confidence(confidence), label(label),
         targetSize(targetSize), srcRoI(nullptr) {}
 };
 
@@ -177,7 +177,7 @@ struct RoI {
   };
 
   struct Features {
-    std::string labelName;
+    int label;
     Type type;
     float xyRatio;
     std::pair<int, int> shift;
@@ -192,7 +192,7 @@ struct RoI {
   Frame* frame;
   Rect location;
   Type type;
-  std::string labelName;
+  int label;
   Features features;
   std::vector<RoI> roisForProbing;
   float priority;
@@ -210,22 +210,22 @@ struct RoI {
   static const std::pair<int, int> NOT_PACKED;
 
   bool isBoxReady; // only valid within parentRoIs
-  std::vector<BoundingBox*> boxes;
+  BoundingBox* box;
 
   RoI(RoI* prevRoI,
       const idType id,
       Frame* frame,
       const Rect location,
       const Type type,
-      const std::string labelName,
+      const int label,
       const std::pair<int, int>& shift,
       const float err,
       const float diffAreaRatio)
-      : prevRoI(prevRoI), id(id), frame(frame), location(location), type(type), labelName(labelName),
-        features{labelName, type, (float) location.width() / (float) location.height(),
+      : prevRoI(prevRoI), id(id), frame(frame), location(location), type(type), label(label),
+        features{label, type, (float) location.width() / (float) location.height(),
                  std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
-        packedLocation(NOT_PACKED), isBoxReady(false), nextRoI(nullptr) {
+        packedLocation(NOT_PACKED), isBoxReady(false), nextRoI(nullptr), box(nullptr) {
     if (prevRoI != nullptr) {
       prevRoI->nextRoI = this;
     }
@@ -240,9 +240,16 @@ struct RoI {
     RoI::Type roiType = roi0.type == RoI::Type::OF || roi1.type == RoI::Type::OF
                         ? RoI::Type::OF
                         : RoI::Type::PD;
-    std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
-                           || roi0.labelName != roi1.labelName
-                           ? "" : roi0.labelName;
+    int roiLabel;
+    if (roi0.label == roi1.label) {
+      roiLabel = roi0.label;
+    } else if (roi0.label != -1 && roi1.label == -1) {
+      roiLabel = roi0.label;
+    } else if (roi0.label == -1 && roi1.label != -1) {
+      roiLabel = roi1.label;
+    } else {
+      roiLabel = -1;
+    }
     RoI mergedRoI(nullptr, RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom),
                   roiType, roiLabel,
                   std::make_pair(0, 0), 0, 0);
@@ -257,14 +264,6 @@ struct RoI {
     idType maxId = minId + num;
     // [minId, maxId)
     return std::pair<idType, idType>(minId, maxId);
-  }
-
-  BoundingBox* matchingBox() {
-    if (boxes.empty()) {
-      return nullptr;
-    }
-    assert(boxes[0]->id != UNASSIGNED_ID);
-    return boxes[0];
   }
 
   bool isProbingReady() const {
@@ -326,9 +325,9 @@ struct RoI {
 struct MixedFrame {
   const int mixedFrameIndex;
   cv::Mat packedMat;
-  std::vector<RoI*> packedRoIs;
+  std::set<RoI*> packedRoIs;
 
-  MixedFrame(const int mixedFrameIndex, std::vector<RoI*> packedRoIs, int mixedFrameSize)
+  MixedFrame(const int mixedFrameIndex, std::set<RoI*> packedRoIs, int mixedFrameSize)
       : mixedFrameIndex(mixedFrameIndex), packedRoIs(packedRoIs) {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
     for (RoI* roi : packedRoIs) {

@@ -41,7 +41,7 @@ Classifier::recognizeImage(const cv::Mat& mat) {
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
       detections.emplace_back(UNASSIGNED_ID,
                               reconstructBox(box[0], box[1], box[2], box[3], mat.cols, mat.rows),
-                              maxConfidence, COCO_LABELS[maxLabel]);
+                              maxConfidence, maxLabel);
     }
   }
   return nms(detections, numLabels, iouThreshold);

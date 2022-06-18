@@ -21,8 +21,7 @@ public class SpatioTemporalRoIMixer {
     private final InferenceViewCallback inferenceViewCallback;
 
     public SpatioTemporalRoIMixer(InferenceViewCallback inferenceViewCallback) {
-        boolean draw = inferenceViewCallback != null;
-        handle = createSpatioTemporalRoIMixer(draw);
+        handle = createSpatioTemporalRoIMixer();
         this.inferenceViewCallback = inferenceViewCallback;
     }
 
@@ -30,23 +29,21 @@ public class SpatioTemporalRoIMixer {
         inferenceViewCallback.drawInferenceResult(addr, results);
     }
 
-    public int enqueueImage(String key, Mat mat) {
-        return enqueueImage(handle, key, mat.getNativeObjAddr());
+    public void drawObjectDetectionResult(long addr, List<BoundingBox> results) {
+        inferenceViewCallback.drawObjectDetectionResult(addr, results);
     }
 
-    public List<BoundingBox> getResults(String key, int frameIndex) {
-        return getResults(handle, key, frameIndex);
+    public void enqueueImage(String key, Mat mat) {
+        enqueueImage(handle, key, mat.getNativeObjAddr());
     }
 
     public void close() {
         close(handle);
     }
 
-    private native long createSpatioTemporalRoIMixer(boolean draw);
+    private native long createSpatioTemporalRoIMixer();
 
-    private native int enqueueImage(long handle, String key, long matAddr);
-
-    private native List<BoundingBox> getResults(long handle, String key, int frameIndex);
+    private native void enqueueImage(long handle, String key, long matAddr);
 
     private native void close(long handle);
 }

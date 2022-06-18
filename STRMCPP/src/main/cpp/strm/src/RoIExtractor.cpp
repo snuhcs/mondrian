@@ -209,14 +209,14 @@ void RoIExtractor::processOF(Frame* currFrame) {
             std::max(0, box.location.top - mConfig.ROI_PADDING),
             std::min(currFrame->width, box.location.right + mConfig.ROI_PADDING),
             std::min(currFrame->height, box.location.bottom + mConfig.ROI_PADDING)),
-                        box.confidence, box.labelName);
+                        box.confidence, box.label);
         reliableBox.srcRoI = box.srcRoI;
         reliablePrevBoxes.push_back(reliableBox);
       }
     }
   } else {
     for (RoI& roi : currFrame->prevFrame->childRoIs) {
-      BoundingBox reliableBox(roi.id, roi.location, 1, roi.labelName);
+      BoundingBox reliableBox(roi.id, roi.location, 1, roi.label);
       reliableBox.srcRoI = &roi;
       reliablePrevBoxes.push_back(reliableBox);
     }
@@ -331,7 +331,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
       int newBottom = std::min(height, loc.bottom + shift.second);
       if (newLeft < newRight && newTop < newBottom) {
         opticalFlowRoIs.emplace_back(box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-                                     RoI::Type::OF, box.labelName, shift, err, 0);
+                                     RoI::Type::OF, box.label, shift, err, 0);
       }
     }
   }
@@ -429,7 +429,7 @@ std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* c
         currFrame,
         boxAndFeature.first,
         RoI::PD,
-        "",
+        -1,
         std::make_pair(0, 0),
         0,
         boxAndFeature.second);

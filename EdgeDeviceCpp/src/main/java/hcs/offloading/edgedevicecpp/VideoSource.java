@@ -1,11 +1,7 @@
 package hcs.offloading.edgedevicecpp;
 
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.Rect;
 import android.media.MediaMetadataRetriever;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
@@ -18,17 +14,11 @@ import org.webrtc.TextureBufferImpl;
 import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
-
-import hcs.offloading.edgedevicecpp.config.SourceConfig;
+import hcs.offloading.edgedevicecpp.config.Config;
 import hcs.offloading.network.webrtc.CustomCapturer;
 import hcs.offloading.strmcpp.SpatioTemporalRoIMixer;
-import hcs.offloading.strmcpp.BoundingBox;
 
-public class VideoSource extends CustomCapturer implements Runnable {
+public class VideoSource extends CustomCapturer {
     private static final String TAG = VideoSource.class.getName();
 
     static {
@@ -40,47 +30,16 @@ public class VideoSource extends CustomCapturer implements Runnable {
     private final String VIDEO_PATH;
 
     private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-    private final Map<Integer, Bitmap> frames = new ConcurrentHashMap<>();
-    private final LinkedBlockingQueue<Integer> frameIndices = new LinkedBlockingQueue<>();
 
     private final SpatioTemporalRoIMixer strm;
 
-    private final Thread resultThread;
-    private final ResultCallback mResultCallback;
     private final boolean DRAW;
-    private final float DRAW_CONFIDENCE;
-    private final int FPS;
 
-    VideoSource(SourceConfig.VideoConfig config, SpatioTemporalRoIMixer strm, ResultCallback resultCallback, boolean draw, float drawConfidence) {
-        FPS = config.FPS;
+    VideoSource(Config.VideoConfig config, SpatioTemporalRoIMixer strm, boolean draw) {
         VIDEO_PATH = config.PATH;
         DRAW = draw;
-        DRAW_CONFIDENCE = drawConfidence;
-        mResultCallback = resultCallback;
         this.strm = strm;
         retriever.setDataSource(VIDEO_PATH);
-
-        Log.d(TAG, "Start drawThread");
-        resultThread = new Thread(this);
-        resultThread.start();
-    }
-
-    @Override
-    public void run() {
-        try {
-            while (true) {
-                int frameIndex = frameIndices.take();
-                List<BoundingBox> results = strm.getResults(VIDEO_PATH, frameIndex);
-                mResultCallback.log(VIDEO_PATH, frameIndex, results);
-                if (DRAW) {
-                    Bitmap bitmap = frames.remove(frameIndex);
-                    mResultCallback.drawObjectDetectionResult(DrawUtil.drawBoxes(
-                            bitmap, results, DRAW_CONFIDENCE));
-                }
-            }
-        } catch (InterruptedException e) {
-            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
-        }
     }
 
     @Override
@@ -119,15 +78,7 @@ public class VideoSource extends CustomCapturer implements Runnable {
 
                 Mat mat = new Mat();
                 Utils.bitmapToMat(bitmap, mat);
-                int index = strm.enqueueImage(VIDEO_PATH, mat);
-                if (DRAW) {
-                    frames.put(index, bitmap);
-                }
-                try {
-                    frameIndices.put(index);
-                } catch (InterruptedException e) {
-                    Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
-                }
+                strm.enqueueImage(VIDEO_PATH, mat);
                 long endTime = System.nanoTime();
                 long duration = endTime - startTime;
                 if (duration < 1e9 / fps) {
@@ -146,8 +97,6 @@ public class VideoSource extends CustomCapturer implements Runnable {
         try {
             captureThread.interrupt();
             captureThread.join();
-            resultThread.interrupt();
-            resultThread.join();
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }

@@ -16,7 +16,7 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
     std::set<BoundingBox, decltype(comp)> sortedBoxes(comp);
 
     for (const BoundingBox& box : boxes) {
-      if (box.labelName == COCO_LABELS[k]) {
+      if (box.label == k) {
         sortedBoxes.insert(box);
       }
     }

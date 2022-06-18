@@ -1,8 +1,7 @@
 {
-    "log_path": "/data/data/hcs.offloading.edgedevicecpp/test.log",
-    "draw_video": false,
-    "draw_inference_result": true,
     "source": {
+        "draw_video": false,
+        "draw_confidence": 0.1,
         "use_local_video": true,
         "video_configs": [
             {
@@ -17,11 +16,13 @@
                 "height": 1080,
                 "fps": 30
             }
-        ],
-        "draw_confidence": 0.1
+        ]
     },
+    "draw_output": true,
+    "draw_inference_result": true,
     "resize_profile": {
-        "accuracy_aware_resize": false,
+        "accuracy_aware_resize": true,
+        "probing": true,
         "resize_margin": 10,
         "static_target_size": 80
     },

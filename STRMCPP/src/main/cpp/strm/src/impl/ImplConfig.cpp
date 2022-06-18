@@ -11,6 +11,9 @@ ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json) {
   if (!json["accuracy_aware_resize"].isNull()) {
     config.ACCURACY_AWARE_RESIZE = json["accuracy_aware_resize"].asBool();
   }
+  if (!json["probing"].isNull()) {
+    config.PROBING = json["probing"].asBool();
+  }
   if (config.ACCURACY_AWARE_RESIZE) {
     if (!json["resize_margin"].isNull()) {
       config.RESIZE_MARGIN = json["resize_margin"].asInt();
@@ -68,8 +71,14 @@ IMPLConfig parseIMPLConfig(const std::string& jsonPath) {
     return implConfig;
   }
   LOGD("IMPLConfig : %s", json.toStyledString().c_str());
-  if (!json["source"].isNull()) {
+  if (!json["source"].isNull() && !json["source"]["video_configs"].isNull()) {
     implConfig.NUM_VIDEOS = (int) json["source"]["video_configs"].size();
+  }
+  if (!json["draw_output"].isNull()) {
+    implConfig.DRAW_OUTPUT = json["draw_output"].asBool();
+  }
+  if (!json["draw_inference_result"].isNull()) {
+    implConfig.DRAW_INFERENCE_RESULT = json["draw_inference_result"].asBool();
   }
   if (!json["resize_profile"].isNull()) {
     implConfig.resizeProfileConfig = parseResizeProfileConfig(json["resize_profile"]);

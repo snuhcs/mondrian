@@ -24,7 +24,7 @@ CustomInferenceEngine::CustomInferenceEngine(
   ArrayList_add = env->GetMethodID(class_ArrayList, "add", "(ILjava/lang/Object;)V");
   class_BoundingBox = reinterpret_cast<jclass>(env->NewGlobalRef(
       env->FindClass("hcs/offloading/strmcpp/BoundingBox")));
-  BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIFLjava/lang/String;)V");
+  BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIFI)V");
 
   for (int i = 0; i < config.NUM_WORKERS; i++) {
     if (config.MODEL == "YOLO_V4" && config.RUNTIME == "MNN") {
@@ -110,11 +110,10 @@ void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
   jobject jBoxes = env->NewObject(class_ArrayList, ArrayList_init);
   for (int i = 0; i < boxes.size(); i++) {
     const rm::BoundingBox& b = boxes.at(i);
-    jstring labelName = env->NewStringUTF(b.labelName.c_str());
     jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
                                  b.location.left, b.location.top, b.location.right,
                                  b.location.bottom,
-                                 b.confidence, labelName);
+                                 b.confidence, b.label);
     env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
   }
   auto* jMat = new cv::Mat();

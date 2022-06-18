@@ -17,7 +17,7 @@ public class CustomResizeProfile implements ResizeProfile {
     @Override
     public float getScale(String labelName, int width, int height, int minOriginLength) {
         if (labelName != null && !labelName.equals("person")) {
-            Log.e(TAG, "Wrong labelName: " + labelName);
+            Log.e(TAG, "Wrong label: " + labelName);
         }
         int lengthThreshold = labelName == null ? mConfig.CLASS_AGNOSTIC_THRESHOLD : mConfig.PERSON_THRESHOLD;
         int maxWidthHeight = mConfig.MERGED_RESIZE

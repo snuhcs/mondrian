@@ -12,9 +12,14 @@ class Logger {
  public:
   Logger(const char* logPath);
 
+  ~Logger();
+
   void logHeader();
 
   void log(Frame* frame);
+
+  void logResult(const std::string& key, int frameIndex, time_us time,
+                 const std::vector<BoundingBox>& boxes);
 
  private:
   time_us fromBaseTime(const time_us& time) const;

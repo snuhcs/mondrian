@@ -6,34 +6,38 @@ int PatchMixer::mMixedFrameIndex = 0;
 
 std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrames>& frames,
                                          const Frame* fullFrameTarget,
-                                         int mixedFrameSize, int numMixedFrames) {
+                                         int mixedFrameSize, int numMixedFrames,
+                                         bool probing) {
   // Collect RoIs. Later frame RoIs come first.
   std::vector<RoI*> rois;
   const float HIGH_PRIORITY = 1e9;
 
   // 1. Insert probe RoIs
   int numProbes = 0;
-  int probeStep = 4;
-  int probeRoINum = 1; // total 2 * probeRoINum + 1 number of probeRoIs
-  for (auto it : frames) {
-    if (it.second.empty() || (fullFrameTarget != nullptr && fullFrameTarget->key == it.first)) {
-      continue;
-    }
-    for (RoI& roi : (*it.second.rbegin())->childRoIs) {
-      for (int i = 0; i < 2 * probeRoINum + 1; i++) {
-        roi.roisForProbing.emplace_back(nullptr, roi.id, roi.frame, roi.location, roi.type, roi.labelName,
-                                        roi.features.shift, roi.features.err,
-                                        roi.features.diffAreaRatio);
+  if (probing) {
+    int probeStep = 4;
+    int probeRoINum = 1; // total 2 * probeRoINum + 1 number of probeRoIs
+    for (auto it : frames) {
+      if (it.second.empty() || (fullFrameTarget != nullptr && fullFrameTarget->key == it.first)) {
+        continue;
       }
-      int probe = -probeStep * probeRoINum;
-      for (RoI& probeRoI : roi.roisForProbing) {
-        numProbes++;
-        probeRoI.targetSize = roi.targetSize + probe;
-        probe += probeStep;
-        probeRoI.priority = HIGH_PRIORITY;
-//        rois.push_back(&probeRoI);
+      for (RoI& roi : (*it.second.rbegin())->childRoIs) {
+        for (int i = 0; i < 2 * probeRoINum + 1; i++) {
+          roi.roisForProbing.emplace_back(nullptr, roi.id, roi.frame, roi.location, roi.type,
+                                          roi.label,
+                                          roi.features.shift, roi.features.err,
+                                          roi.features.diffAreaRatio);
+        }
+        int probe = -probeStep * probeRoINum;
+        for (RoI& probeRoI : roi.roisForProbing) {
+          numProbes++;
+          probeRoI.targetSize = roi.targetSize + probe;
+          probe += probeStep;
+          probeRoI.priority = HIGH_PRIORITY;
+          rois.push_back(&probeRoI);
+        }
+        std::sort(roi.roisForProbing.begin(), roi.roisForProbing.end());
       }
-      std::sort(roi.roisForProbing.begin(), roi.roisForProbing.end());
     }
   }
 
@@ -73,7 +77,7 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
   std::sort(rois.begin(), rois.end(), [](const RoI* l, const RoI* r) { return l->priority > r->priority; });
 
   std::vector<RoI*> droppedRoIs;
-  std::vector<std::vector<RoI*>> packedRoIs;
+  std::vector<std::set<RoI*>> packedRoIs;
   std::vector<std::vector<Rect>> freeRectsList;
   for (int i = 0; i < numMixedFrames; i++) {
     freeRectsList.push_back({Rect(0, 0, mixedFrameSize, mixedFrameSize)});
@@ -91,8 +95,9 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
       ss << "packedRoIs[" << i << "]: ";
       for (RoI* roi : packedRoIs[i]) {
         if (lastFrames.find(roi->frame) != lastFrames.end()) {
-          ss << "(" << roi->frame->shortKey << "," << roi->frame->frameIndex << "," << roi->id
-             << ") ";
+          ss << "(" << roi->frame->shortKey << ","
+             << roi->frame->frameIndex << ","
+             << roi->id << ") ";
         }
       }
       LOGD("%s", ss.str().c_str());
@@ -100,8 +105,9 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
       ss2 << "droppedRoIs[" << i << "]: ";
       for (RoI* roi : droppedRoIs) {
         if (lastFrames.find(roi->frame) != lastFrames.end()) {
-          ss2 << "(" << roi->frame->shortKey << "," << roi->frame->frameIndex << "," << roi->id
-              << ") ";
+          ss2 << "(" << roi->frame->shortKey << ","
+              << roi->frame->frameIndex << ","
+              << roi->id << ") ";
         }
       }
       LOGD("%s", ss2.str().c_str());
@@ -136,7 +142,6 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
 
   for (auto& it : frames) {
     for (Frame* frame : it.second) {
-      frame->mat.release();
       frame->mixingStartTime = mixingStartTime;
       frame->mixingEndTime = mixingEndTime;
       frame->mixedFrameCreateStartTime = mixedFrameCreateStartTime;
@@ -149,9 +154,8 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
   return mixedFrames;
 }
 
-void PatchMixer::tryPackRoI(RoI* roi,
-                            std::vector<std::vector<Rect>>& freeRectsList,
-                            std::vector<std::vector<RoI*>>& packedRoIs,
+void PatchMixer::tryPackRoI(RoI* roi, std::vector<std::vector<Rect>>& freeRectsList,
+                            std::vector<std::set<RoI*>>& packedRoIs,
                             std::vector<RoI*>& droppedRoIs) {
   std::pair<int, int> wh = roi->getResizedWidthHeight();
   for (int mixedFrameIndex = 0; mixedFrameIndex < freeRectsList.size(); mixedFrameIndex++) {
@@ -161,7 +165,7 @@ void PatchMixer::tryPackRoI(RoI* roi,
       if (canFit(wh, freeRect)) {
         freeRects.erase(it);
         roi->packedLocation = std::make_pair(freeRect.left, freeRect.top);
-        packedRoIs[mixedFrameIndex].push_back(roi);
+        packedRoIs[mixedFrameIndex].insert(roi);
         std::pair<Rect, Rect> newFreeRectPair = splitFreeRect(wh, freeRect);
         freeRects.push_back(newFreeRectPair.first);
         freeRects.push_back(newFreeRectPair.second);
