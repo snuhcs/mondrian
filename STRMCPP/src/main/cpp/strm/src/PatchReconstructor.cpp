@@ -83,7 +83,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
        results.size(), reconstructEndTime - reconstructStartTime);
 }
 
-  void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& childrenRoIs, std::vector<BoundingBox>& boxes) const {
+  void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& childRoIs, std::vector<BoundingBox>& boxes) const {
     std::vector<BoundingBox*> unassignedBoxes;
 
     // 1. Let Boxes to select their favorite RoI.
@@ -93,7 +93,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
       // find RoI with largest overlap
       float maxOverlap = -1;
       RoI* maxRoI = nullptr;
-      for (RoI& cRoI : childrenRoIs) {
+      for (RoI& cRoI : childRoIs) {
         if (isFullFrame || cRoI.parentRoI->isPacked()) {
           int intersection = cRoI.location.intersection(box.location);
           assert(box.location.area() != 0);
@@ -116,7 +116,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
 
     // 2. Let RoIs select their favorite RoI
     // - Selection result is saved as RoI with same id
-    for (RoI& cRoI : childrenRoIs) {
+    for (RoI& cRoI : childRoIs) {
       int maxIntersection = -1;
       int maxIndex = -1;
       for (int i = 0; i < cRoI.boxes.size(); ++i) {

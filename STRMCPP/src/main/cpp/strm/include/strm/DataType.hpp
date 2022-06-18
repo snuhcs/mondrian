@@ -150,13 +150,11 @@ struct Frame {
     endTime = NowMicros();
   }
 
+  void filterPDRoIs(float threshold);
+
   bool isAllRoIPacked() const;
 
   bool isAllRoIPrepared() const;
-
-  void updateBoxesToTrackWithInferenceResult();
-
-  void updateBoxesToTrackWithRoIs();
 
   bool readyForOFExtraction() const;
 };

@@ -119,6 +119,9 @@ void RoIExtractor::work() {
     }
 
     if (isOF) {
+      frame->filterPDRoIs(mConfig.MERGE_THRESHOLD);
+      frame->parentRoIs = frame->childRoIs;
+
       frame->resizeRoIStartTime = NowMicros();
       for (auto& roi : frame->childRoIs) {
         roi.targetSize = std::min(roi.maxEdgeLength,
@@ -127,9 +130,9 @@ void RoIExtractor::work() {
       frame->resizeRoIEndTime = NowMicros();
 
       frame->mergeRoIStartTime = NowMicros();
-      frame->parentRoIs = frame->childRoIs;
-      mergeRoIs(frame->childRoIs, frame->parentRoIs, mConfig.MERGE_THRESHOLD, mMaxRoISize);
+      mergeRoIs(frame->childRoIs, frame->parentRoIs, mMaxRoISize);
       frame->mergeRoIEndTime = NowMicros();
+
       LOGD("RoIExtractor::mergeRoIs(%s, %4d) took %4lu us  // %lu + %lu => %lu",
            frame->shortKey.c_str(),
            frame->frameIndex, frame->mergeRoIEndTime - frame->mergeRoIStartTime,
@@ -211,10 +214,11 @@ void RoIExtractor::processOF(Frame* currFrame) {
        currFrame->opticalFlowRoIProcessEndTime - currFrame->opticalFlowRoIProcessStartTime);
 }
 
-void RoIExtractor::mergeRoIs(std::vector<RoI>& childrenRoIs, std::vector<RoI>& parentRoIs, const float mergeThreshold, int maxSize) {
+void RoIExtractor::mergeRoIs(std::vector<RoI>& childRoIs, std::vector<RoI>& parentRoIs, int maxSize) {
   // Match roi <=> origRoI ID before merge
+  int count[] = {0, 0, 0};
   for (RoI& pRoI : parentRoIs) {
-    for (RoI& cRoI : childrenRoIs) {
+    for (RoI& cRoI : childRoIs) {
       if (cRoI.id == pRoI.id) {
         pRoI.childRoIs.push_back(&cRoI);
         cRoI.parentRoI = &pRoI;
@@ -229,8 +233,8 @@ void RoIExtractor::mergeRoIs(std::vector<RoI>& childrenRoIs, std::vector<RoI>& p
         const RoI& roi0 = parentRoIs[i];
         const RoI& roi1 = parentRoIs[j];
         int intersection = roi0.location.intersection(roi1.location);
-        if ((float) intersection / (float) roi0.getArea() < mergeThreshold &&
-            (float) intersection / (float) roi1.getArea() < mergeThreshold) {
+        if ((float) intersection / (float) roi0.getArea() < mConfig.MERGE_THRESHOLD &&
+            (float) intersection / (float) roi1.getArea() < mConfig.MERGE_THRESHOLD) {
           continue;
         }
         int newLeft = std::min(roi0.location.left, roi1.location.left);
