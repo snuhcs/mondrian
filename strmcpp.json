@@ -1,6 +1,6 @@
 {
     "log_internal": true,
-    "full_frame_interval": 2,
+    "full_frame_interval": 1,
     "buffer_size": 500,
     "latency_slo_ms": 5000,
     "roi_extractor": {

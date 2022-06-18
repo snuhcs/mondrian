@@ -22,22 +22,19 @@ class FrameBuffer {
  public:
   FrameBuffer(const std::string& key, int capacity);
 
-  int enqueue(const cv::Mat& mat);
+  Frame* enqueue(const cv::Mat& mat);
 
-  void pop(int numFrames);
-
-  Frame* getFrame(int frameIndex);
+  void freeImage(const std::vector<int>& frameIndices);
 
  private:
   const std::string key;
   const std::string shortKey;
   const int capacity;
 
+  int count;
   std::mutex mtx;
   std::condition_variable cv;
   std::vector<std::unique_ptr<Frame>> frames;
-  int begin;
-  int end;
 };
 
 class SpatioTemporalRoIMixer {

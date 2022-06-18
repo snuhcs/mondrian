@@ -1,7 +1,7 @@
 #ifndef INTERPOLATOR_HPP_
 #define INTERPOLATOR_HPP_
 
-#include <set>
+#include <map>
 
 #include "strm/DataType.hpp"
 

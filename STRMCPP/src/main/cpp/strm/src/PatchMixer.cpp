@@ -11,13 +11,12 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
   std::vector<RoI*> rois;
   const float HIGH_PRIORITY = 1e9;
 
-  int numProbes = 0;
-
   // 1. Insert probe RoIs
+  int numProbes = 0;
   int probeStep = 4;
   int probeRoINum = 1; // total 2 * probeRoINum + 1 number of probeRoIs
   for (auto it : frames) {
-    if (it.second.empty() || fullFrameTarget == nullptr || fullFrameTarget->key == it.first) {
+    if (it.second.empty() || (fullFrameTarget != nullptr && fullFrameTarget->key == it.first)) {
       continue;
     }
     for (RoI& roi : (*it.second.rbegin())->childRoIs) {
@@ -38,8 +37,8 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
     }
   }
 
-  int numRoIs = 0;
   // 3. Set priority & sort rois
+  int numRoIs = 0;
   std::map<idType, std::vector<RoI*>> roiStreams;
   for (const auto& it : frames) {
     for (Frame* frame : it.second) {
@@ -58,18 +57,20 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
     }
   }
 
-  int numLastFrameRoIs = 0;
   // insert lastFrames first
+  int numLastFrameRoIs = 0;
+  SortedFrames lastFrames;
   for (const auto& it : frames) {
-    if (it.second.empty() || fullFrameTarget == nullptr || fullFrameTarget->key == it.first) {
+    if (it.second.empty() || (fullFrameTarget != nullptr && fullFrameTarget->key == it.first)) {
       continue;
     }
+    lastFrames.insert(*it.second.rbegin());
     for (RoI& roi : (*it.second.rbegin())->parentRoIs) {
       numLastFrameRoIs++;
       roi.priority = HIGH_PRIORITY;
     }
   }
-  std::sort(rois.begin(), rois.end(), [](const RoI* l, const RoI* r) { return r->priority < l->priority; });
+  std::sort(rois.begin(), rois.end(), [](const RoI* l, const RoI* r) { return l->priority > r->priority; });
 
   std::vector<RoI*> droppedRoIs;
   std::vector<std::vector<RoI*>> packedRoIs;
@@ -83,7 +84,45 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
     tryPackRoI(roi, freeRectsList, packedRoIs, droppedRoIs);
   }
   time_us mixingEndTime = NowMicros();
-  LOGD("%lu rois %d parentRoIs %d probes %lu droppedRoIs %d lastFrameRoIs", rois.size(), numRoIs, numProbes, droppedRoIs.size(), numLastFrameRoIs);
+
+  if (false) {
+    for (int i = 0; i < numMixedFrames; i++) {
+      std::stringstream ss;
+      ss << "packedRoIs[" << i << "]: ";
+      for (RoI* roi : packedRoIs[i]) {
+        if (lastFrames.find(roi->frame) != lastFrames.end()) {
+          ss << "(" << roi->frame->shortKey << "," << roi->frame->frameIndex << "," << roi->id
+             << ") ";
+        }
+      }
+      LOGD("%s", ss.str().c_str());
+      std::stringstream ss2;
+      ss2 << "droppedRoIs[" << i << "]: ";
+      for (RoI* roi : droppedRoIs) {
+        if (lastFrames.find(roi->frame) != lastFrames.end()) {
+          ss2 << "(" << roi->frame->shortKey << "," << roi->frame->frameIndex << "," << roi->id
+              << ") ";
+        }
+      }
+      LOGD("%s", ss2.str().c_str());
+    }
+
+    std::stringstream ss;
+    ss << "lastRoIs: ";
+    for (Frame* lastFrame : lastFrames) {
+      for (RoI& roi : lastFrame->parentRoIs) {
+        ss << roi.id << ", ";
+      }
+    }
+    LOGD("%s", ss.str().c_str());
+  }
+  LOGD("%lu rois %d parentRoIs %d probes %lu droppedRoIs %d lastFrameRoIs", rois.size(), numRoIs,
+       numProbes, droppedRoIs.size(), numLastFrameRoIs);
+  assert(std::all_of(frames.cbegin(), frames.cend(),
+                     [&fullFrameTarget](const std::pair<std::string, SortedFrames>& it) {
+                       return (fullFrameTarget != nullptr && fullFrameTarget->key == it.first) ||
+                              it.second.empty() || (*it.second.crbegin())->isAllRoIPacked();
+                     }));
 
   time_us mixedFrameCreateStartTime = NowMicros();
   std::vector<MixedFrame> mixedFrames;

@@ -13,7 +13,6 @@
 #include "opencv2/imgproc/imgproc.hpp"
 
 #include "strm/Time.hpp"
-#include "Log.hpp"
 
 namespace rm {
 
@@ -162,6 +161,9 @@ struct Frame {
 
 struct FrameIndexComp {
   bool operator()(const Frame* lhs, const Frame* rhs) const {
+    if (lhs->frameIndex == rhs->frameIndex) {
+      return lhs->key < rhs->key;
+    }
     return lhs->frameIndex < rhs->frameIndex;
   }
 };
@@ -332,8 +334,6 @@ struct MixedFrame {
     for (RoI* roi : packedRoIs) {
       assert(roi->isPacked());
       std::pair<int, int> wh = roi->getResizedWidthHeight();
-      LOGD("%d Size : %4d, %4d, %3lu %d", mixedFrameIndex, std::max(wh.first, wh.second), roi->targetSize, roi->childRoIs.size(), roi->type);
-      LOGD("%d PackedLocation : %d, %d", mixedFrameIndex, roi->packedLocation.first, roi->packedLocation.second);
       roi->getResizedMat().copyTo(
           packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
                              wh.first, wh.second)));

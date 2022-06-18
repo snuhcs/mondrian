@@ -8,46 +8,34 @@
 namespace rm {
 
 FrameBuffer::FrameBuffer(const std::string& key, int capacity)
-    : key(key), shortKey(key.substr(key.size() - 5, 1)), capacity(capacity), begin(0), end(0) {
+    : key(key), shortKey(key.substr(key.size() - 5, 1)), capacity(capacity), count(0) {
   frames.resize(capacity);
 }
 
-int FrameBuffer::enqueue(const cv::Mat& mat) {
+Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
   std::unique_lock<std::mutex> lock(mtx);
-  cv.wait(lock, [this]() { return end - begin < capacity; });
-  int frameIndex = end++;
+  int frameIndex = count++;
+  cv.wait(lock, [this, frameIndex]() { return frames[frameIndex % capacity].get() == nullptr; });
   Frame* prevFrame = frameIndex == 0 ? nullptr : frames[(frameIndex - 1) % capacity].get();
   frames[frameIndex % capacity] = std::make_unique<Frame>(key, frameIndex, mat, prevFrame,
                                                           NowMicros());
   if (prevFrame != nullptr) {
     prevFrame->nextFrame = frames[frameIndex % capacity].get();
   }
+  Frame* currFrame = frames[frameIndex % capacity].get();
   lock.unlock();
-  LOGD("FrameBuffer%s::enqueue ()                       // frameIndex = %d", shortKey.c_str(),
-       frameIndex);
-  return frameIndex;
+  LOGD("FrameBuffer%s::enqueue (%d)", shortKey.c_str(), frameIndex);
+  return currFrame;
 }
 
-void FrameBuffer::pop(int numFrames) {
+void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
   std::unique_lock<std::mutex> lock(mtx);
-  for (int frameIndex = begin; frameIndex < begin + numFrames; frameIndex++) {
+  for (int frameIndex : frameIndices) {
     frames[frameIndex % capacity].reset();
   }
-  begin += numFrames;
   lock.unlock();
   cv.notify_all();
-  LOGD("FrameBuffer%s::pop(%2d)                          // begin = %d, end = %d", shortKey.c_str(),
-       numFrames, begin, end);
-}
-
-Frame* FrameBuffer::getFrame(int frameIndex) {
-  std::unique_lock<std::mutex> lock(mtx);
-  assert(begin <= frameIndex && frameIndex < end);
-  Frame* frame = frames[frameIndex % capacity].get();
-  lock.unlock();
-  LOGD("FrameBuffer%s::getFrame()                       // frameIndex = %d", shortKey.c_str(),
-       frameIndex);
-  return frame;
+  LOGD("FrameBuffer%s::freeImage(%2lu)", shortKey.c_str(), frameIndices.size());
 }
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
@@ -77,16 +65,26 @@ void SpatioTemporalRoIMixer::work() {
   time_us scheduleInterval = mConfig.LATENCY_SLO_MS * 1000 / 2;
   time_us startTime, roiGettingTime, fullFrameInferenceTime, mixedFrameInferenceTime;
   time_us remainingTime;
+
+  std::unique_lock<std::mutex> startLock(mStartMtx);
+  mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
+  mStartMtx.unlock();
+  std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval));
+
   while (!mbStop) {
     LOGD("========== Schedule %d Start ==========", scheduleID);
     startTime = NowMicros();
     std::map<std::string, SortedFrames> frames = mRoIExtractor->getExtractedFrames();
     roiGettingTime = NowMicros();
+
     std::stringstream ss;
     for (const auto& it : frames) {
-      ss << it.second.size() << ", ";
+      ss << it.first.substr(it.first.size() - 5, 1) << ": ";
+      if (!it.second.empty()) {
+        ss << (*it.second.begin())->frameIndex << " ~ " << (*it.second.rbegin())->frameIndex << ", ";
+      }
     }
-    LOGD("SpatioTemporalRoIMixer::work() getExtractedFrames() took %lu us  // %s frames",
+    LOGD("SpatioTemporalRoIMixer::work() getExtractedFrames() took %lu us  // %s",
          roiGettingTime - startTime, ss.str().c_str());
 
     if (frames.empty()) {
@@ -102,7 +100,7 @@ void SpatioTemporalRoIMixer::work() {
     Frame* fullFrameTarget = nullptr;
     if (scheduleID % mConfig.FULL_FRAME_INTERVAL) {
       fullFrameTarget = getFullFrameInferenceFrame(frames, fullFrameInferenceStreamIndex++);
-      frames[fullFrameTarget->key].erase(frames[fullFrameTarget->key].find(fullFrameTarget));
+      LOGD("Full Frame Target: %s, %d", fullFrameTarget->shortKey.c_str(), fullFrameTarget->frameIndex);
       fullFrameInference(fullFrameTarget);
     }
     fullFrameInferenceTime = NowMicros();
@@ -110,10 +108,10 @@ void SpatioTemporalRoIMixer::work() {
                     scheduleInterval - (fullFrameInferenceTime - startTime);
     long long inferenceTimeUs = mInferenceEngine->getInferenceTimeMs() * 1000;
     LOGD(
-        "SpatioTemporalRoIMixer::work() fullFrameInference() took %lu us, %lu us remains %lld us for inference  // %d boxes",
-        fullFrameInferenceTime - roiGettingTime, remainingTime, inferenceTimeUs,
-        fullFrameTarget == nullptr ? -1 : (int) fullFrameTarget->boxes.size());
+        "SpatioTemporalRoIMixer::work() fullFrameInference() took %lu us, %lu us remains, inference takes %lld us",
+        fullFrameInferenceTime - roiGettingTime, remainingTime, inferenceTimeUs);
 
+    // Pack RoIs into mixed frames
     // TODO : handle numMixedFrames <= 0 case
     int numMixedFrames = remainingTime > inferenceTimeUs ? (int) (remainingTime / inferenceTimeUs) : 1;
     std::vector<MixedFrame> mixedFrames = PatchMixer::pack(
@@ -126,12 +124,14 @@ void SpatioTemporalRoIMixer::work() {
                      return mInferenceEngine->enqueue(mixedFrame.packedMat);
                    });
 
+    // Get Mixed Frame results sequentially
     SortedFrames processedFrames;
     for (int i = 0; i < mixedFrames.size(); i++) {
       std::vector<BoundingBox> results = mInferenceEngine->getResults(handles[i]);
       mixedFrames[i].packedMat.release();
       mPatchReconstructor->reconstructResults(mixedFrames[i], results);
 
+      // Notify results of processed frames
       for (Frame* frame : mixedFrames[i].getPackedFrames()) {
         if (frame->isAllRoIPrepared() && processedFrames.find(frame) == processedFrames.end()) {
           processedFrames.insert(frame);
@@ -141,11 +141,20 @@ void SpatioTemporalRoIMixer::work() {
       mRoIExtractor->notify();
     }
 
-    if (fullFrameTarget != nullptr) {
-      frames[fullFrameTarget->key].insert(fullFrameTarget);
-    }
+    // Interpolate results
     Interpolator::interpolate(frames);
 
+    // Notify results of rest of the frames
+    for (auto& it : frames) {
+      for (Frame* frame : it.second) {
+        if (frame != fullFrameTarget && processedFrames.find(frame) == processedFrames.end()) {
+          frame->isBoxesReady = true;
+        }
+      }
+    }
+    mRoIExtractor->notify();
+
+    // Update results for system output
     std::unique_lock<std::mutex> resultLock(mResultsMtx);
     for (const auto& it : frames) {
       for (Frame* frame : it.second) {
@@ -157,9 +166,24 @@ void SpatioTemporalRoIMixer::work() {
     resultLock.unlock();
     mResultsCv.notify_all();
 
+    // Free frames for memory optimization
     std::unique_lock<std::mutex> framesLock(mFrameBuffersMtx);
     for (auto& it : frames) {
-      mFrameBuffers.at(it.first)->pop((int) it.second.size());
+      if (it.second.empty()) {
+        continue;
+      }
+      Frame* firstFrame = *it.second.begin();
+      Frame* lastFrame = *it.second.rbegin();
+      std::vector<int> frameIndices;
+      if (firstFrame->prevFrame != nullptr) {
+        frameIndices.push_back(firstFrame->prevFrame->frameIndex);
+      }
+      for (Frame* frame : it.second) {
+        if (frame != lastFrame) {
+          frameIndices.push_back(frame->frameIndex);
+        }
+      }
+      mFrameBuffers.at(it.first)->freeImage(frameIndices);
     }
     framesLock.unlock();
 
@@ -188,12 +212,6 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   frame->isBoxesReady = true;
   mRoIExtractor->notify();
 
-  std::set<idType> cIDs;
-  for (const BoundingBox& box : frame->boxes) {
-    assert(cIDs.find(box.id) == cIDs.end());
-    cIDs.insert(box.id);
-  }
-
   std::unique_lock<std::mutex> resultLock(mResultsMtx);
   mResults[{frame->key, frame->frameIndex}] = frame->boxes;
   resultLock.unlock();
@@ -203,15 +221,14 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
 Frame* SpatioTemporalRoIMixer::getFullFrameInferenceFrame(
     const std::map<std::string, SortedFrames>& frames,
     int fullFrameInferenceStreamIndex) {
-  int numNonEmptyStreams = (int) std::count_if(frames.begin(), frames.end(),
-                                               [](const std::pair<std::string, SortedFrames>& it) { return !it.second.empty(); });
-  fullFrameInferenceStreamIndex %= numNonEmptyStreams;
-  auto it = frames.begin();
-  for (int i = 0; i < fullFrameInferenceStreamIndex; i++) {
-    it++;
+  std::vector<std::string> nonEmptyStreamKeys;
+  for (const auto& it : frames) {
+    if (!it.second.empty()) {
+      nonEmptyStreamKeys.push_back(it.first);
+    }
   }
-  (*it->second.rbegin())->isFullFrameTarget = true;
-  return *it->second.rbegin();
+  fullFrameInferenceStreamIndex %= (int) nonEmptyStreamKeys.size();
+  return *frames.at(nonEmptyStreamKeys[fullFrameInferenceStreamIndex]).rbegin();
 }
 
 int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& mat) {
@@ -220,34 +237,33 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
   if (mFrameBuffers.find(key) == mFrameBuffers.end()) {
     mFrameBuffers[key] = std::make_unique<FrameBuffer>(key, mConfig.BUFFER_SIZE);
   }
+  FrameBuffer* frameBuffer = mFrameBuffers.at(key).get();
   lock.unlock();
-  int frameIndex = mFrameBuffers.at(key)->enqueue(mat);
 
-  Frame* frame = mFrameBuffers.at(key)->getFrame(frameIndex);
-  if (frameIndex == 0) {
-    frame->useInferenceResultForOF = true;
+  Frame* frame = frameBuffer->enqueue(mat);
+  if (frame->frameIndex == 0) {
     mRoIExtractor->preprocess(frame);
+    frame->useInferenceResultForOF = true;
     frame->isFullFrameTarget = true;
     fullFrameInference(frame);
   } else {
-    if (frameIndex == 1) {
+    if (frame->frameIndex == 1) {
       std::unique_lock<std::mutex> startLock(mStartMtx);
       mNumStartedFrameBuffers++;
       mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
       mStartMtx.unlock();
-      mStartCv.notify_one();
-      LOGD("Start %s at %lu", key.c_str(), NowMicros());
+      mStartCv.notify_all();
+      LOGD("Start %s video at %lu us", key.c_str(), NowMicros());
     }
     mRoIExtractor->enqueue(frame);
   }
-  return frameIndex;
+  return frame->frameIndex;
 }
 
 std::vector<BoundingBox> SpatioTemporalRoIMixer::getResults(const std::string& key,
                                                             int frameIndex) {
   std::unique_lock<std::mutex> resultLock(mResultsMtx);
   std::pair<std::string, int> resultKey = std::make_pair(key, frameIndex);
-  LOGD("SpatioTemporalRoIMixer::getResults(%s, %4d)", key.substr(key.size() - 5, 1).c_str(), frameIndex);
   mResultsCv.wait(resultLock,
                   [this, &resultKey]() { return mResults.find(resultKey) != mResults.end(); });
   std::vector<BoundingBox> results = std::move(mResults.at(resultKey));

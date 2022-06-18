@@ -5,6 +5,7 @@
 #include "opencv2/video/tracking.hpp"
 
 #include "strm/Log.hpp"
+#include "strm/Test.hpp"
 
 namespace rm {
 
@@ -29,16 +30,21 @@ RoIExtractor::~RoIExtractor() {
 }
 
 void RoIExtractor::enqueue(Frame* frame) {
-  std::lock_guard<std::mutex> lock(mtx);
+  std::unique_lock<std::mutex> lock(mtx);
   mFramesForPD.push_back(frame);
+  lock.unlock();
   cv.notify_one();
-  LOGD("RoIExtractor::enqueue  (%s, %4d)               // PD %lu | OF %lu | Processed %lu",
-       frame->shortKey.c_str(), frame->frameIndex, mFramesForPD.size(), mFramesForOF.size(),
+  std::stringstream ss;
+  for (const auto& it: mFramesForOF) {
+    ss << it.second.size() << ", ";
+  }
+  LOGD("RoIExtractor::enqueue  (%s, %4d)               // PD %lu | OF %s | Processed %lu",
+       frame->shortKey.c_str(), frame->frameIndex, mFramesForPD.size(), ss.str().c_str(),
        mOFProcessingStartedFrames.size());
 }
 
 void RoIExtractor::notify() {
-  cv.notify_one();
+  cv.notify_all();
 }
 
 void RoIExtractor::preprocess(Frame* frame) const {
@@ -64,7 +70,7 @@ std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames() {
   }
   cv.wait(lock, [&extractedFrames]() {
     for (auto it : extractedFrames) {
-      if (it.second.empty() || (*it.second.rbegin())->roiExtractionStatus != OF_EXTRACTED) {
+      if (!it.second.empty() && (*it.second.rbegin())->roiExtractionStatus != OF_EXTRACTED) {
         return false;
       }
     }
@@ -87,9 +93,12 @@ void RoIExtractor::work() {
     return !mFramesForPD.empty();
   };
   auto isOFJobReady = [this]() {
-    for (auto it : mFramesForOF) {
-      if (!it.second.empty() && it.second.front()->readyForOFExtraction()) {
-        return true;
+    if (mFramesForOF.empty()) {
+      return false;
+    }
+    for (const auto& it : mFramesForOF) {
+      if (!it.second.empty()) {
+        return it.second.front()->readyForOFExtraction();
       }
     }
     return false;
@@ -109,7 +118,7 @@ void RoIExtractor::work() {
     }
 
     if (isOF) {
-      for (auto it : mFramesForOF) {
+      for (const auto& it : mFramesForOF) {
         if (!it.second.empty() && it.second.front()->readyForOFExtraction()) {
           frame = it.second.front();
         }
@@ -121,6 +130,7 @@ void RoIExtractor::work() {
     } else {
       frame = mFramesForPD.front();
       mFramesForPD.pop_front();
+      assert(frame != nullptr);
     }
     lock.unlock();
 
@@ -158,19 +168,8 @@ void RoIExtractor::work() {
                          [](const RoI& roi) { return roi.type == RoI::Type::OF; }),
            frame->parentRoIs.size());
 
-      std::set<idType> cIDs;
-      for (RoI& cRoIs : frame->childRoIs) {
-        assert(cIDs.find(cRoIs.id) == cIDs.end());
-        cIDs.insert(cRoIs.id);
-      }
-      std::set<idType> childIDs;
-      for (RoI& pRoI : frame->parentRoIs) {
-        for (RoI* cRoI : pRoI.childRoIs) {
-          assert(childIDs.find(cRoI->id) == childIDs.end());
-          childIDs.insert(cRoI->id);
-        }
-      }
-      assert(cIDs == childIDs);
+      testAssignedUniqueRoIID(frame->childRoIs);
+      testParentChildrenIDsAndChildIDsSame(frame->childRoIs, frame->parentRoIs);
 
       frame->prevFrame->preProcessedMat.release();
       frame->roiExtractionStatus = OF_EXTRACTED;
@@ -189,11 +188,7 @@ void RoIExtractor::processPD(Frame* currFrame) {
   currFrame->pixelDiffRoIProcessStartTime = NowMicros();
   std::vector<RoI> pixelDiffRoIs = getPixelDiffRoIs(prevFrame, currFrame, mTargetSize,
                                                     mConfig.MIN_ROI_AREA);
-  std::set<idType> cIDs;
-  for (RoI& cRoIs : pixelDiffRoIs) {
-    assert(cIDs.find(cRoIs.id) == cIDs.end());
-    cIDs.insert(cRoIs.id);
-  }
+  testAssignedUniqueRoIID(pixelDiffRoIs);
   currFrame->pixelDiffRoIProcessEndTime = NowMicros();
   currFrame->childRoIs.insert(currFrame->childRoIs.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
   LOGD("RoIExtractor::processPD(%s, %4d) took %4lu us", currFrame->shortKey.c_str(),
@@ -206,12 +201,7 @@ void RoIExtractor::processOF(Frame* currFrame) {
   Frame* prevFrame = currFrame->prevFrame;
   std::vector<BoundingBox> reliablePrevBoxes;
   if (currFrame->prevFrame->useInferenceResultForOF) {
-    std::set<idType> cIDs;
-    for (const BoundingBox& box : currFrame->prevFrame->boxes) {
-      assert(box.id != UNASSIGNED_ID);
-      assert(cIDs.find(box.id) == cIDs.end());
-      cIDs.insert(box.id);
-    }
+    testAssignedUniqueBoxID(currFrame->prevFrame->boxes);
     for (const BoundingBox& box : currFrame->prevFrame->boxes) {
       if (box.confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
         BoundingBox reliableBox(box.id, Rect(
@@ -234,11 +224,7 @@ void RoIExtractor::processOF(Frame* currFrame) {
   currFrame->opticalFlowRoIProcessStartTime = NowMicros();
   std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes, mTargetSize);
   currFrame->opticalFlowRoIProcessEndTime = NowMicros();
-  std::set<idType> cIDs;
-  for (RoI& cRoIs : opticalFlowRoIs) {
-    assert(cIDs.find(cRoIs.id) == cIDs.end());
-    cIDs.insert(cRoIs.id);
-  }
+  testAssignedUniqueRoIID(opticalFlowRoIs);
   currFrame->childRoIs.insert(currFrame->childRoIs.end(), opticalFlowRoIs.begin(),
                               opticalFlowRoIs.end());
   LOGD("RoIExtractor::processOF(%s, %4d) took %4lu us", currFrame->shortKey.c_str(),
@@ -306,9 +292,12 @@ void RoIExtractor::mergeRoIs(std::vector<RoI>& childRoIs, std::vector<RoI>& pare
                                 parentRoIs[i].childRoIs.begin(), parentRoIs[i].childRoIs.end());
     mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
                                 parentRoIs[j].childRoIs.begin(), parentRoIs[j].childRoIs.end());
+    std::stringstream ss;
     for (RoI* cRoI : mergedRoI->childRoIs) {
       cRoI->parentRoI = mergedRoI;
+      ss << cRoI->id << ", ";
     }
+    LOGD("MergedRoI Info: targetSize = %d, childRoIs = %s", mergedRoI->targetSize, ss.str().c_str());
     assert(j > i);
     parentRoIs.erase(parentRoIs.begin() + j);
     parentRoIs.erase(parentRoIs.begin() + i);
