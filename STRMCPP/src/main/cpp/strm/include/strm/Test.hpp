@@ -5,12 +5,12 @@
 
 namespace rm {
 
-void testAssignedUniqueBoxID(const std::vector<BoundingBox>& boxes) {
+void testAssignedUniqueBoxID(const std::vector<std::unique_ptr<BoundingBox>>& boxes) {
   std::set<idType> IDs;
-  for (const BoundingBox& box : boxes) {
-    assert(box.id != UNASSIGNED_ID);
-    assert(IDs.find(box.id) == IDs.end());
-    IDs.insert(box.id);
+  for (const std::unique_ptr<BoundingBox>& box : boxes) {
+    assert(box->id != UNASSIGNED_ID);
+    assert(IDs.find(box->id) == IDs.end());
+    IDs.insert(box->id);
   }
 }
 

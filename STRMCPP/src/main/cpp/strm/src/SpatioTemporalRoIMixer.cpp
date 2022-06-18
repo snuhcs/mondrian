@@ -164,6 +164,15 @@ void SpatioTemporalRoIMixer::work() {
       // Notify results of processed frames
       for (Frame* frame : mixedFrames[i].getPackedFrames()) {
         if (frame->isAllRoIPrepared() && processedFrames.find(frame) == processedFrames.end()) {
+          assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
+                             [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
+          for (RoI& roi : frame->childRoIs) {
+            if (roi.box != nullptr && roi.box->label != 0) {
+              LOGD("roi.box != nullptr && roi.box->label != 0 %d", roi.box->label);
+            }
+          }
+          assert(std::all_of(frame->childRoIs.begin(), frame->childRoIs.end(),
+                             [](const RoI& roi) { return roi.box == nullptr || roi.box->label == 0; }));
           processedFrames.insert(frame);
           frame->isBoxesReady = true;
         }
@@ -172,11 +181,21 @@ void SpatioTemporalRoIMixer::work() {
     }
 
     // Interpolate results
+    for (const auto& it : frames) {
+      for (Frame* frame : it.second) {
+        assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
+                           [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
+        assert(std::all_of(frame->childRoIs.begin(), frame->childRoIs.end(),
+                           [](const RoI& roi) { return roi.box == nullptr || roi.box->label == 0; }));
+      }
+    }
     Interpolator::interpolate(frames);
 
     // Notify results of rest of the frames
     for (auto& it : frames) {
       for (Frame* frame : it.second) {
+        assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
+                           [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
         if (frame != fullFrameTarget && processedFrames.find(frame) == processedFrames.end()) {
           frame->isBoxesReady = true;
         }
@@ -189,8 +208,10 @@ void SpatioTemporalRoIMixer::work() {
     for (const auto& it : frames) {
       for (Frame* frame : it.second) {
         if (frame != fullFrameTarget) {
-          mResults.emplace_back(frame->key, frame->frameIndex, NowMicros(), frame->mat,
-                                frame->boxes);
+          std::vector<BoundingBox> boxes;
+          std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
+                         [](const std::unique_ptr<BoundingBox>& box) { return *box; });
+          mResults.emplace_back(frame->key, frame->frameIndex, NowMicros(), frame->mat, std::move(boxes));
         }
       }
     }
@@ -236,13 +257,22 @@ void SpatioTemporalRoIMixer::work() {
 void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   std::vector<RoI> emptyRoIs;
   assert(frame->isFullFrameTarget);
-  frame->boxes = mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat));
+  std::vector<BoundingBox> results = mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat));
+  for (const BoundingBox& box : results) {
+    frame->boxes.emplace_back(new BoundingBox(UNASSIGNED_ID, box.location, box.confidence, box.label));
+  }
   mPatchReconstructor->matchBoxesWithRoIs(true, frame->childRoIs, frame->boxes, nullptr);
   frame->isBoxesReady = true;
   mRoIExtractor->notify();
 
+  assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
+                     [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
+
   std::unique_lock<std::mutex> resultLock(mResultsMtx);
-  mResults.emplace_back(frame->key, frame->frameIndex, NowMicros(), frame->mat, frame->boxes);
+  std::vector<BoundingBox> boxes;
+  std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
+                 [](const std::unique_ptr<BoundingBox>& box) { return *box; });
+  mResults.emplace_back(frame->key, frame->frameIndex, NowMicros(), frame->mat, std::move(boxes));
   resultLock.unlock();
   mResultsCv.notify_all();
 }

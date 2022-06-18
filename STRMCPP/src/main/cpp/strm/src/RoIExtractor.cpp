@@ -202,16 +202,9 @@ void RoIExtractor::processOF(Frame* currFrame) {
   std::vector<BoundingBox> reliablePrevBoxes;
   if (currFrame->prevFrame->useInferenceResultForOF) {
     testAssignedUniqueBoxID(currFrame->prevFrame->boxes);
-    for (const BoundingBox& box : currFrame->prevFrame->boxes) {
-      if (box.confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
-        BoundingBox reliableBox(box.id, Rect(
-            std::max(0, box.location.left - mConfig.ROI_PADDING),
-            std::max(0, box.location.top - mConfig.ROI_PADDING),
-            std::min(currFrame->width, box.location.right + mConfig.ROI_PADDING),
-            std::min(currFrame->height, box.location.bottom + mConfig.ROI_PADDING)),
-                        box.confidence, box.label);
-        reliableBox.srcRoI = box.srcRoI;
-        reliablePrevBoxes.push_back(reliableBox);
+    for (const std::unique_ptr<BoundingBox>& box : currFrame->prevFrame->boxes) {
+      if (box->confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
+        reliablePrevBoxes.push_back(*box);
       }
     }
   } else {
@@ -323,7 +316,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
       const std::pair<int, int>& shift = shiftAndErrors.at(boxIndex).first;
       const float err = shiftAndErrors.at(boxIndex).second;
-      const BoundingBox& box = boundingBoxes.at(boxIndex);
+      const BoundingBox& box = boundingBoxes[boxIndex];
       const Rect& loc = box.location;
       int newLeft = std::max(0, loc.left + shift.first);
       int newTop = std::max(0, loc.top + shift.second);

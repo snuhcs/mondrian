@@ -56,6 +56,9 @@ std::vector<int> Interpolator::findValidRoIs(std::vector<RoI*>& rois) {
 
 void Interpolator::extrapolateLeft(std::vector<RoI*> rois, int idx) {
   RoI* prevRoI = rois.at(idx);
+  assert(prevRoI->box != nullptr);
+  assert(0 <= prevRoI->box->label);
+  assert(0 <= prevRoI->label);
   std::pair<int, int> prevCenter = prevRoI->box->location.center();
   for (int current = idx - 1; current >= 0; current--) {
     RoI* currRoI = rois.at(current);
@@ -66,12 +69,13 @@ void Interpolator::extrapolateLeft(std::vector<RoI*> rois, int idx) {
     int newWidth = prevBox->location.width();
     int newHeight = prevBox->location.height();
     Rect newBox(newCenter, newWidth, newHeight);
-    BoundingBox box(prevBox->id, newBox, prevBox->confidence, prevBox->label);
-    currRoI->frame->boxes.push_back(box);
+    currRoI->frame->boxes.emplace_back(new BoundingBox(prevBox->id, newBox, prevBox->confidence, prevBox->label));
 
-    BoundingBox* pointerToBox = &(currRoI->frame->boxes.back());
-    assert(pointerToBox->id == box.id);
+    BoundingBox* pointerToBox = currRoI->frame->boxes.back().get();
+    assert(pointerToBox->id == prevBox->id);
     currRoI->box = pointerToBox;
+    currRoI->label = pointerToBox->label;
+    currRoI->id = pointerToBox->id;
 
     prevRoI = currRoI;
     prevCenter = newCenter;
@@ -80,6 +84,9 @@ void Interpolator::extrapolateLeft(std::vector<RoI*> rois, int idx) {
 
 void Interpolator::extrapolateRight(std::vector<RoI*> rois, int idx) {
   RoI* prevRoI = rois.at(idx);
+  assert(prevRoI->box != nullptr);
+  assert(0 <= prevRoI->box->label);
+  assert(0 <= prevRoI->label);
   std::pair<int, int> prevCenter = prevRoI->box->location.center();
   for (int current = idx + 1; current < rois.size(); current++) {
     RoI* currRoI = rois.at(current);
@@ -90,12 +97,13 @@ void Interpolator::extrapolateRight(std::vector<RoI*> rois, int idx) {
     int newWidth = prevBox->location.width();
     int newHeight = prevBox->location.height();
     Rect newBox(newCenter, newWidth, newHeight);
-    BoundingBox box(prevRoI->id, newBox, prevBox->confidence, prevBox->label);
-    currRoI->frame->boxes.push_back(box);
+    currRoI->frame->boxes.emplace_back(new BoundingBox(prevBox->id, newBox, prevBox->confidence, prevBox->label));
 
-    BoundingBox* pointerToBox = &(currRoI->frame->boxes.back());
-    assert(pointerToBox->id == box.id);
+    BoundingBox* pointerToBox = currRoI->frame->boxes.back().get();
+    assert(pointerToBox->id == prevBox->id);
     currRoI->box = pointerToBox;
+    currRoI->label = pointerToBox->label;
+    currRoI->id = pointerToBox->id;
 
     prevRoI = currRoI;
     prevCenter = newCenter;
@@ -109,6 +117,9 @@ void Interpolator::interpolateBetween(std::vector<RoI*> rois, int leftIdx, int r
   float yRatio = (float) bbxShift.second / (float) totalShift.second;
 
   RoI* prevRoI = rois.at(leftIdx);
+  assert(prevRoI->box != nullptr);
+  assert(0 <= prevRoI->box->label);
+  assert(0 <= prevRoI->label);
   std::pair<int, int> prevCenter = prevRoI->box->location.center();
   for (int current = leftIdx + 1; current < rightIdx; current++) {
     RoI* currRoI = rois.at(current);
@@ -120,12 +131,13 @@ void Interpolator::interpolateBetween(std::vector<RoI*> rois, int leftIdx, int r
     int newWidth = prevBox->location.width();
     int newHeight = prevBox->location.height();
     Rect newBox(newCenter, newWidth, newHeight);
-    BoundingBox box(prevRoI->id, newBox, prevBox->confidence, prevBox->label);
-    currRoI->frame->boxes.push_back(box);
+    currRoI->frame->boxes.emplace_back(new BoundingBox(prevBox->id, newBox, prevBox->confidence, prevBox->label));
 
-    BoundingBox* pointerToBox = &(currRoI->frame->boxes.back());
-    assert(pointerToBox->id == box.id);
+    BoundingBox* pointerToBox = currRoI->frame->boxes.back().get();
+    assert(pointerToBox->id == prevBox->id);
     currRoI->box = pointerToBox;
+    currRoI->label = pointerToBox->label;
+    currRoI->id = pointerToBox->id;
 
     prevRoI = currRoI;
     prevCenter = newCenter;

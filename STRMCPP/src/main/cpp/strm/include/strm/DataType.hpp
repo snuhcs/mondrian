@@ -110,7 +110,7 @@ struct Frame {
   bool useInferenceResultForOF;
 
   bool isBoxesReady;
-  std::vector<BoundingBox> boxes;
+  std::vector<std::unique_ptr<BoundingBox>> boxes;
 
   RoIExtractionStatus roiExtractionStatus;
   std::vector<RoI> childRoIs; // => box

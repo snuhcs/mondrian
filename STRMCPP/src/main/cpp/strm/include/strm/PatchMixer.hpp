@@ -23,14 +23,7 @@ class PatchMixer {
                                       bool probing);
 
  private:
-  static void tryPackRoI(RoI* roi,
-                         std::vector<std::vector<Rect>>& freeRectsList,
-                         std::vector<std::set<RoI*>>& packedRoIs,
-                         std::vector<RoI*>& droppedRoIs);
-
-  static bool canFit(std::pair<int, int> wh, const Rect& rect);
-
-  static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, const Rect& rect);
+  static void tryPackRoIs(std::vector<RoI*>& rois, int mixedFrameSize);
 
   static int mMixedFrameIndex;
 };

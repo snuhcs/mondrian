@@ -13,6 +13,9 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
     return l.confidence > r.confidence;
   };
   for (int k = 0; k < numLabels; k++) {
+    if (k != 0) {
+      continue;
+    }
     std::set<BoundingBox, decltype(comp)> sortedBoxes(comp);
 
     for (const BoundingBox& box : boxes) {
@@ -37,6 +40,44 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
     }
   }
   return nmsList;
+}
+
+void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
+         const int numLabels, const float iouThreshold) {
+  std::set<int> nmsIndices;
+
+  auto comp = [&boxes](int l, int r) -> bool {
+    return boxes[l]->confidence > boxes[r]->confidence;
+  };
+  for (int k = 0; k < numLabels; k++) {
+    std::set<int, decltype(comp)> sortedBoxes(comp);
+
+    for (int i = 0; i < boxes.size(); i++) {
+      if (boxes[i]->label == k) {
+        sortedBoxes.insert(i);
+      }
+    }
+
+    while (!sortedBoxes.empty()) {
+      auto startIt = sortedBoxes.begin();
+      int max = *startIt;
+      nmsIndices.insert(max);
+      sortedBoxes.erase(startIt);
+
+      for (auto it = sortedBoxes.begin(); it != sortedBoxes.end();) {
+        if (boxes[max]->location.iou(boxes[*it]->location) >= iouThreshold) {
+          it = sortedBoxes.erase(it);
+        } else {
+          it++;
+        }
+      }
+    }
+  }
+  for (int i = (int) boxes.size() - 1; i >= 0; i--) {
+    if (nmsIndices.find(i) == nmsIndices.end()) {
+      boxes.erase(boxes.begin() + i);
+    }
+  }
 }
 
 const char* COCO_LABELS[] = {

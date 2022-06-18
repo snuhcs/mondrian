@@ -1,5 +1,8 @@
 #include "strm/PatchMixer.hpp"
 
+#define STB_RECT_PACK_IMPLEMENTATION
+#include "stb/stb_rect_pack.h"
+
 namespace rm {
 
 int PatchMixer::mMixedFrameIndex = 0;
@@ -42,12 +45,12 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
   }
 
   // 3. Set priority & sort rois
-  int numRoIs = 0;
+  int numParentRoIs = 0;
   std::map<idType, std::vector<RoI*>> roiStreams;
   for (const auto& it : frames) {
     for (Frame* frame : it.second) {
       for (RoI& roi : frame->parentRoIs) {
-        numRoIs++;
+        numParentRoIs++;
         roiStreams[roi.id].push_back(&roi);
         if (roi.prevRoI != nullptr) {
           std::pair<int, int> shiftDiff{roi.features.shift.first - roi.prevRoI->features.shift.first,
@@ -76,59 +79,23 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
   }
   std::sort(rois.begin(), rois.end(), [](const RoI* l, const RoI* r) { return l->priority > r->priority; });
 
-  std::vector<RoI*> droppedRoIs;
+  int numTotalRoIs = (int) rois.size();
+  int numDroppedRoIs = numTotalRoIs;
   std::vector<std::set<RoI*>> packedRoIs;
-  std::vector<std::vector<Rect>> freeRectsList;
-  for (int i = 0; i < numMixedFrames; i++) {
-    freeRectsList.push_back({Rect(0, 0, mixedFrameSize, mixedFrameSize)});
-    packedRoIs.emplace_back();
-  }
+  packedRoIs.resize(numMixedFrames);
   time_us mixingStartTime = NowMicros();
-  for (RoI* roi : rois) {
-    tryPackRoI(roi, freeRectsList, packedRoIs, droppedRoIs);
+  for (int i = 0; i < numMixedFrames; i++) {
+    tryPackRoIs(rois, mixedFrameSize);
+    for (auto it = rois.begin(); it != rois.end();) {
+      if ((*it)->isPacked()) {
+        packedRoIs[i].insert(*it);
+        it = rois.erase(it);
+      } else {
+        it++;
+      }
+    }
   }
   time_us mixingEndTime = NowMicros();
-
-  if (false) {
-    for (int i = 0; i < numMixedFrames; i++) {
-      std::stringstream ss;
-      ss << "packedRoIs[" << i << "]: ";
-      for (RoI* roi : packedRoIs[i]) {
-        if (lastFrames.find(roi->frame) != lastFrames.end()) {
-          ss << "(" << roi->frame->shortKey << ","
-             << roi->frame->frameIndex << ","
-             << roi->id << ") ";
-        }
-      }
-      LOGD("%s", ss.str().c_str());
-      std::stringstream ss2;
-      ss2 << "droppedRoIs[" << i << "]: ";
-      for (RoI* roi : droppedRoIs) {
-        if (lastFrames.find(roi->frame) != lastFrames.end()) {
-          ss2 << "(" << roi->frame->shortKey << ","
-              << roi->frame->frameIndex << ","
-              << roi->id << ") ";
-        }
-      }
-      LOGD("%s", ss2.str().c_str());
-    }
-
-    std::stringstream ss;
-    ss << "lastRoIs: ";
-    for (Frame* lastFrame : lastFrames) {
-      for (RoI& roi : lastFrame->parentRoIs) {
-        ss << roi.id << ", ";
-      }
-    }
-    LOGD("%s", ss.str().c_str());
-  }
-  LOGD("%lu rois %d parentRoIs %d probes %lu droppedRoIs %d lastFrameRoIs", rois.size(), numRoIs,
-       numProbes, droppedRoIs.size(), numLastFrameRoIs);
-  assert(std::all_of(frames.cbegin(), frames.cend(),
-                     [&fullFrameTarget](const std::pair<std::string, SortedFrames>& it) {
-                       return (fullFrameTarget != nullptr && fullFrameTarget->key == it.first) ||
-                              it.second.empty() || (*it.second.crbegin())->isAllRoIPacked();
-                     }));
 
   time_us mixedFrameCreateStartTime = NowMicros();
   std::vector<MixedFrame> mixedFrames;
@@ -148,53 +115,39 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
       frame->mixedFrameCreateEndTime = mixedFrameCreateEndTime;
     }
   }
-  LOGD("PatchMixer::pack(%lu, %d, %d) took %lu and %lu us : %lu / %lu dropped", frames.size(),
-       mixedFrameSize, numMixedFrames, mixingEndTime - mixingStartTime,
-       mixedFrameCreateEndTime - mixedFrameCreateStartTime, droppedRoIs.size(), rois.size());
+  LOGD("PatchMixer::pack(%lu, %d, %d) took %lu and %lu us : %d droppedRoIs among %d totalRois, %d lastFrameRoIs, %d Probes",
+       frames.size(), mixedFrameSize, numMixedFrames, mixingEndTime - mixingStartTime, mixedFrameCreateEndTime - mixedFrameCreateStartTime,
+       numDroppedRoIs, numTotalRoIs, numLastFrameRoIs, numProbes);
   return mixedFrames;
 }
 
-void PatchMixer::tryPackRoI(RoI* roi, std::vector<std::vector<Rect>>& freeRectsList,
-                            std::vector<std::set<RoI*>>& packedRoIs,
-                            std::vector<RoI*>& droppedRoIs) {
-  std::pair<int, int> wh = roi->getResizedWidthHeight();
-  for (int mixedFrameIndex = 0; mixedFrameIndex < freeRectsList.size(); mixedFrameIndex++) {
-    std::vector<Rect>& freeRects = freeRectsList[mixedFrameIndex];
-    for (auto it = freeRects.begin(); it != freeRects.end(); it++) {
-      const Rect freeRect = *it;
-      if (canFit(wh, freeRect)) {
-        freeRects.erase(it);
-        roi->packedLocation = std::make_pair(freeRect.left, freeRect.top);
-        packedRoIs[mixedFrameIndex].insert(roi);
-        std::pair<Rect, Rect> newFreeRectPair = splitFreeRect(wh, freeRect);
-        freeRects.push_back(newFreeRectPair.first);
-        freeRects.push_back(newFreeRectPair.second);
-        break;
-      }
-    }
-    if (roi->isPacked()) {
-      break;
-    }
-  }
-  if (!roi->isPacked()) {
-    droppedRoIs.push_back(roi);
-  }
-}
+void PatchMixer::tryPackRoIs(std::vector<RoI*>& rois, int mixedFrameSize) {
+  int num_nodes = mixedFrameSize;
+  auto* context = new stbrp_context;
+  auto* nodes = new stbrp_node[num_nodes];
+  stbrp_init_target(context, mixedFrameSize, mixedFrameSize, nodes, num_nodes);
 
-bool PatchMixer::canFit(std::pair<int, int> wh, const Rect& rect) {
-  return wh.first <= rect.width() && wh.second <= rect.height();
-}
+  int num_rects = (int) rois.size();
+  auto* rects = new stbrp_rect[num_rects];
 
-std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, const Rect& rect) {
-  int w = wh.first;
-  int h = wh.second;
-  if (rect.width() > rect.height()) {
-    return std::make_pair(Rect(rect.left + w, rect.top, rect.right, rect.bottom),
-                          Rect(rect.left, rect.top + h, rect.left + w, rect.bottom));
-  } else {
-    return std::make_pair(Rect(rect.left, rect.top + h, rect.right, rect.bottom),
-                          Rect(rect.left + w, rect.top, rect.right, rect.top + h));
+  for (int i = 0; i < num_rects; i++) {
+    rects[i].id = (int) rois[i]->id;
+    auto wh = rois[i]->getResizedWidthHeight();
+    rects[i].w = wh.first;
+    rects[i].h = wh.second;
   }
+
+  int is_all_packed = stbrp_pack_rects(context, rects, num_rects);
+
+  for (int i = 0; i < num_rects; i++) {
+    if (rects[i].was_packed) {
+      rois[i]->packedLocation = std::make_pair(rects[i].x, rects[i].y);
+    }
+  }
+
+  delete[] rects;
+  delete[] nodes;
+  delete context;
 }
 
 } // namespace rm
