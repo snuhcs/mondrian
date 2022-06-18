@@ -55,12 +55,13 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
 
   // 2. Match boxes with RoIs (per frame)
   for (Frame* frame : packedFrames) {
-    matchBoxesWithRoIs(false, frame->childRoIs, frame->boxes);
     frame->boxes = nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
+    matchBoxesWithRoIs(false, frame->childRoIs, frame->boxes);
   }
   // set roi->isBoxReady as true if it was packed
   for (RoI* roi : packedRoIs) {
-    roi->isBoxReady = roi->isPacked();
+    assert(roi->isPacked());
+    roi->isBoxReady = true;
   }
 
   // 3. Update resize profile
