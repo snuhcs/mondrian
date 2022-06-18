@@ -187,11 +187,10 @@ void SpatioTemporalRoIMixer::work() {
 void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   mRoIExtractor->preprocess(frame);
   std::vector<RoI> emptyRoIs;
-  // TODO: use currFrame->origRoIs for ID mapping
-  frame->boxes = assignIdsToBoxes(
-      mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat)),
-      frame->prevFrame == nullptr ? emptyRoIs : frame->origRoIs,
-      mConfig.patchReconstructorConfig.OVERLAP_THRESHOLD);
+  // TODO: use currFrame->childRoIs for ID mapping
+  assert(frame->isFullFrameTarget);
+  frame->boxes = mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat));
+  mPatchReconstructor->matchBoxesWithRoIs(true, frame->childRoIs, frame->boxes);
   frame->isBoxesReady = true;
   mRoIExtractor->notify();
 
@@ -207,6 +206,7 @@ Frame* SpatioTemporalRoIMixer::getFullFrameInferenceFrame(const FrameSet& lastFr
   for (int i = 0; i < fullFrameInferenceStreamIndex % lastFrames.size(); i++) {
     it++;
   }
+  (*it)->isFullFrameTarget = true;
   return *it;
 }
 
@@ -222,6 +222,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
   if (frameIndex == 0) {
     frame->useInferenceResultForOF = true;
     mRoIExtractor->preprocess(frame);
+    frame->isFullFrameTarget = true;
     fullFrameInference(frame);
   } else {
     mRoIExtractor->enqueue(frame);
@@ -241,67 +242,6 @@ std::vector<BoundingBox> SpatioTemporalRoIMixer::getResults(const std::string& k
   LOGD("SpatioTemporalRoIMixer::getResults(%s, %4d)    // %lu boxes",
        key.substr(key.size() - 5, 1).c_str(), frameIndex, results.size());
   return results;
-}
-
-std::vector<BoundingBox> SpatioTemporalRoIMixer::assignIdsToBoxes(
-    const std::vector<BoundingBox>& boxes, std::vector<RoI>& rois, float overlapThreshold) {
-  std::vector<BoundingBox> unassignedBoxes;
-  std::vector<BoundingBox> assignedBoxes;
-
-  // Match Boxes to RoI. Boxes can be unmatched. (if overlap ratio lower than threshold)
-  for (const BoundingBox& box : boxes) {
-    float maxOverlap = -1;
-    RoI* maxRoI = nullptr;
-    for (RoI& roi : rois) {
-      int intersection = roi.location.intersection(box.location);
-      assert(box.location.area() != 0);
-      float overlapRatio = (float) intersection / (float) box.location.area();
-      if (maxOverlap < overlapRatio) {
-        maxOverlap = overlapRatio;
-        maxRoI = &roi;
-      }
-    }
-    if (maxRoI != nullptr && maxOverlap >= overlapThreshold) {
-      maxRoI->boxes.emplace_back(UNASSIGNED_ID, maxRoI, box.location, box.confidence, box.labelName);
-    } else {
-      unassignedBoxes.emplace_back(UNASSIGNED_ID, nullptr, box.location, box.confidence, box.labelName);
-    }
-  }
-
-  // Let RoIs find their most well corresponding Box
-  for (RoI& roi : rois) {
-    int maxIntersection = -1;
-    int maxIndex = -1;
-    for (int i = 0; i < roi.boxes.size(); ++i) {
-      BoundingBox& box = roi.boxes[i];
-      int intersection = roi.location.intersection(box.location);
-      if (maxIntersection < intersection) {
-        maxIntersection = intersection;
-        maxIndex = i;
-      }
-    }
-    if (maxIndex != -1) {
-      BoundingBox& box = roi.boxes[maxIndex];
-      assignedBoxes.emplace_back(roi.id, &roi, box.location, box.confidence, box.labelName);
-      for (int i = 0; i < roi.boxes.size(); ++i) {
-        if (i == maxIndex) continue;
-        unassignedBoxes.emplace_back(UNASSIGNED_ID, nullptr, box.location, box.confidence, box.labelName);
-      }
-    }
-  }
-
-  // If unassigned Boxes exist (1. those who does not match with any RoI 2. those who lost competition between other Boxes in single RoI),
-  // classify them as newly appeared objects and assign new Id
-  if (!unassignedBoxes.empty()) {
-    std::pair<idType, idType> idRange = RoI::getNewIds(unassignedBoxes.size());
-    idType id = idRange.first;
-    for (const BoundingBox& box : unassignedBoxes) {
-      assert(id < idRange.second);
-      assignedBoxes.emplace_back(id++, nullptr, box.location, box.confidence, box.labelName);
-    }
-  }
-
-  return assignedBoxes;
 }
 
 } // namespace rm

@@ -81,12 +81,12 @@ struct BoundingBox {
   std::string labelName;
   int targetSize;
   idType id;
-  const RoI* srcRoI;
+  RoI* srcRoI;
 
-  BoundingBox(idType id, const RoI* srcRoI, const Rect location, const float confidence, const std::string labelName,
+  BoundingBox(idType id, const Rect location, const float confidence, const std::string labelName,
               int targetSize = -1)
       : id(id), location(location), confidence(confidence), labelName(labelName),
-        targetSize(targetSize), srcRoI(srcRoI) {}
+        targetSize(targetSize), srcRoI(nullptr) {}
 };
 
 enum RoIExtractionStatus {
@@ -113,8 +113,10 @@ struct Frame {
   std::vector<BoundingBox> boxes;
 
   RoIExtractionStatus roiExtractionStatus;
-  std::vector<RoI> origRoIs; // => box
-  std::vector<RoI> rois;
+  std::vector<RoI> childRoIs; // => box
+  std::vector<RoI> parentRoIs;
+
+  bool isFullFrameTarget;
 
   const time_us enqueueTime;
   time_us dispatcherProcessStartTime = 0;
@@ -142,7 +144,7 @@ struct Frame {
         Frame* prevFrame, const time_us& enqueueTime)
       : key(key), shortKey(key.substr(key.size() - 5, 1)), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
-        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime) {}
+        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime), isFullFrameTarget(false) {}
 
   ~Frame() {
     endTime = NowMicros();
@@ -196,31 +198,37 @@ struct RoI {
 
   inline static std::atomic<idType> lastId = 1;
   idType id;
-  const RoI* prevRoI;
-  std::vector<RoI*> childrenRoIs;
+  RoI* prevRoI; // only valid with childRoIs
+  RoI* nextRoI; // only valid with childRoIs
+  std::vector<RoI*> childRoIs;
+  RoI* parentRoI;
 
   int maxEdgeLength;
   int targetSize;
   std::pair<int, int> packedLocation;
   static const std::pair<int, int> NOT_PACKED;
 
-  bool isBoxReady;
-  std::vector<BoundingBox> boxes;
+  bool isBoxReady; // only valid within parentRoIs
+  std::vector<BoundingBox*> boxes;
 
-  RoI(const idType id,
+  RoI(RoI* prevRoI,
+      const idType id,
       Frame* frame,
-      const RoI* prevRoI,
       const Rect location,
       const Type type,
       const std::string labelName,
       const std::pair<int, int>& shift,
       const float err,
       const float diffAreaRatio)
-      : id(id), frame(frame), prevRoI(prevRoI), location(location), type(type), labelName(labelName),
+      : prevRoI(prevRoI), id(id), frame(frame), location(location), type(type), labelName(labelName),
         features{labelName, type, (float) location.width() / (float) location.height(),
                  std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
-        packedLocation(NOT_PACKED), isBoxReady(false) {};
+        packedLocation(NOT_PACKED), isBoxReady(false), nextRoI(nullptr) {
+    if (prevRoI != nullptr) {
+      prevRoI->nextRoI = this;
+    }
+  };
 
   static RoI mergeRoIs(RoI& roi0, RoI& roi1) {
     assert(roi0.frame == roi1.frame);
@@ -234,7 +242,9 @@ struct RoI {
     std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
                            || roi0.labelName != roi1.labelName
                            ? "" : roi0.labelName;
-    RoI mergedRoI(RoI::getNewIds(1).first, roi0.frame, nullptr, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel, std::make_pair(0, 0), 0, 0);
+    RoI mergedRoI(nullptr, RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom),
+                  roiType, roiLabel,
+                  std::make_pair(0, 0), 0, 0);
     mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength >
                             roi1.targetSize * roi0.maxEdgeLength) ?
                            mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
@@ -253,15 +263,8 @@ struct RoI {
     if (boxes.empty()) {
       return nullptr;
     }
-    BoundingBox* matchedBox = nullptr;
-    for (BoundingBox& box : boxes) {
-      if (box.id != UNASSIGNED_ID) {
-        matchedBox = &box;
-        break;
-      }
-    }
-    assert(matchedBox != nullptr);
-    return matchedBox;
+    assert(boxes[0]->id != UNASSIGNED_ID);
+    return boxes[0];
   }
 
   bool isProbingReady() const {
@@ -269,8 +272,8 @@ struct RoI {
       return false;
     }
     bool ready = true;
-    for (const RoI& roi : roisForProbing) {
-      ready &= roi.isBoxReady;
+    for (const RoI& pRoI : roisForProbing) {
+      ready &= pRoI.isBoxReady;
     }
     return ready;
   }
@@ -280,22 +283,7 @@ struct RoI {
   }
 
   bool isParent() const {
-    return childrenRoIs.size() > 1;
-  }
-
-  BoundingBox* getMatchedBbx() {
-    if (boxes.empty()) {
-      return nullptr;
-    }
-    BoundingBox* matchedBox = nullptr;
-    for(auto& bbx : boxes) {
-      if(bbx.id == id) {
-        matchedBox = &bbx;
-        break;
-      }
-    }
-    assert(matchedBox != nullptr);
-    return matchedBox;
+    return childRoIs.size() > 1;
   }
 
   int getArea() const {
@@ -338,24 +326,23 @@ struct RoI {
 struct MixedFrame {
   const int mixedFrameIndex;
   cv::Mat packedMat;
-  std::vector<RoI*> rois;
+  std::vector<RoI*> packedRoIs;
 
-  MixedFrame(const int mixedFrameIndex, std::vector<RoI*> rois, int mixedFrameSize)
-      : mixedFrameIndex(mixedFrameIndex), rois(rois) {
+  MixedFrame(const int mixedFrameIndex, std::vector<RoI*> packedRoIs, int mixedFrameSize)
+      : mixedFrameIndex(mixedFrameIndex), packedRoIs(packedRoIs) {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
-    for (RoI* roi : rois) {
-      if (roi->isPacked()) {
-        std::pair<int, int> wh = roi->getResizedWidthHeight();
-        roi->getResizedMat().copyTo(
-            packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
-                               wh.first, wh.second)));
-      }
+    for (RoI* roi : packedRoIs) {
+      assert(roi->isPacked());
+      std::pair<int, int> wh = roi->getResizedWidthHeight();
+      roi->getResizedMat().copyTo(
+          packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
+                             wh.first, wh.second)));
     }
   }
 
   FrameSet getPackedFrames() {
     FrameSet packedFrames;
-    for (RoI* roi : rois) {
+    for (RoI* roi : packedRoIs) {
       packedFrames.insert(roi->frame);
     }
     return packedFrames;

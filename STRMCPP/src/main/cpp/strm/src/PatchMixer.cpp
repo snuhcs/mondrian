@@ -14,10 +14,10 @@ std::vector<MixedFrame> PatchMixer::pack(const FrameSet& frames,
   int probeStep = 4;
   int probeRoINum = 1; // total 2 * probeRoINum + 1 number of probeRoIs
   for (auto lastFrame : lastFrames) {
-    for (RoI& roi : lastFrame->origRoIs) {
+    for (RoI& roi : lastFrame->childRoIs) {
       for (int i = 0; i < 2 * probeRoINum + 1; i++) {
-        roi.roisForProbing.emplace_back(roi.id, roi.frame, roi.prevRoI, roi.location, roi.type,
-                                        roi.labelName, roi.features.shift, roi.features.err,
+        roi.roisForProbing.emplace_back(nullptr, roi.id, roi.frame, roi.location, roi.type, roi.labelName,
+                                        roi.features.shift, roi.features.err,
                                         roi.features.diffAreaRatio);
       }
       int probe = -probeStep * probeRoINum;
@@ -33,7 +33,7 @@ std::vector<MixedFrame> PatchMixer::pack(const FrameSet& frames,
   const float HIGH_PRIORITY = 1e9;
   std::map<idType, std::vector<RoI*>> roiStreams;
   for (Frame* frame : frames) {
-    for (RoI& roi : frame->rois) {
+    for (RoI& roi : frame->parentRoIs) {
       roiStreams[roi.id].push_back(&roi);
       if (roi.prevRoI != nullptr) {
         std::pair<int, int> shiftDiff{roi.features.shift.first - roi.prevRoI->features.shift.first,
@@ -46,7 +46,7 @@ std::vector<MixedFrame> PatchMixer::pack(const FrameSet& frames,
   }
   // insert lastFrames first
   for (Frame* frame : lastFrames) {
-    for (RoI& roi : frame->rois) {
+    for (RoI& roi : frame->parentRoIs) {
       roi.priority = HIGH_PRIORITY;
     }
   }

@@ -23,7 +23,7 @@ void Interpolator::interpolate(FrameSet& frames) {
 std::set<idType> Interpolator::getRoIIds(FrameSet& frames) {
   std::set<idType> ids;
   for (const Frame* frame : frames) {
-    for (const RoI& roi : frame->origRoIs) {
+    for (const RoI& roi : frame->childRoIs) {
       ids.insert(roi.id);
     }
   }
@@ -33,7 +33,7 @@ std::set<idType> Interpolator::getRoIIds(FrameSet& frames) {
 std::vector<RoI*> Interpolator::getRoIStream(FrameSet& frames, idType roIId) {
   std::vector<RoI*> rois;
   for (Frame* frame : frames) {
-    for (RoI& roi : frame->origRoIs) {
+    for (RoI& roi : frame->childRoIs) {
       if (roi.id == roIId) {
         rois.push_back(&roi);
       }
@@ -54,19 +54,23 @@ std::vector<int> Interpolator::findValidRoIs(std::vector<RoI*>& rois) {
 
 void Interpolator::extrapolateLeft(std::vector<RoI*> rois, int idx) {
   RoI* prevRoI = rois.at(idx);
-  std::pair<int, int> prevCenter = prevRoI->getMatchedBbx()->location.center();
+  std::pair<int, int> prevCenter = prevRoI->matchingBox()->location.center();
   for (int current = idx - 1; current >= 0; current--) {
     RoI* currRoI = rois.at(current);
     std::pair<int, int> shift = prevRoI->features.shift;
     std::pair<int, int> newCenter = std::make_pair(prevCenter.first - shift.first,
                                                    prevCenter.second - shift.second);
-    BoundingBox* prevBox = prevRoI->getMatchedBbx();
+    BoundingBox* prevBox = prevRoI->matchingBox();
     int newWidth = prevBox->location.width();
     int newHeight = prevBox->location.height();
     Rect newBox(newCenter, newWidth, newHeight);
-    BoundingBox box(prevRoI->id, currRoI, newBox, prevBox->confidence, prevRoI->labelName);
-    currRoI->boxes.push_back(box);
+    BoundingBox box(prevRoI->id, newBox, prevBox->confidence, prevRoI->labelName);
     currRoI->frame->boxes.push_back(box);
+
+    BoundingBox* pointerToBox = &(currRoI->frame->boxes.back());
+    assert(pointerToBox->id == box.id);
+    currRoI->boxes.push_back(pointerToBox);
+
     prevRoI = currRoI;
     prevCenter = newCenter;
   }
@@ -74,19 +78,23 @@ void Interpolator::extrapolateLeft(std::vector<RoI*> rois, int idx) {
 
 void Interpolator::extrapolateRight(std::vector<RoI*> rois, int idx) {
   RoI* prevRoI = rois.at(idx);
-  std::pair<int, int> prevCenter = prevRoI->getMatchedBbx()->location.center();
+  std::pair<int, int> prevCenter = prevRoI->matchingBox()->location.center();
   for (int current = idx + 1; current < rois.size(); current++) {
     RoI* currRoI = rois.at(current);
     std::pair<int, int> shift = currRoI->features.shift;
     std::pair<int, int> newCenter = std::make_pair(prevCenter.first + shift.first,
                                                    prevCenter.second + shift.second);
-    BoundingBox* prevBox = prevRoI->getMatchedBbx();
+    BoundingBox* prevBox = prevRoI->matchingBox();
     int newWidth = prevBox->location.width();
     int newHeight = prevBox->location.height();
     Rect newBox(newCenter, newWidth, newHeight);
-    BoundingBox box(prevRoI->id, currRoI, newBox, prevBox->confidence, prevRoI->labelName);
-    currRoI->boxes.push_back(box);
+    BoundingBox box(prevRoI->id, newBox, prevBox->confidence, prevRoI->labelName);
     currRoI->frame->boxes.push_back(box);
+
+    BoundingBox* pointerToBox = &(currRoI->frame->boxes.back());
+    assert(pointerToBox->id == box.id);
+    currRoI->boxes.push_back(pointerToBox);
+
     prevRoI = currRoI;
     prevCenter = newCenter;
   }
@@ -99,20 +107,24 @@ void Interpolator::interpolateBetween(std::vector<RoI*> rois, int leftIdx, int r
   float yRatio = (float) bbxShift.second / (float) totalShift.second;
 
   RoI* prevRoI = rois.at(leftIdx);
-  std::pair<int, int> prevCenter = prevRoI->getMatchedBbx()->location.center();
+  std::pair<int, int> prevCenter = prevRoI->matchingBox()->location.center();
   for (int current = leftIdx + 1; current < rightIdx; current++) {
     RoI* currRoI = rois.at(current);
     std::pair<int, int> shift = currRoI->features.shift;
     std::pair<int, int> newCenter = std::make_pair(
         prevCenter.first + (int) ((float) shift.first * xRatio),
         prevCenter.second + (int) ((float) shift.second * yRatio));
-    BoundingBox* prevBox = prevRoI->getMatchedBbx();
+    BoundingBox* prevBox = prevRoI->matchingBox();
     int newWidth = prevBox->location.width();
     int newHeight = prevBox->location.height();
     Rect newBox(newCenter, newWidth, newHeight);
-    BoundingBox box(prevRoI->id, currRoI, newBox, prevBox->confidence, prevRoI->labelName);
-    currRoI->boxes.push_back(box);
+    BoundingBox box(prevRoI->id, newBox, prevBox->confidence, prevRoI->labelName);
     currRoI->frame->boxes.push_back(box);
+
+    BoundingBox* pointerToBox = &(currRoI->frame->boxes.back());
+    assert(pointerToBox->id == box.id);
+    currRoI->boxes.push_back(pointerToBox);
+
     prevRoI = currRoI;
     prevCenter = newCenter;
   }
@@ -128,9 +140,9 @@ std::pair<int, int> Interpolator::sumMotionVectors(std::vector<RoI*> rois, int s
 }
 
 std::pair<int, int> Interpolator::getBbxShift(std::vector<RoI*> rois, int start, int end) {
-  BoundingBox* bbx1 = rois.at(start)->getMatchedBbx();
+  BoundingBox* bbx1 = rois.at(start)->matchingBox();
   std::pair<int, int> c1 = bbx1->location.center();
-  BoundingBox* bbx2 = rois.at(end)->getMatchedBbx();
+  BoundingBox* bbx2 = rois.at(end)->matchingBox();
   std::pair<int, int> c2 = bbx2->location.center();
   return std::make_pair(c2.first - c1.first, c2.second - c2.first);
 }

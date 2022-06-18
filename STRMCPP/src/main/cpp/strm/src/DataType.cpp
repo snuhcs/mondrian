@@ -7,11 +7,11 @@ const idType UNASSIGNED_ID = 0;
 const std::pair<int, int> RoI::NOT_PACKED{-1, -1};
 
 bool Frame::isAllRoIPacked() const {
-  return std::all_of(rois.begin(), rois.end(), [](const RoI& roi) { return roi.isPacked(); });
+  return std::all_of(parentRoIs.begin(), parentRoIs.end(), [](const RoI& pRoI) { return pRoI.isPacked(); });
 }
 
 bool Frame::isAllRoIPrepared() const {
-  return std::all_of(rois.begin(), rois.end(), [](const RoI& roi) { return roi.isBoxReady; });
+  return std::all_of(parentRoIs.begin(), parentRoIs.end(), [](const RoI& pRoI) { return pRoI.isBoxReady; });
 }
 
 bool Frame::readyForOFExtraction() const {

@@ -62,7 +62,7 @@ void Logger::log(Frame* frame) {
   logFile << frame->key << delim
           << frame->frameIndex << delim
           << frame->boxes.size() << delim
-          << frame->rois.size() << delim
+          << frame->parentRoIs.size() << delim
           << fromBaseTime(frame->enqueueTime) << delim
           << fromBaseTime(frame->dispatcherProcessStartTime) << delim
           << fromBaseTime(frame->dispatcherProcessEndTime) << delim
