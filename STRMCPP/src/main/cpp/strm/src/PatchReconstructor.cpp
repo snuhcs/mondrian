@@ -28,7 +28,7 @@ Rect getMovedAndResizedBoxPos(const BoundingBox& box, RoI& roi) {
 void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
                                             const std::vector<BoundingBox>& results) const {
   time_us reconstructStartTime = NowMicros();
-  FrameSet packedFrames = mixedFrame.getPackedFrames();
+  SortedFrames packedFrames = mixedFrame.getPackedFrames();
   std::vector<RoI*>& packedRoIs = mixedFrame.packedRoIs;
 
   // 1. Insert boxes to appropriate frame.boxes
@@ -65,9 +65,8 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
   }
 
   // 3. Update resize profile
-  FrameSet lastFrames = filterLastFrames(packedFrames);
-  for (auto lastFrame : lastFrames) {
-    for (RoI& roi : lastFrame->childRoIs) {
+  for (Frame* frame : packedFrames) {
+    for (RoI& roi : frame->childRoIs) {
       if (roi.isProbingReady()) {
         mResizeProfile->updateTable(roi);
       }
@@ -114,7 +113,13 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
     }
     // End of 1
 
-    // 2. Let RoIs select their favorite RoI
+    int sumRoIBoxes = 0;
+    for (RoI& cRoI : childRoIs) {
+      sumRoIBoxes += (int) cRoI.boxes.size();
+    }
+    assert(sumRoIBoxes + unassignedBoxes.size() == boxes.size());
+
+    // 2. Let RoIs select their favorite Box
     // - Selection result is saved as RoI with same id
     for (RoI& cRoI : childRoIs) {
       int maxIntersection = -1;
@@ -137,7 +142,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
         // Collect all unselected boxes
         for (int i = 0; i < cRoI.boxes.size(); ++i) {
           if (i == maxIndex) continue;
-          unassignedBoxes.push_back(&box);
+          unassignedBoxes.push_back(cRoI.boxes[i]);
         }
 
         // Only store one corresponding box in cRoI.boxes
@@ -160,6 +165,10 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
       }
     }
     // End of 3
+
+    for (BoundingBox& box : boxes) {
+      assert(box.id != UNASSIGNED_ID);
+    }
 }
 
 } // namespace rm

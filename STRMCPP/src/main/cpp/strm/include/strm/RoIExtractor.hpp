@@ -28,7 +28,7 @@ class RoIExtractor {
 
   void preprocess(Frame* frame) const;
 
-  FrameSet getExtractedFrames();
+  std::map<std::string, SortedFrames> getExtractedFrames();
 
  private:
   void work();
@@ -37,7 +37,7 @@ class RoIExtractor {
 
   void processOF(Frame* currFrame);
 
-  void mergeRoIs(std::vector<RoI>& childRoIs, std::vector<RoI>& parentRoIs, int maxSize);
+  void mergeRoIs(std::vector<RoI>& childRoIs, std::vector<RoI>& parentRoIs, int maxSize) const;
 
   static std::vector<RoI> getOpticalFlowRoIs(
       const Frame* prevFrame, Frame* currFrame,
@@ -67,8 +67,8 @@ class RoIExtractor {
   std::mutex mtx;
   std::condition_variable cv;
   std::list<Frame*> mFramesForPD;
-  std::list<Frame*> mFramesForOF;
-  FrameSet mOFProcessingStartedFrames;
+  std::map<std::string, std::list<Frame*>> mFramesForOF;
+  std::map<std::string, SortedFrames> mOFProcessingStartedFrames;
 };
 
 } // namespace rm

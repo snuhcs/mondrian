@@ -5,8 +5,6 @@
 
 namespace rm {
 
-FrameSet filterLastFrames(FrameSet& frames);
-
 std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
                              const int numLabels, const float iouThreshold);
 

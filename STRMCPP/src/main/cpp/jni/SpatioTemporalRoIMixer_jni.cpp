@@ -34,7 +34,7 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(
   resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
   inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);
   return reinterpret_cast<long>(new rm::SpatioTemporalRoIMixer(
-      rm::parseSTRMConfig(jsonPath), resizeProfile, inferenceEngine));
+      rm::parseSTRMConfig(jsonPath), resizeProfile, inferenceEngine, config.NUM_VIDEOS));
 }
 
 extern "C"

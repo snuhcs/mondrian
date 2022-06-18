@@ -69,7 +69,6 @@ public class VideoSource extends CustomCapturer implements Runnable {
     public void run() {
         try {
             while (true) {
-                long startTime = System.nanoTime();
                 int frameIndex = frameIndices.take();
                 List<BoundingBox> results = strm.getResults(VIDEO_PATH, frameIndex);
                 mResultCallback.log(VIDEO_PATH, frameIndex, results);
@@ -77,7 +76,6 @@ public class VideoSource extends CustomCapturer implements Runnable {
                     Bitmap bitmap = frames.remove(frameIndex);
                     mResultCallback.drawObjectDetectionResult(DrawUtil.drawBoxes(
                             bitmap, results, DRAW_CONFIDENCE));
-                    Thread.sleep((int) (1e9 / FPS - (System.nanoTime() - startTime) / 1e3));
                 }
             }
         } catch (InterruptedException e) {

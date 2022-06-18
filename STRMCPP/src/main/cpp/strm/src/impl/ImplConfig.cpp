@@ -68,6 +68,9 @@ IMPLConfig parseIMPLConfig(const std::string& jsonPath) {
     return implConfig;
   }
   LOGD("IMPLConfig : %s", json.toStyledString().c_str());
+  if (!json["source"].isNull()) {
+    implConfig.NUM_VIDEOS = (int) json["source"]["video_configs"].size();
+  }
   if (!json["resize_profile"].isNull()) {
     implConfig.resizeProfileConfig = parseResizeProfileConfig(json["resize_profile"]);
   }

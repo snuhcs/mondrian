@@ -2,25 +2,27 @@
 
 namespace rm {
 
-void Interpolator::interpolate(FrameSet& frames) {
-  std::set<idType> roIIds = getRoIIds(frames);
-  for (auto id : roIIds) {
-    std::vector<RoI*> rois = getRoIStream(frames, id);
-    std::vector<int> validIndices = findValidRoIs(rois);
-    if (!validIndices.empty()) {
-      extrapolateLeft(rois, validIndices.at(0));
-      for (int i = 0; i < validIndices.size() - 1; i++) {
-        int leftIdx = validIndices.at(i);
-        int rightIdx = validIndices.at(i + 1);
-        if (rightIdx - leftIdx == 1) continue;
-        interpolateBetween(rois, leftIdx, rightIdx);
+void Interpolator::interpolate(std::map<std::string, SortedFrames>& frames) {
+  for (auto it : frames) {
+    std::set<idType> roIIds = getRoIIds(it.second);
+    for (auto id : roIIds) {
+      std::vector<RoI*> rois = getRoIStream(it.second, id);
+      std::vector<int> validIndices = findValidRoIs(rois);
+      if (!validIndices.empty()) {
+        extrapolateLeft(rois, validIndices.at(0));
+        for (int i = 0; i < validIndices.size() - 1; i++) {
+          int leftIdx = validIndices.at(i);
+          int rightIdx = validIndices.at(i + 1);
+          if (rightIdx - leftIdx == 1) continue;
+          interpolateBetween(rois, leftIdx, rightIdx);
+        }
+        extrapolateRight(rois, validIndices.at(validIndices.size() - 1));
       }
-      extrapolateRight(rois, validIndices.at(validIndices.size() - 1));
     }
   }
 }
 
-std::set<idType> Interpolator::getRoIIds(FrameSet& frames) {
+std::set<idType> Interpolator::getRoIIds(SortedFrames& frames) {
   std::set<idType> ids;
   for (const Frame* frame : frames) {
     for (const RoI& roi : frame->childRoIs) {
@@ -30,7 +32,7 @@ std::set<idType> Interpolator::getRoIIds(FrameSet& frames) {
   return ids;
 }
 
-std::vector<RoI*> Interpolator::getRoIStream(FrameSet& frames, idType roIId) {
+std::vector<RoI*> Interpolator::getRoIStream(SortedFrames& frames, idType roIId) {
   std::vector<RoI*> rois;
   for (Frame* frame : frames) {
     for (RoI& roi : frame->childRoIs) {

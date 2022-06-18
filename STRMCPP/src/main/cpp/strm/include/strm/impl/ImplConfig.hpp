@@ -24,6 +24,7 @@ struct InferenceEngineConfig {
 };
 
 struct IMPLConfig {
+  int NUM_VIDEOS;
   ResizeProfileConfig resizeProfileConfig;
   InferenceEngineConfig inferenceEngineConfig;
 };

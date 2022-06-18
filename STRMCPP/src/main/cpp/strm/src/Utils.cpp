@@ -5,21 +5,6 @@
 
 namespace rm {
 
-FrameSet filterLastFrames(FrameSet& frames) {
-  std::map<std::string, Frame*> lastFrameMap;
-  for (Frame* frame : frames) {
-    if (lastFrameMap.find(frame->key) == lastFrameMap.end() ||
-        lastFrameMap.at(frame->key)->frameIndex < frame->frameIndex) {
-      lastFrameMap[frame->key] = frame;
-    }
-  }
-  FrameSet lastFrames;
-  for (const auto& it : lastFrameMap) {
-    lastFrames.insert(it.second);
-  }
-  return lastFrames;
-}
-
 std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
                              const int numLabels, const float iouThreshold) {
   std::vector<BoundingBox> nmsList;

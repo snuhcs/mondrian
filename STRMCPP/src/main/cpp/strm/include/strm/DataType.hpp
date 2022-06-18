@@ -13,6 +13,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 
 #include "strm/Time.hpp"
+#include "Log.hpp"
 
 namespace rm {
 
@@ -165,7 +166,7 @@ struct FrameIndexComp {
   }
 };
 
-using FrameSet = std::set<Frame*, FrameIndexComp>;
+using SortedFrames = std::set<Frame*, FrameIndexComp>;
 
 struct RoI {
   enum Type {
@@ -243,8 +244,7 @@ struct RoI {
     RoI mergedRoI(nullptr, RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom),
                   roiType, roiLabel,
                   std::make_pair(0, 0), 0, 0);
-    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength >
-                            roi1.targetSize * roi0.maxEdgeLength) ?
+    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength > roi1.targetSize * roi0.maxEdgeLength) ?
                            mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
                            mergedRoI.maxEdgeLength * roi1.targetSize / roi1.maxEdgeLength;
     return mergedRoI;
@@ -332,14 +332,16 @@ struct MixedFrame {
     for (RoI* roi : packedRoIs) {
       assert(roi->isPacked());
       std::pair<int, int> wh = roi->getResizedWidthHeight();
+      LOGD("%d Size : %4d, %4d, %3lu %d", mixedFrameIndex, std::max(wh.first, wh.second), roi->targetSize, roi->childRoIs.size(), roi->type);
+      LOGD("%d PackedLocation : %d, %d", mixedFrameIndex, roi->packedLocation.first, roi->packedLocation.second);
       roi->getResizedMat().copyTo(
           packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
                              wh.first, wh.second)));
     }
   }
 
-  FrameSet getPackedFrames() {
-    FrameSet packedFrames;
+  SortedFrames getPackedFrames() {
+    SortedFrames packedFrames;
     for (RoI* roi : packedRoIs) {
       packedFrames.insert(roi->frame);
     }

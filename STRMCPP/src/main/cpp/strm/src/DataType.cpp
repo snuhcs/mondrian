@@ -17,6 +17,8 @@ void Frame::filterPDRoIs(float threshold) {
       OFRoIs.push_back(&cRoI);
     }
   }
+  int numPD = (int) PDRoIs.size();
+  int numOF = (int) OFRoIs.size();
   for (RoI* PDRoI : PDRoIs) {
     bool foundSimilar = false;
     for (RoI* OFRoI : OFRoIs) {
@@ -34,6 +36,7 @@ void Frame::filterPDRoIs(float threshold) {
     newChildRoIs.push_back(*OFRoI);
   }
   childRoIs = newChildRoIs;
+  LOGD("Frame::filterPDRoIs(%f)                  // %d + %d => %lu", threshold, numPD, numOF, childRoIs.size());
 }
 
 bool Frame::isAllRoIPacked() const {

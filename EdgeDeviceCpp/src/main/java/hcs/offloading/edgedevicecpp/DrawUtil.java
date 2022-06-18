@@ -112,7 +112,8 @@ public class DrawUtil {
                 "scissors",
                 "teddy bear",
                 "hair drier",
-                "toothbrush"};
+                "toothbrush",
+                ""};  // TODO: handle labelName == "" related to PD
         for (int i = 0; i < labels.length; i++) {
             labelMap.put(labels[i], i);
         }

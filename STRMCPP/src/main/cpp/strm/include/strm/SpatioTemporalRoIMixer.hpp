@@ -44,7 +44,8 @@ class SpatioTemporalRoIMixer {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
                          ResizeProfile* resizeProfile,
-                         InferenceEngine* inferenceEngine);
+                         InferenceEngine* inferenceEngine,
+                         int numSourceVideos);
 
   ~SpatioTemporalRoIMixer();
 
@@ -57,11 +58,8 @@ class SpatioTemporalRoIMixer {
 
   void fullFrameInference(Frame* frame);
 
-  static Frame* getFullFrameInferenceFrame(const FrameSet& lastFrames,
+  static Frame* getFullFrameInferenceFrame(const std::map<std::string, SortedFrames>& lastFrames,
                                            int fullFrameInferenceStreamIndex);
-
-  std::vector<BoundingBox> assignIdsToBoxes(
-      const std::vector<BoundingBox>& boxes, std::vector<RoI>& rois, float overlapThreshold);
 
   const STRMConfig mConfig;
   std::thread mThread;
@@ -72,6 +70,11 @@ class SpatioTemporalRoIMixer {
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
+
+  int mNumSourceVideos;
+  int mNumStartedFrameBuffers = 0;
+  std::mutex mStartMtx;
+  std::condition_variable mStartCv;
 
   std::mutex mFrameBuffersMtx;
   std::map<std::string, std::unique_ptr<FrameBuffer>> mFrameBuffers;
