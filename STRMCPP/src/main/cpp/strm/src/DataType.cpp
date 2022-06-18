@@ -7,11 +7,11 @@ const idType UNASSIGNED_ID = 0;
 const std::pair<int, int> RoI::NOT_PACKED = std::make_pair(-1, -1);
 
 bool Frame::isAllRoIPacked() const {
-  return std::all_of(rois.begin(), rois.end(), [](const RoI& roi) { return roi.isPacked(); });
+  return std::all_of(parentRoIs.begin(), parentRoIs.end(), [](const RoI& pRoI) { return pRoI.isPacked(); });
 }
 
 bool Frame::isAllRoIPrepared() const {
-  return std::all_of(rois.begin(), rois.end(), [](const RoI& roi) { return roi.isBoxReady; });
+  return std::all_of(parentRoIs.begin(), parentRoIs.end(), [](const RoI& pRoI) { return pRoI.isBoxReady; });
 }
 
 void Frame::updateBoxesToTrackWithInferenceResult() {
@@ -34,7 +34,7 @@ void Frame::updateBoxesToTrackWithInferenceResult() {
 void Frame::updateBoxesToTrackWithRoIs() {
   // assert(boxesToTrack.empty());  TODO: uncomment assert
   boxesToTrack.clear();
-  std::transform(origRoIs.begin(), origRoIs.end(), std::back_inserter(boxesToTrack),
+  std::transform(childRoIs.begin(), childRoIs.end(), std::back_inserter(boxesToTrack),
                  [](const RoI& roi) {
                    return BoundingBox{roi.id, roi.location, 1, roi.labelName};
                  });

@@ -81,11 +81,12 @@ struct BoundingBox {
   std::string labelName;
   int targetSize;
   idType id;
+  RoI* srcRoI;
 
   BoundingBox(idType id, const Rect location, const float confidence, const std::string labelName,
               int targetSize = -1)
       : id(id), location(location), confidence(confidence), labelName(labelName),
-        targetSize(targetSize) {}
+        targetSize(targetSize), srcRoI(nullptr) {}
 };
 
 enum RoIExtractionStatus {
@@ -115,8 +116,10 @@ struct Frame {
   std::vector<BoundingBox> boxesToTrack;
 
   RoIExtractionStatus roiExtractionStatus;
-  std::vector<RoI> origRoIs; // => box
-  std::vector<RoI> rois;
+  std::vector<RoI> childRoIs; // => box
+  std::vector<RoI> parentRoIs;
+
+  bool isFullFrameTarget;
 
   const time_us enqueueTime;
   time_us dispatcherProcessStartTime = 0;
@@ -144,7 +147,7 @@ struct Frame {
         Frame* prevFrame, const time_us& enqueueTime)
       : key(key), shortKey(key.substr(key.size() - 5, 1)), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), isOFReady(false),
-        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime) {}
+        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime), isFullFrameTarget(false) {}
 
   ~Frame() {
     endTime = NowMicros();
@@ -193,17 +196,21 @@ struct RoI {
 
   inline static std::atomic<idType> lastId = 1;
   idType id;
+  RoI* prevRoI; // only valid with childrenRoIs
+  RoI* nextRoI; // only valid with childrenRoIs
   std::vector<RoI*> childrenRoIs;
+  RoI* parentRoI;
 
   int maxEdgeLength;
   int targetSize;
   std::pair<int, int> packedLocation;
   static const std::pair<int, int> NOT_PACKED;
 
-  bool isBoxReady;
-  std::vector<BoundingBox> boxes;
+  bool isBoxReady; // only valid within parentRoIs
+  std::vector<BoundingBox*> boxes;
 
-  RoI(const idType id,
+  RoI(RoI* prevRoI,
+      const idType id,
       Frame* frame,
       const Rect location,
       const Type type,
@@ -215,7 +222,11 @@ struct RoI {
         features{labelName, type, (float) location.width() / (float) location.height(),
                  std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
-        packedLocation(NOT_PACKED), isBoxReady(false) {};
+        packedLocation(NOT_PACKED), isBoxReady(false), prevRoI(prevRoI), nextRoI(nullptr) {
+    if (prevRoI != nullptr) {
+      prevRoI->nextRoI = this;
+    }
+  };
 
   static RoI mergeRoIs(RoI& roi0, RoI& roi1) {
     assert(roi0.frame == roi1.frame);
@@ -229,7 +240,7 @@ struct RoI {
     std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
                            || roi0.labelName != roi1.labelName
                            ? "" : roi0.labelName;
-    RoI mergedRoI(RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom),
+    RoI mergedRoI(nullptr, RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom),
                   roiType, roiLabel,
                   std::make_pair(0, 0), 0, 0);
     mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength >
@@ -250,15 +261,8 @@ struct RoI {
     if (boxes.empty()) {
       return nullptr;
     }
-    BoundingBox* matchedBox = nullptr;
-    for (BoundingBox& box : boxes) {
-      if (box.id != UNASSIGNED_ID) {
-        matchedBox = &box;
-        break;
-      }
-    }
-    assert(matchedBox != nullptr);
-    return matchedBox;
+    assert(boxes[0]->id != UNASSIGNED_ID);
+    return boxes[0];
   }
 
   bool isProbingReady() const {
@@ -266,8 +270,8 @@ struct RoI {
       return false;
     }
     bool ready = true;
-    for (const RoI& roi : roisForProbing) {
-      ready &= roi.isBoxReady;
+    for (const RoI& pRoI : roisForProbing) {
+      ready &= pRoI.isBoxReady;
     }
     return ready;
   }
@@ -278,21 +282,6 @@ struct RoI {
 
   bool isParent() const {
     return childrenRoIs.size() > 1;
-  }
-
-  BoundingBox* getMatchedBbx() {
-    if (boxes.empty()) {
-      return nullptr;
-    }
-    BoundingBox* matchedBox = nullptr;
-    for(auto& bbx : boxes) {
-      if(bbx.id == id) {
-        matchedBox = &bbx;
-        break;
-      }
-    }
-    assert(matchedBox != nullptr);
-    return matchedBox;
   }
 
   int getArea() const {
@@ -341,12 +330,11 @@ struct MixedFrame {
       : mixedFrameIndex(mixedFrameIndex), packedRoIs(packedRoIs) {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
     for (RoI* roi : packedRoIs) {
-      if (roi->isPacked()) {
-        std::pair<int, int> wh = roi->getResizedWidthHeight();
-        roi->getResizedMat().copyTo(
-            packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
-                               wh.first, wh.second)));
-      }
+      assert(roi->isPacked());
+      std::pair<int, int> wh = roi->getResizedWidthHeight();
+      roi->getResizedMat().copyTo(
+          packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
+                             wh.first, wh.second)));
     }
   }
 

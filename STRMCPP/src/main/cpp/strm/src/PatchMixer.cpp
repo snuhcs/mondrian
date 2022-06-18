@@ -14,9 +14,9 @@ std::vector<MixedFrame> PatchMixer::pack(const std::set<Frame*>& frames,
   int probeStep = 4;
   int probeRoINum = 1; // total 2 * probeRoINum + 1 number of probeRoIs
   for (auto lastFrame : lastFrames) {
-    for (RoI& roi : lastFrame->origRoIs) {
+    for (RoI& roi : lastFrame->childRoIs) {
       for (int i = 0; i < 2 * probeRoINum + 1; i++) {
-        roi.roisForProbing.emplace_back(roi.id, roi.frame, roi.location, roi.type, roi.labelName,
+        roi.roisForProbing.emplace_back(nullptr, roi.id, roi.frame, roi.location, roi.type, roi.labelName,
                                         roi.features.shift, roi.features.err,
                                         roi.features.diffAreaRatio);
       }
@@ -31,14 +31,14 @@ std::vector<MixedFrame> PatchMixer::pack(const std::set<Frame*>& frames,
   }
   // 2. Insert last frame RoIs
   for (Frame* frame : lastFrames) {
-    for (RoI& roi : frame->rois) {
+    for (RoI& roi : frame->parentRoIs) {
       rois.push_back(&roi);
     }
   }
   // 3. Insert others
   for (Frame* frame : frames) {
     if (lastFrames.find(frame) == lastFrames.cend()) {
-      for (RoI& roi : frame->rois) {
+      for (RoI& roi : frame->parentRoIs) {
         rois.push_back(&roi);
       }
     }
