@@ -9,12 +9,12 @@ namespace rm {
 
 class Interpolator {
  public:
-  static void interpolate(std::set<Frame*>& frames);
+  static void interpolate(FrameSet& frames);
 
  private:
-  static std::set<idType> getRoIIds(std::set<Frame*>& frames);
+  static std::set<idType> getRoIIds(FrameSet& frames);
 
-  static std::vector<RoI*> getRoIStream(std::set<Frame*>& frames, idType roIId);
+  static std::vector<RoI*> getRoIStream(FrameSet& frames, idType roIId);
 
   static std::vector<int> findValidRoIs(std::vector<RoI*>& rois);
 

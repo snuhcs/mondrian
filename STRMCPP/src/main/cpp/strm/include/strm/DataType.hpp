@@ -81,11 +81,12 @@ struct BoundingBox {
   std::string labelName;
   int targetSize;
   idType id;
+  const RoI* srcRoI;
 
-  BoundingBox(idType id, const Rect location, const float confidence, const std::string labelName,
+  BoundingBox(idType id, const RoI* srcRoI, const Rect location, const float confidence, const std::string labelName,
               int targetSize = -1)
       : id(id), location(location), confidence(confidence), labelName(labelName),
-        targetSize(targetSize) {}
+        targetSize(targetSize), srcRoI(srcRoI) {}
 };
 
 enum RoIExtractionStatus {
@@ -150,10 +151,6 @@ struct Frame {
     endTime = NowMicros();
   }
 
-  bool operator<(const Frame& frame) const {
-    return frameIndex < frame.frameIndex;
-  }
-
   bool isAllRoIPacked() const;
 
   bool isAllRoIPrepared() const;
@@ -164,6 +161,14 @@ struct Frame {
 
   bool readyForOFExtraction() const;
 };
+
+struct FrameIndexComp {
+  bool operator()(const Frame* lhs, const Frame* rhs) const {
+    return lhs->frameIndex < rhs->frameIndex;
+  }
+};
+
+using FrameSet = std::set<Frame*, FrameIndexComp>;
 
 struct RoI {
   enum Type {
@@ -190,9 +195,11 @@ struct RoI {
   std::string labelName;
   Features features;
   std::vector<RoI> roisForProbing;
+  float priority;
 
   inline static std::atomic<idType> lastId = 1;
   idType id;
+  const RoI* prevRoI;
   std::vector<RoI*> childrenRoIs;
 
   int maxEdgeLength;
@@ -205,13 +212,14 @@ struct RoI {
 
   RoI(const idType id,
       Frame* frame,
+      const RoI* prevRoI,
       const Rect location,
       const Type type,
       const std::string labelName,
       const std::pair<int, int>& shift,
       const float err,
       const float diffAreaRatio)
-      : id(id), frame(frame), location(location), type(type), labelName(labelName),
+      : id(id), frame(frame), prevRoI(prevRoI), location(location), type(type), labelName(labelName),
         features{labelName, type, (float) location.width() / (float) location.height(),
                  std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
@@ -229,9 +237,7 @@ struct RoI {
     std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
                            || roi0.labelName != roi1.labelName
                            ? "" : roi0.labelName;
-    RoI mergedRoI(RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom),
-                  roiType, roiLabel,
-                  std::make_pair(0, 0), 0, 0);
+    RoI mergedRoI(RoI::getNewIds(1).first, roi0.frame, nullptr, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel, std::make_pair(0, 0), 0, 0);
     mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength >
                             roi1.targetSize * roi0.maxEdgeLength) ?
                            mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
@@ -327,7 +333,7 @@ struct RoI {
     return resizedMat;
   }
 
-  bool operator < (const RoI& roi) const {
+  bool operator<(const RoI& roi) const {
     return (targetSize < roi.targetSize);
   }
 };
@@ -350,8 +356,8 @@ struct MixedFrame {
     }
   }
 
-  std::set<Frame*> getPackedFrames() {
-    std::set<Frame*> packedFrames;
+  FrameSet getPackedFrames() {
+    FrameSet packedFrames;
     for (RoI* roi : rois) {
       packedFrames.insert(roi->frame);
     }

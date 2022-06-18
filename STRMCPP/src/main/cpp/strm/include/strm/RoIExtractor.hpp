@@ -28,7 +28,7 @@ class RoIExtractor {
 
   void preprocess(Frame* frame) const;
 
-  std::set<Frame*> getExtractedFrames();
+  FrameSet getExtractedFrames();
 
  private:
   void work();
@@ -68,7 +68,7 @@ class RoIExtractor {
   std::condition_variable cv;
   std::list<Frame*> mFramesForPD;
   std::list<Frame*> mFramesForOF;
-  std::set<Frame*> mOFProcessingStartedFrames;
+  FrameSet mOFProcessingStartedFrames;
 };
 
 } // namespace rm

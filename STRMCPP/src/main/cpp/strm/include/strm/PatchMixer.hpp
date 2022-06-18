@@ -17,8 +17,8 @@ namespace rm {
 
 class PatchMixer {
  public:
-  static std::vector<MixedFrame> pack(const std::set<Frame*>& frames,
-                                      const std::set<Frame*>& lastFrames,
+  static std::vector<MixedFrame> pack(const FrameSet& frames,
+                                      const FrameSet& lastFrames,
                                       int mixedFrameSize, int numMixedFrames);
 
  private:

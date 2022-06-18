@@ -2,7 +2,7 @@
 
 namespace rm {
 
-void Interpolator::interpolate(std::set<Frame*>& frames) {
+void Interpolator::interpolate(FrameSet& frames) {
   std::set<idType> roIIds = getRoIIds(frames);
   for (auto id : roIIds) {
     std::vector<RoI*> rois = getRoIStream(frames, id);
@@ -20,7 +20,7 @@ void Interpolator::interpolate(std::set<Frame*>& frames) {
   }
 }
 
-std::set<idType> Interpolator::getRoIIds(std::set<Frame*>& frames) {
+std::set<idType> Interpolator::getRoIIds(FrameSet& frames) {
   std::set<idType> ids;
   for (const Frame* frame : frames) {
     for (const RoI& roi : frame->origRoIs) {
@@ -30,7 +30,7 @@ std::set<idType> Interpolator::getRoIIds(std::set<Frame*>& frames) {
   return ids;
 }
 
-std::vector<RoI*> Interpolator::getRoIStream(std::set<Frame*>& frames, idType roIId) {
+std::vector<RoI*> Interpolator::getRoIStream(FrameSet& frames, idType roIId) {
   std::vector<RoI*> rois;
   for (Frame* frame : frames) {
     for (RoI& roi : frame->origRoIs) {
@@ -64,7 +64,7 @@ void Interpolator::extrapolateLeft(std::vector<RoI*> rois, int idx) {
     int newWidth = prevBox->location.width();
     int newHeight = prevBox->location.height();
     Rect newBox(newCenter, newWidth, newHeight);
-    BoundingBox box(prevRoI->id, newBox, prevBox->confidence, prevRoI->labelName);
+    BoundingBox box(prevRoI->id, currRoI, newBox, prevBox->confidence, prevRoI->labelName);
     currRoI->boxes.push_back(box);
     currRoI->frame->boxes.push_back(box);
     prevRoI = currRoI;
@@ -84,7 +84,7 @@ void Interpolator::extrapolateRight(std::vector<RoI*> rois, int idx) {
     int newWidth = prevBox->location.width();
     int newHeight = prevBox->location.height();
     Rect newBox(newCenter, newWidth, newHeight);
-    BoundingBox box(prevRoI->id, newBox, prevBox->confidence, prevRoI->labelName);
+    BoundingBox box(prevRoI->id, currRoI, newBox, prevBox->confidence, prevRoI->labelName);
     currRoI->boxes.push_back(box);
     currRoI->frame->boxes.push_back(box);
     prevRoI = currRoI;
@@ -110,7 +110,7 @@ void Interpolator::interpolateBetween(std::vector<RoI*> rois, int leftIdx, int r
     int newWidth = prevBox->location.width();
     int newHeight = prevBox->location.height();
     Rect newBox(newCenter, newWidth, newHeight);
-    BoundingBox box(prevRoI->id, newBox, prevBox->confidence, prevRoI->labelName);
+    BoundingBox box(prevRoI->id, currRoI, newBox, prevBox->confidence, prevRoI->labelName);
     currRoI->boxes.push_back(box);
     currRoI->frame->boxes.push_back(box);
     prevRoI = currRoI;

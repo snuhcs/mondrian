@@ -78,7 +78,7 @@ void SpatioTemporalRoIMixer::work() {
   while (!mbStop) {
     LOGD("========== Schedule %d Start ==========", scheduleID);
     startTime = NowMicros();
-    std::set<Frame*> frames = mRoIExtractor->getExtractedFrames();
+    FrameSet frames = mRoIExtractor->getExtractedFrames();
     roiGettingTime = NowMicros();
     LOGD("SpatioTemporalRoIMixer::work() getExtractedFrames() took %lu us  // %lu frames",
          roiGettingTime - startTime, frames.size());
@@ -102,7 +102,7 @@ void SpatioTemporalRoIMixer::work() {
     }
 
     // Full Frame Inference
-    std::set<Frame*> lastFrames = filterLastFrames(frames);
+    FrameSet lastFrames = filterLastFrames(frames);
     for (Frame* frame : lastFrames) {
       frame->boxesToTrack.clear();
     }
@@ -112,6 +112,10 @@ void SpatioTemporalRoIMixer::work() {
     frames.erase(frames.find(fullFrameTarget));
     fullFrameInference(fullFrameTarget);
     fullFrameInferenceTime = NowMicros();
+
+    LOGD("SLEEP");
+    std::this_thread::sleep_for(std::chrono::seconds(30));
+
     remainingTime = scheduleInterval < (fullFrameInferenceTime - startTime) ? 0 :
                     scheduleInterval - (fullFrameInferenceTime - startTime);
     long long inferenceTimeUs = mInferenceEngine->getInferenceTimeMs() * 1000;
@@ -132,7 +136,7 @@ void SpatioTemporalRoIMixer::work() {
                      return mInferenceEngine->enqueue(mixedFrame.packedMat);
                    });
 
-    std::set<Frame*> processedFrames;
+    FrameSet processedFrames;
     for (int i = 0; i < mixedFrames.size(); i++) {
       std::vector<BoundingBox> results = mInferenceEngine->getResults(handles[i]);
       mixedFrames[i].packedMat.release();
@@ -188,7 +192,7 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   // TODO: use currFrame->origRoIs for ID mapping
   frame->boxes = assignIdsToBoxes(
       mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat)),
-      frame->prevFrame == nullptr ? emptyRoIs : frame->prevFrame->origRoIs,
+      frame->prevFrame == nullptr ? emptyRoIs : frame->origRoIs,
       mConfig.patchReconstructorConfig.OVERLAP_THRESHOLD);
   frame->updateBoxesToTrackWithInferenceResult();
 
@@ -198,7 +202,7 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   mResultsCv.notify_all();
 }
 
-Frame* SpatioTemporalRoIMixer::getFullFrameInferenceFrame(const std::set<Frame*>& lastFrames,
+Frame* SpatioTemporalRoIMixer::getFullFrameInferenceFrame(const FrameSet& lastFrames,
                                                           int fullFrameInferenceStreamIndex) {
   auto it = lastFrames.begin();
   for (int i = 0; i < fullFrameInferenceStreamIndex % lastFrames.size(); i++) {
@@ -258,9 +262,9 @@ std::vector<BoundingBox> SpatioTemporalRoIMixer::assignIdsToBoxes(
       }
     }
     if (maxRoI != nullptr && maxOverlap >= overlapThreshold) {
-      maxRoI->boxes.emplace_back(UNASSIGNED_ID, box.location, box.confidence, box.labelName);
+      maxRoI->boxes.emplace_back(UNASSIGNED_ID, maxRoI, box.location, box.confidence, box.labelName);
     } else {
-      unassignedBoxes.emplace_back(UNASSIGNED_ID, box.location, box.confidence, box.labelName);
+      unassignedBoxes.emplace_back(UNASSIGNED_ID, nullptr, box.location, box.confidence, box.labelName);
     }
   }
 
@@ -278,14 +282,13 @@ std::vector<BoundingBox> SpatioTemporalRoIMixer::assignIdsToBoxes(
     }
     if (maxIndex != -1) {
       BoundingBox& box = roi.boxes[maxIndex];
-      assignedBoxes.emplace_back(roi.id, box.location, box.confidence, box.labelName);
+      assignedBoxes.emplace_back(roi.id, &roi, box.location, box.confidence, box.labelName);
       for (int i = 0; i < roi.boxes.size(); ++i) {
         if (i == maxIndex) continue;
-        unassignedBoxes.emplace_back(UNASSIGNED_ID, box.location, box.confidence, box.labelName);
+        unassignedBoxes.emplace_back(UNASSIGNED_ID, nullptr, box.location, box.confidence, box.labelName);
       }
     }
   }
-
 
   // If unassigned Boxes exist (1. those who does not match with any RoI 2. those who lost competition between other Boxes in single RoI),
   // classify them as newly appeared objects and assign new Id
@@ -294,7 +297,7 @@ std::vector<BoundingBox> SpatioTemporalRoIMixer::assignIdsToBoxes(
     idType id = idRange.first;
     for (const BoundingBox& box : unassignedBoxes) {
       assert(id < idRange.second);
-      assignedBoxes.emplace_back(id++, box.location, box.confidence, box.labelName);
+      assignedBoxes.emplace_back(id++, nullptr, box.location, box.confidence, box.labelName);
     }
   }
 

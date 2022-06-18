@@ -41,7 +41,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
       }
     }
     if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
-      maxRoI->boxes.emplace_back(UNASSIGNED_ID, maxBoxPos, box.confidence, box.labelName, maxRoI->targetSize);
+      maxRoI->boxes.emplace_back(UNASSIGNED_ID, nullptr, maxBoxPos, box.confidence, box.labelName, maxRoI->targetSize);
       float maxOrigOverlap = -1;
       RoI* maxOrigRoI = nullptr;
       for (RoI* origRoI : maxRoI->childrenRoIs) {
@@ -53,7 +53,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
         }
       }
       if (maxOrigRoI != nullptr && maxOrigOverlap >= mConfig.OVERLAP_THRESHOLD) {
-        maxOrigRoI->boxes.emplace_back(maxOrigRoI->id, maxBoxPos, box.confidence, box.labelName, maxOrigRoI->targetSize);
+        maxOrigRoI->boxes.emplace_back(maxOrigRoI->id, maxOrigRoI, maxBoxPos, box.confidence, box.labelName, maxOrigRoI->targetSize);
       }
     }
   }
@@ -75,12 +75,11 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
 
         if (maxIndex != -1) {
           BoundingBox& box = origRoI->boxes[maxIndex];
-          origRoI->frame->boxes.emplace_back(origRoI->id, box.location, box.confidence,
-                                             box.labelName, box.targetSize);
+          origRoI->frame->boxes.emplace_back(origRoI->id, origRoI, box.location, box.confidence, box.labelName, box.targetSize);
           for (int i = 0; i < origRoI->boxes.size(); ++i) {
             if (i == maxIndex) continue;
             unassignedBoxes.emplace_back(
-                BoundingBox{UNASSIGNED_ID, box.location, box.confidence, box.labelName,
+                BoundingBox{UNASSIGNED_ID, nullptr, box.location, box.confidence, box.labelName,
                             box.targetSize}, origRoI->frame);
           }
         }
@@ -95,23 +94,25 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
         assert(id < idRange.second);
         BoundingBox& box = unassignedBox.first;
         Frame* frame = unassignedBox.second;
-        frame->boxes.emplace_back(id++, box.location, box.confidence, box.labelName,
+        frame->boxes.emplace_back(id++, nullptr, box.location, box.confidence, box.labelName,
                                   box.targetSize);
       }
     }
   }
   for (RoI* roi : mixedFrame.rois) {
-    assert(std::any_of(roi->boxes.begin(), roi->boxes.end(),
-                       [](const BoundingBox& box){ return box.id != UNASSIGNED_ID; }));
+    if (!roi->boxes.empty()) {
+      assert(std::any_of(roi->boxes.begin(), roi->boxes.end(),
+                         [](const BoundingBox& box){ return box.id != UNASSIGNED_ID; }));
+    }
     roi->isBoxReady = true;
   }
 
-  std::set<Frame*> packedFrames = mixedFrame.getPackedFrames();
+  FrameSet packedFrames = mixedFrame.getPackedFrames();
   for (Frame* frame : packedFrames) {
     frame->boxes = nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
   }
 
-  std::set<Frame*> lastFrames = filterLastFrames(packedFrames);
+  FrameSet lastFrames = filterLastFrames(packedFrames);
   for (auto lastFrame : lastFrames) {
     for (RoI& roi : lastFrame->origRoIs) {
       if (roi.isProbingReady()) {

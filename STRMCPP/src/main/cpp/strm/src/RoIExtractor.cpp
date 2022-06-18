@@ -52,17 +52,17 @@ void RoIExtractor::preprocess(Frame* frame) const {
   assert(frame->preProcessedMat.channels() == 1);
 }
 
-std::set<Frame*> RoIExtractor::getExtractedFrames() {
+FrameSet RoIExtractor::getExtractedFrames() {
   std::unique_lock<std::mutex> lock(mtx);
-  std::set<Frame*> extractedFrames = std::move(mOFProcessingStartedFrames);
+  FrameSet extractedFrames = std::move(mOFProcessingStartedFrames);
   mOFProcessingStartedFrames.clear();
+  for (Frame* frame : extractedFrames) {
+    frame->isOFReady = false;
+  }
   cv.wait(lock, [&extractedFrames]() {
     return extractedFrames.empty() ||
            (*extractedFrames.rbegin())->roiExtractionStatus == OF_EXTRACTED;
   });
-  for (Frame* frame : extractedFrames) {
-    frame->isOFReady = false;
-  }
   return extractedFrames;
 }
 
@@ -289,8 +289,7 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
       int newRight = std::min(width, loc.right + shift.first);
       int newBottom = std::min(height, loc.bottom + shift.second);
       if (newLeft < newRight && newTop < newBottom) {
-        opticalFlowRoIs.emplace_back(box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-                                     RoI::Type::OF, box.labelName, shift, err, 0);
+        opticalFlowRoIs.emplace_back(box.id, currFrame, box.srcRoI, Rect(newLeft, newTop, newRight, newBottom), RoI::Type::OF, box.labelName, shift, err, 0);
       }
     }
   }
@@ -385,6 +384,7 @@ std::vector<RoI> RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* c
     rois.emplace_back(
         RoI::getNewIds(1).first,
         currFrame,
+        nullptr,
         boxAndFeature.first,
         RoI::PD,
         "",

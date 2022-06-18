@@ -57,7 +57,7 @@ class SpatioTemporalRoIMixer {
 
   void fullFrameInference(Frame* frame);
 
-  static Frame* getFullFrameInferenceFrame(const std::set<Frame*>& lastFrames,
+  static Frame* getFullFrameInferenceFrame(const FrameSet& lastFrames,
                                            int fullFrameInferenceStreamIndex);
 
   static std::vector<BoundingBox> assignIdsToBoxes(

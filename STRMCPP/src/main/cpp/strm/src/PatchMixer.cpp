@@ -4,8 +4,8 @@ namespace rm {
 
 int PatchMixer::mMixedFrameIndex = 0;
 
-std::vector<MixedFrame> PatchMixer::pack(const std::set<Frame*>& frames,
-                                         const std::set<Frame*>& lastFrames,
+std::vector<MixedFrame> PatchMixer::pack(const FrameSet& frames,
+                                         const FrameSet& lastFrames,
                                          int mixedFrameSize, int numMixedFrames) {
   // Collect RoIs. Later frame RoIs come first.
   std::vector<RoI*> rois;
@@ -16,8 +16,8 @@ std::vector<MixedFrame> PatchMixer::pack(const std::set<Frame*>& frames,
   for (auto lastFrame : lastFrames) {
     for (RoI& roi : lastFrame->origRoIs) {
       for (int i = 0; i < 2 * probeRoINum + 1; i++) {
-        roi.roisForProbing.emplace_back(roi.id, roi.frame, roi.location, roi.type, roi.labelName,
-                                        roi.features.shift, roi.features.err,
+        roi.roisForProbing.emplace_back(roi.id, roi.frame, roi.prevRoI, roi.location, roi.type,
+                                        roi.labelName, roi.features.shift, roi.features.err,
                                         roi.features.diffAreaRatio);
       }
       int probe = -probeStep * probeRoINum;
@@ -29,20 +29,28 @@ std::vector<MixedFrame> PatchMixer::pack(const std::set<Frame*>& frames,
       std::sort(roi.roisForProbing.begin(), roi.roisForProbing.end());
     }
   }
-  // 2. Insert last frame RoIs
-  for (Frame* frame : lastFrames) {
-    for (RoI& roi : frame->rois) {
-      rois.push_back(&roi);
-    }
-  }
-  // 3. Insert others
+  // 3. Set priority & sort rois
+  const float HIGH_PRIORITY = 1e9;
+  std::map<idType, std::vector<RoI*>> roiStreams;
   for (Frame* frame : frames) {
-    if (lastFrames.find(frame) == lastFrames.cend()) {
-      for (RoI& roi : frame->rois) {
-        rois.push_back(&roi);
+    for (RoI& roi : frame->rois) {
+      roiStreams[roi.id].push_back(&roi);
+      if (roi.prevRoI != nullptr) {
+        std::pair<int, int> shiftDiff{roi.features.shift.first - roi.prevRoI->features.shift.first,
+                                      roi.features.shift.second - roi.prevRoI->features.shift.second};
+        roi.priority = roi.features.err + (float) (shiftDiff.first * shiftDiff.first + shiftDiff.second * shiftDiff.second);
+      } else {
+        roi.priority = HIGH_PRIORITY;
       }
     }
   }
+  // insert lastFrames first
+  for (Frame* frame : lastFrames) {
+    for (RoI& roi : frame->rois) {
+      roi.priority = HIGH_PRIORITY;
+    }
+  }
+  std::sort(rois.begin(), rois.end(), [](const RoI* l, const RoI* r) { return r->priority < l->priority; });
 
   std::vector<RoI*> droppedRoIs;
   std::map<int, std::vector<RoI*>> packedRoIs;

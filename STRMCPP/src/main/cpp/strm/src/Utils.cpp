@@ -5,7 +5,7 @@
 
 namespace rm {
 
-std::set<Frame*> filterLastFrames(std::set<Frame*>& frames) {
+FrameSet filterLastFrames(FrameSet& frames) {
   std::map<std::string, Frame*> lastFrameMap;
   for (Frame* frame : frames) {
     if (lastFrameMap.find(frame->key) == lastFrameMap.end() ||
@@ -13,8 +13,8 @@ std::set<Frame*> filterLastFrames(std::set<Frame*>& frames) {
       lastFrameMap[frame->key] = frame;
     }
   }
-  std::set<Frame*> lastFrames;
-  for (auto& it : lastFrameMap) {
+  FrameSet lastFrames;
+  for (const auto& it : lastFrameMap) {
     lastFrames.insert(it.second);
   }
   return lastFrames;
