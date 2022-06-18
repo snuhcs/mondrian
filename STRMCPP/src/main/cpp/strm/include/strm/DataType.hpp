@@ -152,8 +152,6 @@ struct Frame {
 
   void filterPDRoIs(float threshold);
 
-  bool isAllRoIPacked() const;
-
   bool isAllRoIPrepared() const;
 
   bool readyForOFExtraction() const;

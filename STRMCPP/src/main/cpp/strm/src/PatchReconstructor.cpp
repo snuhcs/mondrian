@@ -66,9 +66,7 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
                                  box->srcRoI->label == box->label &&
                                  box->srcRoI->id == box->id);
                        }));
-    LOGD("Before nms: %lu", frame->boxes.size());
     nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
-    LOGD("After  nms: %lu", frame->boxes.size());
     assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
                        [](const std::unique_ptr<BoundingBox>& box) {
                          return box->srcRoI == nullptr ||

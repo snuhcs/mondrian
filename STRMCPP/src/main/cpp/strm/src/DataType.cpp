@@ -36,10 +36,6 @@ void Frame::filterPDRoIs(float threshold) {
   childRoIs = newChildRoIs;
 }
 
-bool Frame::isAllRoIPacked() const {
-  return std::all_of(parentRoIs.begin(), parentRoIs.end(), [](const RoI& pRoI) { return pRoI.isPacked(); });
-}
-
 bool Frame::isAllRoIPrepared() const {
   return std::all_of(parentRoIs.begin(), parentRoIs.end(), [](const RoI& pRoI) { return pRoI.isBoxReady; });
 }
@@ -47,8 +43,9 @@ bool Frame::isAllRoIPrepared() const {
 bool Frame::readyForOFExtraction() const {
   if (prevFrame->useInferenceResultForOF) {
     return prevFrame->isBoxesReady;
+  } else {
+    return true;
   }
-  return true;
 }
 
 } // namespace rm
