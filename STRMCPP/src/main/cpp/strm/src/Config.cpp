@@ -8,7 +8,6 @@
 namespace rm {
 
 bool LOG_INTERNAL = true;
-int Frame::ROI_PADDING = 10;
 
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   RoIExtractorConfig config;
@@ -23,6 +22,9 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   }
   if (!json["min_roi_area"].isNull()) {
     config.MIN_ROI_AREA = json["min_roi_area"].asInt();
+  }
+  if (!json["roi_padding"].isNull()) {
+    config.ROI_PADDING = json["roi_padding"].asInt();
   }
   if (!json["optical_flow_roi_confidence_threshold"].isNull()) {
     config.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = json["optical_flow_roi_confidence_threshold"].asFloat();
@@ -60,9 +62,6 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   LOGD("STRMConfig : %s", json.toStyledString().c_str());
   if (!json["log_internal"].isNull()) {
     LOG_INTERNAL = json["log_internal"].asBool();
-  }
-  if (!json["roi_padding"].isNull()) {
-    Frame::ROI_PADDING = json["roi_padding"].asInt();
   }
   if (!json["buffer_size"].isNull()) {
     config.BUFFER_SIZE = json["buffer_size"].asInt();

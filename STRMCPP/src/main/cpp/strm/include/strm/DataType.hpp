@@ -96,8 +96,6 @@ enum RoIExtractionStatus {
 };
 
 struct Frame {
-  static int ROI_PADDING;
-
   const std::string key;
   const std::string shortKey;
   const int frameIndex;
@@ -109,11 +107,10 @@ struct Frame {
   const int width;
   const int height;
 
-  std::vector<BoundingBox> boxes;
+  bool useInferenceResultForOF;
 
-  // For next frame OF roi extraction
-  bool isOFReady;
-  std::vector<BoundingBox> boxesToTrack;
+  bool isBoxesReady;
+  std::vector<BoundingBox> boxes;
 
   RoIExtractionStatus roiExtractionStatus;
   std::vector<RoI> origRoIs; // => box
@@ -144,7 +141,7 @@ struct Frame {
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime)
       : key(key), shortKey(key.substr(key.size() - 5, 1)), frameIndex(frameIndex), mat(mat),
-        width(mat.cols), height(mat.rows), prevFrame(prevFrame), isOFReady(false),
+        width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
         roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime) {}
 
   ~Frame() {

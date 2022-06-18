@@ -103,18 +103,13 @@ void SpatioTemporalRoIMixer::work() {
 
     // Full Frame Inference
     FrameSet lastFrames = filterLastFrames(frames);
-    for (Frame* frame : lastFrames) {
-      frame->boxesToTrack.clear();
-    }
     Frame* fullFrameTarget = getFullFrameInferenceFrame(lastFrames,
                                                         fullFrameInferenceStreamIndex++);
     lastFrames.erase(lastFrames.find(fullFrameTarget));
     frames.erase(frames.find(fullFrameTarget));
     fullFrameInference(fullFrameTarget);
     fullFrameInferenceTime = NowMicros();
-
-    LOGD("SLEEP");
-    std::this_thread::sleep_for(std::chrono::seconds(30));
+    std::this_thread::sleep_for(std::chrono::seconds (30));
 
     remainingTime = scheduleInterval < (fullFrameInferenceTime - startTime) ? 0 :
                     scheduleInterval - (fullFrameInferenceTime - startTime);
@@ -146,16 +141,16 @@ void SpatioTemporalRoIMixer::work() {
         if (frame->isAllRoIPrepared() && processedFrames.find(frame) == processedFrames.end()) {
           processedFrames.insert(frame);
           if (lastFrames.find(frame) != lastFrames.end()) {
-            frame->updateBoxesToTrackWithInferenceResult();
+            frame->isBoxesReady = true;
+            mRoIExtractor->notify();
           }
         }
       }
     }
 
     frames.insert(fullFrameTarget);
-    Interpolator::interpolate(frames);
+//    Interpolator::interpolate(frames);
 
-    // TODO: Remove this part after implementing interpolation
     std::unique_lock<std::mutex> resultLock(mResultsMtx);
     for (Frame* frame : frames) {
       if (processedFrames.find(frame) == processedFrames.end()) {
@@ -194,7 +189,8 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
       mInferenceEngine->getResults(mInferenceEngine->enqueue(frame->mat)),
       frame->prevFrame == nullptr ? emptyRoIs : frame->origRoIs,
       mConfig.patchReconstructorConfig.OVERLAP_THRESHOLD);
-  frame->updateBoxesToTrackWithInferenceResult();
+  frame->isBoxesReady = true;
+  mRoIExtractor->notify();
 
   std::unique_lock<std::mutex> resultLock(mResultsMtx);
   mResults[{frame->key, frame->frameIndex}] = frame->boxes;
@@ -221,6 +217,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
 
   Frame* frame = mFrameBuffers.at(key)->getFrame(frameIndex);
   if (frameIndex == 0) {
+    frame->useInferenceResultForOF = true;
     mRoIExtractor->preprocess(frame);
     fullFrameInference(frame);
   } else {

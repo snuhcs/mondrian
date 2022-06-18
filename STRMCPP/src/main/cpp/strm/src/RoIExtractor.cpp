@@ -38,7 +38,7 @@ void RoIExtractor::enqueue(Frame* frame) {
 }
 
 void RoIExtractor::notify() {
-  cv.notify_all();
+  cv.notify_one();
 }
 
 void RoIExtractor::preprocess(Frame* frame) const {
@@ -56,8 +56,9 @@ FrameSet RoIExtractor::getExtractedFrames() {
   std::unique_lock<std::mutex> lock(mtx);
   FrameSet extractedFrames = std::move(mOFProcessingStartedFrames);
   mOFProcessingStartedFrames.clear();
+  // TODO: set useInferenceResultForOF = true only for lastFrames
   for (Frame* frame : extractedFrames) {
-    frame->isOFReady = false;
+    frame->useInferenceResultForOF = true;
   }
   cv.wait(lock, [&extractedFrames]() {
     return extractedFrames.empty() ||
@@ -118,8 +119,6 @@ void RoIExtractor::work() {
     }
 
     if (isOF) {
-      frame->updateBoxesToTrackWithRoIs();
-
       frame->resizeRoIStartTime = NowMicros();
       for (auto& roi : frame->origRoIs) {
         roi.targetSize = std::min(roi.maxEdgeLength,
@@ -182,14 +181,24 @@ void RoIExtractor::processOF(Frame* currFrame) {
   assert(currFrame->roiExtractionStatus == OF_EXTRACTING);
   Frame* prevFrame = currFrame->prevFrame;
   std::vector<BoundingBox> reliablePrevBoxes;
-  for (const BoundingBox& bbx : currFrame->prevFrame->boxesToTrack) {
-    if (bbx.confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
-      reliablePrevBoxes.push_back(bbx);
+  if (currFrame->prevFrame->useInferenceResultForOF) {
+    for (const BoundingBox& box : currFrame->prevFrame->boxes) {
+      if (box.confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
+        reliablePrevBoxes.emplace_back(box.id, box.srcRoI, Rect(
+            std::max(0, box.location.left - mConfig.ROI_PADDING),
+            std::max(0, box.location.top - mConfig.ROI_PADDING),
+            std::min(currFrame->width, box.location.right + mConfig.ROI_PADDING),
+            std::min(currFrame->height, box.location.bottom + mConfig.ROI_PADDING)),
+                                       box.confidence, box.labelName);
+      }
+    }
+  } else {
+    for (RoI& roi : currFrame->prevFrame->origRoIs) {
+      reliablePrevBoxes.emplace_back(roi.id, &roi, roi.location, 1, roi.labelName);
     }
   }
   currFrame->opticalFlowRoIProcessStartTime = NowMicros();
-  std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes,
-                                                        mTargetSize);
+  std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes, mTargetSize);
   currFrame->opticalFlowRoIProcessEndTime = NowMicros();
   currFrame->origRoIs.insert(currFrame->origRoIs.end(), opticalFlowRoIs.begin(),
                              opticalFlowRoIs.end());
