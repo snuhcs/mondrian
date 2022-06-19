@@ -37,7 +37,8 @@ class RoIExtractor {
 
   void processOF(Frame* currFrame);
 
-  void mergeRoIs(std::vector<RoI>& childRoIs, std::vector<RoI>& parentRoIs, int maxSize) const;
+  void mergeRoIs(std::vector<RoI>& childRoIs, std::vector<std::unique_ptr<RoI>>& parentRoIs,
+                 int maxSize) const;
 
   static std::vector<RoI> getOpticalFlowRoIs(
       const Frame* prevFrame, Frame* currFrame,

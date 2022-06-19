@@ -9,15 +9,21 @@
                 "width": 1920,
                 "height": 1080,
                 "fps": 30
+            },
+            {
+                "path": "/data/local/tmp/video/VIRAT_S_000002_1801_2401.mp4",
+                "width": 1920,
+                "height": 1080,
+                "fps": 30
             }
         ]
     },
     "draw_output": true,
     "draw_inference_result": true,
     "resize_profile": {
-        "accuracy_aware_resize": false,
-        "probing": false,
-        "resize_margin": 10,
+        "accuracy_aware_resize": true,
+        "probing": true,
+        "resize_margin": 20,
         "static_target_size": 100
     },
     "inference_engine": {

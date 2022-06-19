@@ -14,7 +14,6 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile
     : mConfig(config),
       mTargetSize(cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
       mResizeProfile(resizeProfile), mMaxRoISize(maxRoISize), mbStop(false) {
-  LOGD("RoIExtractor()");
   mThreads.reserve(config.NUM_WORKERS);
   for (int i = 0; i < config.NUM_WORKERS; i++) {
     mThreads.emplace_back([this]() { work(); });
@@ -153,48 +152,23 @@ void RoIExtractor::work() {
 
       frame->resizeRoIStartTime = NowMicros();
       for (auto& roi : frame->childRoIs) {
-        roi.targetSize = std::min(roi.maxEdgeLength, mResizeProfile->getTargetSize(roi.id, roi.features));
+        roi.targetSize = std::min(
+            roi.maxEdgeLength, mResizeProfile->getTargetSize(roi.id, roi.features));
       }
       frame->resizeRoIEndTime = NowMicros();
 
       frame->mergeRoIStartTime = NowMicros();
-      frame->parentRoIs = frame->childRoIs;
+      for (RoI& cRoI : frame->childRoIs) {
+        frame->parentRoIs.push_back(std::make_unique<RoI>(cRoI));
+        assert(frame->parentRoIs.back()->prevRoI == cRoI.prevRoI);
+        assert(frame->parentRoIs.back()->id == cRoI.id);
+        assert(frame->parentRoIs.back()->frame == cRoI.frame);
+        assert(frame->parentRoIs.back()->type == cRoI.type);
+        assert(frame->parentRoIs.back()->label == cRoI.label);
+        assert(frame->parentRoIs.back()->targetSize == cRoI.targetSize);
+      }
       mergeRoIs(frame->childRoIs, frame->parentRoIs, mMaxRoISize);
       frame->mergeRoIEndTime = NowMicros();
-
-      long PDnum = std::count_if(frame->childRoIs.begin(), frame->childRoIs.end(),
-                                [](const RoI& roi) { return roi.type == RoI::Type::PD; });
-      long OFnum = std::count_if(frame->childRoIs.begin(), frame->childRoIs.end(),
-                                [](const RoI& roi) { return roi.type == RoI::Type::OF; });
-
-      long mergedNum = (int) frame->parentRoIs.size();
-
-      LOGD("RoIExtractor::mergeRoIs(%s, %4d) took %4lu us  // %lu + %lu => %lu",
-           frame->shortKey.c_str(),
-           frame->frameIndex, frame->mergeRoIEndTime - frame->mergeRoIStartTime,
-           PDnum,
-           OFnum,
-           frame->parentRoIs.size());
-
-      if ((PDnum + OFnum) != mergedNum) {
-        LOGE("RoIExtractor::mergeRoIs(%s, %4d) // %lu reduced",
-             frame->shortKey.c_str(),
-             frame->frameIndex,
-             (PDnum +OFnum) - mergedNum);
-      }
-
-      long realMergedNum = 0;
-      for (RoI& pRoI : frame->parentRoIs) {
-        if (pRoI.childRoIs.size() > 1) {
-          realMergedNum++;
-        }
-      }
-      if(realMergedNum != 0) {
-        LOGE("RoIExtractor::mergeRoIs(%s, %4d) // %lu are merged RoIs ",
-             frame->shortKey.c_str(),
-             frame->frameIndex,
-             realMergedNum);
-      }
 
       testAssignedUniqueRoIID(frame->childRoIs);
       testParentChildrenIDsAndChildIDsSame(frame->childRoIs, frame->parentRoIs);
@@ -219,19 +193,21 @@ void RoIExtractor::processPD(Frame* currFrame) {
                                                     mConfig.MIN_ROI_AREA);
   testAssignedUniqueRoIID(pixelDiffRoIs);
   currFrame->pixelDiffRoIProcessEndTime = NowMicros();
-  currFrame->childRoIs.insert(currFrame->childRoIs.end(), pixelDiffRoIs.begin(), pixelDiffRoIs.end());
-  LOGD("RoIExtractor::processPD(%s, %4d) took %4lu us", currFrame->shortKey.c_str(),
-       currFrame->frameIndex,
-       currFrame->pixelDiffRoIProcessEndTime - currFrame->pixelDiffRoIProcessStartTime);
+  currFrame->childRoIs.insert(currFrame->childRoIs.end(),
+                              pixelDiffRoIs.begin(), pixelDiffRoIs.end());
+  LOGD("RoIExtractor::processPD(%s, %4d) took %4lu us  // %lu",
+       currFrame->shortKey.c_str(), currFrame->frameIndex,
+       currFrame->pixelDiffRoIProcessEndTime - currFrame->pixelDiffRoIProcessStartTime,
+       pixelDiffRoIs.size());
 }
 
 void RoIExtractor::processOF(Frame* currFrame) {
   assert(currFrame->roiExtractionStatus == OF_EXTRACTING);
   Frame* prevFrame = currFrame->prevFrame;
   std::vector<BoundingBox> reliablePrevBoxes;
-  if (currFrame->prevFrame->useInferenceResultForOF) {
-    testAssignedUniqueBoxID(currFrame->prevFrame->boxes);
-    for (const std::unique_ptr<BoundingBox>& box : currFrame->prevFrame->boxes) {
+  if (prevFrame->useInferenceResultForOF) {
+    testAssignedUniqueBoxID(prevFrame->boxes);
+    for (const std::unique_ptr<BoundingBox>& box : prevFrame->boxes) {
       if (box->confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
         reliablePrevBoxes.emplace_back(box->id, Rect(
             std::max(0, box->location.left - mConfig.ROI_PADDING),
@@ -249,24 +225,28 @@ void RoIExtractor::processOF(Frame* currFrame) {
     }
   }
   currFrame->opticalFlowRoIProcessStartTime = NowMicros();
-  std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes, mTargetSize);
+  std::vector<RoI> opticalFlowRoIs = getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes,
+                                                        mTargetSize);
   currFrame->opticalFlowRoIProcessEndTime = NowMicros();
   testAssignedUniqueRoIID(opticalFlowRoIs);
   currFrame->childRoIs.insert(currFrame->childRoIs.end(), opticalFlowRoIs.begin(),
                               opticalFlowRoIs.end());
-  LOGD("RoIExtractor::processOF(%s, %4d) took %4lu us", currFrame->shortKey.c_str(),
-       currFrame->frameIndex,
-       currFrame->opticalFlowRoIProcessEndTime - currFrame->opticalFlowRoIProcessStartTime);
+  LOGD("RoIExtractor::processOF(%s, %4d) took %4lu us  // %lu",
+       currFrame->shortKey.c_str(), currFrame->frameIndex,
+       currFrame->opticalFlowRoIProcessEndTime - currFrame->opticalFlowRoIProcessStartTime,
+       opticalFlowRoIs.size());
 }
 
-void RoIExtractor::mergeRoIs(std::vector<RoI>& childRoIs, std::vector<RoI>& parentRoIs, int maxSize) const {
+void RoIExtractor::mergeRoIs(std::vector<RoI>& childRoIs,
+                             std::vector<std::unique_ptr<RoI>>& parentRoIs,
+                             int maxSize) const {
   // Match roi <=> origRoI ID before merge
-  for (RoI& pRoI : parentRoIs) {
-    pRoI.childRoIs.clear();
+  for (auto& pRoI : parentRoIs) {
+    pRoI->childRoIs.clear();
     for (RoI& cRoI : childRoIs) {
-      if (cRoI.id == pRoI.id) {
-        pRoI.childRoIs.push_back(&cRoI);
-        cRoI.parentRoI = &pRoI;
+      if (cRoI.id == pRoI->id) {
+        pRoI->childRoIs.push_back(&cRoI);
+        cRoI.parentRoI = pRoI.get();
       }
     }
   }
@@ -275,31 +255,31 @@ void RoIExtractor::mergeRoIs(std::vector<RoI>& childRoIs, std::vector<RoI>& pare
     int i, j;
     for (i = 0; i < parentRoIs.size(); i++) {
       for (j = i + 1; j < parentRoIs.size(); j++) {
-        const RoI& roi0 = parentRoIs[i];
-        const RoI& roi1 = parentRoIs[j];
-        int intersection = roi0.location.intersection(roi1.location);
-        if ((float) intersection / (float) roi0.getArea() < mConfig.MERGE_THRESHOLD &&
-            (float) intersection / (float) roi1.getArea() < mConfig.MERGE_THRESHOLD) {
+        const std::unique_ptr<RoI>& roi0 = parentRoIs[i];
+        const std::unique_ptr<RoI>& roi1 = parentRoIs[j];
+        int intersection = roi0->location.intersection(roi1->location);
+        if ((float) intersection / (float) roi0->getArea() < mConfig.MERGE_THRESHOLD &&
+            (float) intersection / (float) roi1->getArea() < mConfig.MERGE_THRESHOLD) {
           continue;
         }
-        int newLeft = std::min(roi0.location.left, roi1.location.left);
-        int newTop = std::min(roi0.location.top, roi1.location.top);
-        int newRight = std::max(roi0.location.right, roi1.location.right);
-        int newBottom = std::max(roi0.location.bottom, roi1.location.bottom);
+        int newLeft = std::min(roi0->location.left, roi1->location.left);
+        int newTop = std::min(roi0->location.top, roi1->location.top);
+        int newRight = std::max(roi0->location.right, roi1->location.right);
+        int newBottom = std::max(roi0->location.bottom, roi1->location.bottom);
         if (newRight - newLeft > maxSize || newBottom - newTop > maxSize) {
           continue;
         }
         int newArea = (newRight - newLeft) * (newBottom - newLeft);
-        if (roi0.targetSize * roi1.maxEdgeLength > roi1.targetSize * roi0.maxEdgeLength) {
+        if (roi0->targetSize * roi1->maxEdgeLength > roi1->targetSize * roi0->maxEdgeLength) {
           // If roi0 resizes conservatively than roi1
-          newArea = newArea * roi0.targetSize * roi0.targetSize
-                    / roi0.maxEdgeLength / roi0.maxEdgeLength;
+          newArea = newArea * roi0->targetSize * roi0->targetSize
+                    / roi0->maxEdgeLength / roi0->maxEdgeLength;
         } else {
           // If roi1 resizes conservatively than roi0
-          newArea = newArea * roi1.targetSize * roi1.targetSize
-                    / roi1.maxEdgeLength / roi1.maxEdgeLength;
+          newArea = newArea * roi1->targetSize * roi1->targetSize
+                    / roi1->maxEdgeLength / roi1->maxEdgeLength;
         }
-        int originalArea = roi0.getResizedArea() + roi1.getResizedArea();
+        int originalArea = roi0->getResizedArea() + roi1->getResizedArea();
         if (newArea >= originalArea) {
           continue;
         }
@@ -313,19 +293,13 @@ void RoIExtractor::mergeRoIs(std::vector<RoI>& childRoIs, std::vector<RoI>& pare
     if (!updated) {
       break;
     }
-    parentRoIs.push_back(RoI::mergeRoIs(parentRoIs[i], parentRoIs[j]));
+    parentRoIs.push_back(std::move(RoI::mergeRoIs(parentRoIs[i].get(), parentRoIs[j].get())));
     // Match child parent
-    RoI* mergedRoI = &(*parentRoIs.rbegin());
+    RoI* mergedRoI = parentRoIs.rbegin()->get();
     mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
-                                parentRoIs[i].childRoIs.begin(), parentRoIs[i].childRoIs.end());
+                                parentRoIs[i]->childRoIs.begin(), parentRoIs[i]->childRoIs.end());
     mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
-                                parentRoIs[j].childRoIs.begin(), parentRoIs[j].childRoIs.end());
-    std::stringstream ss;
-    for (RoI* cRoI : mergedRoI->childRoIs) {
-      cRoI->parentRoI = mergedRoI;
-      ss << cRoI->id << ", ";
-    }
-    LOGD("MergedRoI Info: targetSize = %d, childRoIs = %s", mergedRoI->targetSize, ss.str().c_str());
+                                parentRoIs[j]->childRoIs.begin(), parentRoIs[j]->childRoIs.end());
     assert(j > i);
     parentRoIs.erase(parentRoIs.begin() + j);
     parentRoIs.erase(parentRoIs.begin() + i);
@@ -358,7 +332,8 @@ std::vector<RoI> RoIExtractor::getOpticalFlowRoIs(
       int newRight = std::min(width, loc.right + shift.first);
       int newBottom = std::min(height, loc.bottom + shift.second);
       if (newLeft < newRight && newTop < newBottom) {
-        opticalFlowRoIs.emplace_back(box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
+        opticalFlowRoIs.emplace_back(box.srcRoI, box.id, currFrame,
+                                     Rect(newLeft, newTop, newRight, newBottom),
                                      RoI::Type::OF, box.label, shift, err, 0);
       }
     }

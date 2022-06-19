@@ -55,8 +55,12 @@ class AccuracyAwareResizeProfile : public ResizeProfile {
         sizeTable.erase(roi.id);
       }
       if (roi.roisForProbing.size() > 1) {
-        int evenBiggerSize = roi.roisForProbing.rbegin()->targetSize + (roi.roisForProbing.rbegin()->targetSize - roi.roisForProbing.begin()->targetSize) / (roi.roisForProbing.size() - 1);
-        sizeTable.insert({roi.id, std::make_pair(getSizeWithFeature(roi.features), evenBiggerSize)});
+        int maxSize = roi.roisForProbing.rbegin()->targetSize;
+        int minSize = roi.roisForProbing.begin()->targetSize;
+        int evenBiggerSize = maxSize + (maxSize - minSize) / (roi.roisForProbing.size() - 1);
+        sizeTable.insert(
+            {roi.id,
+             std::make_pair(getSizeWithFeature(roi.features), evenBiggerSize)});
       }
       return;
     }

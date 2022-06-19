@@ -39,6 +39,8 @@ class FrameBuffer {
   std::vector<std::unique_ptr<Frame>> frames;
 };
 
+using FrameResult = std::tuple<time_us, cv::Mat, std::vector<BoundingBox>>;
+
 class SpatioTemporalRoIMixer {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
@@ -87,7 +89,8 @@ class SpatioTemporalRoIMixer {
 
   std::mutex mResultsMtx;
   std::condition_variable mResultsCv;
-  std::list<std::tuple<std::string, int, time_us, cv::Mat, std::vector<BoundingBox>>> mResults;
+  std::map<std::string, std::map<int, FrameResult>> mResults;
+  std::map<std::string, int> mResultIndices;
 
   const bool draw;
   JavaVM* jvm;

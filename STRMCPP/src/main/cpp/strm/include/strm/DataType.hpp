@@ -16,9 +16,10 @@
 
 namespace rm {
 
-typedef unsigned long idType;
+typedef int idType;
 
 extern const idType UNASSIGNED_ID;
+extern const idType MERGED_ROI_ID;
 
 struct RoI;
 
@@ -37,10 +38,10 @@ struct Rect {
       : left(r.left), top(r.top), right(r.right), bottom(r.bottom) {};
 
   Rect(const std::pair<int, int> center, const int width, const int height) {
-    left = center.first - width/2;
-    right = center.first + width/2;
-    top = center.second - height/2;
-    bottom = center.second + height/2;
+    left = center.first - width / 2;
+    right = center.first + width / 2;
+    top = center.second - height / 2;
+    bottom = center.second + height / 2;
   }
 
   int width() const {
@@ -56,7 +57,7 @@ struct Rect {
   }
 
   std::pair<int, int> center() const {
-    return std::make_pair((int)(right-left)/2,(int)(bottom-top)/2);
+    return std::make_pair((right + left) / 2, (bottom + top) / 2);
   }
 
   int intersection(const Rect& other) const {
@@ -115,7 +116,7 @@ struct Frame {
 
   RoIExtractionStatus roiExtractionStatus;
   std::vector<RoI> childRoIs; // => box
-  std::vector<RoI> parentRoIs;
+  std::vector<std::unique_ptr<RoI>> parentRoIs;
 
   bool isFullFrameTarget;
 
@@ -142,7 +143,8 @@ struct Frame {
         Frame* prevFrame, const time_us& enqueueTime)
       : key(key), shortKey(key.substr(key.size() - 5, 1)), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
-        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime), isFullFrameTarget(false), isBoxesReady(false), isRoIsReady(false) {}
+        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime), isFullFrameTarget(false),
+        isBoxesReady(false), isRoIsReady(false) {}
 
   ~Frame() {
     endTime = NowMicros();
@@ -193,7 +195,7 @@ struct RoI {
   std::vector<RoI> roisForProbing;
   float priority;
 
-  inline static std::atomic<idType> lastId = 1;
+  inline static std::atomic<idType> lastId = 0;
   idType id;
   RoI* prevRoI; // only valid with childRoIs
   RoI* nextRoI; // only valid with childRoIs
@@ -229,32 +231,35 @@ struct RoI {
     }
   };
 
-  static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
-    assert(roi0.frame == roi1.frame);
-    int newLeft = std::min(roi0.location.left, roi1.location.left);
-    int newTop = std::min(roi0.location.top, roi1.location.top);
-    int newRight = std::max(roi0.location.right, roi1.location.right);
-    int newBottom = std::max(roi0.location.bottom, roi1.location.bottom);
-    RoI::Type roiType = roi0.type == RoI::Type::OF || roi1.type == RoI::Type::OF
+  RoI(const RoI& roi) = default;
+
+  static std::unique_ptr<RoI> mergeRoIs(const RoI* roi0, const RoI* roi1) {
+    assert(roi0->frame == roi1->frame);
+    int newLeft = std::min(roi0->location.left, roi1->location.left);
+    int newTop = std::min(roi0->location.top, roi1->location.top);
+    int newRight = std::max(roi0->location.right, roi1->location.right);
+    int newBottom = std::max(roi0->location.bottom, roi1->location.bottom);
+    RoI::Type roiType = roi0->type == RoI::Type::OF || roi1->type == RoI::Type::OF
                         ? RoI::Type::OF
                         : RoI::Type::PD;
     int roiLabel;
-    if (roi0.label == roi1.label) {
-      roiLabel = roi0.label;
-    } else if (roi0.label != -1 && roi1.label == -1) {
-      roiLabel = roi0.label;
-    } else if (roi0.label == -1 && roi1.label != -1) {
-      roiLabel = roi1.label;
+    if (roi0->label == roi1->label) {
+      roiLabel = roi0->label;
+    } else if (roi0->label != -1 && roi1->label == -1) {
+      roiLabel = roi0->label;
+    } else if (roi0->label == -1 && roi1->label != -1) {
+      roiLabel = roi1->label;
     } else {
       roiLabel = -1;
     }
-    RoI mergedRoI(nullptr, RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom),
-                  roiType, roiLabel,
-                  std::make_pair(0, 0), 0, 0);
-    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength > roi1.targetSize * roi0.maxEdgeLength) ?
-                           mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
-                           mergedRoI.maxEdgeLength * roi1.targetSize / roi1.maxEdgeLength;
-    return mergedRoI;
+    std::unique_ptr<RoI> mergedRoI = std::make_unique<RoI>(
+        nullptr, MERGED_ROI_ID, roi0->frame, Rect(newLeft, newTop, newRight, newBottom), roiType,
+        roiLabel, std::make_pair(0, 0), 0, 0);
+    mergedRoI->targetSize = (roi0->targetSize * roi1->maxEdgeLength >
+                             roi1->targetSize * roi0->maxEdgeLength) ?
+                            mergedRoI->maxEdgeLength * roi0->targetSize / roi0->maxEdgeLength :
+                            mergedRoI->maxEdgeLength * roi1->targetSize / roi1->maxEdgeLength;
+    return std::move(mergedRoI);
   }
 
   static std::pair<idType, idType> getNewIds(unsigned long num) {

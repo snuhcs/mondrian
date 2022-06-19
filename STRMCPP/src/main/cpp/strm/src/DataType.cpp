@@ -3,7 +3,8 @@
 
 namespace rm {
 
-const idType UNASSIGNED_ID = 0;
+const idType UNASSIGNED_ID = -1;
+const idType MERGED_ROI_ID = -2;
 
 const std::pair<int, int> RoI::NOT_PACKED{-1, -1};
 
@@ -39,11 +40,14 @@ void Frame::filterPDRoIs(float threshold) {
 
 bool Frame::isReadyToMarry(int mixedFrameIndex) const {
   bool atLeastOneIndexIsSame = false;
-  for (const RoI& pRoI : parentRoIs) {
-    if (pRoI.packedMixedFrameIndex > mixedFrameIndex) {
+  for (const auto& pRoI : parentRoIs) {
+    if (!pRoI->isPacked()) {
+      continue;
+    }
+    if (pRoI->packedMixedFrameIndex > mixedFrameIndex) {
       return false;
     }
-    atLeastOneIndexIsSame |= (pRoI.packedMixedFrameIndex == mixedFrameIndex);
+    atLeastOneIndexIsSame |= (pRoI->packedMixedFrameIndex == mixedFrameIndex);
   }
   return atLeastOneIndexIsSame;
 }

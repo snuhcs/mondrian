@@ -23,20 +23,12 @@ void testAssignedUniqueRoIID(const std::vector<RoI>& rois) {
 }
 
 void testParentChildrenIDsAndChildIDsSame(const std::vector<RoI>& childRoIs,
-                                          const std::vector<RoI>& parentRoIs) {
-  std::set<idType> childIDs;
-  for (const RoI& childRoI : childRoIs) {
-    assert(childIDs.find(childRoI.id) == childIDs.end());
-    childIDs.insert(childRoI.id);
-  }
-  std::set<idType> childrenIDs;
-  for (const RoI& parentRoI : parentRoIs) {
-    for (const RoI* childRoI : parentRoI.childRoIs) {
-      assert(childrenIDs.find(childRoI->id) == childrenIDs.end());
-      childrenIDs.insert(childRoI->id);
+                                          const std::vector<std::unique_ptr<RoI>>& parentRoIs) {
+  for (const auto& parentRoI : parentRoIs) {
+    for (const RoI* childRoI : parentRoI->childRoIs) {
+      assert(childRoI->parentRoI == parentRoI.get());
     }
   }
-  assert(childIDs == childrenIDs);
 }
 
 } // namespace rm

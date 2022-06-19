@@ -6,7 +6,6 @@ namespace rm {
 
 Worker::Worker(CustomInferenceEngine* engine, Classifier* cls)
     : engine(engine), classifier(cls), isClosed(false) {
-  LOGD("Worker::Worker()");
   thread = std::thread([this]() {
     while (!isClosed.load()) {
       Work();
@@ -15,7 +14,6 @@ Worker::Worker(CustomInferenceEngine* engine, Classifier* cls)
 }
 
 void Worker::Work() {
-  LOGD("Worker::work()");
   std::tuple<int, const cv::Mat> input = engine->getInput();
   int handle = std::get<0>(input);
   const cv::Mat mat = std::get<1>(input);

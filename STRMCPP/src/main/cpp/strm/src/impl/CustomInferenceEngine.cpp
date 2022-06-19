@@ -12,8 +12,6 @@ CustomInferenceEngine::CustomInferenceEngine(
     const InferenceEngineConfig& config, JavaVM* vm, JNIEnv* env, jobject strm, bool draw)
     : mConfig(config), mHandle(0), jvm(vm),
       strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
-  LOGD("CppInferenceEngine::CppInferenceEngine()");
-
   class_SpatioTemporalRoIMixer = reinterpret_cast<jclass>(env->NewGlobalRef(
       env->FindClass("hcs/offloading/strmcpp/SpatioTemporalRoIMixer")));
   SpatioTemporalRoIMixer_drawInferenceResult = env->GetMethodID(
@@ -54,45 +52,36 @@ void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config)
 }
 
 int CustomInferenceEngine::enqueue(const cv::Mat mat) {
-  LOGD("CppInferenceEngine::enqueue() start");
   std::unique_lock<std::mutex> inputLock(inputMtx);
   int handle = mHandle++;
   inputs.push(std::make_tuple(handle, mat));
   inputLock.unlock();
   inputCv.notify_all();
-  LOGD("CppInferenceEngine::enqueue() end %d", handle);
   return handle;
 }
 
 std::vector<BoundingBox> CustomInferenceEngine::getResults(const int handle) {
-  LOGD("CppInferenceEngine::getResults(%d)", handle);
   std::unique_lock<std::mutex> resultLock(resultMtx);
   resultCv.wait(resultLock, [this, handle]() {
     return results.find(handle) != results.end();
   });
   std::vector<BoundingBox> boxes = results.at(handle);
   results.erase(results.find(handle));
-  LOGD("CppInferenceEngine::getResults(%d) end", handle);
   return boxes;
 }
 
 std::tuple<int, const cv::Mat> CustomInferenceEngine::getInput() {
-  LOGD("CppInferenceEngine::getInput()");
   std::unique_lock<std::mutex> inputLock(inputMtx);
   inputCv.wait(inputLock, [this]() {
     return !inputs.empty();
   });
   std::tuple<int, const cv::Mat> input = inputs.front();
   inputs.pop();
-  LOGD("CppInferenceEngine::getInput(%d, Mat(%d, %d, %d))",
-       std::get<0>(input), std::get<1>(input).cols, std::get<1>(input).rows,
-       std::get<1>(input).channels());
   return input;
 }
 
 void
 CustomInferenceEngine::enqueueResults(const int handle, const std::vector<BoundingBox>& boxes) {
-  LOGD("CppInferenceEngine::enqueueResults(%d, %d)", handle, (int) boxes.size());
   std::unique_lock<std::mutex> resultLock(resultMtx);
   results.insert(std::make_pair(handle, boxes));
   resultLock.unlock();

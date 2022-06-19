@@ -15,10 +15,11 @@ class PatchReconstructor {
  public:
   PatchReconstructor(const PatchReconstructorConfig& config, ResizeProfile* resizeProfile);
 
-  void reconstructResults(MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const;
+  void assignBoxesToFrame(MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const;
 
-  void matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI> &childRoIs,
-                          std::vector<std::unique_ptr<BoundingBox>> &boxes) const;
+  void matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& childRoIs,
+                          std::vector<std::unique_ptr<BoundingBox>>& boxes) const;
+
   float getIoUThreshold() const;
 
  private:

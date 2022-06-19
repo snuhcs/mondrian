@@ -23,7 +23,7 @@ class PatchMixer {
                                       bool probing);
 
  private:
-  static void tryPackRoIs(std::vector<RoI*>& rois, int mixedFrameSize);
+  static void tryPackRoIs(std::vector<RoI*>& parentRoIs, int mixedFrameSize);
 };
 
 } // namespace rm

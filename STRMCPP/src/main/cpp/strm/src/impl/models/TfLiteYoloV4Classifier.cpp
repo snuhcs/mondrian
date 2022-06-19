@@ -17,7 +17,6 @@ TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceTh
                                                float iouThreshold, bool isTiny)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
                  confidenceThreshold, iouThreshold) {
-  LOGD("YoloV4 TfLiteYoloV4Classifier::TfLiteYoloV4Classifier()");
   std::stringstream ss;
   ss << "/data/local/tmp/models/yolov4-";
   if (isTiny) {
