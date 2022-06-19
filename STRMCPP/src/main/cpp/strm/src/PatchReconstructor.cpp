@@ -113,27 +113,39 @@ void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& 
   // - Boxes can be unmatched, if overlap ratio is lower than threshold
   // - Selection result is saved in roi.boxes
   std::map<RoI*, std::vector<BoundingBox*>> roiToBoxesMap;
-  for (const std::unique_ptr<BoundingBox>& box : boxes) {
+  for (auto it = boxes.begin(); it != boxes.end();) {
+    BoundingBox* box = it->get();
     // find RoI with largest overlap
+    bool kill = false;
     float maxOverlap = -1;
     RoI* maxRoI = nullptr;
     for (RoI& cRoI : childRoIs) {
-      if (isFullFrame || packedRoIs->find(cRoI.parentRoI) != packedRoIs->end()) {
+      if (isFullFrame || cRoI.isPacked()) {
         int intersection = cRoI.location.intersection(box->location);
         assert(box->location.area() != 0);
         float overlapRatio = (float) intersection / (float) box->location.area();
+        if (maxOverlap == 1 && overlapRatio == 1) {
+          kill = true;
+          break;
+        }
         if (maxOverlap < overlapRatio) {
           maxOverlap = overlapRatio;
           maxRoI = &cRoI;
         }
       }
     }
-    // if overlap is large enough, assign box to roi.boxes
-    // else that bounding box is considered as newly appeared object
-    if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
-      roiToBoxesMap[maxRoI].push_back(box.get());
+    if (kill) {
+      it = boxes.erase(it);
+      continue;
     } else {
-      unassignedBoxes.push_back(box.get());
+      // if overlap is large enough, assign box to roi.boxes
+      // else that bounding box is considered as newly appeared object
+      if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
+        roiToBoxesMap[maxRoI].push_back(box);
+      } else {
+        unassignedBoxes.push_back(box);
+      }
+      it++;
     }
   }
   // End of 1
