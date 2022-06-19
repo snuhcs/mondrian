@@ -24,10 +24,26 @@ void testAssignedUniqueRoIID(const std::vector<RoI>& rois) {
 
 void testParentChildrenIDsAndChildIDsSame(const std::vector<RoI>& childRoIs,
                                           const std::vector<std::unique_ptr<RoI>>& parentRoIs) {
-  for (const auto& parentRoI : parentRoIs) {
-    for (const RoI* childRoI : parentRoI->childRoIs) {
-      assert(childRoI->parentRoI == parentRoI.get());
+  for (const auto& pRoI : parentRoIs) {
+    for (const RoI* cRoI : pRoI->childRoIs) {
+      assert(cRoI->parentRoI == pRoI.get());
     }
+  }
+}
+
+void testChildRoIsFrameRelation(const std::vector<RoI>& childRoIs) {
+  for (const auto& cRoI : childRoIs) {
+    assert(std::any_of(cRoI.frame->childRoIs.begin(), cRoI.frame->childRoIs.end(),
+                       [&cRoI](RoI& cRoICandidate) { return &cRoICandidate == &cRoI; }));
+  }
+}
+
+void testParentRoIsFrameRelation(const std::vector<std::unique_ptr<RoI>>& parentRoIs) {
+  for (const auto& pRoI : parentRoIs) {
+    assert(std::any_of(pRoI->frame->parentRoIs.begin(), pRoI->frame->parentRoIs.end(),
+                       [&pRoI](const auto& pRoICandidate) {
+                         return pRoICandidate.get() == pRoI.get();
+                       }));
   }
 }
 

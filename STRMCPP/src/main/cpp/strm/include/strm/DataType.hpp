@@ -208,6 +208,7 @@ struct RoI {
   static const std::pair<int, int> NOT_PACKED;
 
   int packedMixedFrameIndex;
+  bool isProbingRoI;
   bool isMatchTried; // only valid within parentRoIs
   BoundingBox* box;
 
@@ -219,13 +220,14 @@ struct RoI {
       const int label,
       const std::pair<int, int>& shift,
       const float err,
-      const float diffAreaRatio)
+      const float diffAreaRatio,
+      bool isProbingRoI = false)
       : prevRoI(prevRoI), id(id), frame(frame), location(location), type(type), label(label),
         features{label, type, (float) location.width() / (float) location.height(),
                  std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
         packedLocation(NOT_PACKED), isMatchTried(false), nextRoI(nullptr), box(nullptr),
-        packedMixedFrameIndex(INT_MAX) {
+        packedMixedFrameIndex(INT_MAX), isProbingRoI(isProbingRoI) {
     if (prevRoI != nullptr) {
       prevRoI->nextRoI = this;
     }
@@ -233,32 +235,32 @@ struct RoI {
 
   RoI(const RoI& roi) = default;
 
-  static std::unique_ptr<RoI> mergeRoIs(const RoI* roi0, const RoI* roi1) {
-    assert(roi0->frame == roi1->frame);
-    int newLeft = std::min(roi0->location.left, roi1->location.left);
-    int newTop = std::min(roi0->location.top, roi1->location.top);
-    int newRight = std::max(roi0->location.right, roi1->location.right);
-    int newBottom = std::max(roi0->location.bottom, roi1->location.bottom);
-    RoI::Type roiType = roi0->type == RoI::Type::OF || roi1->type == RoI::Type::OF
+  static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
+    assert(pRoI0->frame == pRoI1->frame);
+    int newLeft = std::min(pRoI0->location.left, pRoI1->location.left);
+    int newTop = std::min(pRoI0->location.top, pRoI1->location.top);
+    int newRight = std::max(pRoI0->location.right, pRoI1->location.right);
+    int newBottom = std::max(pRoI0->location.bottom, pRoI1->location.bottom);
+    RoI::Type roiType = pRoI0->type == RoI::Type::OF || pRoI1->type == RoI::Type::OF
                         ? RoI::Type::OF
                         : RoI::Type::PD;
     int roiLabel;
-    if (roi0->label == roi1->label) {
-      roiLabel = roi0->label;
-    } else if (roi0->label != -1 && roi1->label == -1) {
-      roiLabel = roi0->label;
-    } else if (roi0->label == -1 && roi1->label != -1) {
-      roiLabel = roi1->label;
+    if (pRoI0->label == pRoI1->label) {
+      roiLabel = pRoI0->label;
+    } else if (pRoI0->label != -1 && pRoI1->label == -1) {
+      roiLabel = pRoI0->label;
+    } else if (pRoI0->label == -1 && pRoI1->label != -1) {
+      roiLabel = pRoI1->label;
     } else {
       roiLabel = -1;
     }
     std::unique_ptr<RoI> mergedRoI = std::make_unique<RoI>(
-        nullptr, MERGED_ROI_ID, roi0->frame, Rect(newLeft, newTop, newRight, newBottom), roiType,
-        roiLabel, std::make_pair(0, 0), 0, 0);
-    mergedRoI->targetSize = (roi0->targetSize * roi1->maxEdgeLength >
-                             roi1->targetSize * roi0->maxEdgeLength) ?
-                            mergedRoI->maxEdgeLength * roi0->targetSize / roi0->maxEdgeLength :
-                            mergedRoI->maxEdgeLength * roi1->targetSize / roi1->maxEdgeLength;
+        nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
+        roiType, roiLabel, std::make_pair(0, 0), 0, 0);
+    mergedRoI->targetSize = (pRoI0->targetSize * pRoI1->maxEdgeLength >
+                             pRoI1->targetSize * pRoI0->maxEdgeLength) ?
+                            mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :
+                            mergedRoI->maxEdgeLength * pRoI1->targetSize / pRoI1->maxEdgeLength;
     return std::move(mergedRoI);
   }
 

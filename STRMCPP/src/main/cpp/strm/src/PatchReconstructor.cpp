@@ -35,12 +35,10 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
 
   for (RoI* pRoI : packedRoIs) {
     assert(pRoI->frame->boxes.empty());
-  }
-  for (Frame* frame : mixedFrame.getPackedFrames()) {
-    assert(std::all_of(frame->childRoIs.begin(), frame->childRoIs.end(),
-                       [frame](RoI& cRoI) { return cRoI.frame == frame; }));
-    assert(std::all_of(frame->parentRoIs.begin(), frame->parentRoIs.end(),
-                       [frame](auto& pRoI) { return pRoI->frame == frame; }));
+    if (pRoI->isProbingRoI) {
+      assert(std::any_of(pRoI->frame->parentRoIs.begin(), pRoI->frame->parentRoIs.end(),
+                         [&pRoI](auto& pRoICandidate) { return pRoICandidate.get() == pRoI; }));
+    }
   }
   for (const BoundingBox& box : results) {
     assert(box.srcRoI == nullptr);
@@ -66,8 +64,6 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
     if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
       maxRoI->frame->boxes.emplace_back(
           new BoundingBox(UNASSIGNED_ID, maxBoxPos, box.confidence, box.label, maxRoI->targetSize));
-      assert(std::any_of(maxRoI->frame->parentRoIs.begin(), maxRoI->frame->parentRoIs.end(),
-                         [](auto& pRoI) { return pRoI->isPacked(); }));
     }
   }
 

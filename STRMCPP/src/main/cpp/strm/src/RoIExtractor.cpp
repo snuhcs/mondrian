@@ -172,6 +172,8 @@ void RoIExtractor::work() {
 
       testAssignedUniqueRoIID(frame->childRoIs);
       testParentChildrenIDsAndChildIDsSame(frame->childRoIs, frame->parentRoIs);
+      testChildRoIsFrameRelation(frame->childRoIs);
+      testParentRoIsFrameRelation(frame->parentRoIs);
 
       frame->prevFrame->preProcessedMat.release();
       frame->roiExtractionStatus = OF_EXTRACTED;
@@ -300,6 +302,9 @@ void RoIExtractor::mergeRoIs(std::vector<RoI>& childRoIs,
                                 parentRoIs[i]->childRoIs.begin(), parentRoIs[i]->childRoIs.end());
     mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
                                 parentRoIs[j]->childRoIs.begin(), parentRoIs[j]->childRoIs.end());
+    for (RoI* cRoI : mergedRoI->childRoIs) {
+      cRoI->parentRoI = mergedRoI;
+    }
     assert(j > i);
     parentRoIs.erase(parentRoIs.begin() + j);
     parentRoIs.erase(parentRoIs.begin() + i);

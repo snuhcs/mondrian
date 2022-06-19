@@ -28,7 +28,7 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
           childRoI.roisForProbing.emplace_back(nullptr, childRoI.id, childRoI.frame,
                                                childRoI.location, childRoI.type, childRoI.label,
                                                childRoI.features.shift, childRoI.features.err,
-                                               childRoI.features.diffAreaRatio);
+                                               childRoI.features.diffAreaRatio, true);
         }
         int probe = -probeStep * probeRoINum;
         for (RoI& probeRoI : childRoI.roisForProbing) {
@@ -150,6 +150,7 @@ void PatchMixer::tryPackRoIs(std::vector<RoI*>& parentRoIs, int mixedFrameSize) 
   delete[] rects;
   delete[] nodes;
   delete context;
+
 }
 
 } // namespace rm
