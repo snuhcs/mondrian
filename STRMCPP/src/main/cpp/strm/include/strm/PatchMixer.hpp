@@ -24,6 +24,10 @@ class PatchMixer {
 
  private:
   static void tryPackRoIs(std::vector<RoI*>& parentRoIs, int mixedFrameSize);
+
+  static bool canFit(std::pair<int, int> wh, const Rect& rect);
+
+  static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, const Rect& rect);
 };
 
 } // namespace rm

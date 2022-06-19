@@ -124,33 +124,64 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
 }
 
 void PatchMixer::tryPackRoIs(std::vector<RoI*>& parentRoIs, int mixedFrameSize) {
-  int num_nodes = mixedFrameSize;
-  auto* context = new stbrp_context;
-  auto* nodes = new stbrp_node[num_nodes];
-  stbrp_init_target(context, mixedFrameSize, mixedFrameSize, nodes, num_nodes);
-
-  int num_rects = (int) parentRoIs.size();
-  auto* rects = new stbrp_rect[num_rects];
-
-  for (int i = 0; i < num_rects; i++) {
-    rects[i].id = (int) parentRoIs[i]->id;
-    auto wh = parentRoIs[i]->getResizedWidthHeight();
-    rects[i].w = wh.first;
-    rects[i].h = wh.second;
-  }
-
-  int is_all_packed = stbrp_pack_rects(context, rects, num_rects);
-
-  for (int i = 0; i < num_rects; i++) {
-    if (rects[i].was_packed) {
-      parentRoIs[i]->packedLocation = std::make_pair(rects[i].x, rects[i].y);
+  std::vector<Rect> freeRects{Rect(0, 0, mixedFrameSize, mixedFrameSize)};
+  for (RoI* pRoI : parentRoIs) {
+    std::pair<int, int> wh = pRoI->getResizedWidthHeight();
+    for (auto it = freeRects.begin(); it != freeRects.end(); it++) {
+      const Rect freeRect = *it;
+      if (canFit(wh, freeRect)) {
+        freeRects.erase(it);
+        pRoI->packedLocation = std::make_pair(freeRect.left, freeRect.top);
+        std::pair<Rect, Rect> newFreeRectPair = splitFreeRect(wh, freeRect);
+        freeRects.push_back(newFreeRectPair.first);
+        freeRects.push_back(newFreeRectPair.second);
+        break;
+      }
     }
   }
 
-  delete[] rects;
-  delete[] nodes;
-  delete context;
+//  int num_nodes = mixedFrameSize;
+//  auto* context = new stbrp_context;
+//  auto* nodes = new stbrp_node[num_nodes];
+//  stbrp_init_target(context, mixedFrameSize, mixedFrameSize, nodes, num_nodes);
+//
+//  int num_rects = (int) parentRoIs.size();
+//  auto* rects = new stbrp_rect[num_rects];
+//
+//  for (int i = 0; i < num_rects; i++) {
+//    rects[i].id = (int) parentRoIs[i]->id;
+//    auto wh = parentRoIs[i]->getResizedWidthHeight();
+//    rects[i].w = wh.first;
+//    rects[i].h = wh.second;
+//  }
+//
+//  int is_all_packed = stbrp_pack_rects(context, rects, num_rects);
+//
+//  for (int i = 0; i < num_rects; i++) {
+//    if (rects[i].was_packed) {
+//      parentRoIs[i]->packedLocation = std::make_pair(rects[i].x, rects[i].y);
+//    }
+//  }
+//
+//  delete[] rects;
+//  delete[] nodes;
+//  delete context;
+}
 
+bool PatchMixer::canFit(std::pair<int, int> wh, const Rect& rect) {
+  return wh.first <= rect.width() && wh.second <= rect.height();
+}
+
+std::pair<Rect, Rect> PatchMixer::splitFreeRect(std::pair<int, int> wh, const Rect& rect) {
+  int w = wh.first;
+  int h = wh.second;
+  if (rect.width() > rect.height()) {
+    return std::make_pair(Rect(rect.left + w, rect.top, rect.right, rect.bottom),
+                          Rect(rect.left, rect.top + h, rect.left + w, rect.bottom));
+  } else {
+    return std::make_pair(Rect(rect.left, rect.top + h, rect.right, rect.bottom),
+                          Rect(rect.left + w, rect.top, rect.right, rect.top + h));
+  }
 }
 
 } // namespace rm
