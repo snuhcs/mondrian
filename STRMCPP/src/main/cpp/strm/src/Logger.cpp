@@ -52,9 +52,6 @@ void Logger::logHeader() {
           << "mergeRoIEndTime" << delim
           << "mixingStartTime" << delim
           << "mixingEndTime" << delim
-          << "mixedFrameCreateStartTime" << delim
-          << "mixedFrameCreateEndTime" << delim
-          << "mixedFrameEnqueueTime" << delim
           << "reconstructStartTime" << delim
           << "reconstructEndTime" << delim
           << "endTime" << '\n';
@@ -85,9 +82,6 @@ void Logger::log(Frame* frame) {
           << fromBaseTime(frame->resizeRoIEndTime) << delim
           << fromBaseTime(frame->mixingStartTime) << delim
           << fromBaseTime(frame->mixingEndTime) << delim
-          << fromBaseTime(frame->mixedFrameCreateStartTime) << delim
-          << fromBaseTime(frame->mixedFrameCreateEndTime) << delim
-          << fromBaseTime(frame->mixedFrameEnqueueTime) << delim
           << fromBaseTime(frame->reconstructStartTime) << delim
           << fromBaseTime(frame->reconstructEndTime) << delim
           << fromBaseTime(frame->endTime) << '\n';

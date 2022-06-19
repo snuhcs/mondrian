@@ -159,15 +159,6 @@ void RoIExtractor::work() {
 
       frame->mergeRoIStartTime = NowMicros();
       frame->parentRoIs = frame->childRoIs;
-      for (RoI& pRoI : frame->parentRoIs) {
-        assert(pRoI.childRoIs.empty());
-        for (RoI& cRoI : frame->childRoIs) {
-          if (cRoI.id == pRoI.id) {
-            pRoI.childRoIs.push_back(&cRoI);
-            cRoI.parentRoI = &pRoI;
-          }
-        }
-      }
       mergeRoIs(frame->childRoIs, frame->parentRoIs, mMaxRoISize);
       frame->mergeRoIEndTime = NowMicros();
 
@@ -176,7 +167,7 @@ void RoIExtractor::work() {
       long OFnum = std::count_if(frame->childRoIs.begin(), frame->childRoIs.end(),
                                 [](const RoI& roi) { return roi.type == RoI::Type::OF; });
 
-      long mergedNum = frame->parentRoIs.size();
+      long mergedNum = (int) frame->parentRoIs.size();
 
       LOGD("RoIExtractor::mergeRoIs(%s, %4d) took %4lu us  // %lu + %lu => %lu",
            frame->shortKey.c_str(),
@@ -204,7 +195,6 @@ void RoIExtractor::work() {
              frame->frameIndex,
              realMergedNum);
       }
-
 
       testAssignedUniqueRoIID(frame->childRoIs);
       testParentChildrenIDsAndChildIDsSame(frame->childRoIs, frame->parentRoIs);

@@ -157,10 +157,8 @@ void SpatioTemporalRoIMixer::work() {
       // Notify results of processed frames
       for (Frame* frame : mixedFrames[i].getPackedFrames()) {
         if (frame->isReadyToMarry(i)) {
-          assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
-                             [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
-          assert(std::all_of(frame->childRoIs.begin(), frame->childRoIs.end(),
-                             [](const RoI& roi) { return roi.box == nullptr || roi.box->label == 0; }));
+          assert(processedFrames.find(frame) == processedFrames.end());
+
           // Match boxes with RoIs (per frame)
           nms(frame->boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold());
           mPatchReconstructor->matchBoxesWithRoIs(false, frame->childRoIs, frame->boxes);

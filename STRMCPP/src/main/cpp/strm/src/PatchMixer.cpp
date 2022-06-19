@@ -5,8 +5,6 @@
 
 namespace rm {
 
-int PatchMixer::mMixedFrameIndex = 0;
-
 std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrames>& frames,
                                          const Frame* fullFrameTarget,
                                          int mixedFrameSize, int numMixedFrames,
@@ -49,6 +47,9 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
   std::map<idType, std::vector<RoI*>> roiStreams;
   for (const auto& it : frames) {
     for (Frame* frame : it.second) {
+      if (frame == fullFrameTarget) {
+        continue;
+      }
       for (RoI& pRoI : frame->parentRoIs) {
         numParentRoIs++;
         roiStreams[pRoI.id].push_back(&pRoI);
@@ -81,44 +82,36 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
 
   int numTotalRoIs = (int) rois.size();
   int numPackedRoIs = 0;
-  std::vector<std::set<RoI*>> packedRoIs;
-  packedRoIs.resize(numMixedFrames);
+  std::vector<MixedFrame> mixedFrames;
   time_us mixingStartTime = NowMicros();
-  for (int i = 0; i < numMixedFrames; i++) {
+  while (true) {
+    std::set<RoI*> packedRoIs;
     tryPackRoIs(rois, mixedFrameSize);
     for (auto it = rois.begin(); it != rois.end();) {
       if ((*it)->isPacked()) {
         numPackedRoIs++;
-        (*it)->packedMixedFrameIndex = i;
-        packedRoIs[i].insert(*it);
+        (*it)->packedMixedFrameIndex = (int) mixedFrames.size();
+        packedRoIs.insert(*it);
         it = rois.erase(it);
       } else {
         it++;
       }
     }
-  }
-  time_us mixingEndTime = NowMicros();
-
-  time_us mixedFrameCreateStartTime = NowMicros();
-  std::vector<MixedFrame> mixedFrames;
-  mixedFrames.reserve(numMixedFrames);
-  for (int i = 0; i < numMixedFrames; i++) {
-    if (!packedRoIs[i].empty()) {
-      mixedFrames.emplace_back(mMixedFrameIndex++, packedRoIs[i], mixedFrameSize);
+    mixedFrames.emplace_back(packedRoIs, mixedFrameSize);
+    if (rois.empty() || mixedFrames.size() == numMixedFrames) {
+      break;
     }
   }
-  time_us mixedFrameCreateEndTime = NowMicros();
+  time_us mixingEndTime = NowMicros();
 
   for (auto& it : frames) {
     for (Frame* frame : it.second) {
       frame->mixingStartTime = mixingStartTime;
       frame->mixingEndTime = mixingEndTime;
-      frame->mixedFrameCreateStartTime = mixedFrameCreateStartTime;
-      frame->mixedFrameCreateEndTime = mixedFrameCreateEndTime;
     }
   }
-  LOGD("PatchMixer::pack(%lu, %d, %d) took %lu and %lu us : %d / %d packed, %d lastFrameRoIs, %d Probes",
-       frames.size(), mixedFrameSize, numMixedFrames, mixingEndTime - mixingStartTime, mixedFrameCreateEndTime - mixedFrameCreateStartTime,
+  LOGD("PatchMixer::pack(%lu, %d, %d) took %lu us : %d / %d packed, %d lastFrameRoIs, %d Probes",
+       frames.size(), mixedFrameSize, numMixedFrames, mixingEndTime - mixingStartTime,
        numPackedRoIs, numTotalRoIs, numLastFrameRoIs, numProbes);
   return mixedFrames;
 }

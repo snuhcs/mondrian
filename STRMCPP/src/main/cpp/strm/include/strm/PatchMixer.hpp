@@ -24,8 +24,6 @@ class PatchMixer {
 
  private:
   static void tryPackRoIs(std::vector<RoI*>& rois, int mixedFrameSize);
-
-  static int mMixedFrameIndex;
 };
 
 } // namespace rm

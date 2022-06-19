@@ -133,10 +133,7 @@ struct Frame {
   time_us mergeRoIStartTime = 0;
   time_us mergeRoIEndTime = 0;
   time_us mixingStartTime = 0;
-  time_us mixingEndTime = 0;
-  time_us mixedFrameCreateStartTime = 0;
-  time_us mixedFrameCreateEndTime = 0;
-  time_us mixedFrameEnqueueTime = 0;
+  time_us mixingEndTime = 0;;
   time_us reconstructStartTime = 0;
   time_us reconstructEndTime = 0;
   time_us endTime = 0;
@@ -324,12 +321,10 @@ struct RoI {
 };
 
 struct MixedFrame {
-  const int mixedFrameIndex;
   cv::Mat packedMat;
   std::set<RoI*> packedRoIs;
 
-  MixedFrame(const int mixedFrameIndex, std::set<RoI*> packedRoIs, int mixedFrameSize)
-      : mixedFrameIndex(mixedFrameIndex), packedRoIs(packedRoIs) {
+  MixedFrame(std::set<RoI*> packedRoIs, int mixedFrameSize) : packedRoIs(packedRoIs) {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
     for (RoI* roi : packedRoIs) {
       assert(roi->isPacked());

@@ -71,31 +71,8 @@ void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI> &
 
   std::vector<BoundingBox*> unassignedBoxes;
 
-  int marryCount = 0;
-  RoI* marriedRoI = nullptr;
-  for (RoI& cRoI : childRoIs) {
-    marryCount += (cRoI.box != nullptr);
-    if(cRoI.box != nullptr) {
-      marriedRoI = &cRoI;
-    }
-  }
-
-  int marryCount2 = 0;
-  for (auto& box : boxes) {
-    marryCount2 += (box->srcRoI != nullptr);
-    if (box->srcRoI != nullptr) {
-      if (box->srcRoI->box != box.get()) {
-        LOGE("XXX: box's wife is cheating");
-      }
-      if (box->srcRoI != marriedRoI) {
-        LOGE("XXX: they are not couple");
-      }
-    }
-  }
-
-  LOGD("XXX: marryCount: %d, marryCount2: %d", marryCount, marryCount2);
-  assert(marryCount2 == 0);
-  assert(marryCount == 0);
+  assert(std::all_of(childRoIs.begin(), childRoIs.end(), [](RoI& cRoI) { return cRoI.box == nullptr; }));
+  assert(std::all_of(boxes.begin(), boxes.end(), [](auto& box) { return box->srcRoI == nullptr; }));
 
   // 1. Let Boxes to select their favorite RoI.
   // - Boxes can be unmatched, if overlap ratio is lower than threshold
