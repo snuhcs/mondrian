@@ -47,6 +47,7 @@ void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config)
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
         inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
     classifier->setInferenceTimeMs(classifier->profileInferenceTime());
+    //classifier->setInferenceTimeMs(0);
     workers.push_back(std::make_unique<Worker>(this, classifier.get()));
     classifiers.push_back(std::move(classifier));
   }

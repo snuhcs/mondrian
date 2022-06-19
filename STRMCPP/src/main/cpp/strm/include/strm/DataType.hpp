@@ -110,6 +110,7 @@ struct Frame {
   bool useInferenceResultForOF;
 
   bool isBoxesReady;
+  bool isRoIsReady;
   std::vector<std::unique_ptr<BoundingBox>> boxes;
 
   RoIExtractionStatus roiExtractionStatus;
@@ -144,7 +145,7 @@ struct Frame {
         Frame* prevFrame, const time_us& enqueueTime)
       : key(key), shortKey(key.substr(key.size() - 5, 1)), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
-        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime), isFullFrameTarget(false) {}
+        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime), isFullFrameTarget(false), isBoxesReady(false), isRoIsReady(false) {}
 
   ~Frame() {
     endTime = NowMicros();
@@ -152,7 +153,7 @@ struct Frame {
 
   void filterPDRoIs(float threshold);
 
-  bool isAllRoIPrepared() const;
+  bool isReadyToMarry(int mixedFrameIndex) const;
 
   bool readyForOFExtraction() const;
 };
@@ -207,7 +208,8 @@ struct RoI {
   std::pair<int, int> packedLocation;
   static const std::pair<int, int> NOT_PACKED;
 
-  bool isBoxReady; // only valid within parentRoIs
+  int packedMixedFrameIndex;
+  bool isMatchTried; // only valid within parentRoIs
   BoundingBox* box;
 
   RoI(RoI* prevRoI,
@@ -223,13 +225,14 @@ struct RoI {
         features{label, type, (float) location.width() / (float) location.height(),
                  std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
-        packedLocation(NOT_PACKED), isBoxReady(false), nextRoI(nullptr), box(nullptr) {
+        packedLocation(NOT_PACKED), isMatchTried(false), nextRoI(nullptr), box(nullptr),
+        packedMixedFrameIndex(INT_MAX) {
     if (prevRoI != nullptr) {
       prevRoI->nextRoI = this;
     }
   };
 
-  static RoI mergeRoIs(RoI& roi0, RoI& roi1) {
+  static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
     assert(roi0.frame == roi1.frame);
     int newLeft = std::min(roi0.location.left, roi1.location.left);
     int newTop = std::min(roi0.location.top, roi1.location.top);
@@ -270,7 +273,7 @@ struct RoI {
     }
     bool ready = true;
     for (const RoI& pRoI : roisForProbing) {
-      ready &= pRoI.isBoxReady;
+      ready &= pRoI.isMatchTried;
     }
     return ready;
   }

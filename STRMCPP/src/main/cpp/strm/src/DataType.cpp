@@ -1,4 +1,5 @@
 #include "strm/DataType.hpp"
+#include "strm/Log.hpp"
 
 namespace rm {
 
@@ -36,15 +37,22 @@ void Frame::filterPDRoIs(float threshold) {
   childRoIs = newChildRoIs;
 }
 
-bool Frame::isAllRoIPrepared() const {
-  return std::all_of(parentRoIs.begin(), parentRoIs.end(), [](const RoI& pRoI) { return pRoI.isBoxReady; });
+bool Frame::isReadyToMarry(int mixedFrameIndex) const {
+  bool atLeastOneIndexIsSame = false;
+  for (const RoI& pRoI : parentRoIs) {
+    if (pRoI.packedMixedFrameIndex > mixedFrameIndex) {
+      return false;
+    }
+    atLeastOneIndexIsSame |= (pRoI.packedMixedFrameIndex == mixedFrameIndex);
+  }
+  return atLeastOneIndexIsSame;
 }
 
 bool Frame::readyForOFExtraction() const {
   if (prevFrame->useInferenceResultForOF) {
     return prevFrame->isBoxesReady;
   } else {
-    return true;
+    return prevFrame->isRoIsReady;
   }
 }
 

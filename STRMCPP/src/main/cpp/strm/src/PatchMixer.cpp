@@ -49,17 +49,17 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
   std::map<idType, std::vector<RoI*>> roiStreams;
   for (const auto& it : frames) {
     for (Frame* frame : it.second) {
-      for (RoI& roi : frame->parentRoIs) {
+      for (RoI& pRoI : frame->parentRoIs) {
         numParentRoIs++;
-        roiStreams[roi.id].push_back(&roi);
-        if (roi.prevRoI != nullptr) {
-          std::pair<int, int> shiftDiff{roi.features.shift.first - roi.prevRoI->features.shift.first,
-                                        roi.features.shift.second - roi.prevRoI->features.shift.second};
-          roi.priority = roi.features.err + (float) (shiftDiff.first * shiftDiff.first + shiftDiff.second * shiftDiff.second);
+        roiStreams[pRoI.id].push_back(&pRoI);
+        if (pRoI.prevRoI != nullptr) {
+          std::pair<int, int> shiftDiff{pRoI.features.shift.first - pRoI.prevRoI->features.shift.first,
+                                        pRoI.features.shift.second - pRoI.prevRoI->features.shift.second};
+          pRoI.priority = pRoI.features.err + (float) (shiftDiff.first * shiftDiff.first + shiftDiff.second * shiftDiff.second);
         } else {
-          roi.priority = HIGH_PRIORITY;
+          pRoI.priority = HIGH_PRIORITY;
         }
-        rois.push_back(&roi);
+        rois.push_back(&pRoI);
       }
     }
   }
@@ -89,6 +89,7 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
     for (auto it = rois.begin(); it != rois.end();) {
       if ((*it)->isPacked()) {
         numPackedRoIs++;
+        (*it)->packedMixedFrameIndex = i;
         packedRoIs[i].insert(*it);
         it = rois.erase(it);
       } else {

@@ -121,7 +121,7 @@ void SpatioTemporalRoIMixer::work() {
 
     // Full Frame Inference
     Frame* fullFrameTarget = nullptr;
-    if (scheduleID % mConfig.FULL_FRAME_INTERVAL) {
+    if (scheduleID % mConfig.FULL_FRAME_INTERVAL == 0) {
       fullFrameTarget = getFullFrameInferenceFrame(frames, fullFrameInferenceStreamIndex++);
       LOGD("Full Frame Target: %s, %d", fullFrameTarget->shortKey.c_str(), fullFrameTarget->frameIndex);
       fullFrameInference(fullFrameTarget);
@@ -156,18 +156,23 @@ void SpatioTemporalRoIMixer::work() {
 
       // Notify results of processed frames
       for (Frame* frame : mixedFrames[i].getPackedFrames()) {
-        if (frame->isAllRoIPrepared() && processedFrames.find(frame) == processedFrames.end()) {
+        if (frame->isReadyToMarry(i)) {
           assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
                              [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
-          for (RoI& roi : frame->childRoIs) {
-            if (roi.box != nullptr && roi.box->label != 0) {
-              LOGD("roi.box != nullptr && roi.box->label != 0 %d", roi.box->label);
-            }
-          }
           assert(std::all_of(frame->childRoIs.begin(), frame->childRoIs.end(),
                              [](const RoI& roi) { return roi.box == nullptr || roi.box->label == 0; }));
+          // Match boxes with RoIs (per frame)
+          nms(frame->boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold());
+          mPatchReconstructor->matchBoxesWithRoIs(false, frame->childRoIs, frame->boxes);
+
+          bool allMarried = true;
+          for (RoI& cRoI : frame->childRoIs) {
+            allMarried &= (cRoI.box != nullptr);
+          }
+          if (allMarried) {
+            frame->isBoxesReady = true;
+          }
           processedFrames.insert(frame);
-          frame->isBoxesReady = true;
         }
       }
       mRoIExtractor->notify();
@@ -182,19 +187,16 @@ void SpatioTemporalRoIMixer::work() {
                            [](const RoI& roi) { return roi.box == nullptr || roi.box->label == 0; }));
       }
     }
-    Interpolator::interpolate(frames);
-
+    //Interpolator::interpolate(frames);
     // Notify results of rest of the frames
     for (auto& it : frames) {
       for (Frame* frame : it.second) {
-        assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
-                           [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
-        if (frame != fullFrameTarget && processedFrames.find(frame) == processedFrames.end()) {
-          frame->isBoxesReady = true;
-        }
+        frame->isBoxesReady = true;
       }
     }
     mRoIExtractor->notify();
+
+
 
     // Update results for system output
     std::unique_lock<std::mutex> resultLock(mResultsMtx);
@@ -254,7 +256,7 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   for (const BoundingBox& box : results) {
     frame->boxes.emplace_back(new BoundingBox(UNASSIGNED_ID, box.location, box.confidence, box.label));
   }
-  mPatchReconstructor->matchBoxesWithRoIs(true, frame->childRoIs, frame->boxes, nullptr);
+  mPatchReconstructor->matchBoxesWithRoIs(true, frame->childRoIs, frame->boxes);
   frame->isBoxesReady = true;
   mRoIExtractor->notify();
 

@@ -57,40 +57,6 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
     }
   }
 
-  // 2. Match boxes with RoIs (per frame)
-  for (Frame* frame : packedFrames) {
-    assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
-                       [](const std::unique_ptr<BoundingBox>& box) {
-                         return box->srcRoI == nullptr ||
-                                (box->srcRoI->box == box.get() &&
-                                 box->srcRoI->label == box->label &&
-                                 box->srcRoI->id == box->id);
-                       }));
-    nms(frame->boxes, NUM_LABELS, mConfig.FRAME_BOXES_IOU_THRESHOLD);
-    assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
-                       [](const std::unique_ptr<BoundingBox>& box) {
-                         return box->srcRoI == nullptr ||
-                                (box->srcRoI->box == box.get() &&
-                                 box->srcRoI->label == box->label &&
-                                 box->srcRoI->id == box->id);
-                       }));
-    matchBoxesWithRoIs(false, frame->childRoIs, frame->boxes, &packedRoIs);
-  }
-  // set roi->isBoxReady as true if it was packed
-  for (RoI* roi : packedRoIs) {
-    assert(roi->isPacked());
-    roi->isBoxReady = true;
-  }
-
-  // 3. Update resize profile
-  for (Frame* frame : packedFrames) {
-    for (RoI& roi : frame->childRoIs) {
-      if (roi.isProbingReady()) {
-        mResizeProfile->updateTable(roi);
-      }
-    }
-  }
-
   time_us reconstructEndTime = NowMicros();
   for (Frame* frame : packedFrames) {
     frame->reconstructStartTime = reconstructStartTime;
@@ -100,16 +66,36 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
        results.size(), reconstructEndTime - reconstructStartTime);
 }
 
-void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& childRoIs,
-                                            std::vector<std::unique_ptr<BoundingBox>>& boxes,
-                                            const std::set<RoI*>* packedRoIs) const {
-  if (!isFullFrame) {
-    assert(std::all_of(childRoIs.begin(), childRoIs.end(), [&packedRoIs](RoI& roi) {
-      return packedRoIs->find(&roi) == packedRoIs->end() || roi.box == nullptr;
-    }));
-  }
+void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI> &childRoIs,
+                                            std::vector<std::unique_ptr<BoundingBox>> &boxes) const {
 
   std::vector<BoundingBox*> unassignedBoxes;
+
+  int marryCount = 0;
+  RoI* marriedRoI = nullptr;
+  for (RoI& cRoI : childRoIs) {
+    marryCount += (cRoI.box != nullptr);
+    if(cRoI.box != nullptr) {
+      marriedRoI = &cRoI;
+    }
+  }
+
+  int marryCount2 = 0;
+  for (auto& box : boxes) {
+    marryCount2 += (box->srcRoI != nullptr);
+    if (box->srcRoI != nullptr) {
+      if (box->srcRoI->box != box.get()) {
+        LOGE("XXX: box's wife is cheating");
+      }
+      if (box->srcRoI != marriedRoI) {
+        LOGE("XXX: they are not couple");
+      }
+    }
+  }
+
+  LOGD("XXX: marryCount: %d, marryCount2: %d", marryCount, marryCount2);
+  assert(marryCount2 == 0);
+  assert(marryCount == 0);
 
   // 1. Let Boxes to select their favorite RoI.
   // - Boxes can be unmatched, if overlap ratio is lower than threshold
@@ -155,32 +141,33 @@ void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& 
   // 2. Let RoIs select their favorite Box
   // - Selection result is saved as RoI with same id
   for (RoI& cRoI : childRoIs) {
-    int maxIntersection = -1;
-    int maxIndex = -1;
-    for (int i = 0; i < roiToBoxesMap[&cRoI].size(); ++i) {
-      BoundingBox* box = roiToBoxesMap[&cRoI][i];
-      int intersection = cRoI.location.intersection(box->location);
-      if (maxIntersection < intersection) {
-        maxIntersection = intersection;
-        maxIndex = i;
-      }
-    }
-    if (!roiToBoxesMap[&cRoI].empty()) {
-      // 1-1 matching with RoI & box
-      assert(maxIndex >= 0 && maxIndex < roiToBoxesMap[&cRoI].size());
-      BoundingBox* maxBox = roiToBoxesMap[&cRoI][maxIndex];
-      maxBox->id = cRoI.id;
-      maxBox->srcRoI = &cRoI;
-      cRoI.box = maxBox;
-      cRoI.label = maxBox->label;
-
-      // Collect all unselected boxes
+    if (isFullFrame || cRoI.isPacked()) {
+      int maxIntersection = -1;
+      int maxIndex = -1;
       for (int i = 0; i < roiToBoxesMap[&cRoI].size(); ++i) {
-        if (i == maxIndex) continue;
-        unassignedBoxes.push_back(roiToBoxesMap[&cRoI][i]);
+        BoundingBox *box = roiToBoxesMap[&cRoI][i];
+        int intersection = cRoI.location.intersection(box->location);
+        if (maxIntersection < intersection) {
+          maxIntersection = intersection;
+          maxIndex = i;
+        }
       }
-    } else {
-      cRoI.box = nullptr;
+      if (!roiToBoxesMap[&cRoI].empty()) {
+        // 1-1 matching with RoI & box
+        assert(maxIndex >= 0 && maxIndex < roiToBoxesMap[&cRoI].size());
+        BoundingBox *maxBox = roiToBoxesMap[&cRoI][maxIndex];
+        maxBox->id = cRoI.id;
+        maxBox->srcRoI = &cRoI;
+        cRoI.box = maxBox;
+        cRoI.label = maxBox->label;
+
+        // Collect all unselected boxes
+        for (int i = 0; i < roiToBoxesMap[&cRoI].size(); ++i) {
+          if (i == maxIndex) continue;
+          unassignedBoxes.push_back(roiToBoxesMap[&cRoI][i]);
+        }
+      }
+      cRoI.isMatchTried = true;
     }
   }
   // End of 2
@@ -195,7 +182,7 @@ void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& 
     for (BoundingBox* box : unassignedBoxes) {
       assert(id < idRange.second);
       box->id = id++;
-      box->srcRoI = nullptr;
+      assert(box->srcRoI == nullptr);
     }
   }
   // End of 3
@@ -208,6 +195,17 @@ void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& 
       assert(box->srcRoI->id == box->id);
     }
   }
+
+  // 2. Update resize profile
+  for (RoI& cRoI : childRoIs) {
+    if (cRoI.isProbingReady()) {
+      mResizeProfile->updateTable(cRoI);
+    }
+  }
 }
+
+  float PatchReconstructor::getIoUThreshold() const {
+    return mConfig.FRAME_BOXES_IOU_THRESHOLD;
+  }
 
 } // namespace rm
