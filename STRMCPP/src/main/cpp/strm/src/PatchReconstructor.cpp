@@ -11,20 +11,27 @@ PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
                                        ResizeProfile* resizeProfile)
     : mConfig(config), mResizeProfile(resizeProfile) {}
 
-Rect getMovedAndResizedBoxPos(const BoundingBox& box, RoI& roi) {
-  return Rect(
-      std::max(0,
-               (box.location.left - roi.packedLocation.first)
-               * roi.maxEdgeLength / roi.targetSize + roi.location.left),
-      std::max(0,
-               (box.location.top - roi.packedLocation.second)
-               * roi.maxEdgeLength / roi.targetSize + roi.location.top),
-      std::min(roi.frame->mat.cols,
-               (box.location.right - roi.packedLocation.first)
-               * roi.maxEdgeLength / roi.targetSize + roi.location.left),
-      std::min(roi.frame->mat.rows,
-               (box.location.bottom - roi.packedLocation.second)
-               * roi.maxEdgeLength / roi.targetSize + roi.location.top));
+static Rect moveResizeRoIPos(const RoI* roi) {
+  std::pair<int, int> wh = roi->getResizedWidthHeight();
+  return Rect(roi->packedLocation.first,
+              roi->packedLocation.second,
+              roi->packedLocation.first + wh.first,
+              roi->packedLocation.second + wh.second);
+}
+
+static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
+  int newLeft = (packedBox.location.left - pRoI->packedLocation.first)
+                * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->location.left;
+  int newTop = (packedBox.location.top - pRoI->packedLocation.second)
+               * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->location.top;
+  int newRight = (packedBox.location.right - pRoI->packedLocation.first)
+                 * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->location.left;
+  int newBottom = (packedBox.location.bottom - pRoI->packedLocation.second)
+                  * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->location.top;
+  return Rect(std::max(0, newLeft),
+              std::max(0, newTop),
+              std::min(pRoI->frame->mat.cols, newRight),
+              std::min(pRoI->frame->mat.rows, newBottom));
 }
 
 void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
@@ -35,7 +42,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
 
   for (RoI* pRoI : packedRoIs) {
     assert(pRoI->frame->boxes.empty());
-    if (pRoI->isProbingRoI) {
+    if (!pRoI->isProbingRoI) {
       assert(std::any_of(pRoI->frame->parentRoIs.begin(), pRoI->frame->parentRoIs.end(),
                          [&pRoI](auto& pRoICandidate) { return pRoICandidate.get() == pRoI; }));
     }
@@ -48,22 +55,27 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
   // Insert boxes to appropriate frame.boxes
   for (const BoundingBox& box : results) {
     float maxOverlap = -1;
-    Rect maxBoxPos;
     RoI* maxRoI = nullptr;
     for (RoI* pRoI : packedRoIs) {
       assert(pRoI->isPacked());
-      Rect movedAndResizedBoxPos = getMovedAndResizedBoxPos(box, *pRoI);
-      int intersection = pRoI->location.intersection(movedAndResizedBoxPos);
-      float overlapRatio = (float) intersection / (float) movedAndResizedBoxPos.area();
+      int intersection = box.location.intersection(moveResizeRoIPos(pRoI));
+      float overlapRatio = (float) intersection / (float) box.location.area();
       if (maxOverlap < overlapRatio) {
         maxOverlap = overlapRatio;
-        maxBoxPos = movedAndResizedBoxPos;
         maxRoI = pRoI;
       }
     }
     if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
-      maxRoI->frame->boxes.emplace_back(
-          new BoundingBox(UNASSIGNED_ID, maxBoxPos, box.confidence, box.label, maxRoI->targetSize));
+      if (maxRoI->isProbingRoI) {
+        maxRoI->frame->probingBoxes.emplace_back(new BoundingBox(
+            UNASSIGNED_ID, reconstructBoxPos(box, maxRoI),
+            box.confidence, box.label, maxRoI->targetSize));
+        maxRoI->probingBox = maxRoI->frame->probingBoxes.rbegin()->get();
+      } else {
+        maxRoI->frame->boxes.emplace_back(new BoundingBox(
+            UNASSIGNED_ID, reconstructBoxPos(box, maxRoI),
+            box.confidence, box.label, maxRoI->targetSize));
+      }
     }
   }
 

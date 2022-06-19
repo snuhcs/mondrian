@@ -113,6 +113,7 @@ struct Frame {
   bool isBoxesReady;
   bool isRoIsReady;
   std::vector<std::unique_ptr<BoundingBox>> boxes;
+  std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
 
   RoIExtractionStatus roiExtractionStatus;
   std::vector<RoI> childRoIs; // => box
@@ -211,6 +212,7 @@ struct RoI {
   bool isProbingRoI;
   bool isMatchTried; // only valid within parentRoIs
   BoundingBox* box;
+  BoundingBox* probingBox;
 
   RoI(RoI* prevRoI,
       const idType id,
@@ -227,7 +229,7 @@ struct RoI {
                  std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
         packedLocation(NOT_PACKED), isMatchTried(false), nextRoI(nullptr), box(nullptr),
-        packedMixedFrameIndex(INT_MAX), isProbingRoI(isProbingRoI) {
+        probingBox(nullptr), packedMixedFrameIndex(INT_MAX), isProbingRoI(isProbingRoI) {
     if (prevRoI != nullptr) {
       prevRoI->nextRoI = this;
     }

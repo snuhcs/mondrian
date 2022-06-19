@@ -107,7 +107,7 @@ void SpatioTemporalRoIMixer::work() {
            << ", ";
       }
     }
-    LOGE("STRM::work() getExtractedFrames() took %lu us  // %s",
+    LOGD("STRM::work() getExtractedFrames() took %lu us  // %s",
          roiGettingTime - startTime, ss.str().c_str());
 
     if (frames.empty()) {
@@ -123,7 +123,7 @@ void SpatioTemporalRoIMixer::work() {
     Frame* fullFrameTarget = nullptr;
     if (scheduleID % mConfig.FULL_FRAME_INTERVAL == 0) {
       fullFrameTarget = getFullFrameInferenceFrame(frames, fullFrameInferenceStreamIndex++);
-      LOGE("STRM::work() fullFrameTarget: (%s, %d)",
+      LOGD("STRM::work() fullFrameTarget: (%s, %d)",
            fullFrameTarget->shortKey.c_str(), fullFrameTarget->frameIndex);
       fullFrameInference(fullFrameTarget);
     }
@@ -173,15 +173,6 @@ void SpatioTemporalRoIMixer::work() {
         }
       }
       mRoIExtractor->notify();
-    }
-
-    for (auto& it : frames) {
-      for (Frame* frame : it.second) {
-        assert(frame == fullFrameTarget ||
-               matchedFrames.find(frame) != matchedFrames.end() ||
-               std::all_of(frame->parentRoIs.begin(), frame->parentRoIs.end(),
-                           [](auto& pRoI) { return !pRoI->isPacked(); }));
-      }
     }
 
     // Interpolate results

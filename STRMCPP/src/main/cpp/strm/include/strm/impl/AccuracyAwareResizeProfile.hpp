@@ -43,7 +43,7 @@ class AccuracyAwareResizeProfile : public ResizeProfile {
     // find box from largest RoI
     BoundingBox* boxFromLargestRoI = nullptr;
     for (auto it = roi.roisForProbing.rbegin(); it != roi.roisForProbing.rend(); it++) {
-      boxFromLargestRoI = it->box;
+      boxFromLargestRoI = it->probingBox;
       if (boxFromLargestRoI != nullptr) {
         break;
       }
@@ -68,7 +68,7 @@ class AccuracyAwareResizeProfile : public ResizeProfile {
     // from largest RoI to smallest RoI, find smallest target size with marginal confidence & IoU loss
     int smallestSizePossible = boxFromLargestRoI->targetSize;
     for (int i = roi.roisForProbing.size() - 1; i >= 0; --i) {
-      BoundingBox* probeBox = roi.roisForProbing[i].box;
+      BoundingBox* probeBox = roi.roisForProbing[i].probingBox;
       // if box not found, stop checking
       if (probeBox == nullptr) {
         break;
