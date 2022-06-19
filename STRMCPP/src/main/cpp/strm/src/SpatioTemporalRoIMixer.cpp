@@ -139,13 +139,6 @@ void SpatioTemporalRoIMixer::work() {
     int numMixedFrames = remainingTime > inferenceTimeUs ? (int) (remainingTime / inferenceTimeUs) : 1;
     std::vector<MixedFrame> mixedFrames = PatchMixer::pack(
         frames, fullFrameTarget, mInferenceEngine->getInputSizes()[0], numMixedFrames, mProbing);
-    if (!draw) {
-      for (auto& it : frames) {
-        for (Frame* frame : it.second) {
-          frame->mat.release();
-        }
-      }
-    }
 
     // Inference Mixed Frames
     std::vector<int> handles;
@@ -287,7 +280,9 @@ Frame* SpatioTemporalRoIMixer::getFullFrameInferenceFrame(
     }
   }
   fullFrameInferenceStreamIndex %= (int) nonEmptyStreamKeys.size();
-  return *frames.at(nonEmptyStreamKeys[fullFrameInferenceStreamIndex]).rbegin();
+  Frame* fullFrameTarget = *frames.at(nonEmptyStreamKeys[fullFrameInferenceStreamIndex]).rbegin();
+  fullFrameTarget->isFullFrameTarget = true;
+  return fullFrameTarget;
 }
 
 int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& mat) {
@@ -335,6 +330,8 @@ void SpatioTemporalRoIMixer::outputWork() {
     const time_us& time = std::get<2>(result);
     cv::Mat mat = std::get<3>(result);
     const std::vector<BoundingBox>& boxes = std::get<4>(result);
+    LOGD("Logger::logResult(%s, %d, %lu, %lu)", key.substr(key.size() - 5, 1).c_str(), frameIndex,
+         time / 1000, boxes.size());
     mResultLogger->logResult(key, frameIndex, time, boxes);
     if (draw) {
       drawObjectDetectionResult(mat, boxes);

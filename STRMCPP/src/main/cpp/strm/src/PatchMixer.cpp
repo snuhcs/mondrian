@@ -80,7 +80,7 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
   std::sort(rois.begin(), rois.end(), [](const RoI* l, const RoI* r) { return l->priority > r->priority; });
 
   int numTotalRoIs = (int) rois.size();
-  int numDroppedRoIs = numTotalRoIs;
+  int numPackedRoIs = 0;
   std::vector<std::set<RoI*>> packedRoIs;
   packedRoIs.resize(numMixedFrames);
   time_us mixingStartTime = NowMicros();
@@ -88,6 +88,7 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
     tryPackRoIs(rois, mixedFrameSize);
     for (auto it = rois.begin(); it != rois.end();) {
       if ((*it)->isPacked()) {
+        numPackedRoIs++;
         packedRoIs[i].insert(*it);
         it = rois.erase(it);
       } else {
@@ -115,9 +116,9 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
       frame->mixedFrameCreateEndTime = mixedFrameCreateEndTime;
     }
   }
-  LOGD("PatchMixer::pack(%lu, %d, %d) took %lu and %lu us : %d droppedRoIs among %d totalRois, %d lastFrameRoIs, %d Probes",
+  LOGD("PatchMixer::pack(%lu, %d, %d) took %lu and %lu us : %d / %d packed, %d lastFrameRoIs, %d Probes",
        frames.size(), mixedFrameSize, numMixedFrames, mixingEndTime - mixingStartTime, mixedFrameCreateEndTime - mixedFrameCreateStartTime,
-       numDroppedRoIs, numTotalRoIs, numLastFrameRoIs, numProbes);
+       numPackedRoIs, numTotalRoIs, numLastFrameRoIs, numProbes);
   return mixedFrames;
 }
 

@@ -103,9 +103,11 @@ void PatchReconstructor::reconstructResults(MixedFrame& mixedFrame,
 void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& childRoIs,
                                             std::vector<std::unique_ptr<BoundingBox>>& boxes,
                                             const std::set<RoI*>* packedRoIs) const {
-  assert(std::all_of(childRoIs.begin(), childRoIs.end(), [&packedRoIs](RoI& roi) {
-    return packedRoIs->find(&roi) == packedRoIs->end() || roi.box == nullptr;
-  }));
+  if (!isFullFrame) {
+    assert(std::all_of(childRoIs.begin(), childRoIs.end(), [&packedRoIs](RoI& roi) {
+      return packedRoIs->find(&roi) == packedRoIs->end() || roi.box == nullptr;
+    }));
+  }
 
   std::vector<BoundingBox*> unassignedBoxes;
 

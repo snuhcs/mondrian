@@ -32,15 +32,18 @@ RoIExtractor::~RoIExtractor() {
 void RoIExtractor::enqueue(Frame* frame) {
   std::unique_lock<std::mutex> lock(mtx);
   mFramesForPD.push_back(frame);
+  int numOFs = 0;
+  for (const auto& it : mFramesForOF) {
+    numOFs += (int) it.second.size();
+  }
+  int numProcessed = 0;
+  for (const auto& it : mOFProcessingStartedFrames) {
+    numProcessed += (int) it.second.size();
+  }
   lock.unlock();
   cv.notify_one();
-  std::stringstream ss;
-  for (const auto& it: mFramesForOF) {
-    ss << it.second.size() << ", ";
-  }
-  LOGD("RoIExtractor::enqueue  (%s, %4d)               // PD %lu | OF %s | Processed %lu",
-       frame->shortKey.c_str(), frame->frameIndex, mFramesForPD.size(), ss.str().c_str(),
-       mOFProcessingStartedFrames.size());
+  LOGD("RoIExtractor::enqueue  (%s, %4d)               // PD %lu | OF %d | Processed %d",
+       frame->shortKey.c_str(), frame->frameIndex, mFramesForPD.size(), numOFs, numProcessed);
 }
 
 void RoIExtractor::notify() {
