@@ -11,8 +11,14 @@ ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json) {
   if (!json["accuracy_aware_resize"].isNull()) {
     config.ACCURACY_AWARE_RESIZE = json["accuracy_aware_resize"].asBool();
   }
+  if (!json["resize_smoothing_factor"].isNull()) {
+    config.RESIZE_SMOOTHING_FACTOR = json["resize_smoothing_factor"].asFloat();
+  }
   if (!json["probing"].isNull()) {
     config.PROBING = json["probing"].asBool();
+  }
+  if (!json["probing_step"].isNull()) {
+    config.PROBING_STEP = json["probing_step"].asInt();
   }
   if (config.ACCURACY_AWARE_RESIZE) {
     if (!json["resize_margin"].isNull()) {

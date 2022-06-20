@@ -29,8 +29,8 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["optical_flow_roi_confidence_threshold"].isNull()) {
     config.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = json["optical_flow_roi_confidence_threshold"].asFloat();
   }
-  if (!json["merge_threshold"].isNull()) {
-    config.MERGE_THRESHOLD = json["merge_threshold"].asFloat();
+  if (!json["pd_filter_threshold"].isNull()) {
+    config.PD_FILTER_THRESHOLD = json["pd_filter_threshold"].asFloat();
   }
   return config;
 }
@@ -71,6 +71,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   }
   if (!json["latency_slo_ms"].isNull()) {
     config.LATENCY_SLO_MS = json["latency_slo_ms"].asInt();
+  }
+  if (!json["merge_threshold"].isNull()) {
+    config.MERGE_THRESHOLD = json["merge_threshold"].asFloat();
   }
 
   if (!json["roi_extractor"].isNull()) {

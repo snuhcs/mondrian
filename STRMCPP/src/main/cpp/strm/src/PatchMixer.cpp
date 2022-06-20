@@ -4,12 +4,127 @@
 
 #include "stb/stb_rect_pack.h"
 
+#include "strm/Test.hpp"
+
 namespace rm {
 
-std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrames>& frames,
+void PatchMixer::preparePack(std::map<std::string, SortedFrames>& frames,
+                             ResizeProfile* resizeProfile, int maxRoISize, float mergeThreshold) {
+  time_us resizeStartTime = NowMicros();
+  for (auto& it : frames) {
+    for (Frame* frame : it.second) {
+      for (auto& cRoI : frame->childRoIs) {
+        cRoI->targetSize = std::min(cRoI->maxEdgeLength,
+                                    resizeProfile->getTargetSize(cRoI->id, cRoI->features));
+      }
+    }
+  }
+  time_us resizeEndTime = NowMicros();
+
+  time_us mergeStartTime = NowMicros();
+  for (auto& it : frames) {
+    for (Frame* frame : it.second) {
+      mergeRoIs(frame->childRoIs, frame->parentRoIs, maxRoISize, mergeThreshold);
+    }
+  }
+
+  for (auto& it : frames) {
+    for (Frame* frame : it.second) {
+      testAssignedUniqueRoIID(frame->childRoIs);
+      testParentChildrenIDsAndChildIDsSame(frame->childRoIs, frame->parentRoIs);
+      testChildRoIsFrameRelation(frame->childRoIs);
+      testParentRoIsFrameRelation(frame->parentRoIs);
+    }
+  }
+  time_us mergeEndTime = NowMicros();
+
+  for (auto& it : frames) {
+    for (Frame* frame : it.second) {
+      frame->resizeStartTime = resizeStartTime;
+      frame->resizeEndTime = resizeEndTime;
+      frame->mergeRoIStartTime = mergeStartTime;
+      frame->mergeRoIEndTime = mergeEndTime;
+    }
+  }
+}
+
+void PatchMixer::mergeRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,
+                           std::vector<std::unique_ptr<RoI>>& parentRoIs,
+                           int maxSize, float mergeThreshold) {
+  assert(parentRoIs.empty());
+  for (auto& cRoI : childRoIs) {
+    std::unique_ptr<RoI> pRoI = std::make_unique<RoI>(*cRoI);
+    assert(cRoI->parentRoI == nullptr && pRoI->parentRoI == nullptr);
+    assert(cRoI->childRoIs.empty() && pRoI->childRoIs.empty());
+    assert(cRoI->roisForProbing.empty() && pRoI->roisForProbing.empty());
+    cRoI->parentRoI = pRoI.get();
+    pRoI->childRoIs.push_back(cRoI.get());
+    parentRoIs.push_back(std::move(pRoI));
+  }
+
+  while (true) {
+    bool updated = false;
+    int i, j;
+    for (i = 0; i < parentRoIs.size(); i++) {
+      for (j = i + 1; j < parentRoIs.size(); j++) {
+        const std::unique_ptr<RoI>& roi0 = parentRoIs[i];
+        const std::unique_ptr<RoI>& roi1 = parentRoIs[j];
+        int intersection = roi0->location.intersection(roi1->location);
+        if ((float) intersection / (float) roi0->getArea() < mergeThreshold &&
+            (float) intersection / (float) roi1->getArea() < mergeThreshold) {
+          continue;
+        }
+        int newLeft = std::min(roi0->location.left, roi1->location.left);
+        int newTop = std::min(roi0->location.top, roi1->location.top);
+        int newRight = std::max(roi0->location.right, roi1->location.right);
+        int newBottom = std::max(roi0->location.bottom, roi1->location.bottom);
+        if (newRight - newLeft > maxSize || newBottom - newTop > maxSize) {
+          continue;
+        }
+        int newArea = (newRight - newLeft) * (newBottom - newLeft);
+        if (roi0->targetSize * roi1->maxEdgeLength > roi1->targetSize * roi0->maxEdgeLength) {
+          // If roi0 resizes conservatively than roi1
+          newArea = newArea * roi0->targetSize * roi0->targetSize
+                    / roi0->maxEdgeLength / roi0->maxEdgeLength;
+        } else {
+          // If roi1 resizes conservatively than roi0
+          newArea = newArea * roi1->targetSize * roi1->targetSize
+                    / roi1->maxEdgeLength / roi1->maxEdgeLength;
+        }
+        int originalArea = roi0->getResizedArea() + roi1->getResizedArea();
+        if (newArea >= originalArea) {
+          continue;
+        }
+        updated = true;
+        break;
+      }
+      if (updated) {
+        break;
+      }
+    }
+    if (!updated) {
+      break;
+    }
+    parentRoIs.push_back(std::move(RoI::mergeRoIs(parentRoIs[i].get(), parentRoIs[j].get())));
+    // Match child parent
+    RoI* mergedRoI = parentRoIs.rbegin()->get();
+    mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
+                                parentRoIs[i]->childRoIs.begin(), parentRoIs[i]->childRoIs.end());
+    mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
+                                parentRoIs[j]->childRoIs.begin(), parentRoIs[j]->childRoIs.end());
+    for (RoI* cRoI : mergedRoI->childRoIs) {
+      cRoI->parentRoI = mergedRoI;
+    }
+    assert(j > i);
+    parentRoIs.erase(parentRoIs.begin() + j);
+    parentRoIs.erase(parentRoIs.begin() + i);
+  }
+}
+
+std::vector<MixedFrame> PatchMixer::pack(std::map<std::string, SortedFrames>& frames,
                                          const Frame* fullFrameTarget,
                                          int mixedFrameSize, int numMixedFrames,
-                                         bool probing) {
+                                         bool probing, const int probeStep) {
   // Collect RoIs. Later frame RoIs come first.
   std::vector<RoI*> packingCandidates;
   const float HIGH_PRIORITY = 1e9;
@@ -17,28 +132,28 @@ std::vector<MixedFrame> PatchMixer::pack(const std::map<std::string, SortedFrame
   // 1. Insert probe RoIs
   int numProbes = 0;
   if (probing) {
-    int probeStep = 4;
-    int probeRoINum = 1; // total 2 * probeRoINum + 1 number of probeRoIs
+    assert(probeStep > 0);
+    int numProbSteps = 1; // total 2 * numProbSteps + 1 number of probeRoIs
     for (auto it : frames) {
       if (it.second.empty() || (fullFrameTarget != nullptr && fullFrameTarget->key == it.first)) {
         continue;
       }
-      for (RoI& childRoI : (*it.second.rbegin())->childRoIs) {
-        for (int i = 0; i < 2 * probeRoINum + 1; i++) {
-          childRoI.roisForProbing.emplace_back(nullptr, childRoI.id, childRoI.frame,
-                                               childRoI.location, childRoI.type, childRoI.label,
-                                               childRoI.features.shift, childRoI.features.err,
-                                               childRoI.features.diffAreaRatio, true);
-        }
-        int probe = -probeStep * probeRoINum;
-        for (RoI& probeRoI : childRoI.roisForProbing) {
-          numProbes++;
-          probeRoI.targetSize = childRoI.targetSize + probe;
+      Frame* lastFrame = *it.second.rbegin();
+      for (auto& cRoI : lastFrame->childRoIs) {
+        int probe = -probeStep * numProbSteps;
+        for (int i = 0; i < 2 * numProbSteps + 1; i++) {
+          cRoI->frame->probingRoIs.emplace_back(
+              new RoI(nullptr, cRoI->id, cRoI->frame, cRoI->location, cRoI->type, cRoI->label,
+                      cRoI->features.shift, cRoI->features.err, cRoI->features.diffAreaRatio,
+                      true));
+          RoI* probeRoI = cRoI->frame->probingRoIs.back().get();
+          probeRoI->targetSize = cRoI->targetSize + probe;
+          probeRoI->priority = HIGH_PRIORITY;
+          cRoI->roisForProbing.push_back(probeRoI);
+          packingCandidates.push_back(probeRoI);
           probe += probeStep;
-          probeRoI.priority = HIGH_PRIORITY;
-          packingCandidates.push_back(&probeRoI);
+          numProbes++;
         }
-        std::sort(childRoI.roisForProbing.begin(), childRoI.roisForProbing.end());
       }
     }
   }

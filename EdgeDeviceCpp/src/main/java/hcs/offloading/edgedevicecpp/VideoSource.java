@@ -26,7 +26,6 @@ public class VideoSource extends CustomCapturer {
         else Log.d("OpenCV", "OpenCV loaded Successfully");
     }
 
-    private final int startIndex = 0;
     private final String VIDEO_PATH;
 
     private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
@@ -46,7 +45,6 @@ public class VideoSource extends CustomCapturer {
     public void startCapture(int width, int height, int fps) {
         Log.d(TAG, "startCapture");
         captureThread = new Thread(() -> {
-            long startTimeNs = System.nanoTime();
             capturerObs.onCapturerStarted(true);
 
             int[] textures = new int[1];
@@ -56,8 +54,8 @@ public class VideoSource extends CustomCapturer {
             TextureBufferImpl buffer = new TextureBufferImpl(width, height, VideoFrame.TextureBuffer.Type.RGB, textures[0], new Matrix(), surTexture.getHandler(), yuvConverter, null);
 
             int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
-            for (int frameIndex = startIndex; frameIndex < frameCount; frameIndex++) {
-                long startTime = System.nanoTime();
+            long startTimeNs = System.nanoTime();
+            for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
                 Log.v(TAG, VIDEO_PATH + " " + frameIndex + " loaded");
                 Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
@@ -79,11 +77,11 @@ public class VideoSource extends CustomCapturer {
                 Mat mat = new Mat();
                 Utils.bitmapToMat(bitmap, mat);
                 strm.enqueueImage(VIDEO_PATH, mat);
-                long endTime = System.nanoTime();
-                long duration = endTime - startTime;
-                if (duration < 1e9 / fps) {
+                long endTimeNs = System.nanoTime();
+                long nextStartTimeNs = startTimeNs + (long) (frameIndex + 1) * (long) (1e9 / fps);
+                if (nextStartTimeNs > endTimeNs) {
                     try {
-                        Thread.sleep((int) ((1e9 / fps - duration) / 1e6));
+                        Thread.sleep((nextStartTimeNs - endTimeNs) / 1000000);
                     } catch (InterruptedException e) {
                         Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
                     }

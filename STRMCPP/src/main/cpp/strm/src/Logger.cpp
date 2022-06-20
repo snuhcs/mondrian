@@ -38,16 +38,14 @@ void Logger::logHeader() {
           << "numBoxes" << delim
           << "numRoIs" << delim
           << "enqueueTime" << delim
-          << "dispatcherProcessStartTime" << delim
-          << "dispatcherProcessEndTime" << delim
           << "fullFrameEnqueueTime" << delim
           << "fullFrameGetResultsTime" << delim
           << "opticalFlowRoIProcessStartTime" << delim
           << "opticalFlowRoIProcessEndTime" << delim
           << "pixelDiffRoIProcessStartTime" << delim
           << "pixelDiffRoIProcessEndTime" << delim
-          << "resizeRoIStartTime" << delim
-          << "resizeRoIEndTime" << delim
+          << "resizeStartTime" << delim
+          << "resizeEndTime" << delim
           << "mergeRoIStartTime" << delim
           << "mergeRoIEndTime" << delim
           << "mixingStartTime" << delim
@@ -68,8 +66,6 @@ void Logger::log(Frame* frame) {
           << frame->boxes.size() << delim
           << frame->parentRoIs.size() << delim
           << fromBaseTime(frame->enqueueTime) << delim
-          << fromBaseTime(frame->dispatcherProcessStartTime) << delim
-          << fromBaseTime(frame->dispatcherProcessEndTime) << delim
           << fromBaseTime(frame->fullFrameEnqueueTime) << delim
           << fromBaseTime(frame->fullFrameGetResultsTime) << delim
           << fromBaseTime(frame->opticalFlowRoIProcessStartTime) << delim
@@ -78,8 +74,8 @@ void Logger::log(Frame* frame) {
           << fromBaseTime(frame->pixelDiffRoIProcessEndTime) << delim
           << fromBaseTime(frame->mergeRoIStartTime) << delim
           << fromBaseTime(frame->mergeRoIEndTime) << delim
-          << fromBaseTime(frame->resizeRoIStartTime) << delim
-          << fromBaseTime(frame->resizeRoIEndTime) << delim
+          << fromBaseTime(frame->resizeStartTime) << delim
+          << fromBaseTime(frame->resizeEndTime) << delim
           << fromBaseTime(frame->mixingStartTime) << delim
           << fromBaseTime(frame->mixingEndTime) << delim
           << fromBaseTime(frame->reconstructStartTime) << delim

@@ -114,24 +114,23 @@ struct Frame {
   bool isRoIsReady;
   std::vector<std::unique_ptr<BoundingBox>> boxes;
   std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
+  std::vector<std::unique_ptr<RoI>> probingRoIs;
 
   RoIExtractionStatus roiExtractionStatus;
-  std::vector<RoI> childRoIs; // => box
+  std::vector<std::unique_ptr<RoI>> childRoIs; // => box
   std::vector<std::unique_ptr<RoI>> parentRoIs;
 
   bool isFullFrameTarget;
 
   const time_us enqueueTime;
-  time_us dispatcherProcessStartTime = 0;
-  time_us dispatcherProcessEndTime = 0;
   time_us fullFrameEnqueueTime = 0;
   time_us fullFrameGetResultsTime = 0;
   time_us opticalFlowRoIProcessStartTime = 0;
   time_us opticalFlowRoIProcessEndTime = 0;
   time_us pixelDiffRoIProcessStartTime = 0;
   time_us pixelDiffRoIProcessEndTime = 0;
-  time_us resizeRoIStartTime = 0;
-  time_us resizeRoIEndTime = 0;
+  time_us resizeStartTime = 0;
+  time_us resizeEndTime = 0;
   time_us mergeRoIStartTime = 0;
   time_us mergeRoIEndTime = 0;
   time_us mixingStartTime = 0;
@@ -193,7 +192,7 @@ struct RoI {
   Type type;
   int label;
   Features features;
-  std::vector<RoI> roisForProbing;
+  std::vector<RoI*> roisForProbing;
   float priority;
 
   inline static std::atomic<idType> lastId = 0;
@@ -228,8 +227,9 @@ struct RoI {
         features{label, type, (float) location.width() / (float) location.height(),
                  std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
-        packedLocation(NOT_PACKED), isMatchTried(false), nextRoI(nullptr), box(nullptr),
-        probingBox(nullptr), packedMixedFrameIndex(INT_MAX), isProbingRoI(isProbingRoI) {
+        packedLocation(NOT_PACKED), isMatchTried(false), nextRoI(nullptr), parentRoI(nullptr),
+        box(nullptr), probingBox(nullptr), packedMixedFrameIndex(INT_MAX),
+        isProbingRoI(isProbingRoI) {
     if (prevRoI != nullptr) {
       prevRoI->nextRoI = this;
     }
@@ -278,8 +278,8 @@ struct RoI {
       return false;
     }
     bool ready = true;
-    for (const RoI& pRoI : roisForProbing) {
-      ready &= pRoI.isMatchTried;
+    for (auto& pRoI : roisForProbing) {
+      ready &= pRoI->isMatchTried;
     }
     return ready;
   }
@@ -325,7 +325,7 @@ struct RoI {
   }
 
   bool operator<(const RoI& roi) const {
-    return (targetSize < roi.targetSize);
+    return targetSize < roi.targetSize;
   }
 };
 

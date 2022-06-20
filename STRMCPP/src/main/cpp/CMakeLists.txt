@@ -35,10 +35,13 @@ add_library(
         strm/src/PatchReconstructor.cpp
         strm/src/RoIExtractor.cpp
         strm/src/SpatioTemporalRoIMixer.cpp
+        strm/src/Test.cpp
         strm/src/Time.cpp
         strm/src/Utils.cpp
-        strm/src/impl/ImplConfig.cpp
+        strm/src/impl/AccuracyAwareResizeProfile.cpp
         strm/src/impl/CustomInferenceEngine.cpp
+        strm/src/impl/DecisionTree.cpp
+        strm/src/impl/ImplConfig.cpp
         strm/src/impl/Worker.cpp
         strm/src/impl/models/Classifier.cpp
         strm/src/impl/models/MnnYoloV4Classifier.cpp

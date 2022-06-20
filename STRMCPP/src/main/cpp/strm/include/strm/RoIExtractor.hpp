@@ -17,8 +17,7 @@ namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile,
-               int maxRoISize);
+  RoIExtractor(const RoIExtractorConfig& config, int maxRoISize);
 
   ~RoIExtractor();
 
@@ -37,20 +36,18 @@ class RoIExtractor {
 
   void processOF(Frame* currFrame);
 
-  void mergeRoIs(std::vector<RoI>& childRoIs, std::vector<std::unique_ptr<RoI>>& parentRoIs,
-                 int maxSize) const;
-
-  static std::vector<RoI> getOpticalFlowRoIs(
-      const Frame* prevFrame, Frame* currFrame,
-      const std::vector<BoundingBox>& boundingBoxes, const cv::Size& targetSize);
+  static void getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
+                                 const std::vector<BoundingBox>& boundingBoxes,
+                                 const cv::Size& targetSize,
+                                 std::vector<std::unique_ptr<RoI>>& outChildRoIs);
 
   static std::vector<std::pair<std::pair<int, int>, float>> getShiftAndErrors(
       const Frame* prevFrame, const Frame* currFrame,
       const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize);
 
-  static std::vector<RoI> getPixelDiffRoIs(
+  static void getPixelDiffRoIs(
       const Frame* prevFrame, Frame* currFrame, const cv::Size& targetSize,
-      const int mixRoIArea);
+      const int mixRoIArea, std::vector<std::unique_ptr<RoI>>& outChildRoIs);
 
   static cv::Mat calculateDiffAndThreshold(
       const cv::Mat& prevMat, const cv::Mat& currMat);
@@ -62,8 +59,8 @@ class RoIExtractor {
   std::vector<std::thread> mThreads;
   bool mbStop;
 
+  static const cv::TermCriteria CRITERIA;
   const cv::Size mTargetSize;
-  const ResizeProfile* mResizeProfile;
 
   std::mutex mtx;
   std::condition_variable cv;
