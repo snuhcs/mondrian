@@ -17,8 +17,9 @@ class PatchReconstructor {
 
   void assignBoxesToFrame(MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const;
 
-  void matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& childRoIs,
-                          std::vector<std::unique_ptr<BoundingBox>>& boxes) const;
+  void matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,
+                          std::vector<std::unique_ptr<BoundingBox>>& boxes,
+                          bool isFullFrame) const;
 
   float getIoUThreshold() const;
 

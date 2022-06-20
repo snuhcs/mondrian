@@ -22,11 +22,16 @@ Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(
   std::string jsonPath = "/data/local/tmp/strmcpp.json";
   std::string implJsonPath = "/data/local/tmp/edgedevicecpp.json";
   rm::IMPLConfig config = rm::parseIMPLConfig(implJsonPath);
-  auto* resizeProfile = config.resizeProfileConfig.ACCURACY_AWARE_RESIZE ?
-                        reinterpret_cast<rm::ResizeProfile*>(new rm::AccuracyAwareResizeProfile(
-                            config.resizeProfileConfig.RESIZE_MARGIN)) :
-                        reinterpret_cast<rm::ResizeProfile*>(new rm::StaticResizeProfile(
-                            config.resizeProfileConfig.STATIC_TARGET_SIZE));
+  rm::ResizeProfile* resizeProfile;
+  if (config.resizeProfileConfig.ACCURACY_AWARE_RESIZE) {
+    resizeProfile = reinterpret_cast<rm::ResizeProfile*>(new rm::AccuracyAwareResizeProfile(
+        config.resizeProfileConfig.RESIZE_MARGIN,
+        config.resizeProfileConfig.RESIZE_SMOOTHING_FACTOR,
+        config.resizeProfileConfig.PROBING_STEP));
+  } else {
+    resizeProfile = reinterpret_cast<rm::ResizeProfile*>(new rm::StaticResizeProfile(
+        config.resizeProfileConfig.STATIC_TARGET_SIZE));
+  }
   env->GetJavaVM(&vm);
   auto* inferenceEngine = reinterpret_cast<rm::InferenceEngine*>(new rm::CustomInferenceEngine(
       config.inferenceEngineConfig, vm, env, thiz, config.DRAW_INFERENCE_RESULT));

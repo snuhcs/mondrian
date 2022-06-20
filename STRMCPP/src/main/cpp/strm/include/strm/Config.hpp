@@ -19,7 +19,7 @@ struct RoIExtractorConfig {
   int MIN_ROI_AREA = 5000;
   int ROI_PADDING = 10;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
-  float MERGE_THRESHOLD = 0.5;
+  float PD_FILTER_THRESHOLD = 0.5;
 };
 
 struct PatchReconstructorConfig {
@@ -31,6 +31,7 @@ struct STRMConfig {
   int FULL_FRAME_INTERVAL = 2;
   int BUFFER_SIZE = 1000;
   int LATENCY_SLO_MS = 10000;
+  float MERGE_THRESHOLD = 0.5;
   RoIExtractorConfig roIExtractorConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 };

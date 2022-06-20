@@ -41,7 +41,6 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
   std::set<RoI*>& packedRoIs = mixedFrame.packedRoIs;
 
   for (RoI* pRoI : packedRoIs) {
-    assert(pRoI->frame->boxes.empty());
     if (!pRoI->isProbingRoI) {
       assert(std::any_of(pRoI->frame->parentRoIs.begin(), pRoI->frame->parentRoIs.end(),
                          [&pRoI](auto& pRoICandidate) { return pRoICandidate.get() == pRoI; }));
@@ -88,12 +87,13 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
        packedRoIs.size(), results.size(), reconstructEndTime - reconstructStartTime);
 }
 
-void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& childRoIs,
-                                            std::vector<std::unique_ptr<BoundingBox>>& boxes) const {
+void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,
+                                            std::vector<std::unique_ptr<BoundingBox>>& boxes,
+                                            bool isFullFrame) const {
   std::vector<BoundingBox*> unassignedBoxes;
 
   assert(std::all_of(childRoIs.begin(), childRoIs.end(),
-                     [](RoI& cRoI) { return cRoI.id != UNASSIGNED_ID && cRoI.box == nullptr; }));
+                     [](auto& cRoI) { return cRoI->id != UNASSIGNED_ID && cRoI->box == nullptr; }));
   assert(std::all_of(boxes.begin(), boxes.end(),
                      [](auto& box) { return box->id == UNASSIGNED_ID && box->srcRoI == nullptr; }));
 
@@ -105,14 +105,14 @@ void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& 
     // find RoI with largest overlap
     float maxOverlap = -1;
     RoI* maxRoI = nullptr;
-    for (RoI& cRoI : childRoIs) {
-      if (isFullFrame || cRoI.parentRoI->isPacked()) {
-        int intersection = cRoI.location.intersection(box->location);
+    for (auto& cRoI : childRoIs) {
+      if (isFullFrame || cRoI->parentRoI->isPacked()) {
+        int intersection = cRoI->location.intersection(box->location);
         assert(box->location.area() != 0);
         float overlapRatio = (float) intersection / (float) box->location.area();
         if (maxOverlap < overlapRatio) {
           maxOverlap = overlapRatio;
-          maxRoI = &cRoI;
+          maxRoI = cRoI.get();
         }
       }
     }
@@ -128,34 +128,35 @@ void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& 
 
   // 2. Let RoIs select their favorite Box
   // - Selection result is saved as RoI with same id
-  for (RoI& cRoI : childRoIs) {
-    if (isFullFrame || cRoI.parentRoI->isPacked()) {
+  for (auto& cRoI : childRoIs) {
+    if (isFullFrame || cRoI->parentRoI->isPacked()) {
+      RoI* cRoIPtr = cRoI.get();
       int maxIntersection = -1;
       int maxIndex = -1;
-      for (int i = 0; i < roiToBoxesMap[&cRoI].size(); ++i) {
-        BoundingBox* box = roiToBoxesMap[&cRoI][i];
-        int intersection = cRoI.location.intersection(box->location);
+      for (int i = 0; i < roiToBoxesMap[cRoIPtr].size(); ++i) {
+        BoundingBox* box = roiToBoxesMap[cRoIPtr][i];
+        int intersection = cRoI->location.intersection(box->location);
         if (maxIntersection < intersection) {
           maxIntersection = intersection;
           maxIndex = i;
         }
       }
-      if (!roiToBoxesMap[&cRoI].empty()) {
+      if (!roiToBoxesMap[cRoIPtr].empty()) {
         // 1-1 matching with RoI & box
-        assert(maxIndex >= 0 && maxIndex < roiToBoxesMap[&cRoI].size());
-        BoundingBox* maxBox = roiToBoxesMap[&cRoI][maxIndex];
-        maxBox->id = cRoI.id;
-        maxBox->srcRoI = &cRoI;
-        cRoI.box = maxBox;
-        cRoI.label = maxBox->label;
+        assert(maxIndex >= 0 && maxIndex < roiToBoxesMap[cRoIPtr].size());
+        BoundingBox* maxBox = roiToBoxesMap[cRoIPtr][maxIndex];
+        maxBox->id = cRoI->id;
+        maxBox->srcRoI = cRoIPtr;
+        cRoI->box = maxBox;
+        cRoI->label = maxBox->label;
 
         // Collect all unselected boxes
-        for (int i = 0; i < roiToBoxesMap[&cRoI].size(); ++i) {
+        for (int i = 0; i < roiToBoxesMap[cRoIPtr].size(); ++i) {
           if (i == maxIndex) continue;
-          unassignedBoxes.push_back(roiToBoxesMap[&cRoI][i]);
+          unassignedBoxes.push_back(roiToBoxesMap[cRoIPtr][i]);
         }
       }
-      cRoI.isMatchTried = true;
+      cRoI->isMatchTried = true;
     }
   }
   // End of 2
@@ -176,16 +177,16 @@ void PatchReconstructor::matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& 
   // End of 3
 
   // 2. Update resize profile
-  for (RoI& cRoI : childRoIs) {
-    if (cRoI.isProbingReady()) {
-      mResizeProfile->updateTable(cRoI);
+  for (auto& cRoI : childRoIs) {
+    if (cRoI->isProbingReady()) {
+      mResizeProfile->updateTable(cRoI.get());
     }
   }
 
-  for (RoI& cRoI : childRoIs) {
-    assert(cRoI.id != UNASSIGNED_ID);
-    if (cRoI.box != nullptr) {
-      assert(cRoI.box->id == cRoI.id);
+  for (auto& cRoI : childRoIs) {
+    assert(cRoI->id != UNASSIGNED_ID);
+    if (cRoI->box != nullptr) {
+      assert(cRoI->box->id == cRoI->id);
     }
   }
 

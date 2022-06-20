@@ -8,11 +8,15 @@ class StaticResizeProfile : public ResizeProfile {
   StaticResizeProfile(int staticTargetSize)
       : STATIC_TARGET_SIZE(staticTargetSize) {}
 
-  int getTargetSize(const idType id, const RoI::Features& features) const override {
+  int getTargetSize(const idType id, const RoI::Features& features) override {
     return STATIC_TARGET_SIZE;
   }
 
-  void updateTable(RoI& roi) override {
+  int getProbingStep() override {
+    return 0;
+  }
+
+  void updateTable(RoI* roi) override {
     return;
   }
 

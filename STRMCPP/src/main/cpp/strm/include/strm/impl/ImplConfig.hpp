@@ -9,7 +9,9 @@ namespace rm {
 
 struct ResizeProfileConfig {
   bool ACCURACY_AWARE_RESIZE = true;
+  float RESIZE_SMOOTHING_FACTOR = 0.1;
   bool PROBING = true;
+  int PROBING_STEP = 5;
   int RESIZE_MARGIN = 10;
   int STATIC_TARGET_SIZE = 80;
 };
@@ -21,7 +23,9 @@ struct InferenceEngineConfig {
   float CONF_THRESHOLD = 0.1;
   float IOU_THRESHOLD = 0.5;
   int NUM_WORKERS = 1;
-  std::vector<int> INPUT_SIZES = {800};
+  std::vector<int> INPUT_SIZES = {
+      800
+  };
 };
 
 struct IMPLConfig {

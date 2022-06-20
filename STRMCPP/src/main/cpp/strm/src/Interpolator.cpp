@@ -26,22 +26,22 @@ std::set<idType> Interpolator::interpolate(std::map<std::string, SortedFrames>& 
   return droppedIDs;
 }
 
-std::set<idType> Interpolator::getRoIIds(SortedFrames& frames) {
+std::set<idType> Interpolator::getRoIIds(const SortedFrames& frames) {
   std::set<idType> childIDs;
   for (const Frame* frame : frames) {
-    for (const RoI& cRoI : frame->childRoIs) {
-      childIDs.insert(cRoI.id);
+    for (const auto& cRoI : frame->childRoIs) {
+      childIDs.insert(cRoI->id);
     }
   }
   return childIDs;
 }
 
-std::vector<RoI*> Interpolator::getRoIStream(SortedFrames& frames, idType roIId) {
+std::vector<RoI*> Interpolator::getRoIStream(const SortedFrames& frames, idType roIId) {
   std::vector<RoI*> childRoIStream;
-  for (Frame* frame : frames) {
-    for (RoI& cRoI : frame->childRoIs) {
-      if (cRoI.id == roIId) {
-        childRoIStream.push_back(&cRoI);
+  for (const Frame* frame : frames) {
+    for (const auto& cRoI : frame->childRoIs) {
+      if (cRoI->id == roIId) {
+        childRoIStream.push_back(cRoI.get());
       }
     }
   }

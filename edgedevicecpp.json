@@ -5,13 +5,13 @@
         "use_local_video": true,
         "video_configs": [
             {
-                "path": "/data/local/tmp/video/VIRAT_S_000001_5256_5856.mp4",
+                "path": "/data/local/tmp/video/VIRAT/VIRAT_S_000001_5256_5856.mp4",
                 "width": 1920,
                 "height": 1080,
                 "fps": 30
             },
             {
-                "path": "/data/local/tmp/video/VIRAT_S_000002_1801_2401.mp4",
+                "path": "/data/local/tmp/video/VIRAT/VIRAT_S_000002_1801_2401.mp4",
                 "width": 1920,
                 "height": 1080,
                 "fps": 30
@@ -22,9 +22,11 @@
     "draw_inference_result": true,
     "resize_profile": {
         "accuracy_aware_resize": true,
+        "resize_smoothing_factor": 0.1,
         "probing": true,
-        "resize_margin": 20,
-        "static_target_size": 100
+        "probing_step": 5,
+        "resize_margin": 10,
+        "static_target_size": 80
     },
     "inference_engine": {
         "model": "YOLO_V4",

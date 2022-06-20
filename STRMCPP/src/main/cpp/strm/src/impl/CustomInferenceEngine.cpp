@@ -83,7 +83,7 @@ std::tuple<int, const cv::Mat> CustomInferenceEngine::getInput() {
 void
 CustomInferenceEngine::enqueueResults(const int handle, const std::vector<BoundingBox>& boxes) {
   std::unique_lock<std::mutex> resultLock(resultMtx);
-  results.insert(std::make_pair(handle, boxes));
+  results.emplace(handle, boxes);
   resultLock.unlock();
   resultCv.notify_all();
 }

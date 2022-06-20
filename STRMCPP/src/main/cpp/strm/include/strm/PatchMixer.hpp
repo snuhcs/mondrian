@@ -17,10 +17,17 @@ namespace rm {
 
 class PatchMixer {
  public:
-  static std::vector<MixedFrame> pack(const std::map<std::string, SortedFrames>& frames,
+  static void preparePack(std::map<std::string, SortedFrames>& frames,
+                          ResizeProfile* resizeProfile, int maxRoISize, float mergeThreshold);
+
+  static void mergeRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,
+                        std::vector<std::unique_ptr<RoI>>& parentRoIs,
+                        int maxSize, float mergeThreshold);
+
+  static std::vector<MixedFrame> pack(std::map<std::string, SortedFrames>& frames,
                                       const Frame* fullFrameTarget,
                                       int mixedFrameSize, int numMixedFrames,
-                                      bool probing);
+                                      bool probing, const int probeStep = -1);
 
  private:
   static void tryPackRoIs(std::vector<RoI*>& parentRoIs, int mixedFrameSize);
