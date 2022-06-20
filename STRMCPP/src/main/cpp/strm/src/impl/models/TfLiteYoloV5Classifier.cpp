@@ -18,7 +18,6 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(int inputSize, float confidenceTh
                                                float iouThreshold, bool isTiny)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
                  confidenceThreshold, iouThreshold) {
-  LOGD("YoloV5 TfLiteYoloV5Classifier::TfLiteYoloV5Classifier()");
   std::stringstream ss;
   ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "x-") << inputSize << "-fp16.tflite";
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
@@ -127,7 +126,8 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
   y *= (float) inputSize.height;
   w *= (float) inputSize.width;
   h *= (float) inputSize.height;
-  float gain = std::min((float) inputSize.width / (float) imageWidth, (float) inputSize.height / (float) imageHeight);
+  float gain = std::min((float) inputSize.width / (float) imageWidth,
+                        (float) inputSize.height / (float) imageHeight);
   float xPad = ((float) inputSize.width - (float) imageWidth * gain) / 2;
   float yPad = ((float) inputSize.height - (float) imageHeight * gain) / 2;
   return Rect(

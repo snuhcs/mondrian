@@ -1,7 +1,7 @@
 {
-    "log_path": "/data/data/hcs.offloading.edgedevicecpp/test.log",
-    "draw": true,
     "source": {
+        "draw_video": false,
+        "draw_confidence": 0.1,
         "use_local_video": true,
         "video_configs": [
             {
@@ -16,25 +16,25 @@
                 "height": 1080,
                 "fps": 30
             }
-        ],
-        "draw_confidence": 0.1
+        ]
     },
+    "draw_output": true,
+    "draw_inference_result": true,
     "resize_profile": {
         "accuracy_aware_resize": true,
-        "resize_margin": 10,
-        "static_target_size": 80
+        "probing": true,
+        "resize_margin": 20,
+        "static_target_size": 100
     },
     "inference_engine": {
-        "model": "YOLO_V5",
+        "model": "YOLO_V4",
         "runtime": "TFLITE",
         "use_tiny": false,
         "conf_threshold": 0.1,
         "iou_threshold": 0.5,
         "num_workers": 1,
         "input_sizes": [
-            320,
-            640,
-            832
+            800
         ]
     }
 }

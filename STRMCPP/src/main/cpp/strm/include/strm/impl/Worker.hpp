@@ -10,7 +10,7 @@ namespace rm {
 
 class Worker {
  public:
-  Worker(CustomInferenceEngine* engine, Classifier* classifier, Classifier* fullClassifier);
+  Worker(CustomInferenceEngine* engine, Classifier* classifier);
 
   ~Worker() {
     isClosed.store(true);
@@ -24,7 +24,6 @@ class Worker {
 
   CustomInferenceEngine* engine;
   Classifier* classifier;
-  Classifier* fullClassifier;
 
   std::atomic_bool isClosed;
   std::thread thread;

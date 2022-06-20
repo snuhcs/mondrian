@@ -7,37 +7,24 @@
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
 #include "strm/InferenceEngine.hpp"
-#include "strm/PatchReconstructorCallback.hpp"
+#include "strm/ResizeProfile.hpp"
 
 namespace rm {
 
 class PatchReconstructor {
  public:
-  PatchReconstructor(PatchReconstructorConfig config,
-                     InferenceEngine* inferenceEngine,
-                     PatchReconstructorCallback* callback);
+  PatchReconstructor(const PatchReconstructorConfig& config, ResizeProfile* resizeProfile);
 
-  ~PatchReconstructor();
+  void assignBoxesToFrame(MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const;
 
-  void enqueue(const MixedFrame& item);
+  void matchBoxesWithRoIs(bool isFullFrame, std::vector<RoI>& childRoIs,
+                          std::vector<std::unique_ptr<BoundingBox>>& boxes) const;
+
+  float getIoUThreshold() const;
 
  private:
-  void process(MixedFrame& item);
-  MixedFrame takeItem();
-  static void updateMixedFrameInferenceResults(MixedFrame& mixedFrame, float overlapThreshold);
-  static void updateRoIInferenceResults(MixedFrame& mixedFrame);
-
   PatchReconstructorConfig mConfig;
-  InferenceEngine* mInferenceEngine;
-
-  std::atomic_bool isClosed;
-  std::thread mThread;
-  PatchReconstructorCallback* mCallback;
-
-  int mMaxNumItems;
-  std::queue<MixedFrame> mItems;
-  std::condition_variable mItemsCV;
-  std::mutex mItemsMtx;
+  ResizeProfile* mResizeProfile;
 };
 
 } // namespace rm

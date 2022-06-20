@@ -11,7 +11,9 @@ class ResizeProfile {
  public:
   virtual ~ResizeProfile() {}
 
-  virtual int getTargetSize(const RoI::Features& features) const = 0;
+  virtual int getTargetSize(const idType id, const RoI::Features& features) const = 0;
+
+  virtual void updateTable(RoI& roi) = 0;
 };
 
 }

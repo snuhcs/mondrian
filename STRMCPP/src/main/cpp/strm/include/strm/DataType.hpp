@@ -1,12 +1,13 @@
 #ifndef DATA_TYPE_HPP_
 #define DATA_TYPE_HPP_
 
+#include <atomic>
 #include <string>
 #include <vector>
 #include <chrono>
 #include <cstdint>
 #include <fstream>
-#include <atomic>
+#include <set>
 
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -15,7 +16,10 @@
 
 namespace rm {
 
-typedef unsigned long idType;
+typedef int idType;
+
+extern const idType UNASSIGNED_ID;
+extern const idType MERGED_ROI_ID;
 
 struct RoI;
 
@@ -33,6 +37,13 @@ struct Rect {
   Rect(const Rect& r)
       : left(r.left), top(r.top), right(r.right), bottom(r.bottom) {};
 
+  Rect(const std::pair<int, int> center, const int width, const int height) {
+    left = center.first - width / 2;
+    right = center.first + width / 2;
+    top = center.second - height / 2;
+    bottom = center.second + height / 2;
+  }
+
   int width() const {
     return right - left;
   }
@@ -43,6 +54,10 @@ struct Rect {
 
   int area() const {
     return width() * height();
+  }
+
+  std::pair<int, int> center() const {
+    return std::make_pair((right + left) / 2, (bottom + top) / 2);
   }
 
   int intersection(const Rect& other) const {
@@ -64,27 +79,47 @@ struct Rect {
 struct BoundingBox {
   Rect location;
   float confidence;
-  std::string labelName;
+  int label;
   int targetSize;
   idType id;
+  RoI* srcRoI;
 
-  BoundingBox(idType id, const Rect location, const float confidence, const std::string labelName, int targetSize=-1)
-      : id(id), location(location), confidence(confidence), labelName(labelName), targetSize(targetSize) {}
+  BoundingBox(idType id, const Rect location, const float confidence, int label,
+              int targetSize = -1)
+      : id(id), location(location), confidence(confidence), label(label),
+        targetSize(targetSize), srcRoI(nullptr) {}
+};
+
+enum RoIExtractionStatus {
+  OF_WAITING = 1,
+  OF_EXTRACTING = 2,
+  OF_EXTRACTED = 3,
 };
 
 struct Frame {
   const std::string key;
+  const std::string shortKey;
   const int frameIndex;
-  const cv::Mat mat;
+  cv::Mat mat;
+  Frame* prevFrame;
+  Frame* nextFrame;
   cv::Mat preProcessedMat;
 
-  std::atomic_bool isResultReady;
-  std::vector<BoundingBox> boxes;
+  const int width;
+  const int height;
 
-  std::vector<RoI> origRoIs;
-  std::vector<RoI> rois;
-  std::vector<RoI> opticalFlowRoIs;
-  std::vector<RoI> pixelDiffRoIs;
+  bool useInferenceResultForOF;
+
+  bool isBoxesReady;
+  bool isRoIsReady;
+  std::vector<std::unique_ptr<BoundingBox>> boxes;
+  std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
+
+  RoIExtractionStatus roiExtractionStatus;
+  std::vector<RoI> childRoIs; // => box
+  std::vector<std::unique_ptr<RoI>> parentRoIs;
+
+  bool isFullFrameTarget;
 
   const time_us enqueueTime;
   time_us dispatcherProcessStartTime = 0;
@@ -100,22 +135,39 @@ struct Frame {
   time_us mergeRoIStartTime = 0;
   time_us mergeRoIEndTime = 0;
   time_us mixingStartTime = 0;
-  time_us mixingEndTime = 0;
-  time_us mixedFrameCreateStartTime = 0;
-  time_us mixedFrameCreateEndTime = 0;
-  time_us mixedFrameEnqueueTime = 0;
+  time_us mixingEndTime = 0;;
   time_us reconstructStartTime = 0;
   time_us reconstructEndTime = 0;
   time_us endTime = 0;
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
-        const time_us& enqueueTime)
-      : key(key), frameIndex(frameIndex), mat(mat), isResultReady(false), enqueueTime(enqueueTime){}
+        Frame* prevFrame, const time_us& enqueueTime)
+      : key(key), shortKey(key.substr(key.size() - 5, 1)), frameIndex(frameIndex), mat(mat),
+        width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
+        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime), isFullFrameTarget(false),
+        isBoxesReady(false), isRoIsReady(false) {}
 
   ~Frame() {
     endTime = NowMicros();
   }
+
+  void filterPDRoIs(float threshold);
+
+  bool isReadyToMarry(int mixedFrameIndex) const;
+
+  bool readyForOFExtraction() const;
 };
+
+struct FrameIndexComp {
+  bool operator()(const Frame* lhs, const Frame* rhs) const {
+    if (lhs->frameIndex == rhs->frameIndex) {
+      return lhs->key < rhs->key;
+    }
+    return lhs->frameIndex < rhs->frameIndex;
+  }
+};
+
+using SortedFrames = std::set<Frame*, FrameIndexComp>;
 
 struct RoI {
   enum Type {
@@ -124,73 +176,94 @@ struct RoI {
   };
 
   struct Features {
-    std::string labelName;
+    int label;
     Type type;
     float xyRatio;
-    int shift;
+    std::pair<int, int> shift;
     float err;
     float diffAreaRatio;
+
+    int getShiftSize() const {
+      return shift.first * shift.first + shift.second * shift.second;
+    }
   };
 
-  const Frame* frame;
+  Frame* frame;
   Rect location;
   Type type;
-  std::string labelName;
+  int label;
   Features features;
+  std::vector<RoI> roisForProbing;
+  float priority;
 
-  inline static std::atomic<idType> lastId;
+  inline static std::atomic<idType> lastId = 0;
   idType id;
-  idType parentId;
-  std::vector<idType> childrenId;
+  RoI* prevRoI; // only valid with childRoIs
+  RoI* nextRoI; // only valid with childRoIs
+  std::vector<RoI*> childRoIs;
+  RoI* parentRoI;
 
   int maxEdgeLength;
   int targetSize;
   std::pair<int, int> packedLocation;
+  static const std::pair<int, int> NOT_PACKED;
 
-  int handle;
-  std::vector<BoundingBox> boxes;
+  int packedMixedFrameIndex;
+  bool isProbingRoI;
+  bool isMatchTried; // only valid within parentRoIs
+  BoundingBox* box;
+  BoundingBox* probingBox;
 
-  RoI(const idType id,
-      const Frame* frame,
+  RoI(RoI* prevRoI,
+      const idType id,
+      Frame* frame,
       const Rect location,
       const Type type,
-      const std::string labelName,
+      const int label,
       const std::pair<int, int>& shift,
       const float err,
-      const float diffAreaRatio)
-      : id(id),
-        frame(frame),
-        location(location),
-        type(type),
-        labelName(labelName),
-        features{labelName, type, (float) location.width() / (float) location.height(),
-                 shift.first * shift.first + shift.second * shift.second, err, diffAreaRatio},
-        maxEdgeLength(std::max(location.width(), location.height())),
-        targetSize(maxEdgeLength),
-        packedLocation(std::make_pair(-1, -1)),
-        handle(-1),
-        parentId(-1) {};
+      const float diffAreaRatio,
+      bool isProbingRoI = false)
+      : prevRoI(prevRoI), id(id), frame(frame), location(location), type(type), label(label),
+        features{label, type, (float) location.width() / (float) location.height(),
+                 std::make_pair(shift.first, shift.second), err, diffAreaRatio},
+        maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
+        packedLocation(NOT_PACKED), isMatchTried(false), nextRoI(nullptr), box(nullptr),
+        probingBox(nullptr), packedMixedFrameIndex(INT_MAX), isProbingRoI(isProbingRoI) {
+    if (prevRoI != nullptr) {
+      prevRoI->nextRoI = this;
+    }
+  };
 
-  static RoI mergeRoIs(const RoI& roi0, const RoI& roi1) {
-    assert(roi0.frame == roi1.frame);
-    int newLeft = std::min(roi0.location.left, roi1.location.left);
-    int newTop = std::min(roi0.location.top, roi1.location.top);
-    int newRight = std::max(roi0.location.right, roi1.location.right);
-    int newBottom = std::max(roi0.location.bottom, roi1.location.bottom);
-    RoI::Type roiType = roi0.type == RoI::Type::OF || roi1.type == RoI::Type::OF
+  RoI(const RoI& roi) = default;
+
+  static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
+    assert(pRoI0->frame == pRoI1->frame);
+    int newLeft = std::min(pRoI0->location.left, pRoI1->location.left);
+    int newTop = std::min(pRoI0->location.top, pRoI1->location.top);
+    int newRight = std::max(pRoI0->location.right, pRoI1->location.right);
+    int newBottom = std::max(pRoI0->location.bottom, pRoI1->location.bottom);
+    RoI::Type roiType = pRoI0->type == RoI::Type::OF || pRoI1->type == RoI::Type::OF
                         ? RoI::Type::OF
                         : RoI::Type::PD;
-    std::string roiLabel = roi0.labelName.empty() || roi1.labelName.empty()
-                           || roi0.labelName != roi1.labelName
-                           ? "" : roi0.labelName;
-    RoI mergedRoI(RoI::getNewIds(1).first, roi0.frame, Rect(newLeft, newTop, newRight, newBottom), roiType, roiLabel,
-                  std::make_pair(0, 0), 0, 0);
-    mergedRoI.childrenId.emplace_back(roi0.id);
-    mergedRoI.childrenId.emplace_back(roi1.id);
-    mergedRoI.targetSize = (roi0.targetSize * roi1.maxEdgeLength > roi1.targetSize * roi0.maxEdgeLength) ?
-                           mergedRoI.maxEdgeLength * roi0.targetSize / roi0.maxEdgeLength :
-                           mergedRoI.maxEdgeLength * roi1.targetSize / roi1.maxEdgeLength;
-    return mergedRoI;
+    int roiLabel;
+    if (pRoI0->label == pRoI1->label) {
+      roiLabel = pRoI0->label;
+    } else if (pRoI0->label != -1 && pRoI1->label == -1) {
+      roiLabel = pRoI0->label;
+    } else if (pRoI0->label == -1 && pRoI1->label != -1) {
+      roiLabel = pRoI1->label;
+    } else {
+      roiLabel = -1;
+    }
+    std::unique_ptr<RoI> mergedRoI = std::make_unique<RoI>(
+        nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
+        roiType, roiLabel, std::make_pair(0, 0), 0, 0);
+    mergedRoI->targetSize = (pRoI0->targetSize * pRoI1->maxEdgeLength >
+                             pRoI1->targetSize * pRoI0->maxEdgeLength) ?
+                            mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :
+                            mergedRoI->maxEdgeLength * pRoI1->targetSize / pRoI1->maxEdgeLength;
+    return std::move(mergedRoI);
   }
 
   static std::pair<idType, idType> getNewIds(unsigned long num) {
@@ -200,16 +273,23 @@ struct RoI {
     return std::pair<idType, idType>(minId, maxId);
   }
 
-  bool isPacked() const {
-    return packedLocation.first >= 0 && packedLocation.second >= 0;
+  bool isProbingReady() const {
+    if (roisForProbing.empty()) {
+      return false;
+    }
+    bool ready = true;
+    for (const RoI& pRoI : roisForProbing) {
+      ready &= pRoI.isMatchTried;
+    }
+    return ready;
   }
 
-  bool isChild() const {
-    return (parentId != -1);
+  bool isPacked() const {
+    return packedLocation != NOT_PACKED;
   }
 
   bool isParent() const {
-    return (!childrenId.empty());
+    return childRoIs.size() > 1;
   }
 
   int getArea() const {
@@ -243,38 +323,33 @@ struct RoI {
     cv::resize(getMat(), resizedMat, cv::Size(wh.first, wh.second));
     return resizedMat;
   }
+
+  bool operator<(const RoI& roi) const {
+    return (targetSize < roi.targetSize);
+  }
 };
 
 struct MixedFrame {
-  const int mixedFrameIndex;
   cv::Mat packedMat;
-  std::vector<std::shared_ptr<Frame>> packedFrames;
+  std::set<RoI*> packedRoIs;
 
-  int handle;
-  std::vector<BoundingBox> boxes;
-
-  MixedFrame(const int mixedFrameIndex, const std::vector<std::shared_ptr<Frame>> packedFrames,
-             const int mixedFrameSize, const bool mixing)
-      : mixedFrameIndex(mixedFrameIndex), packedFrames(packedFrames) {
-    if (mixing) {
-      const time_us mixedFrameCreateStartTime = NowMicros();
-      packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
-      for (std::shared_ptr<Frame> frame : packedFrames) {
-        for (RoI& roi : frame->rois) {
-          if (roi.isPacked()) {
-            std::pair<int, int> wh = roi.getResizedWidthHeight();
-            roi.getResizedMat().copyTo(
-                packedMat(cv::Rect(roi.packedLocation.first, roi.packedLocation.second,
-                                   wh.first, wh.second)));
-          }
-        }
-      }
-      const time_us mixedFrameCreateEndTime = NowMicros();
-      for (std::shared_ptr<Frame> frame : packedFrames) {
-        frame->mixedFrameCreateStartTime = mixedFrameCreateStartTime;
-        frame->mixedFrameCreateEndTime = mixedFrameCreateEndTime;
-      }
+  MixedFrame(std::set<RoI*> packedRoIs, int mixedFrameSize) : packedRoIs(packedRoIs) {
+    packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
+    for (RoI* roi : packedRoIs) {
+      assert(roi->isPacked());
+      std::pair<int, int> wh = roi->getResizedWidthHeight();
+      roi->getResizedMat().copyTo(
+          packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
+                             wh.first, wh.second)));
     }
+  }
+
+  SortedFrames getPackedFrames() {
+    SortedFrames packedFrames;
+    for (RoI* roi : packedRoIs) {
+      packedFrames.insert(roi->frame);
+    }
+    return packedFrames;
   }
 };
 

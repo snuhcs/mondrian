@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "strm/Log.hpp"
+#include "strm/Utils.hpp"
 
 namespace rm {
 
@@ -18,6 +19,12 @@ Logger::Logger(const char* logPath) : baseTime(NowMicros()) {
     LOGD("Logger %s create success", logPath);
   } else {
     LOGE("Logger %s create failed", logPath);
+  }
+}
+
+Logger::~Logger() {
+  if (logFile.is_open()) {
+    logFile.close();
   }
 }
 
@@ -45,9 +52,6 @@ void Logger::logHeader() {
           << "mergeRoIEndTime" << delim
           << "mixingStartTime" << delim
           << "mixingEndTime" << delim
-          << "mixedFrameCreateStartTime" << delim
-          << "mixedFrameCreateEndTime" << delim
-          << "mixedFrameEnqueueTime" << delim
           << "reconstructStartTime" << delim
           << "reconstructEndTime" << delim
           << "endTime" << '\n';
@@ -62,7 +66,7 @@ void Logger::log(Frame* frame) {
   logFile << frame->key << delim
           << frame->frameIndex << delim
           << frame->boxes.size() << delim
-          << frame->rois.size() << delim
+          << frame->parentRoIs.size() << delim
           << fromBaseTime(frame->enqueueTime) << delim
           << fromBaseTime(frame->dispatcherProcessStartTime) << delim
           << fromBaseTime(frame->dispatcherProcessEndTime) << delim
@@ -78,9 +82,6 @@ void Logger::log(Frame* frame) {
           << fromBaseTime(frame->resizeRoIEndTime) << delim
           << fromBaseTime(frame->mixingStartTime) << delim
           << fromBaseTime(frame->mixingEndTime) << delim
-          << fromBaseTime(frame->mixedFrameCreateStartTime) << delim
-          << fromBaseTime(frame->mixedFrameCreateEndTime) << delim
-          << fromBaseTime(frame->mixedFrameEnqueueTime) << delim
           << fromBaseTime(frame->reconstructStartTime) << delim
           << fromBaseTime(frame->reconstructEndTime) << delim
           << fromBaseTime(frame->endTime) << '\n';
@@ -89,6 +90,31 @@ void Logger::log(Frame* frame) {
 
 time_us Logger::fromBaseTime(const time_us& time) const {
   return time != 0 ? time - baseTime : 0;
+}
+
+void Logger::logResult(const std::string& key, int frameIndex, time_us time,
+                       const std::vector<BoundingBox>& boxes) {
+  if (!logFile.is_open()) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(mtx);
+  logFile << key << ','
+          << frameIndex << ','
+          << fromBaseTime(time) * 1000 << ',';
+  for (int i = 0; i < boxes.size(); i++) {
+    const BoundingBox& box = boxes[i];
+    logFile << box.location.left << ','
+            << box.location.top << ','
+            << box.location.right << ','
+            << box.location.bottom << ','
+            << box.confidence << ','
+            << COCO_LABELS[box.label];
+    if (i != boxes.size() - 1) {
+      logFile << ',';
+    }
+  }
+  logFile << '\n';
+  logFile.flush();
 }
 
 } // namespace rm

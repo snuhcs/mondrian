@@ -1,54 +1,108 @@
 #ifndef SPATIO_TEMPORAL_ROI_MIXER_HPP_
 #define SPATIO_TEMPORAL_ROI_MIXER_HPP_
 
+#include <jni.h>
+
 #include <fstream>
 #include <map>
+#include <set>
 #include <string>
+#include <vector>
 
-#include "Config.hpp"
-#include "ResizeProfile.hpp"
-#include "RoIPrioritizer.hpp"
-#include "InferenceEngine.hpp"
-#include "Dispatcher.hpp"
-#include "RoIExtractor.hpp"
-#include "PatchMixer.hpp"
-#include "PatchReconstructor.hpp"
+#include "strm/Config.hpp"
+#include "strm/InferenceEngine.hpp"
+#include "strm/ResizeProfile.hpp"
+#include "strm/RoIExtractor.hpp"
+#include "strm/PatchMixer.hpp"
+#include "strm/PatchReconstructor.hpp"
+#include "strm/Utils.hpp"
+#include "strm/Logger.hpp"
 
 namespace rm {
 
-class SpatioTemporalRoIMixer : public PatchReconstructorCallback {
+class FrameBuffer {
+ public:
+  FrameBuffer(const std::string& key, int capacity);
+
+  Frame* enqueue(const cv::Mat& mat);
+
+  void freeImage(const std::vector<int>& frameIndices, Logger* logger);
+
+ private:
+  const std::string key;
+  const std::string shortKey;
+  const int capacity;
+
+  int count;
+  std::mutex mtx;
+  std::condition_variable cv;
+  std::vector<std::unique_ptr<Frame>> frames;
+};
+
+using FrameResult = std::tuple<time_us, cv::Mat, std::vector<BoundingBox>>;
+
+class SpatioTemporalRoIMixer {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
-                         const ResizeProfile* resizeProfile,
-                         const RoIPrioritizer* roIPrioritizer,
-                         InferenceEngine* inferenceEngine);
+                         ResizeProfile* resizeProfile,
+                         InferenceEngine* inferenceEngine,
+                         int numSourceVideos,
+                         JavaVM* vm, JNIEnv* env, jobject strm, bool draw,
+                         bool probing);
 
   ~SpatioTemporalRoIMixer();
 
   int enqueueImage(const std::string& key, const cv::Mat& mat);
 
-  std::vector<BoundingBox> getResults(const std::string& key, int frameIndex);
-
-  void removeSource(const std::string& key);
-
-  void notifyMixedInferenceResults(const MixedFrame& mixedFrame) override;
-
  private:
-  void tryAddDispatcher(const std::string& key);
+  void work();
 
-  const std::unique_ptr<Logger> mLogger;
+  void outputWork();
 
-  const ResizeProfile* mResizeProfile;
-  const RoIPrioritizer* mRoIPrioritizer;
+  void fullFrameInference(Frame* frame);
+
+  static Frame* getFullFrameInferenceFrame(const std::map<std::string, SortedFrames>& lastFrames,
+                                           int fullFrameInferenceStreamIndex);
+
+  void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
+
+  const STRMConfig mConfig;
+  std::thread mThread;
+  bool mbStop;
+
+  std::thread mResultThread;
+  std::unique_ptr<Logger> mResultLogger;
+  std::unique_ptr<Logger> mLogger;
   InferenceEngine* mInferenceEngine;
 
-  std::unique_ptr<PatchMixer> mPatchMixer;
+  bool mProbing;
+  std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
-  std::map<std::string, std::unique_ptr<Dispatcher>> mDispatchers;
-  std::mutex mDispatchersMtx;
 
-  const DispatcherConfig mDispatcherConfig;
-  RoIExtractorConfig mRoIExtractorConfig;
+  int mNumSourceVideos;
+  int mNumStartedFrameBuffers = 0;
+  std::mutex mStartMtx;
+  std::condition_variable mStartCv;
+
+  std::mutex mFrameBuffersMtx;
+  std::map<std::string, std::unique_ptr<FrameBuffer>> mFrameBuffers;
+
+  std::mutex mResultsMtx;
+  std::condition_variable mResultsCv;
+  std::map<std::string, std::map<int, FrameResult>> mResults;
+  std::map<std::string, int> mResultIndices;
+
+  const bool draw;
+  JavaVM* jvm;
+  JNIEnv* env;
+  jobject strm;
+  jclass class_SpatioTemporalRoIMixer;
+  jmethodID SpatioTemporalRoIMixer_drawObjectDetectionResult;
+  jclass class_ArrayList;
+  jmethodID ArrayList_init;
+  jmethodID ArrayList_add;
+  jclass class_BoundingBox;
+  jmethodID BoundingBox_init;
 };
 
 } // namespace rm

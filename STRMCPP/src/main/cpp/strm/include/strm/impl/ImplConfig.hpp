@@ -9,6 +9,7 @@ namespace rm {
 
 struct ResizeProfileConfig {
   bool ACCURACY_AWARE_RESIZE = true;
+  bool PROBING = true;
   int RESIZE_MARGIN = 10;
   int STATIC_TARGET_SIZE = 80;
 };
@@ -24,6 +25,9 @@ struct InferenceEngineConfig {
 };
 
 struct IMPLConfig {
+  int NUM_VIDEOS;
+  bool DRAW_OUTPUT = true;
+  bool DRAW_INFERENCE_RESULT = true;
   ResizeProfileConfig resizeProfileConfig;
   InferenceEngineConfig inferenceEngineConfig;
 };

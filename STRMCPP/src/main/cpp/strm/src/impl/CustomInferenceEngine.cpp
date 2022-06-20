@@ -10,9 +10,8 @@ namespace rm {
 
 CustomInferenceEngine::CustomInferenceEngine(
     const InferenceEngineConfig& config, JavaVM* vm, JNIEnv* env, jobject strm, bool draw)
-    : mConfig(config), mHandle(0), jvm(vm), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
-  LOGD("CppInferenceEngine::CppInferenceEngine()");
-
+    : mConfig(config), mHandle(0), jvm(vm),
+      strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
   class_SpatioTemporalRoIMixer = reinterpret_cast<jclass>(env->NewGlobalRef(
       env->FindClass("hcs/offloading/strmcpp/SpatioTemporalRoIMixer")));
   SpatioTemporalRoIMixer_drawInferenceResult = env->GetMethodID(
@@ -23,7 +22,7 @@ CustomInferenceEngine::CustomInferenceEngine(
   ArrayList_add = env->GetMethodID(class_ArrayList, "add", "(ILjava/lang/Object;)V");
   class_BoundingBox = reinterpret_cast<jclass>(env->NewGlobalRef(
       env->FindClass("hcs/offloading/strmcpp/BoundingBox")));
-  BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIFLjava/lang/String;)V");
+  BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIFI)V");
 
   for (int i = 0; i < config.NUM_WORKERS; i++) {
     if (config.MODEL == "YOLO_V4" && config.RUNTIME == "MNN") {
@@ -39,55 +38,50 @@ CustomInferenceEngine::CustomInferenceEngine(
   }
 }
 
-template <typename T>
+template<typename T>
 void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config) {
-  for (const auto & inputSize : config.INPUT_SIZES) {
+  // TODO: Handle workers for multiple input sizes
+  for (const auto& inputSize : config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
         inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
     classifier->setInferenceTimeMs(classifier->profileInferenceTime());
-    workers.push_back(std::make_unique<Worker>(this, classifier.get(), classifier.get()));
+    //classifier->setInferenceTimeMs(0);
+    workers.push_back(std::make_unique<Worker>(this, classifier.get()));
     classifiers.push_back(std::move(classifier));
   }
 }
 
-int CustomInferenceEngine::enqueue(const cv::Mat mat, const bool isFull) {
-  LOGD("CppInferenceEngine::enqueue(Mat(%d, %d, %d))", mat.cols, mat.rows, mat.channels());
+int CustomInferenceEngine::enqueue(const cv::Mat mat) {
   std::unique_lock<std::mutex> inputLock(inputMtx);
-  inputs.push(std::make_tuple(mHandle, mat, isFull));
+  int handle = mHandle++;
+  inputs.push(std::make_tuple(handle, mat));
   inputLock.unlock();
   inputCv.notify_all();
-  return mHandle++;
+  return handle;
 }
 
 std::vector<BoundingBox> CustomInferenceEngine::getResults(const int handle) {
-  LOGD("CppInferenceEngine::getResults(%d)", handle);
   std::unique_lock<std::mutex> resultLock(resultMtx);
   resultCv.wait(resultLock, [this, handle]() {
     return results.find(handle) != results.end();
   });
   std::vector<BoundingBox> boxes = results.at(handle);
   results.erase(results.find(handle));
-  LOGD("CppInferenceEngine::getResults(%d) end", handle);
   return boxes;
 }
 
-std::tuple<int, const cv::Mat, bool> CustomInferenceEngine::getInput() {
-  LOGD("CppInferenceEngine::getInput()");
+std::tuple<int, const cv::Mat> CustomInferenceEngine::getInput() {
   std::unique_lock<std::mutex> inputLock(inputMtx);
   inputCv.wait(inputLock, [this]() {
     return !inputs.empty();
   });
-  std::tuple<int, const cv::Mat, bool> input = inputs.front();
+  std::tuple<int, const cv::Mat> input = inputs.front();
   inputs.pop();
-  LOGD("CppInferenceEngine::getInput(%d, Mat(%d, %d, %d))",
-       std::get<0>(input), std::get<1>(input).cols, std::get<1>(input).rows,
-       std::get<1>(input).channels());
   return input;
 }
 
 void
 CustomInferenceEngine::enqueueResults(const int handle, const std::vector<BoundingBox>& boxes) {
-  LOGD("CppInferenceEngine::enqueueResults(%d, %d)", handle, (int) boxes.size());
   std::unique_lock<std::mutex> resultLock(resultMtx);
   results.insert(std::make_pair(handle, boxes));
   resultLock.unlock();
@@ -106,11 +100,10 @@ void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
   jobject jBoxes = env->NewObject(class_ArrayList, ArrayList_init);
   for (int i = 0; i < boxes.size(); i++) {
     const rm::BoundingBox& b = boxes.at(i);
-    jstring labelName = env->NewStringUTF(b.labelName.c_str());
     jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
                                  b.location.left, b.location.top, b.location.right,
                                  b.location.bottom,
-                                 b.confidence, labelName);
+                                 b.confidence, b.label);
     env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
   }
   auto* jMat = new cv::Mat();
@@ -134,8 +127,8 @@ long long CustomInferenceEngine::getInferenceTimeMs() {
   return inferenceTime;
 }
 
-  std::vector<int> CustomInferenceEngine::getInputSizes() {
-    return mConfig.INPUT_SIZES;
-  }
+std::vector<int> CustomInferenceEngine::getInputSizes() const {
+  return mConfig.INPUT_SIZES;
+}
 
 } // namespace rm

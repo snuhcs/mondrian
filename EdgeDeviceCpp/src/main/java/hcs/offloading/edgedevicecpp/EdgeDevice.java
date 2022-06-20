@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import hcs.offloading.edgedevicecpp.config.Config;
-import hcs.offloading.edgedevicecpp.config.SourceConfig;
 import hcs.offloading.network.mqtt.DeviceMqttManager;
 import hcs.offloading.network.mqtt.datatypes.Device;
 import hcs.offloading.network.mqtt.datatypes.PacketHandler;
@@ -28,10 +27,9 @@ import hcs.offloading.strmcpp.SpatioTemporalRoIMixer;
 public class EdgeDevice implements WebRTCCallback {
     private static final String TAG = EdgeDevice.class.getName();
 
-    private Config mConfig;
+    private final Config mConfig;
 
     private SurfaceViewRenderer mInputView;
-    private ResultCallback mResultCallback;
 
     private String mTargetEdgeIP;
     private WebRTCManager mWebRTCManager;
@@ -43,30 +41,28 @@ public class EdgeDevice implements WebRTCCallback {
     private final Map<String, WebRTCSource> mWebRTCSources = new ConcurrentHashMap<>();
     private SpatioTemporalRoIMixer mSpatioTemporalRoIMixer;
 
-    EdgeDevice(Config config, Context context, String uri, SurfaceViewRenderer inputView,
-               ResultCallback resultCallback, InferenceViewCallback inferenceViewCallback) {
+    EdgeDevice(Config config, Context context, String uri, SurfaceViewRenderer inputView, InferenceViewCallback inferenceViewCallback) {
         mConfig = config;
-        mResultCallback = resultCallback;
 
         EglBase eglBase = EglBase.create();
         mInputView = inputView;
         mInputView.init(eglBase.getEglBaseContext(), null);
 
-        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer(mConfig.DRAW ? inferenceViewCallback : null);
+        mSpatioTemporalRoIMixer = new SpatioTemporalRoIMixer(inferenceViewCallback);
 
-        if (!mConfig.sourceConfig.USE_LOCAL_VIDEO) {
+        if (!mConfig.USE_LOCAL_VIDEO) {
             mMqttManager = new DeviceMqttManager(context, uri, Device.EDGE, scheduleTopicHandler, webrtcTopicHandler);
         }
         mWebRTCManager = new WebRTCManager(context, mMqttManager, eglBase, this);
 
-        if (mConfig.sourceConfig.USE_LOCAL_VIDEO) {
+        if (mConfig.USE_LOCAL_VIDEO) {
             mVideoEdgeDeviceThread = new Thread(this::startVideoEdgeDevice);
             mVideoEdgeDeviceThread.start();
         }
     }
 
     void close() {
-        if (mConfig.sourceConfig.USE_LOCAL_VIDEO) {
+        if (mConfig.USE_LOCAL_VIDEO) {
             try {
                 mVideoEdgeDeviceThread.interrupt();
                 mVideoEdgeDeviceThread.join();
@@ -94,10 +90,9 @@ public class EdgeDevice implements WebRTCCallback {
     private void startVideoEdgeDevice() {
         Log.d(TAG, "startVideoEdgeDevice");
         startEdgeDevice();
-        for (SourceConfig.VideoConfig videoConfig : mConfig.sourceConfig.VIDEO_CONFIGS) {
-            VideoSource videoSource = new VideoSource(
-                    videoConfig, mSpatioTemporalRoIMixer, mResultCallback, mConfig.DRAW, mConfig.sourceConfig.DRAW_CONFIDENCE);
-            Log.d(TAG, "VideoSource Added : " + videoConfig.PATH + " " + videoConfig.PATH.hashCode());
+        for (Config.VideoConfig videoConfig : mConfig.VIDEO_CONFIGS) {
+            VideoSource videoSource = new VideoSource(videoConfig, mSpatioTemporalRoIMixer, mConfig.DRAW_VIDEO);
+            Log.d(TAG, "VideoSource Added : " + videoConfig.PATH);
 
             Pair<VideoCapturer, VideoTrack> capturerAndTrack =
                     mWebRTCManager.createSavedVideoTrack(videoConfig.PATH, videoSource);
@@ -113,7 +108,7 @@ public class EdgeDevice implements WebRTCCallback {
     }
 
     private void stopEdgeDevice() {
-        if (!mConfig.sourceConfig.USE_LOCAL_VIDEO) {
+        if (!mConfig.USE_LOCAL_VIDEO) {
             Set<String> IPs = mWebRTCSources.keySet();
             for (String ip : IPs) {
                 WebRTCSource webRTCSource = mWebRTCSources.remove(ip);
@@ -149,7 +144,7 @@ public class EdgeDevice implements WebRTCCallback {
         if (mMqttManager.isLocalIP(packet.dstIp)) {
             if (packet.header.equals(WebRTCHeader.SDP.name())) {
                 mWebRTCSources.put(packet.srcIp, new WebRTCSource(
-                        packet.srcIp, mSpatioTemporalRoIMixer, mWebRTCManager, mInputView, mResultCallback, mConfig.sourceConfig.DRAW_CONFIDENCE));
+                        packet.srcIp, mSpatioTemporalRoIMixer, mWebRTCManager, mInputView));
                 mWebRTCSources.get(packet.srcIp).handleSdpAndAnswer(packet.message);
             } else if (packet.header.equals(WebRTCHeader.ICE.name())) {
                 mWebRTCSources.get(packet.srcIp).handleIceMessage(packet.message);

@@ -11,6 +11,9 @@ ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json) {
   if (!json["accuracy_aware_resize"].isNull()) {
     config.ACCURACY_AWARE_RESIZE = json["accuracy_aware_resize"].asBool();
   }
+  if (!json["probing"].isNull()) {
+    config.PROBING = json["probing"].asBool();
+  }
   if (config.ACCURACY_AWARE_RESIZE) {
     if (!json["resize_margin"].isNull()) {
       config.RESIZE_MARGIN = json["resize_margin"].asInt();
@@ -44,11 +47,12 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
     config.NUM_WORKERS = json["num_workers"].asInt();
   }
   if (!json["input_sizes"].isNull()) {
-    const Json::Value inputSizes =  json["input_sizes"];
+    const Json::Value inputSizes = json["input_sizes"];
     config.INPUT_SIZES.clear();
-    for (const auto & size : inputSizes) {
+    for (const auto& size : inputSizes) {
       config.INPUT_SIZES.push_back(size.asInt());
     }
+    std::sort(config.INPUT_SIZES.begin(), config.INPUT_SIZES.end());
   }
   return config;
 }
@@ -67,6 +71,15 @@ IMPLConfig parseIMPLConfig(const std::string& jsonPath) {
     return implConfig;
   }
   LOGD("IMPLConfig : %s", json.toStyledString().c_str());
+  if (!json["source"].isNull() && !json["source"]["video_configs"].isNull()) {
+    implConfig.NUM_VIDEOS = (int) json["source"]["video_configs"].size();
+  }
+  if (!json["draw_output"].isNull()) {
+    implConfig.DRAW_OUTPUT = json["draw_output"].asBool();
+  }
+  if (!json["draw_inference_result"].isNull()) {
+    implConfig.DRAW_INFERENCE_RESULT = json["draw_inference_result"].asBool();
+  }
   if (!json["resize_profile"].isNull()) {
     implConfig.resizeProfileConfig = parseResizeProfileConfig(json["resize_profile"]);
   }
