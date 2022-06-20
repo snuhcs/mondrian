@@ -20,17 +20,15 @@ void Frame::filterPDRoIs(float threshold) {
     }
   }
   for (RoI* PDRoI : PDRoIs) {
-    bool foundSimilar = false;
+    int totalOFCoverage = 0;
     for (RoI* OFRoI : OFRoIs) {
       int intersection = PDRoI->location.intersection(OFRoI->location);
-      if ((float) intersection / (float) PDRoI->getArea() >= threshold) {
-        foundSimilar = true;
-        break;
-      }
+      totalOFCoverage += intersection;
     }
-    if (!foundSimilar) {
-      newChildRoIs.push_back(*PDRoI);
+    if ((float) totalOFCoverage / (float) PDRoI->getArea() >= threshold) {
+      continue;
     }
+    newChildRoIs.push_back(*PDRoI);
   }
   for (RoI* OFRoI : OFRoIs) {
     newChildRoIs.push_back(*OFRoI);

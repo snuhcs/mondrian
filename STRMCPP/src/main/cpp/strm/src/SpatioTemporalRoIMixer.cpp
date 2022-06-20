@@ -204,7 +204,8 @@ void SpatioTemporalRoIMixer::work() {
           std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
                          [](const std::unique_ptr<BoundingBox>& box) { return *box; });
           mResults[frame->key][frame->frameIndex] = std::make_tuple(
-              NowMicros(), frame->mat, std::move(boxes));
+              NowMicros(), frame->mat,
+              nms(boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold()));
         }
       }
     }
@@ -236,7 +237,7 @@ void SpatioTemporalRoIMixer::work() {
     LOGD("STRM::work() %lu mixedFrameInferences took %lu us",
          mixedFrames.size(), mixedFrameInferenceTime - fullFrameInferenceTime);
 
-    LOGD("========== Schedule %d End (getRoI %lu | full %lu | mix %lu) ==========",
+    LOGD("========== Schedule %d End (get %lu + full %lu + mix %lu us) ==========",
          scheduleID++,
          roiGettingTime - startTime,
          fullFrameInferenceTime - roiGettingTime,
