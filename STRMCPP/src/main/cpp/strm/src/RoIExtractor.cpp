@@ -9,6 +9,8 @@
 
 namespace rm {
 
+const cv::TermCriteria RoIExtractor::CRITERIA = cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
+
 RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, const ResizeProfile* resizeProfile,
                            int maxRoISize)
     : mConfig(config),
@@ -356,41 +358,32 @@ std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErro
   const cv::Mat& prevImage = prevFrame->preProcessedMat;
   const cv::Mat& currImage = currFrame->preProcessedMat;
 
-  std::vector<cv::Point2f> p0;
-  std::vector<cv::Point2f> p1;
+  std::vector<cv::Point2f> inputPoints;
+  for (const Rect& bbx : boundingBoxes) {
+    float bbxCenterX = (float) bbx.left + (float) bbx.width() / 2;
+    float bbxCenterY = (float) bbx.top + (float) bbx.height() / 2;
+    inputPoints.emplace_back(bbxCenterX * (float) targetSize.width / (float) currFrame->width,
+                             bbxCenterY * (float) targetSize.height / (float) currFrame->height);
+  }
 
+  std::vector<cv::Point2f> outputPoints;
   std::vector<uchar> status;
   std::vector<float> err;
-
-  std::vector<cv::Point> centroids;
-  for (const Rect& bbx : boundingBoxes) {
-    int bbxCenterX = bbx.left + bbx.width() / 2;
-    int bbxCenterY = bbx.top + bbx.height() / 2;
-    cv::Point bbxCentroidPoints(bbxCenterX * targetSize.width / currFrame->width,
-                                bbxCenterY * targetSize.height / currFrame->height);
-    centroids.push_back(bbxCentroidPoints);
-    // might not work... replaces p0.fromList(centroids); p0 is Point2f,
-    p0.push_back(bbxCentroidPoints);
-  }
-  cv::TermCriteria criteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
-  cv::calcOpticalFlowPyrLK(prevImage, currImage, p0, p1, status, err, cv::Size(15, 15), 2,
-                           criteria);
-
-  uchar StatusArr[status.size()];
-  std::copy(status.begin(), status.end(), StatusArr);
-
-  cv::Point p1Arr[p1.size()];
-  std::copy(p1.begin(), p1.end(), p1Arr);
+  cv::calcOpticalFlowPyrLK(prevImage, currImage, inputPoints, outputPoints,
+                           status, err, cv::Size(15, 15), 2, CRITERIA);
+  assert(inputPoints.size() == outputPoints.size());
+  assert(inputPoints.size() == status.size());
+  assert(inputPoints.size() == err.size());
 
   std::vector<std::pair<std::pair<int, int>, float>> shiftAndErrors;
-  for (int pointIdx = 0; pointIdx < centroids.size(); pointIdx++) {
-    if (StatusArr[pointIdx] == 1) {
+  for (int i = 0; i < inputPoints.size(); i++) {
+    if (status[i] == 1) {
       shiftAndErrors.emplace_back(std::make_pair(
-          (int) ((p1Arr[pointIdx].x - centroids.at(pointIdx).x) * currFrame->width /
-                 targetSize.width),
-          (int) ((p1Arr[pointIdx].y - centroids.at(pointIdx).y) * currFrame->height /
-                 targetSize.height)),
-                                  err[pointIdx]);
+          (int) ((outputPoints[i].x - inputPoints[i].x)
+                 * (float) currFrame->width / (float) targetSize.width),
+          (int) ((outputPoints[i].y - inputPoints[i].y)
+                 * (float) currFrame->height / (float) targetSize.height)),
+                                  err[i]);
     } else {
       shiftAndErrors.emplace_back(std::make_pair(0, 0), 0);
     }

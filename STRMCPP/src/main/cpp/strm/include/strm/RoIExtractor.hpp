@@ -62,6 +62,7 @@ class RoIExtractor {
   std::vector<std::thread> mThreads;
   bool mbStop;
 
+  static const cv::TermCriteria CRITERIA;
   const cv::Size mTargetSize;
   const ResizeProfile* mResizeProfile;
 
