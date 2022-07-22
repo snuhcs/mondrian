@@ -72,7 +72,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
   ArrayList_add = env->GetMethodID(class_ArrayList, "add", "(ILjava/lang/Object;)V");
   class_BoundingBox = reinterpret_cast<jclass>(env->NewGlobalRef(
       env->FindClass("hcs/offloading/strmcpp/BoundingBox")));
-  BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIFI)V");
+  BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIIFI)V");
 }
 
 SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
@@ -389,6 +389,7 @@ void SpatioTemporalRoIMixer::drawObjectDetectionResult(const cv::Mat& mat,
   for (int i = 0; i < boxes.size(); i++) {
     const rm::BoundingBox& b = boxes.at(i);
     jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
+                                 b.id,
                                  b.location.left, b.location.top, b.location.right,
                                  b.location.bottom,
                                  b.confidence, b.label);

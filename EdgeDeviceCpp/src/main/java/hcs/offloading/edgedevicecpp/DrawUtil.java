@@ -122,7 +122,7 @@ public class DrawUtil {
         final Canvas canvas = new Canvas(bitmap);
         for (BoundingBox box : boxes) {
             if (box.confidence >= drawConfidence) {
-                canvas.drawRect(new Rect(box.left, box.top, box.right, box.bottom), PAINTS[box.label]);
+                canvas.drawRect(new Rect(box.left, box.top, box.right, box.bottom), PAINTS[(box.id+1)%NUM_CLASSES]);
             }
         }
         return bitmap;
