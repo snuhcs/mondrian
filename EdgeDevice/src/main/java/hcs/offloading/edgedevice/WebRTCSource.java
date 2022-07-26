@@ -15,7 +15,7 @@ import org.webrtc.VideoTrack;
 
 import hcs.offloading.network.webrtc.WebRTCManager;
 import hcs.offloading.network.webrtc.YuvFrame;
-import hcs.offloading.strmcpp.SpatioTemporalRoIMixer;
+import hcs.offloading.strm.SpatioTemporalRoIMixer;
 
 public class WebRTCSource implements VideoSink {
     private static final String TAG = WebRTCSource.class.getName();

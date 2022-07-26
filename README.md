@@ -1,7 +1,7 @@
 <div id="top"></div>
 
 # Multi-Camera Spatio-temporal RoI Mixing
-FYC, [STRMCPP/src/main/cpp/strm](https://github.com/snuhcs/offloading-system/tree/master/STRMCPP/src/main/cpp/strm)
+FYC, [STRM/src/main/cpp/strm](https://github.com/snuhcs/offloading-system/tree/master/STRM/src/main/cpp/strm)
 <details>
   <summary>Table of Contents</summary>
   <ol>
@@ -27,7 +27,7 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 ## Getting Started
 
 ### Prerequisites
-1. Download dependencies into `STRMCPP/src/main/jniLibs` and `STRMCPP/src/main/cpp/third_party` from google drive.
+1. Download dependencies into `STRM/src/main/jniLibs` and `STRM/src/main/cpp/third_party` from google drive.
 2. Download models to use from google drive.
 3. (Optional) Download source videos from google drive.
 
@@ -38,11 +38,11 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 
 ### How to Run
 1. Build and install `EdgeDevice` application.
-2. Upload `strmcpp.json` into `/data/local/tmp`.
-    * `adb push <host strmcpp.json path> /data/local/tmp/strmcpp.json`
+2. Upload `strm.json` into `/data/local/tmp`.
+    * `adb push <host strm.json path> /data/local/tmp/strm.json`
 3. Upload models to use into `/data/local/tmp/models/`.
     * `adb push <host model path> /data/local/tmp/models`
-4. (Only for `Option 1. Process videos on the EdgeDevice`) Upload videos specified in `strmcpp.json`.
+4. (Only for `Option 1. Process videos on the EdgeDevice`) Upload videos specified in `strm.json`.
     * `adb push <host video path> <adb video path>`
 5. Run `EdgeDevice`.
 

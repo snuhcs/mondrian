@@ -20,13 +20,13 @@ import java.util.List;
 
 import hcs.offloading.edgedevice.config.Config;
 import hcs.offloading.edgedevice.databinding.ActivityMainBinding;
-import hcs.offloading.strmcpp.BoundingBox;
-import hcs.offloading.strmcpp.InferenceViewCallback;
+import hcs.offloading.strm.BoundingBox;
+import hcs.offloading.strm.InferenceViewCallback;
 
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, InferenceViewCallback {
     private static final String TAG = MainActivity.class.getName();
 
-    private static final String CONFIG_FILEPATH = "/data/local/tmp/strmcpp.json";
+    private static final String CONFIG_FILEPATH = "/data/local/tmp/strm.json";
 
     private EditText mIpInput;
     private EditText mPortInput;

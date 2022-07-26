@@ -9,7 +9,7 @@ then
 else
     echo "### CONFIG UPDATE START"
     echo ""
-    adb push strmcpp.json /data/local/tmp/strmcpp.json
+    adb push strm.json /data/local/tmp/strm.json
     echo ""
     echo "### CONFIG UPDATE DONE"
 fi

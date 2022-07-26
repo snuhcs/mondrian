@@ -21,8 +21,8 @@ import hcs.offloading.network.mqtt.datatypes.PacketHandler;
 import hcs.offloading.network.mqtt.datatypes.WebRTCHeader;
 import hcs.offloading.network.webrtc.WebRTCCallback;
 import hcs.offloading.network.webrtc.WebRTCManager;
-import hcs.offloading.strmcpp.InferenceViewCallback;
-import hcs.offloading.strmcpp.SpatioTemporalRoIMixer;
+import hcs.offloading.strm.InferenceViewCallback;
+import hcs.offloading.strm.SpatioTemporalRoIMixer;
 
 public class EdgeDevice implements WebRTCCallback {
     private static final String TAG = EdgeDevice.class.getName();

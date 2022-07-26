@@ -15,5 +15,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "OffloadingSystem"
 include ':EdgeDevice'
-include ':STRMCPP'
+include ':STRM'
 include ':Network'

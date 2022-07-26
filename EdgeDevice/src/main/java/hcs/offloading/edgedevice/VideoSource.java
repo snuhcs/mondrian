@@ -16,7 +16,7 @@ import org.webrtc.YuvConverter;
 
 import hcs.offloading.edgedevice.config.Config;
 import hcs.offloading.network.webrtc.CustomCapturer;
-import hcs.offloading.strmcpp.SpatioTemporalRoIMixer;
+import hcs.offloading.strm.SpatioTemporalRoIMixer;
 
 public class VideoSource extends CustomCapturer {
     private static final String TAG = VideoSource.class.getName();

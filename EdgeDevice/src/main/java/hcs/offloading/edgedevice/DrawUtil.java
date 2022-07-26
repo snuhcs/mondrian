@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import hcs.offloading.strmcpp.BoundingBox;
+import hcs.offloading.strm.BoundingBox;
 
 public class DrawUtil {
     private static final String[] LABELS = {
