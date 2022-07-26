@@ -14,10 +14,6 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "OffloadingSystem"
-include ':EdgeDevice'
-include ':STRM'
 include ':EdgeDeviceCpp'
 include ':STRMCPP'
 include ':Network'
-include ':SourceCamera'
-include ':EdgeHub'
