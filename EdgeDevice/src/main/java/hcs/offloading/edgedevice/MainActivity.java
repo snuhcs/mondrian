@@ -26,7 +26,7 @@ import hcs.offloading.strm.datatypes.BoundingBox;
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, ResultCallback {
     private static final String TAG = MainActivity.class.getName();
 
-    private static final String CONFIG_FILEPATH = "/data/local/tmp/edgedevice.json";
+    private static final String CONFIG_FILEPATH = "/data/local/tmp/strm.json";
 
     private EditText mIpInput;
     private EditText mPortInput;

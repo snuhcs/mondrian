@@ -40,12 +40,11 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 ### How to Run
 #### Option 1. Process videos on the EdgeDevice
 1. Build and install `EdgeDeviceCPP` application.
-2. Upload `edgedevicecpp.json` and `strmcpp.json` into `/data/local/tmp`.
-    * `adb push <host edgedevicecpp.json path> /data/local/tmp/edgedevicecpp.json`
+2. Upload `strmcpp.json` into `/data/local/tmp`.
     * `adb push <host strmcpp.json path> /data/local/tmp/strmcpp.json`
 3. Upload models to use into `/data/local/tmp/models/`.
     * `adb push <host model path> /data/local/tmp/models`
-4. (Only for `Option 1. Process videos on the EdgeDevice`) Upload videos specified in `edgedevicecpp.json`.
+4. (Only for `Option 1. Process videos on the EdgeDevice`) Upload videos specified in `strmcpp.json`.
     * `adb push <host video path> <adb video path>`
 5. Run `EdgeDeviceCPP`.
 
