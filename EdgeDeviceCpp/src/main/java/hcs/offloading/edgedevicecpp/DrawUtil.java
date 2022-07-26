@@ -145,10 +145,10 @@ public class DrawUtil {
     }
 
 
-    public static Bitmap drawBoxes(Bitmap bitmap, List<BoundingBox> boxes, float drawConfidence, boolean isDrawingOnMixedFrame) {
+    public static Bitmap drawBoxes(Bitmap bitmap, List<BoundingBox> boxes, float drawConfidence, boolean fancyOutput) {
         final Canvas canvas = new Canvas(bitmap);
         ArrayList<Integer> ids = new ArrayList<>();
-        if (!isDrawingOnMixedFrame) {
+        if (fancyOutput) {
             for (BoundingBox box : boxes) {
                 assert (!ids.contains(box.id));
                 ids.add(box.id);
@@ -185,7 +185,7 @@ public class DrawUtil {
                 Rect mRect = new Rect(box.left, box.top, box.right, box.bottom);
                 RectF mRectF = new RectF(box.left, box.top, box.right, box.bottom);
                 Paint mPaint;
-                if (box.id == -1) {
+                if (box.id == -1 || !fancyOutput) {
                     mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                     mPaint.setColor(Color.GREEN);
                     mPaint.setStyle(Paint.Style.STROKE);
@@ -194,7 +194,7 @@ public class DrawUtil {
                     mPaint = PAINTS[box.id%NUM_CLASSES];
                 }
 
-                if (isDrawingOnMixedFrame) {
+                if (!fancyOutput) {
                     canvas.drawRect(mRect, mPaint);
                 } else {
                     switch(box.origin) {

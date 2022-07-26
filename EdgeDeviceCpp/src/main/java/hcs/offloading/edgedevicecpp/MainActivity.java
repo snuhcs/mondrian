@@ -107,7 +107,7 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bitmap);
         mInferenceOutputView.post(() -> mInferenceOutputView.setImageBitmap(
-                DrawUtil.drawBoxes(bitmap, results, mConfig.DRAW_CONFIDENCE, true)));
+                DrawUtil.drawBoxes(bitmap, results, mConfig.DRAW_CONFIDENCE, false /* must be always false */)));
     }
 
     @Override
@@ -116,6 +116,6 @@ public class MainActivity extends AppCompatActivity implements CompoundButton.On
         Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bitmap);
         mOutputView.post(() -> mOutputView.setImageBitmap(
-                DrawUtil.drawBoxes(bitmap, results, mConfig.DRAW_CONFIDENCE, false)));
+                DrawUtil.drawBoxes(bitmap, results, mConfig.DRAW_CONFIDENCE, true)));
     }
 }
