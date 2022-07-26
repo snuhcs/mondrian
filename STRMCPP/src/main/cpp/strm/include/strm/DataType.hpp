@@ -76,6 +76,13 @@ struct Rect {
   }
 };
 
+enum Origin {
+  originNull = 0,
+  fromBB = 1,
+  fromPD = 2,
+  fromIP = 3,
+};
+
 struct BoundingBox {
   Rect location;
   float confidence;
@@ -83,11 +90,12 @@ struct BoundingBox {
   int targetSize;
   idType id;
   RoI* srcRoI;
+  Origin origin;
 
   BoundingBox(idType id, const Rect location, const float confidence, int label,
-              int targetSize = -1)
+              Origin origin, int targetSize = -1)
       : id(id), location(location), confidence(confidence), label(label),
-        targetSize(targetSize), srcRoI(nullptr) {}
+        origin(origin), targetSize(targetSize), srcRoI(nullptr) {}
 };
 
 enum RoIExtractionStatus {
@@ -190,6 +198,7 @@ struct RoI {
   Frame* frame;
   Rect location;
   Type type;
+  Origin origin;
   int label;
   Features features;
   std::vector<RoI*> roisForProbing;
@@ -218,12 +227,13 @@ struct RoI {
       Frame* frame,
       const Rect location,
       const Type type,
+      const Origin origin,
       const int label,
       const std::pair<int, int>& shift,
       const float err,
       const float diffAreaRatio,
       bool isProbingRoI = false)
-      : prevRoI(prevRoI), id(id), frame(frame), location(location), type(type), label(label),
+      : prevRoI(prevRoI), id(id), frame(frame), location(location), type(type), origin(origin), label(label),
         features{label, type, (float) location.width() / (float) location.height(),
                  std::make_pair(shift.first, shift.second), err, diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
@@ -243,7 +253,7 @@ struct RoI {
     int newTop = std::min(pRoI0->location.top, pRoI1->location.top);
     int newRight = std::max(pRoI0->location.right, pRoI1->location.right);
     int newBottom = std::max(pRoI0->location.bottom, pRoI1->location.bottom);
-    RoI::Type roiType = pRoI0->type == RoI::Type::OF || pRoI1->type == RoI::Type::OF
+    RoI::Type roiType = pRoI0->type != RoI::Type::PD || pRoI1->type != RoI::Type::PD
                         ? RoI::Type::OF
                         : RoI::Type::PD;
     int roiLabel;
@@ -258,7 +268,7 @@ struct RoI {
     }
     std::unique_ptr<RoI> mergedRoI = std::make_unique<RoI>(
         nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-        roiType, roiLabel, std::make_pair(0, 0), 0, 0);
+        roiType, originNull, roiLabel, std::make_pair(0, 0), 0, 0);
     mergedRoI->targetSize = (pRoI0->targetSize * pRoI1->maxEdgeLength >
                              pRoI1->targetSize * pRoI0->maxEdgeLength) ?
                             mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :
