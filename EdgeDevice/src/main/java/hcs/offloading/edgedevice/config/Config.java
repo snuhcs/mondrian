@@ -25,9 +25,7 @@ public class Config {
         public int FPS = 30;
     }
 
-    public float DRAW_CONFIDENCE = 0f;
-    public boolean DRAW_VIDEO = false;
-    public boolean USE_LOCAL_VIDEO = false;
+    public boolean DRAW_INPUT = true;
     public List<VideoConfig> VIDEO_CONFIGS = new ArrayList<>();
 
     public Config(String jsonPath) throws IOException, JSONException {
@@ -40,37 +38,29 @@ public class Config {
             return;
         }
 
-        if (jsonObject.has("draw_video")) {
-            DRAW_VIDEO = jsonObject.getBoolean("draw_video");
+        if (jsonObject.has("draw_input")) {
+            DRAW_INPUT = jsonObject.getBoolean("draw_input");
         }
-        if (jsonObject.has("draw_confidence")) {
-            DRAW_CONFIDENCE = (float) jsonObject.getDouble("draw_confidence");
+        if (!jsonObject.has("video_configs") || jsonObject.getJSONArray("video_configs").length() == 0) {
+            throw new IllegalArgumentException("Video configs should be specified");
         }
-        if (jsonObject.has("use_local_video")) {
-            USE_LOCAL_VIDEO = jsonObject.getBoolean("use_local_video");
-            if (USE_LOCAL_VIDEO) {
-                if (!jsonObject.has("video_configs") || jsonObject.getJSONArray("video_configs").length() == 0) {
-                    throw new IllegalArgumentException("Video configs should be specified");
-                }
-                JSONArray videoConfigs = jsonObject.getJSONArray("video_configs");
-                for (int i = 0; i < videoConfigs.length(); i++) {
-                    VideoConfig videoConfig = new VideoConfig();
-                    JSONObject jsonVideoConfig = videoConfigs.getJSONObject(i);
-                    if (jsonVideoConfig.has("path")) {
-                        videoConfig.PATH = jsonVideoConfig.getString("path");
-                    }
-                    if (jsonVideoConfig.has("width")) {
-                        videoConfig.WIDTH = jsonVideoConfig.getInt("width");
-                    }
-                    if (jsonVideoConfig.has("height")) {
-                        videoConfig.HEIGHT = jsonVideoConfig.getInt("height");
-                    }
-                    if (jsonVideoConfig.has("fps")) {
-                        videoConfig.FPS = jsonVideoConfig.getInt("fps");
-                    }
-                    VIDEO_CONFIGS.add(videoConfig);
-                }
+        JSONArray videoConfigs = jsonObject.getJSONArray("video_configs");
+        for (int i = 0; i < videoConfigs.length(); i++) {
+            VideoConfig videoConfig = new VideoConfig();
+            JSONObject jsonVideoConfig = videoConfigs.getJSONObject(i);
+            if (jsonVideoConfig.has("path")) {
+                videoConfig.PATH = jsonVideoConfig.getString("path");
             }
+            if (jsonVideoConfig.has("width")) {
+                videoConfig.WIDTH = jsonVideoConfig.getInt("width");
+            }
+            if (jsonVideoConfig.has("height")) {
+                videoConfig.HEIGHT = jsonVideoConfig.getInt("height");
+            }
+            if (jsonVideoConfig.has("fps")) {
+                videoConfig.FPS = jsonVideoConfig.getInt("fps");
+            }
+            VIDEO_CONFIGS.add(videoConfig);
         }
     }
 
