@@ -143,7 +143,7 @@ std::vector<MixedFrame> PatchMixer::pack(std::map<std::string, SortedFrames>& fr
         int probe = -probeStep * numProbSteps;
         for (int i = 0; i < 2 * numProbSteps + 1; i++) {
           cRoI->frame->probingRoIs.emplace_back(
-              new RoI(nullptr, cRoI->id, cRoI->frame, cRoI->location, cRoI->type, cRoI->label,
+              new RoI(nullptr, cRoI->id, cRoI->frame, cRoI->location, cRoI->type, cRoI->origin, cRoI->label,
                       cRoI->features.shift, cRoI->features.err, cRoI->features.diffAreaRatio,
                       true));
           RoI* probeRoI = cRoI->frame->probingRoIs.back().get();
