@@ -18,8 +18,8 @@ static long inferenceEngineHandle = (long) nullptr;
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_hcs_offloading_strm_Emulator_createSpatioTemporalRoIMixer(JNIEnv* env,
-                                                               jobject thiz) {
+Java_hcs_offloading_strm_Emulator_createEmulator(JNIEnv* env,
+                                                 jobject thiz) {
   rm::STRMConfig config = rm::parseSTRMConfig("/data/local/tmp/strm.json");
   rm::IMPLConfig implConfig = rm::parseIMPLConfig("/data/local/tmp/strm.json");
   rm::ResizeProfile* resizeProfile;

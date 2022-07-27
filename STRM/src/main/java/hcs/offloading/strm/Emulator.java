@@ -19,7 +19,7 @@ public class Emulator {
     private final InferenceViewCallback inferenceViewCallback;
 
     public Emulator(InferenceViewCallback inferenceViewCallback) {
-        handle = createSpatioTemporalRoIMixer();
+        handle = createEmulator();
         this.inferenceViewCallback = inferenceViewCallback;
     }
 
@@ -35,7 +35,7 @@ public class Emulator {
         inferenceViewCallback.drawObjectDetectionResult(addr, results);
     }
 
-    private native long createSpatioTemporalRoIMixer();
+    private native long createEmulator();
 
     private native void close(long handle);
 }
