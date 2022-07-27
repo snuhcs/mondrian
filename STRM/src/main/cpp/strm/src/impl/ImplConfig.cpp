@@ -6,6 +6,27 @@
 
 namespace rm {
 
+std::vector<VideoConfig> parseVideoConfigs(const Json::Value& json) {
+  std::vector<VideoConfig> configs;
+  std::transform(json.begin(), json.end(), configs.begin(), [](const Json::Value& j) {
+    VideoConfig config;
+    if (!j["path"].isNull()) {
+      config.PATH = j["path"].asString();
+    }
+    if (!j["width"].isNull()) {
+      config.WIDTH = j["width"].asInt();
+    }
+    if (!j["height"].isNull()) {
+      config.HEIGHT = j["height"].asInt();
+    }
+    if (!j["fps"].isNull()) {
+      config.FPS = j["fps"].asInt();
+    }
+    return config;
+  });
+  return configs;
+}
+
 ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json) {
   ResizeProfileConfig config;
   if (!json["accuracy_aware_resize"].isNull()) {
@@ -77,14 +98,14 @@ IMPLConfig parseIMPLConfig(const std::string& jsonPath) {
     return implConfig;
   }
   LOGD("IMPLConfig : %s", json.toStyledString().c_str());
-  if (!json["source"].isNull() && !json["source"]["video_configs"].isNull()) {
-    implConfig.NUM_VIDEOS = (int) json["source"]["video_configs"].size();
-  }
   if (!json["draw_output"].isNull()) {
     implConfig.DRAW_OUTPUT = json["draw_output"].asBool();
   }
   if (!json["draw_inference_result"].isNull()) {
     implConfig.DRAW_INFERENCE_RESULT = json["draw_inference_result"].asBool();
+  }
+  if (!json["video_configs"].isNull()) {
+    implConfig.videoConfigs = parseVideoConfigs(json["video_configs"]);
   }
   if (!json["resize_profile"].isNull()) {
     implConfig.resizeProfileConfig = parseResizeProfileConfig(json["resize_profile"]);

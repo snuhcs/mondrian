@@ -1,6 +1,9 @@
 #include <jni.h>
 
 #include <thread>
+#include <vector>
+
+#include "opencv2/videoio.hpp"
 
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
@@ -15,6 +18,7 @@
 static JavaVM* vm;
 static long resizeProfileHandle = (long) nullptr;
 static long inferenceEngineHandle = (long) nullptr;
+static std::vector<cv::VideoCapture> videos;
 
 extern "C"
 JNIEXPORT jlong JNICALL
@@ -37,9 +41,13 @@ Java_hcs_offloading_strm_Emulator_createEmulator(JNIEnv* env,
       implConfig.inferenceEngineConfig, vm, env, thiz, implConfig.DRAW_INFERENCE_RESULT));
   resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
   inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);
-  return reinterpret_cast<long>(new rm::SpatioTemporalRoIMixer(
-      config, resizeProfile, inferenceEngine, implConfig.NUM_VIDEOS,
-      vm, env, thiz, implConfig.DRAW_OUTPUT, implConfig.resizeProfileConfig.PROBING));
+  auto* strm = new rm::SpatioTemporalRoIMixer(
+      config, resizeProfile, inferenceEngine, (int) implConfig.videoConfigs.size(),
+      vm, env, thiz, implConfig.DRAW_OUTPUT, implConfig.resizeProfileConfig.PROBING);
+  for (const auto& videoConfig : implConfig.videoConfigs) {
+    videos.emplace_back(videoConfig.PATH);
+  }
+  return reinterpret_cast<long>(strm);
 }
 
 extern "C"

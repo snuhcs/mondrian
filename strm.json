@@ -1,5 +1,6 @@
 {
-    "draw_input": true,
+    "draw_output": true,
+    "draw_inference_result": true,
     "video_configs": [
         {
             "path": "/data/local/tmp/video/VIRAT/VIRAT_S_000001_5256_5856.mp4",
@@ -14,8 +15,6 @@
             "fps": 30
         }
     ],
-    "draw_output": true,
-    "draw_inference_result": true,
     "resize_profile": {
         "accuracy_aware_resize": true,
         "resize_smoothing_factor": 0.1,
