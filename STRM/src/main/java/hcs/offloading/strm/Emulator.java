@@ -1,10 +1,8 @@
 package hcs.offloading.strm;
 
-import org.opencv.core.Mat;
-
 import java.util.List;
 
-public class SpatioTemporalRoIMixer {
+public class Emulator {
     static {
         System.loadLibrary("strm");
         System.loadLibrary("opencv_core");
@@ -20,9 +18,13 @@ public class SpatioTemporalRoIMixer {
     private final long handle;
     private final InferenceViewCallback inferenceViewCallback;
 
-    public SpatioTemporalRoIMixer(InferenceViewCallback inferenceViewCallback) {
+    public Emulator(InferenceViewCallback inferenceViewCallback) {
         handle = createSpatioTemporalRoIMixer();
         this.inferenceViewCallback = inferenceViewCallback;
+    }
+
+    public void close() {
+        close(handle);
     }
 
     public void drawInferenceResult(long addr, List<BoundingBox> results) {
@@ -33,17 +35,7 @@ public class SpatioTemporalRoIMixer {
         inferenceViewCallback.drawObjectDetectionResult(addr, results);
     }
 
-    public void enqueueImage(String key, Mat mat) {
-        enqueueImage(handle, key, mat.getNativeObjAddr());
-    }
-
-    public void close() {
-        close(handle);
-    }
-
     private native long createSpatioTemporalRoIMixer();
-
-    private native void enqueueImage(long handle, String key, long matAddr);
 
     private native void close(long handle);
 }

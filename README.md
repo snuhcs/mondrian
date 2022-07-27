@@ -34,17 +34,17 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 ### Installation
 1. Download the Android Studio.
 2. Open this project with the Android Studio.
-3. Build and install the `EdgeDevice` application.
+3. Build and install the `STRM` application.
 
 ### How to Run
-1. Build and install `EdgeDevice` application.
+1. Build and install `STRM` application.
 2. Upload `strm.json` into `/data/local/tmp`.
     * `adb push <host strm.json path> /data/local/tmp/strm.json`
 3. Upload models to use into `/data/local/tmp/models/`.
     * `adb push <host model path> /data/local/tmp/models`
-4. (Only for `Option 1. Process videos on the EdgeDevice`) Upload videos specified in `strm.json`.
+4. Upload videos specified in `strm.json`.
     * `adb push <host video path> <adb video path>`
-5. Run `EdgeDevice`.
+5. Run `STRM`.
 
 
 ## Contact
