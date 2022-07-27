@@ -10,18 +10,18 @@
         android:id="@+id/outputView"
         android:layout_width="fill_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.3"
+        android:layout_weight="1"
         android:layout_gravity="center"
-        android:layout_marginTop="5dp"
+        android:layout_margin="5dp"
         tools:srcCompat="@tools:sample/avatars" />
 
     <ImageView
         android:id="@+id/inferenceOutputView"
         android:layout_width="fill_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.3"
+        android:layout_weight="1"
         android:layout_gravity="center"
-        android:layout_marginTop="5dp"
+        android:layout_margin="5dp"
         tools:srcCompat="@tools:sample/avatars" />
 
 </LinearLayout>

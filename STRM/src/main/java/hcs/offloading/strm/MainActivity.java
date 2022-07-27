@@ -5,9 +5,11 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.ImageView;
 
+import org.json.JSONException;
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 
+import java.io.IOException;
 import java.util.List;
 
 import hcs.offloading.strm.databinding.ActivityMainBinding;
@@ -27,7 +29,11 @@ public class MainActivity extends AppCompatActivity implements InferenceViewCall
         mOutputView = findViewById(hcs.offloading.strm.R.id.outputView);
         mInferenceOutputView = findViewById(hcs.offloading.strm.R.id.inferenceOutputView);
 
-        mEmulator = new Emulator(this);
+        try {
+            mEmulator = new Emulator(this);
+        } catch (JSONException | IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

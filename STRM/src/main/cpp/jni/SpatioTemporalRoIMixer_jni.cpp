@@ -1,4 +1,5 @@
 #include <jni.h>
+#include <android/log.h>
 
 #include <thread>
 #include <vector>
@@ -16,17 +17,15 @@
 #include "strm/impl/CustomInferenceEngine.hpp"
 
 static JavaVM* vm;
-static long resizeProfileHandle = (long) nullptr;
-static long inferenceEngineHandle = (long) nullptr;
-static std::vector<cv::VideoCapture> videos;
+static jboolean isCopy = JNI_TRUE;
+static rm::InferenceEngine* inferenceEngine = nullptr;
+static rm::ResizeProfile* resizeProfile = nullptr;
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_hcs_offloading_strm_Emulator_createEmulator(JNIEnv* env,
-                                                 jobject thiz) {
-  rm::STRMConfig config = rm::parseSTRMConfig("/data/local/tmp/strm.json");
+Java_hcs_offloading_strm_Emulator_createSpatioTemporalRoIMixer(JNIEnv* env,
+                                                               jobject thiz) {
   rm::IMPLConfig implConfig = rm::parseIMPLConfig("/data/local/tmp/strm.json");
-  rm::ResizeProfile* resizeProfile;
   if (implConfig.resizeProfileConfig.ACCURACY_AWARE_RESIZE) {
     resizeProfile = reinterpret_cast<rm::ResizeProfile*>(new rm::AccuracyAwareResizeProfile(
         implConfig.resizeProfileConfig.RESIZE_MARGIN,
@@ -37,27 +36,32 @@ Java_hcs_offloading_strm_Emulator_createEmulator(JNIEnv* env,
         implConfig.resizeProfileConfig.STATIC_TARGET_SIZE));
   }
   env->GetJavaVM(&vm);
-  auto* inferenceEngine = reinterpret_cast<rm::InferenceEngine*>(new rm::CustomInferenceEngine(
+  inferenceEngine = reinterpret_cast<rm::InferenceEngine*>(new rm::CustomInferenceEngine(
       implConfig.inferenceEngineConfig, vm, env, thiz, implConfig.DRAW_INFERENCE_RESULT));
-  resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
-  inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);
-  auto* strm = new rm::SpatioTemporalRoIMixer(
+
+  rm::STRMConfig config = rm::parseSTRMConfig("/data/local/tmp/strm.json");
+  return reinterpret_cast<long>(new rm::SpatioTemporalRoIMixer(
       config, resizeProfile, inferenceEngine, (int) implConfig.videoConfigs.size(),
-      vm, env, thiz, implConfig.DRAW_OUTPUT, implConfig.resizeProfileConfig.PROBING);
-  for (const auto& videoConfig : implConfig.videoConfigs) {
-    videos.emplace_back(videoConfig.PATH);
-  }
-  return reinterpret_cast<long>(strm);
+      vm, env, thiz, implConfig.DRAW_OUTPUT, implConfig.resizeProfileConfig.PROBING));
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_hcs_offloading_strm_Emulator_close(JNIEnv* env, jobject thiz,
-                                        jlong handle) {
+Java_hcs_offloading_strm_Emulator_enqueueImage(JNIEnv* env, jobject thiz, jlong handle, jstring key,
+                                               jlong matAddr) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  auto* resizeProfile = (rm::ResizeProfile*) resizeProfileHandle;
-  auto* inferenceEngine = (rm::InferenceEngine*) inferenceEngineHandle;
+  auto* image = (cv::Mat*) matAddr;
+  const char* k = env->GetStringUTFChars(key, &isCopy);
+  strm->enqueueImage(std::string(k), *image);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_hcs_offloading_strm_Emulator_close(JNIEnv* env, jobject thiz, jlong handle) {
+  auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   delete strm;
-  delete resizeProfile;
   delete inferenceEngine;
+  delete resizeProfile;
+  inferenceEngine = nullptr;
+  resizeProfile = nullptr;
 }

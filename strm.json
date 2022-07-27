@@ -4,15 +4,11 @@
     "video_configs": [
         {
             "path": "/data/local/tmp/video/VIRAT/VIRAT_S_000001_5256_5856.mp4",
-            "width": 1920,
-            "height": 1080,
-            "fps": 30
+            "fps": 10
         },
         {
             "path": "/data/local/tmp/video/VIRAT/VIRAT_S_000002_1801_2401.mp4",
-            "width": 1920,
-            "height": 1080,
-            "fps": 30
+            "fps": 10
         }
     ],
     "resize_profile": {

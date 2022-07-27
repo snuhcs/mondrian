@@ -47,7 +47,7 @@ add_library(
         strm/src/impl/models/MnnYoloV4Classifier.cpp
         strm/src/impl/models/TfLiteYoloV4Classifier.cpp
         strm/src/impl/models/TfLiteYoloV5Classifier.cpp
-        jni/Emulator_jni.cpp
+        jni/SpatioTemporalRoIMixer_jni.cpp
 )
 
 target_link_libraries(

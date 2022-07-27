@@ -8,22 +8,16 @@ namespace rm {
 
 std::vector<VideoConfig> parseVideoConfigs(const Json::Value& json) {
   std::vector<VideoConfig> configs;
-  std::transform(json.begin(), json.end(), configs.begin(), [](const Json::Value& j) {
+  for (const auto& j: json) {
     VideoConfig config;
     if (!j["path"].isNull()) {
       config.PATH = j["path"].asString();
     }
-    if (!j["width"].isNull()) {
-      config.WIDTH = j["width"].asInt();
-    }
-    if (!j["height"].isNull()) {
-      config.HEIGHT = j["height"].asInt();
-    }
     if (!j["fps"].isNull()) {
       config.FPS = j["fps"].asInt();
     }
-    return config;
-  });
+    configs.push_back(config);
+  };
   return configs;
 }
 
@@ -97,7 +91,6 @@ IMPLConfig parseIMPLConfig(const std::string& jsonPath) {
     LOGE("Json parsing failed");
     return implConfig;
   }
-  LOGD("IMPLConfig : %s", json.toStyledString().c_str());
   if (!json["draw_output"].isNull()) {
     implConfig.DRAW_OUTPUT = json["draw_output"].asBool();
   }

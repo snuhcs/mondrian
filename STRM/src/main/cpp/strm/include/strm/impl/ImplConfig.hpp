@@ -10,8 +10,6 @@ namespace rm {
 
 struct VideoConfig {
   std::string PATH;
-  int WIDTH = 1920;
-  int HEIGHT = 1080;
   int FPS = 5;
 };
 
