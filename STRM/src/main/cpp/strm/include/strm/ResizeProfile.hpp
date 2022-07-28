@@ -1,23 +1,37 @@
 #ifndef RESIZE_PROFILE_HPP_
 #define RESIZE_PROFILE_HPP_
 
-#include <string>
-
+#include "strm/Config.hpp"
 #include "strm/DataType.hpp"
 
 namespace rm {
 
 class ResizeProfile {
  public:
-  virtual ~ResizeProfile() {}
+  ResizeProfile(const ResizeProfileConfig& config);
 
-  virtual int getTargetSize(const idType id, const RoI::Features& features) = 0;
+  int getTargetSize(const idType id, const RoI::Features& features);
 
-  virtual void updateTable(RoI* roi) = 0;
+  void updateTable(RoI* roi);
 
-  virtual int getProbingStep() = 0;
+  int getProbingStep() {
+    return mConfig.PROBING_STEP;
+  }
+
+ private:
+  int getSmoothedTargetSize(const idType id, const RoI::Features& features);
+
+  static int getSizeWithFeature(const RoI::Features& features);
+
+  static float getOverlap(Rect& targetRect, Rect& baseRect);
+
+  static bool isUsable(BoundingBox& targetBox, BoundingBox& baseBox);
+
+  const ResizeProfileConfig mConfig;
+  int calibration;
+  std::map<idType, int> prevTargetSizeTable; // id, previous target size
 };
 
-}
+} // namespace rm
 
 #endif // RESIZE_PROFILE_HPP_

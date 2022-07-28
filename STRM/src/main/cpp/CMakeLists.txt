@@ -29,18 +29,18 @@ add_library(
         SHARED
         strm/src/Config.cpp
         strm/src/DataType.cpp
+        strm/src/DecisionTree.cpp
         strm/src/Interpolator.cpp
         strm/src/Logger.cpp
         strm/src/PatchMixer.cpp
         strm/src/PatchReconstructor.cpp
+        strm/src/ResizeProfile.cpp
         strm/src/RoIExtractor.cpp
         strm/src/SpatioTemporalRoIMixer.cpp
         strm/src/Test.cpp
         strm/src/Time.cpp
         strm/src/Utils.cpp
-        strm/src/impl/AccuracyAwareResizeProfile.cpp
         strm/src/impl/CustomInferenceEngine.cpp
-        strm/src/impl/DecisionTree.cpp
         strm/src/impl/ImplConfig.cpp
         strm/src/impl/Worker.cpp
         strm/src/impl/models/Classifier.cpp

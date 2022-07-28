@@ -44,11 +44,9 @@ using FrameResult = std::tuple<time_us, cv::Mat, std::vector<BoundingBox>>;
 class SpatioTemporalRoIMixer {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
-                         ResizeProfile* resizeProfile,
                          InferenceEngine* inferenceEngine,
                          int numSourceVideos,
-                         JavaVM* vm, JNIEnv* env, jobject strm, bool draw,
-                         bool probing);
+                         JavaVM* vm, JNIEnv* env, jobject strm, bool draw);
 
   ~SpatioTemporalRoIMixer();
 
@@ -74,10 +72,10 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<Logger> mResultLogger;
   std::unique_ptr<Logger> mLogger;
   InferenceEngine* mInferenceEngine;
-  ResizeProfile* mResizeProfile;
 
   bool mProbing;
   std::unique_ptr<RoIExtractor> mRoIExtractor;
+  std::unique_ptr<ResizeProfile> mResizeProfile;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 
   int mNumSourceVideos;
