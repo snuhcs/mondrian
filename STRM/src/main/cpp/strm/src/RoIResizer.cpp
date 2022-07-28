@@ -7,31 +7,37 @@ namespace rm {
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
     : mConfig(config), calibration(0) {}
 
-int RoIResizer::getTargetSize(const idType id, const RoI::Features& features) {
-  int targetSize = getSmoothedTargetSize(id, features);
+float RoIResizer::getTargetSize(const idType id, const RoI::Features& features) {
+  assert(features.type == RoI::Type::OF);
+  if (mConfig.RESIZE_SMOOTHING_FACTOR == 0) {
+    return mConfig.STATIC_RESIZE_TARGET;
+  }
+  float targetSize = getSmoothedTargetSize(id, features);
   prevTargetSizeTable[id] = targetSize;
-  return targetSize + calibration + mConfig.RESIZE_MARGIN;
+  if (calibrationStartSizeTable.find(id) == calibrationStartSizeTable.end() ||
+      std::abs(targetSize - calibrationStartSizeTable[id]) > mConfig.PROBE_RESET_THRESHOLD) {
+    calibrationStartSizeTable[id] = targetSize;
+    calibration = 0;
+  }
+  float calibratedTargetSize = targetSize + calibration + mConfig.RESIZE_MARGIN;
+  return std::max(calibratedTargetSize, 1.0f);
 }
 
-int RoIResizer::getSmoothedTargetSize(const idType id,
-                                      const RoI::Features& features) {
-  int sizeWithFeatures = getSizeWithFeature(features);
+float RoIResizer::getSmoothedTargetSize(const idType id,
+                                        const RoI::Features& features) {
+  float sizeWithFeatures = getSizeWithFeature(features);
   auto record = prevTargetSizeTable.find(id);
   if (record == prevTargetSizeTable.end()) {
     return sizeWithFeatures;
   }
-  int prevTargetSize = prevTargetSizeTable[id];
-  return (int) (mConfig.RESIZE_SMOOTHING_FACTOR * (float) sizeWithFeatures +
-                (1 - mConfig.RESIZE_SMOOTHING_FACTOR) * (float) prevTargetSize);
+  float prevTargetSize = prevTargetSizeTable[id];
+  return (mConfig.RESIZE_SMOOTHING_FACTOR * sizeWithFeatures +
+          (1 - mConfig.RESIZE_SMOOTHING_FACTOR) * prevTargetSize);
 }
 
-int RoIResizer::getSizeWithFeature(const RoI::Features& features) {
-  if (features.type == RoI::OF) {
-    return (int) OFTree(features.xyRatio, (float) features.getShiftSize(), features.err);
-  } else if (features.type == RoI::PD) {
-    return (int) PDTree(features.xyRatio, features.diffAreaRatio);
-  }
-  return INT_MAX / 2;
+float RoIResizer::getSizeWithFeature(const RoI::Features& features) {
+  assert(features.type == RoI::OF);
+  return OFTree(features.xyRatio, (float) features.getShiftSize(), features.err);
 }
 
 void RoIResizer::updateTable(RoI* roi) {
@@ -44,52 +50,38 @@ void RoIResizer::updateTable(RoI* roi) {
             [](const auto& r, const auto& l) { return r->targetSize > l->targetSize; });
 
   // find box from largest RoI
-  BoundingBox* boxFromLargestRoI = nullptr;
-  for (auto& probeRoI : roi->roisForProbing) {
-    if (probeRoI->probingBox != nullptr) {
-      boxFromLargestRoI = probeRoI->probingBox;
-      break;
-    }
-  }
+  BoundingBox* boxFromLargestRoI = roi->roisForProbing.front()->probingBox;
 
-  // if box is found nowhere, record to use even bigger size than biggest size
+  float newResizeTarget;
   if (boxFromLargestRoI == nullptr) {
-    int newTargetSize = roi->roisForProbing.front()->targetSize + mConfig.PROBING_STEP;
-    calibration += newTargetSize - roi->targetSize;
-    return;
+    // if box is found nowhere, record to use even bigger size than biggest size
+    newResizeTarget = (float) roi->roisForProbing.front()->targetSize
+                      + (float) mConfig.PROBE_STEP_SIZE;
+  } else {
+    // if box is found for the largest probe, find the smallest target size with a usable box
+    newResizeTarget = (float) boxFromLargestRoI->targetSize;
+    for (auto& probeRoI : roi->roisForProbing) {
+      BoundingBox* probeBox = probeRoI->probingBox;
+      if (probeBox != nullptr && isUsable(probeBox, boxFromLargestRoI)) {
+        newResizeTarget = (float) probeBox->targetSize;
+      } else {
+        break;
+      }
+    }
   }
+  calibration = newResizeTarget - (float) roi->targetSize;
+}
 
-  // from largest RoI to smallest RoI, find smallest target size with marginal confidence & IoU loss
-  int smallestSizePossible = boxFromLargestRoI->targetSize;
-  for (auto& probeRoI : roi->roisForProbing) {
-    BoundingBox* probeBox = probeRoI->probingBox;
-    // if box not found, stop checking
-    if (probeBox == nullptr) {
-      break;
-    }
-    // check if the size is usable
-    if (isUsable(*probeBox, *boxFromLargestRoI)) {
-      smallestSizePossible = probeBox->targetSize;
-    } else {
-      break;
-    }
-  }
-  calibration += smallestSizePossible - roi->targetSize;
+bool RoIResizer::isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const {
+  return (getOverlap(targetBox->location, baseBox->location) > mConfig.OVERLAP_THRESHOLD)
+         && (targetBox->confidence > mConfig.ABSOLUTE_CONFIDENCE_THRESHOLD)
+         && ((baseBox->confidence - targetBox->confidence) < mConfig.RELATIVE_CONFIDENCE_THRESHOLD);
 }
 
 float RoIResizer::getOverlap(Rect& targetRect, Rect& baseRect) {
   int intersection = targetRect.intersection(baseRect);
   float overlapRatio = (float) intersection / (float) (baseRect.area());
   return overlapRatio;
-}
-
-bool RoIResizer::isUsable(BoundingBox& targetBox, BoundingBox& baseBox) {
-  float overlapThreshold = 0.8;
-  float confidenceThreshold = 0.3;
-  float confidenceDiffThreshold = 0.1;
-  return (getOverlap(targetBox.location, baseBox.location) > overlapThreshold)
-         && (targetBox.confidence > confidenceThreshold)
-         && ((baseBox.confidence - targetBox.confidence) < confidenceDiffThreshold);
 }
 
 } // namespace rm

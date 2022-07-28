@@ -1,6 +1,9 @@
 #ifndef ROI_RESIZER_HPP_
 #define ROI_RESIZER_HPP_
 
+#include <string>
+#include <map>
+
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
 
@@ -10,26 +13,39 @@ class RoIResizer {
  public:
   RoIResizer(const RoIResizerConfig& config);
 
-  int getTargetSize(const idType id, const RoI::Features& features);
+  float getTargetSize(const idType id, const RoI::Features& features);
 
   void updateTable(RoI* roi);
 
-  int getProbingStep() {
-    return mConfig.PROBING_STEP;
+  int getNumProbeSteps() const {
+    return mConfig.NUM_PROBE_STEPS;
+  }
+
+  int getProbeStepSize() const {
+    return mConfig.PROBE_STEP_SIZE;
+  }
+
+  int isProbing() const {
+    return mConfig.PROBE_STEP_SIZE != 0;
   }
 
  private:
-  int getSmoothedTargetSize(const idType id, const RoI::Features& features);
+  float getSmoothedTargetSize(const idType id, const RoI::Features& features);
 
-  static int getSizeWithFeature(const RoI::Features& features);
+  static float getSizeWithFeature(const RoI::Features& features);
+
+  bool isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const;
 
   static float getOverlap(Rect& targetRect, Rect& baseRect);
 
-  static bool isUsable(BoundingBox& targetBox, BoundingBox& baseBox);
-
   const RoIResizerConfig mConfig;
-  int calibration;
-  std::map<idType, int> prevTargetSizeTable; // id, previous target size
+
+  // Save prev prediction to smooth the predicted size
+  std::map<idType, float> prevTargetSizeTable;
+
+  // Save probing start size to reset the reactive calibration
+  std::map<idType, float> calibrationStartSizeTable;
+  float calibration;
 };
 
 } // namespace rm

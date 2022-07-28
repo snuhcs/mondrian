@@ -25,9 +25,9 @@ class PatchMixer {
                         int maxSize, float mergeThreshold);
 
   static std::vector<MixedFrame> pack(std::map<std::string, SortedFrames>& frames,
-                                      const Frame* fullFrameTarget,
-                                      int mixedFrameSize, int numMixedFrames,
-                                      bool probing, const int probeStep = -1);
+                                      const Frame* fullFrameTarget, int mixedFrameSize,
+                                      int numMixedFrames, bool probing, int numProbeSteps,
+                                      int probeStepSize);
 
  private:
   static void tryPackRoIs(std::vector<RoI*>& parentRoIs, int mixedFrameSize);

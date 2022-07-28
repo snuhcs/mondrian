@@ -73,7 +73,6 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<Logger> mLogger;
   InferenceEngine* mInferenceEngine;
 
-  bool mProbing;
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;

@@ -23,10 +23,20 @@ struct RoIExtractorConfig {
 };
 
 struct RoIResizerConfig {
-  float RESIZE_SMOOTHING_FACTOR = 0.1;
-  bool PROBING = true;
-  int PROBING_STEP = 5;
-  int RESIZE_MARGIN = 10;
+  // Margin to add after resize target estimation
+  float RESIZE_MARGIN = 10;
+
+  // Predictive model configs
+  float RESIZE_SMOOTHING_FACTOR = 0.1; // static resize when RESIZE_SMOOTHING_FACTOR == 0.0
+  float STATIC_RESIZE_TARGET = 100;
+
+  // Reactive probing configs
+  int PROBE_STEP_SIZE = 5; // No probing when PROBE_STEP_SIZE == 0
+  int NUM_PROBE_STEPS = 1; // Num probes == 2 * NUM_PROBE_STEPS + 1
+  float PROBE_RESET_THRESHOLD = 10.0;
+  float OVERLAP_THRESHOLD = 0.8;
+  float ABSOLUTE_CONFIDENCE_THRESHOLD = 0.3;
+  float RELATIVE_CONFIDENCE_THRESHOLD = 0.1;
 };
 
 struct PatchReconstructorConfig {
