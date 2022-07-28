@@ -8,8 +8,8 @@
 namespace rm {
 
 PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
-                                       ResizeProfile* resizeProfile)
-    : mConfig(config), mResizeProfile(resizeProfile) {}
+                                       RoIResizer* roIResizer)
+    : mConfig(config), mRoIResizer(roIResizer) {}
 
 static Rect moveResizeRoIPos(const RoI* roi) {
   std::pair<int, int> wh = roi->getResizedWidthHeight();
@@ -179,7 +179,7 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
   // 2. Update resize profile
   for (auto& cRoI : childRoIs) {
     if (cRoI->isProbingReady()) {
-      mResizeProfile->updateTable(cRoI.get());
+      mRoIResizer->updateTable(cRoI.get());
     }
   }
 

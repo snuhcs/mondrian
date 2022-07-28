@@ -10,7 +10,7 @@
 
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
-#include "strm/ResizeProfile.hpp"
+#include "strm/RoIResizer.hpp"
 #include "strm/Utils.hpp"
 
 namespace rm {

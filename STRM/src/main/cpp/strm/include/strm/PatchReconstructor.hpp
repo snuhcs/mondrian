@@ -7,13 +7,13 @@
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
 #include "strm/InferenceEngine.hpp"
-#include "strm/ResizeProfile.hpp"
+#include "strm/RoIResizer.hpp"
 
 namespace rm {
 
 class PatchReconstructor {
  public:
-  PatchReconstructor(const PatchReconstructorConfig& config, ResizeProfile* resizeProfile);
+  PatchReconstructor(const PatchReconstructorConfig& config, RoIResizer* roIResizer);
 
   void assignBoxesToFrame(MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const;
 
@@ -25,7 +25,7 @@ class PatchReconstructor {
 
  private:
   PatchReconstructorConfig mConfig;
-  ResizeProfile* mResizeProfile;
+  RoIResizer* mRoIResizer;
 };
 
 } // namespace rm

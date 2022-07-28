@@ -1,14 +1,14 @@
-#ifndef RESIZE_PROFILE_HPP_
-#define RESIZE_PROFILE_HPP_
+#ifndef ROI_RESIZER_HPP_
+#define ROI_RESIZER_HPP_
 
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
 
 namespace rm {
 
-class ResizeProfile {
+class RoIResizer {
  public:
-  ResizeProfile(const ResizeProfileConfig& config);
+  RoIResizer(const RoIResizerConfig& config);
 
   int getTargetSize(const idType id, const RoI::Features& features);
 
@@ -27,11 +27,11 @@ class ResizeProfile {
 
   static bool isUsable(BoundingBox& targetBox, BoundingBox& baseBox);
 
-  const ResizeProfileConfig mConfig;
+  const RoIResizerConfig mConfig;
   int calibration;
   std::map<idType, int> prevTargetSizeTable; // id, previous target size
 };
 
 } // namespace rm
 
-#endif // RESIZE_PROFILE_HPP_
+#endif // ROI_RESIZER_HPP_

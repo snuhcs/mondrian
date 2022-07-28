@@ -11,7 +11,7 @@
 
 #include "strm/Config.hpp"
 #include "strm/InferenceEngine.hpp"
-#include "strm/ResizeProfile.hpp"
+#include "strm/RoIResizer.hpp"
 #include "strm/RoIExtractor.hpp"
 #include "strm/PatchMixer.hpp"
 #include "strm/PatchReconstructor.hpp"
@@ -75,7 +75,7 @@ class SpatioTemporalRoIMixer {
 
   bool mProbing;
   std::unique_ptr<RoIExtractor> mRoIExtractor;
-  std::unique_ptr<ResizeProfile> mResizeProfile;
+  std::unique_ptr<RoIResizer> mRoIResizer;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 
   int mNumSourceVideos;

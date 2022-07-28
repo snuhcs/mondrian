@@ -35,8 +35,8 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   return config;
 }
 
-ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json) {
-  ResizeProfileConfig config;
+RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
+  RoIResizerConfig config;
   if (!json["resize_smoothing_factor"].isNull()) {
     config.RESIZE_SMOOTHING_FACTOR = json["resize_smoothing_factor"].asFloat();
   }
@@ -96,8 +96,8 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["roi_extractor"].isNull()) {
     config.roIExtractorConfig = parseRoIExtractorConfig(json["roi_extractor"]);
   }
-  if (!json["resize_profile"].isNull()) {
-    config.resizeProfileConfig = parseResizeProfileConfig(json["resize_profile"]);
+  if (!json["roi_resizer"].isNull()) {
+    config.roIResizerConfig = parseRoIResizerConfig(json["roi_resizer"]);
   }
   if (!json["patch_reconstructor"].isNull()) {
     config.patchReconstructorConfig = parsePatchReconstructorConfig(

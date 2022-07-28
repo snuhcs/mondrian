@@ -36,7 +36,7 @@
         "optical_flow_roi_confidence_threshold": 0.1,
         "pd_filter_threshold": 0.5
     },
-    "resize_profile": {
+    "roi_resizer": {
         "resize_smoothing_factor": 0.1,
         "probing": true,
         "probing_step": 5,
