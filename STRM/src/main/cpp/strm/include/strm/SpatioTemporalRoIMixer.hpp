@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "strm/Config.hpp"
+#include "strm/DataType.hpp"
 #include "strm/InferenceEngine.hpp"
 #include "strm/RoIResizer.hpp"
 #include "strm/RoIExtractor.hpp"
@@ -19,25 +20,6 @@
 #include "strm/Logger.hpp"
 
 namespace rm {
-
-class FrameBuffer {
- public:
-  FrameBuffer(const std::string& key, int capacity);
-
-  Frame* enqueue(const cv::Mat& mat);
-
-  void freeImage(const std::vector<int>& frameIndices, Logger* logger);
-
- private:
-  const std::string key;
-  const std::string shortKey;
-  const int capacity;
-
-  int count;
-  std::mutex mtx;
-  std::condition_variable cv;
-  std::vector<std::unique_ptr<Frame>> frames;
-};
 
 using FrameResult = std::tuple<time_us, cv::Mat, std::vector<BoundingBox>>;
 

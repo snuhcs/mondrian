@@ -176,6 +176,27 @@ struct FrameIndexComp {
 
 using SortedFrames = std::set<Frame*, FrameIndexComp>;
 
+class Logger;
+
+class FrameBuffer {
+ public:
+  FrameBuffer(const std::string& key, int capacity);
+
+  Frame* enqueue(const cv::Mat& mat);
+
+  void freeImage(const std::vector<int>& frameIndices, Logger* logger);
+
+ private:
+  const std::string key;
+  const std::string shortKey;
+  const int capacity;
+
+  int count;
+  std::mutex mtx;
+  std::condition_variable cv;
+  std::vector<std::unique_ptr<Frame>> frames;
+};
+
 struct RoI {
   enum Type {
     OF = 1,
