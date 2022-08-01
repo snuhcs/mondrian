@@ -41,6 +41,10 @@ class SpatioTemporalRoIMixer {
 
   void fullFrameInference(Frame* frame);
 
+  void mixedInference(std::vector<RoI*>& candidateRoIs, int frameSize, int numInferences);
+
+  void releaseFrames(const std::map<std::string, SortedFrames>& frames);
+
   static Frame* getFullFrameInferenceFrame(const std::map<std::string, SortedFrames>& lastFrames,
                                            int fullFrameInferenceStreamIndex);
 
@@ -57,6 +61,7 @@ class SpatioTemporalRoIMixer {
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;
+  std::unique_ptr<PatchMixer> mPatchMixer;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 
   int mNumSourceVideos;

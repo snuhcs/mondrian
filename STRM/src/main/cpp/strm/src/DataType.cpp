@@ -10,6 +10,96 @@ const idType MERGED_ROI_ID = -2;
 
 const std::pair<int, int> RoI::NOT_PACKED{-1, -1};
 
+void Frame::initParentRoIs() {
+  assert(parentRoIs.empty());
+  for (auto& cRoI : childRoIs) {
+    assert(cRoI->parentRoI == nullptr);
+    assert(cRoI->childRoIs.empty());
+    assert(cRoI->roisForProbing.empty());
+  }
+  for (auto& cRoI : childRoIs) {
+    std::unique_ptr<RoI> pRoI = std::make_unique<RoI>(*cRoI);
+    cRoI->parentRoI = pRoI.get();
+    pRoI->childRoIs.push_back(cRoI.get());
+    parentRoIs.push_back(std::move(pRoI));
+  }
+}
+
+void Frame::mergeRoIs(float mergeThreshold, int maxSize) {
+  while (true) {
+    bool updated = false;
+    int i, j;
+    for (i = 0; i < parentRoIs.size(); i++) {
+      for (j = i + 1; j < parentRoIs.size(); j++) {
+        const std::unique_ptr<RoI>& roi0 = parentRoIs[i];
+        const std::unique_ptr<RoI>& roi1 = parentRoIs[j];
+        int intersection = roi0->location.intersection(roi1->location);
+        if ((float) intersection / (float) roi0->getArea() < mergeThreshold &&
+            (float) intersection / (float) roi1->getArea() < mergeThreshold) {
+          continue;
+        }
+        int newLeft = std::min(roi0->location.left, roi1->location.left);
+        int newTop = std::min(roi0->location.top, roi1->location.top);
+        int newRight = std::max(roi0->location.right, roi1->location.right);
+        int newBottom = std::max(roi0->location.bottom, roi1->location.bottom);
+        if (newRight - newLeft > maxSize || newBottom - newTop > maxSize) {
+          continue;
+        }
+        int newArea = (newRight - newLeft) * (newBottom - newLeft);
+        if (roi0->targetSize * roi1->maxEdgeLength > roi1->targetSize * roi0->maxEdgeLength) {
+          // If roi0 resizes conservatively than roi1
+          newArea = newArea * roi0->targetSize * roi0->targetSize
+                    / roi0->maxEdgeLength / roi0->maxEdgeLength;
+        } else {
+          // If roi1 resizes conservatively than roi0
+          newArea = newArea * roi1->targetSize * roi1->targetSize
+                    / roi1->maxEdgeLength / roi1->maxEdgeLength;
+        }
+        int originalArea = roi0->getResizedArea() + roi1->getResizedArea();
+        if (newArea >= originalArea) {
+          continue;
+        }
+        updated = true;
+        break;
+      }
+      if (updated) {
+        break;
+      }
+    }
+    if (!updated) {
+      break;
+    }
+    parentRoIs.push_back(std::move(RoI::mergeRoIs(parentRoIs[i].get(), parentRoIs[j].get())));
+    // Match child parent
+    RoI* mergedRoI = parentRoIs.rbegin()->get();
+    mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
+                                parentRoIs[i]->childRoIs.begin(), parentRoIs[i]->childRoIs.end());
+    mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
+                                parentRoIs[j]->childRoIs.begin(), parentRoIs[j]->childRoIs.end());
+    for (RoI* cRoI : mergedRoI->childRoIs) {
+      cRoI->parentRoI = mergedRoI;
+    }
+    assert(j > i);
+    parentRoIs.erase(parentRoIs.begin() + j);
+    parentRoIs.erase(parentRoIs.begin() + i);
+  }
+}
+
+void Frame::addProbeRoIs(int numProbeSteps, int probeStepSize) {
+  for (auto& cRoI : childRoIs) {
+    int probe = -numProbeSteps * probeStepSize;
+    for (int i = 0; i < 2 * numProbeSteps + 1; i++) {
+      std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
+          nullptr, cRoI->id, cRoI->frame, cRoI->location, cRoI->type, cRoI->origin, cRoI->label,
+          cRoI->features.shift, cRoI->features.err, cRoI->features.diffAreaRatio, true);
+      probeRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->targetSize + probe);
+      cRoI->roisForProbing.push_back(probeRoI.get());
+      cRoI->frame->probingRoIs.push_back(std::move(probeRoI));
+      probe += probeStepSize;
+    }
+  }
+}
+
 void Frame::filterPDRoIs(float threshold) {
   std::vector<RoI*> OFRoIs;
   for (auto& cRoI : childRoIs) {
@@ -55,6 +145,32 @@ bool Frame::readyForOFExtraction() const {
   } else {
     return prevFrame->isRoIsReady;
   }
+}
+
+std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& frames) {
+  std::set<Frame*> lastFrames;
+  for (auto it : frames) {
+    if (!it.second.empty()) {
+      lastFrames.insert(*it.second.rbegin());
+    }
+  }
+  return lastFrames;
+}
+
+std::string toString(const std::map<std::string, SortedFrames>& frames) {
+  std::stringstream ss;
+  for (const auto&[aStreamKey, aStreamFrames] : frames) {
+    std::string shortKey = aStreamKey.substr(aStreamKey.size() - 5, 1);
+    ss << shortKey << ": ";
+    if (aStreamFrames.empty()) {
+      ss << "EMPTY, ";
+    } else {
+      Frame* firstFrame = *aStreamFrames.begin();
+      Frame* lastFrame = *aStreamFrames.rbegin();
+      ss << firstFrame->frameIndex << " ~ " << lastFrame->frameIndex << ", ";
+    }
+  }
+  return ss.str();
 }
 
 FrameBuffer::FrameBuffer(const std::string& key, int capacity)

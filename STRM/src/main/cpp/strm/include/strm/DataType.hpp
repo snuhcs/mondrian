@@ -2,12 +2,13 @@
 #define DATA_TYPE_HPP_
 
 #include <atomic>
-#include <string>
-#include <vector>
 #include <chrono>
 #include <cstdint>
 #include <fstream>
+#include <map>
 #include <set>
+#include <string>
+#include <vector>
 
 #include "opencv2/core/mat.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -158,6 +159,12 @@ struct Frame {
     endTime = NowMicros();
   }
 
+  void initParentRoIs();
+
+  void mergeRoIs(float mergeThreshold, int maxSize);
+
+  void addProbeRoIs(int numProbeSteps, int probeStepSize);
+
   void filterPDRoIs(float threshold);
 
   bool isReadyToMarry(int mixedFrameIndex) const;
@@ -175,6 +182,10 @@ struct FrameIndexComp {
 };
 
 using SortedFrames = std::set<Frame*, FrameIndexComp>;
+
+std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& frames);
+
+std::string toString(const std::map<std::string, SortedFrames>& frames);
 
 class Logger;
 
