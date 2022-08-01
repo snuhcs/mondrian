@@ -18,7 +18,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Emulator {
     static {
@@ -46,6 +48,7 @@ public class Emulator {
     private final long handle;
     private final InferenceViewCallback inferenceViewCallback;
 
+    private final Map<String, Integer> videoCount = new HashMap<>(); // Count same video inputs
     private final List<Thread> videoThreads;
 
     public Emulator(InferenceViewCallback inferenceViewCallback) throws JSONException, IOException {
@@ -69,17 +72,19 @@ public class Emulator {
     private List<Thread> createAndStartVideoThreads(List<VideoConfig> videoConfigs) {
         List<Thread> videoThreads = new ArrayList<>();
         for (VideoConfig config : videoConfigs) {
+            videoCount.merge(config.PATH, 1, Integer::sum); // Put 1 if not exists else +1
+            String key = config.PATH + videoCount.get(config.PATH);
             videoThreads.add(new Thread(() -> {
                 MediaMetadataRetriever retriever = new MediaMetadataRetriever();
                 retriever.setDataSource(config.PATH);
                 int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
                 long startTimeNs = System.nanoTime();
                 for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-                    Log.v(TAG, config.PATH + " " + frameIndex + " loaded");
+                    Log.v(TAG, key + " " + frameIndex + " loaded");
                     Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
                     Mat mat = new Mat();
                     Utils.bitmapToMat(bitmap, mat);
-                    enqueueImage(handle, config.PATH, mat.getNativeObjAddr());
+                    enqueueImage(handle, key, mat.getNativeObjAddr());
                     long endTimeNs = System.nanoTime();
                     long nextStartTimeNs = startTimeNs + (long) (frameIndex + 1) * (long) (1e9 / config.FPS);
                     if (nextStartTimeNs > endTimeNs) {
