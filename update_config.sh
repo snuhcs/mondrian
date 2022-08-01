@@ -9,7 +9,6 @@ then
 else
     echo "### CONFIG UPDATE START"
     echo ""
-    adb push edgedevicecpp.json /data/local/tmp/edgedevicecpp.json
     adb push strmcpp.json /data/local/tmp/strmcpp.json
     echo ""
     echo "### CONFIG UPDATE DONE"

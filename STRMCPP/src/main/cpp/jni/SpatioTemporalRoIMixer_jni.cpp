@@ -20,7 +20,7 @@ JNIEXPORT jlong JNICALL
 Java_hcs_offloading_strmcpp_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(JNIEnv* env,
                                                                                 jobject thiz) {
   std::string jsonPath = "/data/local/tmp/strmcpp.json";
-  std::string implJsonPath = "/data/local/tmp/edgedevicecpp.json";
+  std::string implJsonPath = "/data/local/tmp/strmcpp.json";
   rm::IMPLConfig config = rm::parseIMPLConfig(implJsonPath);
   rm::ResizeProfile* resizeProfile;
   if (config.resizeProfileConfig.ACCURACY_AWARE_RESIZE) {

@@ -26,7 +26,7 @@ import hcs.offloading.strmcpp.InferenceViewCallback;
 public class MainActivity extends AppCompatActivity implements CompoundButton.OnCheckedChangeListener, InferenceViewCallback {
     private static final String TAG = MainActivity.class.getName();
 
-    private static final String CONFIG_FILEPATH = "/data/local/tmp/edgedevicecpp.json";
+    private static final String CONFIG_FILEPATH = "/data/local/tmp/strmcpp.json";
 
     private EditText mIpInput;
     private EditText mPortInput;
