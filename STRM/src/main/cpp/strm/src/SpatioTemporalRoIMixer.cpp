@@ -59,25 +59,25 @@ void SpatioTemporalRoIMixer::work() {
   int fullFrameInferenceStreamIndex = 0;
   time_us scheduleInterval = mConfig.LATENCY_SLO_MS * 1000 / 2;
   TimeLogger logger;
-  logger.step("start");
+  logger.start();
 
   // When FULL_FRAME_INTERVAL == 0, always run full frame inference
   // See SpatioTemporalRoIMixer::enqueueImage(...)
   while (!mbStop) {
     scheduleID++;
     // Wait for scheduling interval
-    time_us elapsedTime = NowMicros() - logger.getRaw("start");
+    time_us elapsedTime = logger.getElapsedTime();
     if (scheduleInterval > elapsedTime) {
       std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval - elapsedTime));
     }
 
     // Extract RoIs
-    logger.step("start");
+    logger.start();
     std::map<std::string, SortedFrames> frames = mRoIExtractor->getExtractedFrames();
     logger.step("roi");
     LOGD("===== Schedule %d start =====", scheduleID);
     LOGD("STRM::work() getExtractedFrames() took %lld us  // %s",
-         logger.getDelta("roi"), toString(frames).c_str());
+         logger.getDuration("roi"), toString(frames).c_str());
     if (std::all_of(frames.begin(), frames.end(), [](auto& it) { return it.second.empty(); })) {
       LOGD("===== Schedule %d end with no RoIs =====", scheduleID);
       continue;
@@ -91,7 +91,7 @@ void SpatioTemporalRoIMixer::work() {
     }
     logger.step("full");
     LOGD("STRM::work() fullFrameInference(%s, %d) took %lld us", fullFrameTarget->shortKey.c_str(),
-         fullFrameTarget->frameIndex, logger.getDelta("full"));
+         fullFrameTarget->frameIndex, logger.getDuration("full"));
 
     // Prepare packing. resize and merge RoIs
     int inferenceFrameSize = mInferenceEngine->getInputSizes()[0];
@@ -99,24 +99,24 @@ void SpatioTemporalRoIMixer::work() {
         frames, fullFrameTarget, mRoIResizer.get(), inferenceFrameSize, mRoIResizer->isProbing(),
         mRoIResizer->getNumProbeSteps(), mRoIResizer->getProbeStepSize());
     logger.step("pre");
-    LOGD("STRM::work() inferencePreparation took %lld us", logger.getDelta("pre"));
+    LOGD("STRM::work() inferencePreparation took %lld us", logger.getDuration("pre"));
 
     // Inference
     // TODO : handle numInferences <= 0 case
-    time_us remainingTime = scheduleInterval - logger.getDelta("pre", "start");
+    time_us remainingTime = scheduleInterval - logger.getDuration("pre", "start");
     time_us inferenceTime = mInferenceEngine->getInferenceTimeMs() * 1000;
     int maxNumInferences = remainingTime < inferenceTime ? 1 :
                            (int) (remainingTime / inferenceTime);
     mixedInference(candidateRoIs, inferenceFrameSize, maxNumInferences);
     logger.step("inf");
     LOGD("STRM::work() inference took %lld us             // %lld / %lld = %d",
-         logger.getDelta("inf"), remainingTime, inferenceTime,
+         logger.getDuration("inf"), remainingTime, inferenceTime,
          maxNumInferences);
 
     // Interpolate results
     std::set<idType> droppedIDs = Interpolator::interpolate(frames);
     logger.step("itp");
-    LOGD("STRM::work() interpolate took %lld us", logger.getDelta("itp"));
+    LOGD("STRM::work() interpolate took %lld us", logger.getDuration("itp"));
 
     // Notify results of rest of the frames
     for (auto& it : frames) {
@@ -156,7 +156,7 @@ void SpatioTemporalRoIMixer::work() {
     releaseFrames(frames);
     logger.step("post");
 
-    LOGD("===== Schedule %d end (%s) =====", scheduleID, logger.logAndReset().c_str());
+    LOGD("===== Schedule %d end (%s) =====", scheduleID, logger.getLog().c_str());
   }
 }
 

@@ -14,13 +14,15 @@ time_us NowMicros();
 
 class TimeLogger {
  public:
-  time_us getRaw(const char* name) const;
+  time_us getDuration(const char* next, const char* prev = nullptr) const;
 
-  time_us getDelta(const char* next, const char* prev = nullptr) const;
+  time_us getElapsedTime() const;
+
+  std::string getLog() const;
+
+  void start();
 
   void step(const char* name);
-
-  std::string logAndReset();
 
  private:
   void reset();
