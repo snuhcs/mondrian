@@ -149,11 +149,11 @@ void PatchMixer::prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
     for (Frame* frame : aStreamFrames) {
       for (auto& pRoI : frame->parentRoIs) {
         if (pRoI->prevRoI != nullptr) {
-          std::pair<int, int> shiftDiff{
-              pRoI->features.shift.first - pRoI->prevRoI->features.shift.first,
-              pRoI->features.shift.second - pRoI->prevRoI->features.shift.second};
-          pRoI->priority = pRoI->features.err + (float) (shiftDiff.first * shiftDiff.first +
-                                                         shiftDiff.second * shiftDiff.second);
+          auto&[prevX, prevY] = pRoI->prevRoI->features.ofFeatures.shift;
+          auto&[currX, currY] = pRoI->features.ofFeatures.shift;
+          int diffX = currX - prevX;
+          int diffY = currY - prevY;
+          pRoI->priority = pRoI->features.ofFeatures.err + (float) (diffX * diffX + diffY * diffY);
         } else {
           pRoI->priority = HIGH_PRIORITY;
         }

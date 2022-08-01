@@ -237,7 +237,7 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       if (newLeft < newRight && newTop < newBottom) {
         outChildRoIs.emplace_back(
             new RoI(box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-                    RoI::Type::OF, box.origin, box.label, shift, err, 0));
+                    RoI::Type::OF, box.origin, box.label, {shift, err}, 0));
       }
     }
   }
@@ -252,7 +252,6 @@ std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErro
 
   const cv::Mat& prevImage = prevFrame->preProcessedMat;
   const cv::Mat& currImage = currFrame->preProcessedMat;
-
 
   std::vector<cv::Point2f> inputPoints;
   for (const Rect& bbx : boundingBoxes) {
@@ -326,8 +325,7 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
         RoI::PD,
         fromPD,
         -1,
-        std::make_pair(0, 0),
-        0,
+        {std::make_pair(0, 0), 0},
         boxAndFeature.second));
   }
 }

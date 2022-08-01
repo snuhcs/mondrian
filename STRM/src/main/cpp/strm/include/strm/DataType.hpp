@@ -214,16 +214,24 @@ struct RoI {
     PD = 2,
   };
 
+  struct OFFeatures {
+    std::pair<int, int> shift;
+    float err;
+
+    int getShiftSize() const {
+      return shift.first * shift.first + shift.second * shift.second;
+    }
+  };
+
   struct Features {
     int label;
     Type type;
     float xyRatio;
-    std::pair<int, int> shift;
-    float err;
+    OFFeatures ofFeatures;
     float diffAreaRatio;
 
     int getShiftSize() const {
-      return shift.first * shift.first + shift.second * shift.second;
+      return ofFeatures.getShiftSize();
     }
   };
 
@@ -261,13 +269,15 @@ struct RoI {
       const Type type,
       const Origin origin,
       const int label,
-      const std::pair<int, int>& shift,
-      const float err,
+      const OFFeatures ofFeatures,
       const float diffAreaRatio,
       bool isProbingRoI = false)
       : prevRoI(prevRoI), id(id), frame(frame), location(location), type(type), origin(origin), label(label),
-        features{label, type, (float) location.width() / (float) location.height(),
-                 std::make_pair(shift.first, shift.second), err, diffAreaRatio},
+        features{label,
+                 type,
+                 (float) location.width() / (float) location.height(),
+                 ofFeatures,
+                 diffAreaRatio},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
         packedLocation(NOT_PACKED), isMatchTried(false), nextRoI(nullptr), parentRoI(nullptr),
         box(nullptr), probingBox(nullptr), packedMixedFrameIndex(INT_MAX),
@@ -298,9 +308,9 @@ struct RoI {
     } else {
       roiLabel = -1;
     }
-    std::unique_ptr<RoI> mergedRoI = std::make_unique<RoI>(
-        nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-        roiType, originNull, roiLabel, std::make_pair(0, 0), 0, 0);
+    std::unique_ptr<RoI> mergedRoI(
+        new RoI(nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
+                roiType, originNull, roiLabel, {std::make_pair(0, 0), 0}, 0));
     mergedRoI->targetSize = (pRoI0->targetSize * pRoI1->maxEdgeLength >
                              pRoI1->targetSize * pRoI0->maxEdgeLength) ?
                             mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :

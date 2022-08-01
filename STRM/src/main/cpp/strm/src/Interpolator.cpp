@@ -67,7 +67,7 @@ void Interpolator::extrapolateLeft(std::vector<RoI*> childRoIs, int idx) {
   std::pair<int, int> prevCenter = prevRoI->box->location.center();
   for (int current = idx - 1; current >= 0; current--) {
     RoI* currRoI = childRoIs.at(current);
-    std::pair<int, int> shift = prevRoI->features.shift;
+    std::pair<int, int> shift = prevRoI->features.ofFeatures.shift;
     std::pair<int, int> newCenter = std::make_pair(prevCenter.first - shift.first,
                                                    prevCenter.second - shift.second);
     BoundingBox* prevBox = prevRoI->box;
@@ -87,7 +87,7 @@ void Interpolator::extrapolateRight(std::vector<RoI*> childRoIs, int idx) {
   std::pair<int, int> prevCenter = prevRoI->box->location.center();
   for (int current = idx + 1; current < childRoIs.size(); current++) {
     RoI* currRoI = childRoIs.at(current);
-    std::pair<int, int> shift = currRoI->features.shift;
+    std::pair<int, int> shift = currRoI->features.ofFeatures.shift;
     std::pair<int, int> newCenter = std::make_pair(prevCenter.first + shift.first,
                                                    prevCenter.second + shift.second);
     BoundingBox* prevBox = prevRoI->box;
@@ -110,7 +110,7 @@ void Interpolator::interpolateBetween(std::vector<RoI*> childRoIs, int leftIdx, 
   std::pair<int, int> prevCenter = prevRoI->box->location.center();
   for (int current = leftIdx + 1; current < rightIdx; current++) {
     RoI* currRoI = childRoIs.at(current);
-    std::pair<int, int> shift = currRoI->features.shift;
+    std::pair<int, int> shift = currRoI->features.ofFeatures.shift;
     std::pair<int, int> newCenter = std::make_pair(
         prevCenter.first + shift.first * bbxShift.first / totalShift.first,
         prevCenter.second + shift.second * bbxShift.second / totalShift.second);
@@ -127,8 +127,8 @@ std::pair<int, int> Interpolator::sumMotionVectors(std::vector<RoI*> childRoIs,
                                                    int start, int end) {
   int xShift = 0, yShift = 0;
   for (int i = start + 1; i <= end; i++) {
-    xShift += childRoIs.at(i)->features.shift.first;
-    yShift += childRoIs.at(i)->features.shift.second;
+    xShift += childRoIs.at(i)->features.ofFeatures.shift.first;
+    yShift += childRoIs.at(i)->features.ofFeatures.shift.second;
   }
   return std::make_pair(xShift, yShift);
 }
