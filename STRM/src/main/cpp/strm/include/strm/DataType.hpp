@@ -265,7 +265,7 @@ struct RoI {
     }
 
     static float getNCC(const std::vector<std::pair<float, float>>& shifts) {
-      if (shifts.empty()) {
+      if (shifts.size() <= 1) {
         return 0;
       }
       float ncc = 0;
