@@ -13,7 +13,7 @@ CustomInferenceEngine::CustomInferenceEngine(
     : mConfig(config), mHandle(0), jvm(vm),
       strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
   class_SpatioTemporalRoIMixer = reinterpret_cast<jclass>(env->NewGlobalRef(
-      env->FindClass("hcs/offloading/strm/SpatioTemporalRoIMixer")));
+      env->FindClass("hcs/offloading/strm/Emulator")));
   SpatioTemporalRoIMixer_drawInferenceResult = env->GetMethodID(
       class_SpatioTemporalRoIMixer, "drawInferenceResult", "(JLjava/util/List;)V");
   class_ArrayList = reinterpret_cast<jclass>(env->NewGlobalRef(

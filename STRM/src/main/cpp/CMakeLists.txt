@@ -57,6 +57,7 @@ target_link_libraries(
         opencv_core
         opencv_dnn
         opencv_video
+        opencv_videoio
         opencv_imgcodecs
         opencv_imgproc
         tensorflowlite

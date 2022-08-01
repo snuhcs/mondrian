@@ -1,4 +1,10 @@
 #include <jni.h>
+#include <android/log.h>
+
+#include <thread>
+#include <vector>
+
+#include "opencv2/videoio.hpp"
 
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
@@ -12,41 +18,37 @@
 
 static JavaVM* vm;
 static jboolean isCopy = JNI_TRUE;
-static long resizeProfileHandle = (long) nullptr;
-static long inferenceEngineHandle = (long) nullptr;
+static rm::InferenceEngine* inferenceEngine = nullptr;
+static rm::ResizeProfile* resizeProfile = nullptr;
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_hcs_offloading_strm_SpatioTemporalRoIMixer_createSpatioTemporalRoIMixer(JNIEnv* env,
-                                                                                jobject thiz) {
-  std::string jsonPath = "/data/local/tmp/strm.json";
-  std::string implJsonPath = "/data/local/tmp/strm.json";
-  rm::IMPLConfig config = rm::parseIMPLConfig(implJsonPath);
-  rm::ResizeProfile* resizeProfile;
-  if (config.resizeProfileConfig.ACCURACY_AWARE_RESIZE) {
+Java_hcs_offloading_strm_Emulator_createSpatioTemporalRoIMixer(JNIEnv* env,
+                                                               jobject thiz) {
+  rm::IMPLConfig implConfig = rm::parseIMPLConfig("/data/local/tmp/strm.json");
+  if (implConfig.resizeProfileConfig.ACCURACY_AWARE_RESIZE) {
     resizeProfile = reinterpret_cast<rm::ResizeProfile*>(new rm::AccuracyAwareResizeProfile(
-        config.resizeProfileConfig.RESIZE_MARGIN,
-        config.resizeProfileConfig.RESIZE_SMOOTHING_FACTOR,
-        config.resizeProfileConfig.PROBING_STEP));
+        implConfig.resizeProfileConfig.RESIZE_MARGIN,
+        implConfig.resizeProfileConfig.RESIZE_SMOOTHING_FACTOR,
+        implConfig.resizeProfileConfig.PROBING_STEP));
   } else {
     resizeProfile = reinterpret_cast<rm::ResizeProfile*>(new rm::StaticResizeProfile(
-        config.resizeProfileConfig.STATIC_TARGET_SIZE));
+        implConfig.resizeProfileConfig.STATIC_TARGET_SIZE));
   }
   env->GetJavaVM(&vm);
-  auto* inferenceEngine = reinterpret_cast<rm::InferenceEngine*>(new rm::CustomInferenceEngine(
-      config.inferenceEngineConfig, vm, env, thiz, config.DRAW_INFERENCE_RESULT));
-  resizeProfileHandle = reinterpret_cast<long>(resizeProfile);
-  inferenceEngineHandle = reinterpret_cast<long>(inferenceEngine);
+  inferenceEngine = reinterpret_cast<rm::InferenceEngine*>(new rm::CustomInferenceEngine(
+      implConfig.inferenceEngineConfig, vm, env, thiz, implConfig.DRAW_INFERENCE_RESULT));
+
+  rm::STRMConfig config = rm::parseSTRMConfig("/data/local/tmp/strm.json");
   return reinterpret_cast<long>(new rm::SpatioTemporalRoIMixer(
-      rm::parseSTRMConfig(jsonPath), resizeProfile, inferenceEngine, config.NUM_VIDEOS,
-      vm, env, thiz, config.DRAW_OUTPUT, config.resizeProfileConfig.PROBING));
+      config, resizeProfile, inferenceEngine, (int) implConfig.videoConfigs.size(),
+      vm, env, thiz, implConfig.DRAW_OUTPUT, implConfig.resizeProfileConfig.PROBING));
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_hcs_offloading_strm_SpatioTemporalRoIMixer_enqueueImage(JNIEnv* env, jobject thiz,
-                                                                jlong handle, jstring key,
-                                                                jlong matAddr) {
+Java_hcs_offloading_strm_Emulator_enqueueImage(JNIEnv* env, jobject thiz, jlong handle, jstring key,
+                                               jlong matAddr) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   auto* image = (cv::Mat*) matAddr;
   const char* k = env->GetStringUTFChars(key, &isCopy);
@@ -55,12 +57,11 @@ Java_hcs_offloading_strm_SpatioTemporalRoIMixer_enqueueImage(JNIEnv* env, jobjec
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_hcs_offloading_strm_SpatioTemporalRoIMixer_close(JNIEnv* env, jobject thiz,
-                                                         jlong handle) {
+Java_hcs_offloading_strm_Emulator_close(JNIEnv* env, jobject thiz, jlong handle) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  auto* resizeProfile = (rm::ResizeProfile*) resizeProfileHandle;
-  auto* inferenceEngine = (rm::InferenceEngine*) inferenceEngineHandle;
   delete strm;
-  delete resizeProfile;
   delete inferenceEngine;
+  delete resizeProfile;
+  inferenceEngine = nullptr;
+  resizeProfile = nullptr;
 }

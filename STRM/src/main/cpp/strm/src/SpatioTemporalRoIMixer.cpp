@@ -48,8 +48,8 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
                                                JavaVM* vm, JNIEnv* env, jobject strm, bool draw,
                                                bool probing)
     : mConfig(config), mbStop(false),
-      mLogger(new Logger("/data/data/hcs.offloading.edgedevice/execution_log.csv")),
-      mResultLogger(new Logger("/data/data/hcs.offloading.edgedevice/test.log")),
+      mLogger(new Logger("/data/data/hcs.offloading.strm/execution_log.csv")),
+      mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
       mResizeProfile(resizeProfile),
       mInferenceEngine(inferenceEngine),
       mNumSourceVideos(numSourceVideo),
@@ -63,7 +63,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
   mResultThread = std::thread([this]() { outputWork(); });
 
   class_SpatioTemporalRoIMixer = reinterpret_cast<jclass>(env->NewGlobalRef(
-      env->FindClass("hcs/offloading/strm/SpatioTemporalRoIMixer")));
+      env->FindClass("hcs/offloading/strm/Emulator")));
   SpatioTemporalRoIMixer_drawObjectDetectionResult = env->GetMethodID(
       class_SpatioTemporalRoIMixer, "drawObjectDetectionResult", "(JLjava/util/List;)V");
   class_ArrayList = reinterpret_cast<jclass>(env->NewGlobalRef(

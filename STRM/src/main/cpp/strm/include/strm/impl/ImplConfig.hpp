@@ -2,10 +2,16 @@
 #define IMPL_CONFIG_HPP_
 
 #include <string>
+#include <vector>
 
 #include <json/json.h>
 
 namespace rm {
+
+struct VideoConfig {
+  std::string PATH;
+  int FPS = 5;
+};
 
 struct ResizeProfileConfig {
   bool ACCURACY_AWARE_RESIZE = true;
@@ -29,13 +35,14 @@ struct InferenceEngineConfig {
 };
 
 struct IMPLConfig {
-  int NUM_VIDEOS;
   bool DRAW_OUTPUT = true;
   bool DRAW_INFERENCE_RESULT = true;
+  std::vector<VideoConfig> videoConfigs;
   ResizeProfileConfig resizeProfileConfig;
   InferenceEngineConfig inferenceEngineConfig;
 };
 
+std::vector<VideoConfig> parseVideoConfigs(const Json::Value& json);
 ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json);
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json);
 IMPLConfig parseIMPLConfig(const std::string& jsonPath);

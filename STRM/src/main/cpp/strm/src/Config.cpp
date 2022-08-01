@@ -59,7 +59,7 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
     LOGE("Json parsing failed");
     return config;
   }
-  LOGD("STRMConfig : %s", json.toStyledString().c_str());
+  LOGD("Config : %s", json.toStyledString().c_str());
   if (!json["log_internal"].isNull()) {
     LOG_INTERNAL = json["log_internal"].asBool();
   }
