@@ -18,7 +18,7 @@ namespace rm {
 class PatchMixer {
  public:
   static void preparePack(std::map<std::string, SortedFrames>& frames,
-                          ResizeProfile* resizeProfile, int maxRoISize, float mergeThreshold);
+                          RoIResizer* roiResizer, int maxRoISize, float mergeThreshold);
 
   static void mergeRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,
                         std::vector<std::unique_ptr<RoI>>& parentRoIs,

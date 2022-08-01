@@ -1,20 +1,20 @@
-#include "strm/ResizeProfile.hpp"
+#include "strm/RoIResizer.hpp"
 
 #include "strm/DecisionTree.hpp"
 
 namespace rm {
 
-ResizeProfile::ResizeProfile(const ResizeProfileConfig& config)
+RoIResizer::RoIResizer(const RoIResizerConfig& config)
     : mConfig(config), calibration(0) {}
 
-int ResizeProfile::getTargetSize(const idType id, const RoI::Features& features) {
+int RoIResizer::getTargetSize(const idType id, const RoI::Features& features) {
   int targetSize = getSmoothedTargetSize(id, features);
   prevTargetSizeTable[id] = targetSize;
   return targetSize + calibration + mConfig.RESIZE_MARGIN;
 }
 
-int ResizeProfile::getSmoothedTargetSize(const idType id,
-                                         const RoI::Features& features) {
+int RoIResizer::getSmoothedTargetSize(const idType id,
+                                      const RoI::Features& features) {
   int sizeWithFeatures = getSizeWithFeature(features);
   auto record = prevTargetSizeTable.find(id);
   if (record == prevTargetSizeTable.end()) {
@@ -25,7 +25,7 @@ int ResizeProfile::getSmoothedTargetSize(const idType id,
                 (1 - mConfig.RESIZE_SMOOTHING_FACTOR) * (float) prevTargetSize);
 }
 
-int ResizeProfile::getSizeWithFeature(const RoI::Features& features) {
+int RoIResizer::getSizeWithFeature(const RoI::Features& features) {
   if (features.type == RoI::OF) {
     return (int) OFTree(features.xyRatio, (float) features.getShiftSize(), features.err);
   } else if (features.type == RoI::PD) {
@@ -34,7 +34,7 @@ int ResizeProfile::getSizeWithFeature(const RoI::Features& features) {
   return INT_MAX / 2;
 }
 
-void ResizeProfile::updateTable(RoI* roi) {
+void RoIResizer::updateTable(RoI* roi) {
   assert(!roi->roisForProbing.empty());
   assert(roi->roisForProbing.back()->targetSize > roi->targetSize);
   assert(prevTargetSizeTable.find(roi->id) != prevTargetSizeTable.end());
@@ -77,13 +77,13 @@ void ResizeProfile::updateTable(RoI* roi) {
   calibration += smallestSizePossible - roi->targetSize;
 }
 
-float ResizeProfile::getOverlap(Rect& targetRect, Rect& baseRect) {
+float RoIResizer::getOverlap(Rect& targetRect, Rect& baseRect) {
   int intersection = targetRect.intersection(baseRect);
   float overlapRatio = (float) intersection / (float) (baseRect.area());
   return overlapRatio;
 }
 
-bool ResizeProfile::isUsable(BoundingBox& targetBox, BoundingBox& baseBox) {
+bool RoIResizer::isUsable(BoundingBox& targetBox, BoundingBox& baseBox) {
   float overlapThreshold = 0.8;
   float confidenceThreshold = 0.3;
   float confidenceDiffThreshold = 0.1;

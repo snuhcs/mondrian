@@ -9,13 +9,13 @@
 namespace rm {
 
 void PatchMixer::preparePack(std::map<std::string, SortedFrames>& frames,
-                             ResizeProfile* resizeProfile, int maxRoISize, float mergeThreshold) {
+                             RoIResizer* roiResizer, int maxRoISize, float mergeThreshold) {
   time_us resizeStartTime = NowMicros();
   for (auto& it : frames) {
     for (Frame* frame : it.second) {
       for (auto& cRoI : frame->childRoIs) {
         cRoI->targetSize = std::min(cRoI->maxEdgeLength,
-                                    resizeProfile->getTargetSize(cRoI->id, cRoI->features));
+                                    roiResizer->getTargetSize(cRoI->id, cRoI->features));
       }
     }
   }

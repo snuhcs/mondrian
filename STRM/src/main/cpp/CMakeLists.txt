@@ -34,7 +34,7 @@ add_library(
         strm/src/Logger.cpp
         strm/src/PatchMixer.cpp
         strm/src/PatchReconstructor.cpp
-        strm/src/ResizeProfile.cpp
+        strm/src/RoIResizer.cpp
         strm/src/RoIExtractor.cpp
         strm/src/SpatioTemporalRoIMixer.cpp
         strm/src/Test.cpp

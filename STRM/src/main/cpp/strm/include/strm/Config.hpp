@@ -22,7 +22,7 @@ struct RoIExtractorConfig {
   float PD_FILTER_THRESHOLD = 0.5;
 };
 
-struct ResizeProfileConfig {
+struct RoIResizerConfig {
   float RESIZE_SMOOTHING_FACTOR = 0.1;
   bool PROBING = true;
   int PROBING_STEP = 5;
@@ -40,12 +40,12 @@ struct STRMConfig {
   int LATENCY_SLO_MS = 10000;
   float MERGE_THRESHOLD = 0.5;
   RoIExtractorConfig roIExtractorConfig;
-  ResizeProfileConfig resizeProfileConfig;
+  RoIResizerConfig roIResizerConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 };
 
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
-ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json);
+RoIResizerConfig parseRoIResizerConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
 STRMConfig parseSTRMConfig(const std::string& jsonPath);
 
