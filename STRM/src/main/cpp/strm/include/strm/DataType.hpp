@@ -150,7 +150,7 @@ struct Frame {
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime)
-      : key(key), shortKey(key.substr(key.size() - 5, 1)), frameIndex(frameIndex), mat(mat),
+      : key(key), shortKey(key.substr(key.find_last_of('.') - 1, 1)), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
         roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime), isFullFrameTarget(false),
         isBoxesReady(false), isRoIsReady(false) {}

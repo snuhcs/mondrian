@@ -160,7 +160,7 @@ std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& fra
 std::string toString(const std::map<std::string, SortedFrames>& frames) {
   std::stringstream ss;
   for (const auto&[aStreamKey, aStreamFrames] : frames) {
-    std::string shortKey = aStreamKey.substr(aStreamKey.size() - 5, 1);
+    std::string shortKey = aStreamKey.substr(aStreamKey.find_last_of('.') - 1, 1);
     ss << shortKey << ": ";
     if (aStreamFrames.empty()) {
       ss << "EMPTY, ";
@@ -174,7 +174,7 @@ std::string toString(const std::map<std::string, SortedFrames>& frames) {
 }
 
 FrameBuffer::FrameBuffer(const std::string& key, int capacity)
-    : key(key), shortKey(key.substr(key.size() - 5, 1)), capacity(capacity), count(0) {
+    : key(key), shortKey(key.substr(key.find_last_of('.') - 1, 1)), capacity(capacity), count(0) {
   frames.resize(capacity);
 }
 
