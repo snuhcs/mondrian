@@ -138,7 +138,7 @@ std::pair<int, int> Interpolator::getBbxShift(std::vector<RoI*> childRoIs, int s
   std::pair<int, int> c1 = bbx1->location.center();
   BoundingBox* bbx2 = childRoIs.at(end)->box;
   std::pair<int, int> c2 = bbx2->location.center();
-  return std::make_pair(c2.first - c1.first, c2.second - c2.first);
+  return std::make_pair(c2.first - c1.first, c2.second - c2.second);
 }
 
 void Interpolator::addBoxWithPrevInfo(RoI* currRoI, const BoundingBox* prevBox,
