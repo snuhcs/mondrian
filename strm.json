@@ -26,7 +26,6 @@
     "full_frame_interval": 1,
     "buffer_size": 500,
     "latency_slo_ms": 5000,
-    "merge_threshold": 0.5,
     "roi_extractor": {
         "num_workers": 2,
         "extraction_resize_width": 640,
@@ -46,6 +45,12 @@
         "overlap_threshold": 0.8,
         "absolute_confidence_threshold": 0.3,
         "relative_confidence_threshold": 0.1
+    },
+    "patch_mixer": {
+        "merge": true,
+        "merge_threshold": 0.5,
+        "n_way_mixing": true,
+        "priority_mixing": true
     },
     "patch_reconstructor": {
         "frame_boxes_iou_threshold": 0.5,

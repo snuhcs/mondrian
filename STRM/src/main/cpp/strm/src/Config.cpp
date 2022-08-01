@@ -67,6 +67,23 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   return config;
 }
 
+PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
+  PatchMixerConfig config;
+  if (!json["merge"].isNull()) {
+    config.MERGE = json["merge"].asBool();
+  }
+  if (!json["merge_threshold"].isNull()) {
+    config.MERGE_THRESHOLD = json["merge_threshold"].asFloat();
+  }
+  if (!json["n_way_mixing"].isNull()) {
+    config.N_WAY_MIXING = json["n_way_mixing"].asBool();
+  }
+  if (!json["priority_mixing"].isNull()) {
+    config.PRIORITY_MIXING = json["priority_mixing"].asBool();
+  }
+  return config;
+}
+
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) {
   PatchReconstructorConfig config;
   if (!json["frame_boxes_iou_threshold"].isNull()) {
@@ -104,15 +121,15 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["latency_slo_ms"].isNull()) {
     config.LATENCY_SLO_MS = json["latency_slo_ms"].asInt();
   }
-  if (!json["merge_threshold"].isNull()) {
-    config.MERGE_THRESHOLD = json["merge_threshold"].asFloat();
-  }
 
   if (!json["roi_extractor"].isNull()) {
     config.roIExtractorConfig = parseRoIExtractorConfig(json["roi_extractor"]);
   }
   if (!json["roi_resizer"].isNull()) {
     config.roIResizerConfig = parseRoIResizerConfig(json["roi_resizer"]);
+  }
+  if (!json["patch_mixer"].isNull()) {
+    config.patchMixerConfig = parsePatchMixerConfig(json["patch_mixer"]);
   }
   if (!json["patch_reconstructor"].isNull()) {
     config.patchReconstructorConfig = parsePatchReconstructorConfig(

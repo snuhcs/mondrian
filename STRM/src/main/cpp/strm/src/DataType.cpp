@@ -1,5 +1,7 @@
 #include "strm/DataType.hpp"
+
 #include "strm/Log.hpp"
+#include "strm/Logger.hpp"
 
 namespace rm {
 
@@ -7,6 +9,96 @@ const idType UNASSIGNED_ID = -1;
 const idType MERGED_ROI_ID = -2;
 
 const std::pair<int, int> RoI::NOT_PACKED{-1, -1};
+
+void Frame::initParentRoIs() {
+  assert(parentRoIs.empty());
+  for (auto& cRoI : childRoIs) {
+    assert(cRoI->parentRoI == nullptr);
+    assert(cRoI->childRoIs.empty());
+    assert(cRoI->roisForProbing.empty());
+  }
+  for (auto& cRoI : childRoIs) {
+    std::unique_ptr<RoI> pRoI = std::make_unique<RoI>(*cRoI);
+    cRoI->parentRoI = pRoI.get();
+    pRoI->childRoIs.push_back(cRoI.get());
+    parentRoIs.push_back(std::move(pRoI));
+  }
+}
+
+void Frame::mergeRoIs(float mergeThreshold, int maxSize) {
+  while (true) {
+    bool updated = false;
+    int i, j;
+    for (i = 0; i < parentRoIs.size(); i++) {
+      for (j = i + 1; j < parentRoIs.size(); j++) {
+        const std::unique_ptr<RoI>& roi0 = parentRoIs[i];
+        const std::unique_ptr<RoI>& roi1 = parentRoIs[j];
+        int intersection = roi0->location.intersection(roi1->location);
+        if ((float) intersection / (float) roi0->getArea() < mergeThreshold &&
+            (float) intersection / (float) roi1->getArea() < mergeThreshold) {
+          continue;
+        }
+        int newLeft = std::min(roi0->location.left, roi1->location.left);
+        int newTop = std::min(roi0->location.top, roi1->location.top);
+        int newRight = std::max(roi0->location.right, roi1->location.right);
+        int newBottom = std::max(roi0->location.bottom, roi1->location.bottom);
+        if (newRight - newLeft > maxSize || newBottom - newTop > maxSize) {
+          continue;
+        }
+        int newArea = (newRight - newLeft) * (newBottom - newLeft);
+        if (roi0->targetSize * roi1->maxEdgeLength > roi1->targetSize * roi0->maxEdgeLength) {
+          // If roi0 resizes conservatively than roi1
+          newArea = newArea * roi0->targetSize * roi0->targetSize
+                    / roi0->maxEdgeLength / roi0->maxEdgeLength;
+        } else {
+          // If roi1 resizes conservatively than roi0
+          newArea = newArea * roi1->targetSize * roi1->targetSize
+                    / roi1->maxEdgeLength / roi1->maxEdgeLength;
+        }
+        int originalArea = roi0->getResizedArea() + roi1->getResizedArea();
+        if (newArea >= originalArea) {
+          continue;
+        }
+        updated = true;
+        break;
+      }
+      if (updated) {
+        break;
+      }
+    }
+    if (!updated) {
+      break;
+    }
+    parentRoIs.push_back(std::move(RoI::mergeRoIs(parentRoIs[i].get(), parentRoIs[j].get())));
+    // Match child parent
+    RoI* mergedRoI = parentRoIs.rbegin()->get();
+    mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
+                                parentRoIs[i]->childRoIs.begin(), parentRoIs[i]->childRoIs.end());
+    mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
+                                parentRoIs[j]->childRoIs.begin(), parentRoIs[j]->childRoIs.end());
+    for (RoI* cRoI : mergedRoI->childRoIs) {
+      cRoI->parentRoI = mergedRoI;
+    }
+    assert(j > i);
+    parentRoIs.erase(parentRoIs.begin() + j);
+    parentRoIs.erase(parentRoIs.begin() + i);
+  }
+}
+
+void Frame::addProbeRoIs(int numProbeSteps, int probeStepSize) {
+  for (auto& cRoI : childRoIs) {
+    int probe = -numProbeSteps * probeStepSize;
+    for (int i = 0; i < 2 * numProbeSteps + 1; i++) {
+      std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
+          nullptr, cRoI->id, cRoI->frame, cRoI->location, cRoI->type, cRoI->origin, cRoI->label,
+          cRoI->features.shift, cRoI->features.err, cRoI->features.diffAreaRatio, true);
+      probeRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->targetSize + probe);
+      cRoI->roisForProbing.push_back(probeRoI.get());
+      cRoI->frame->probingRoIs.push_back(std::move(probeRoI));
+      probe += probeStepSize;
+    }
+  }
+}
 
 void Frame::filterPDRoIs(float threshold) {
   std::vector<RoI*> OFRoIs;
@@ -53,6 +145,66 @@ bool Frame::readyForOFExtraction() const {
   } else {
     return prevFrame->isRoIsReady;
   }
+}
+
+std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& frames) {
+  std::set<Frame*> lastFrames;
+  for (auto it : frames) {
+    if (!it.second.empty()) {
+      lastFrames.insert(*it.second.rbegin());
+    }
+  }
+  return lastFrames;
+}
+
+std::string toString(const std::map<std::string, SortedFrames>& frames) {
+  std::stringstream ss;
+  for (const auto&[aStreamKey, aStreamFrames] : frames) {
+    std::string shortKey = aStreamKey.substr(aStreamKey.size() - 5, 1);
+    ss << shortKey << ": ";
+    if (aStreamFrames.empty()) {
+      ss << "EMPTY, ";
+    } else {
+      Frame* firstFrame = *aStreamFrames.begin();
+      Frame* lastFrame = *aStreamFrames.rbegin();
+      ss << firstFrame->frameIndex << " ~ " << lastFrame->frameIndex << ", ";
+    }
+  }
+  return ss.str();
+}
+
+FrameBuffer::FrameBuffer(const std::string& key, int capacity)
+    : key(key), shortKey(key.substr(key.size() - 5, 1)), capacity(capacity), count(0) {
+  frames.resize(capacity);
+}
+
+Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
+  std::unique_lock<std::mutex> lock(mtx);
+  int frameIndex = count++;
+  cv.wait(lock, [this, frameIndex]() { return frames[frameIndex % capacity].get() == nullptr; });
+  Frame* prevFrame = frameIndex == 0 ? nullptr : frames[(frameIndex - 1) % capacity].get();
+  frames[frameIndex % capacity] = std::make_unique<Frame>(key, frameIndex, mat, prevFrame,
+                                                          NowMicros());
+  if (prevFrame != nullptr) {
+    prevFrame->nextFrame = frames[frameIndex % capacity].get();
+  }
+  Frame* currFrame = frames[frameIndex % capacity].get();
+  lock.unlock();
+  LOGD("FrameBuffer%s::enqueue  (%d)", shortKey.c_str(), frameIndex);
+  return currFrame;
+}
+
+void FrameBuffer::freeImage(const std::vector<int>& frameIndices, Logger* logger) {
+  std::unique_lock<std::mutex> lock(mtx);
+  for (int frameIndex : frameIndices) {
+    if (logger != nullptr) {
+      logger->log(frames[frameIndex % capacity].get());
+    }
+    frames[frameIndex % capacity].reset();
+  }
+  lock.unlock();
+  cv.notify_all();
+  LOGD("FrameBuffer%s::freeImage(%lu)", shortKey.c_str(), frameIndices.size());
 }
 
 } // namespace rm

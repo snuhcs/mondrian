@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "strm/Config.hpp"
+#include "strm/DataType.hpp"
 #include "strm/InferenceEngine.hpp"
 #include "strm/RoIResizer.hpp"
 #include "strm/RoIExtractor.hpp"
@@ -19,25 +20,6 @@
 #include "strm/Logger.hpp"
 
 namespace rm {
-
-class FrameBuffer {
- public:
-  FrameBuffer(const std::string& key, int capacity);
-
-  Frame* enqueue(const cv::Mat& mat);
-
-  void freeImage(const std::vector<int>& frameIndices, Logger* logger);
-
- private:
-  const std::string key;
-  const std::string shortKey;
-  const int capacity;
-
-  int count;
-  std::mutex mtx;
-  std::condition_variable cv;
-  std::vector<std::unique_ptr<Frame>> frames;
-};
 
 using FrameResult = std::tuple<time_us, cv::Mat, std::vector<BoundingBox>>;
 
@@ -59,6 +41,10 @@ class SpatioTemporalRoIMixer {
 
   void fullFrameInference(Frame* frame);
 
+  void mixedInference(std::vector<RoI*>& candidateRoIs, int frameSize, int numInferences);
+
+  void releaseFrames(const std::map<std::string, SortedFrames>& frames);
+
   static Frame* getFullFrameInferenceFrame(const std::map<std::string, SortedFrames>& lastFrames,
                                            int fullFrameInferenceStreamIndex);
 
@@ -75,6 +61,7 @@ class SpatioTemporalRoIMixer {
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;
+  std::unique_ptr<PatchMixer> mPatchMixer;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 
   int mNumSourceVideos;

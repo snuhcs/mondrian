@@ -1,6 +1,7 @@
 #ifndef PATCH_MIXER_HPP_
 #define PATCH_MIXER_HPP_
 
+#include <map>
 #include <mutex>
 #include <set>
 #include <vector>
@@ -17,24 +18,39 @@ namespace rm {
 
 class PatchMixer {
  public:
-  static void preparePack(std::map<std::string, SortedFrames>& frames,
-                          RoIResizer* roiResizer, int maxRoISize, float mergeThreshold);
+  PatchMixer(const PatchMixerConfig& config);
 
-  static void mergeRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,
-                        std::vector<std::unique_ptr<RoI>>& parentRoIs,
-                        int maxSize, float mergeThreshold);
+  std::vector<RoI*> prepareRoIs(std::map<std::string, SortedFrames>& frames,
+                                Frame* fullFrameTarget, RoIResizer* roIResizer, int maxRoISize,
+                                bool probe, int numProbeSteps, int probeStepSize) const;
 
-  static std::vector<MixedFrame> pack(std::map<std::string, SortedFrames>& frames,
-                                      const Frame* fullFrameTarget, int mixedFrameSize,
-                                      int numMixedFrames, bool probing, int numProbeSteps,
-                                      int probeStepSize);
+  std::vector<MixedFrame> packRoIs(std::vector<RoI*>& candidateRoIs, int mixedFrameSize,
+                                   int maxNumMixedFrames) const;
 
  private:
-  static void tryPackRoIs(std::vector<RoI*>& parentRoIs, int mixedFrameSize);
+  static void resizeRoIs(std::map<std::string, SortedFrames>& frames, RoIResizer* roiResizer);
+
+  static void initParentRoIs(std::map<std::string, SortedFrames>& frames);
+
+  static void mergeRoIs(std::map<std::string, SortedFrames>& frames, int maxRoISize,
+                        float mergeThreshold);
+
+  static void addProbeRoIs(std::map<std::string, SortedFrames>& frames,
+                           const Frame* fullFrameTarget, int numProbeSteps, int probeStepSize);
+
+  static std::vector<RoI*> collectRoIs(std::map<std::string, SortedFrames>& frames,
+                                       const Frame* fullFrameTarget);
+
+  static void prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
+                             const Frame* fullFrameTarget);
 
   static bool canFit(std::pair<int, int> wh, const Rect& rect);
 
   static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, const Rect& rect);
+
+  static const float HIGH_PRIORITY;
+
+  PatchMixerConfig mConfig;
 };
 
 } // namespace rm

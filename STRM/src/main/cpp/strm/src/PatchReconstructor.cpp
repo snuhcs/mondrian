@@ -83,7 +83,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
     frame->reconstructStartTime = reconstructStartTime;
     frame->reconstructEndTime = reconstructEndTime;
   }
-  LOGD("PatchReconstructor::assignBoxesToFrame(%lu, %lu) took %lu us",
+  LOGD("PatchReconstructor::assignBoxesToFrame(%lu, %lu) took %lld us",
        packedRoIs.size(), results.size(), reconstructEndTime - reconstructStartTime);
 }
 

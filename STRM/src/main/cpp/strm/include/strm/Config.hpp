@@ -39,6 +39,13 @@ struct RoIResizerConfig {
   float RELATIVE_CONFIDENCE_THRESHOLD = 0.1;
 };
 
+struct PatchMixerConfig {
+  bool MERGE = true;
+  float MERGE_THRESHOLD = 0.5;
+  bool N_WAY_MIXING = true;
+  bool PRIORITY_MIXING = true;
+};
+
 struct PatchReconstructorConfig {
   float FRAME_BOXES_IOU_THRESHOLD = 0.5;
   float OVERLAP_THRESHOLD = 0.8;
@@ -48,14 +55,15 @@ struct STRMConfig {
   int FULL_FRAME_INTERVAL = 2;
   int BUFFER_SIZE = 1000;
   int LATENCY_SLO_MS = 10000;
-  float MERGE_THRESHOLD = 0.5;
   RoIExtractorConfig roIExtractorConfig;
   RoIResizerConfig roIResizerConfig;
+  PatchMixerConfig patchMixerConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 };
 
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
 RoIResizerConfig parseRoIResizerConfig(const Json::Value& json);
+PatchMixerConfig parsePatchMixerConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
 STRMConfig parseSTRMConfig(const std::string& jsonPath);
 
