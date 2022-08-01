@@ -41,9 +41,9 @@ class RoIExtractor {
                                  const cv::Size& targetSize,
                                  std::vector<std::unique_ptr<RoI>>& outChildRoIs);
 
-  static std::vector<std::pair<std::pair<int, int>, float>> getShiftAndErrors(
-      const Frame* prevFrame, const Frame* currFrame,
-      const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize);
+  static std::vector<RoI::OFFeatures> opticalFlowTracking(
+      const Frame* prevFrame, const Frame* currFrame, const std::vector<Rect>& boundingBoxes,
+      const cv::Size& targetSize);
 
   static void getPixelDiffRoIs(
       const Frame* prevFrame, Frame* currFrame, const cv::Size& targetSize,

@@ -37,7 +37,9 @@ float RoIResizer::getSmoothedTargetSize(const idType id,
 
 float RoIResizer::getSizeWithFeature(const RoI::Features& features) {
   assert(features.type == RoI::OF);
-  return OFTree(features.xyRatio, (float) features.getShiftSize(), features.ofFeatures.err);
+  auto&[x, y] = features.ofFeatures.avgShift;
+  float shiftSize = x * x + y * y;
+  return OFTree(features.xyRatio, shiftSize, features.ofFeatures.avgErr);
 }
 
 void RoIResizer::updateTable(RoI* roi) {

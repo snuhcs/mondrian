@@ -18,7 +18,7 @@ class Interpolator {
 
   static std::vector<int> findValidRoIs(std::vector<RoI*>& childRoIs);
 
-  static std::pair<int, int> sumMotionVectors(std::vector<RoI*> childRoIs, int start, int end);
+  static std::pair<float, float> sumMotionVectors(std::vector<RoI*> childRoIs, int start, int end);
 
   static std::pair<int, int> getBbxShift(std::vector<RoI*> childRoIs, int start, int end);
 

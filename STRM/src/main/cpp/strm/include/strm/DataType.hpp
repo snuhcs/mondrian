@@ -215,11 +215,75 @@ struct RoI {
   };
 
   struct OFFeatures {
-    std::pair<int, int> shift;
-    float err;
+    const std::vector<std::pair<float, float>> shifts;
+    const std::vector<float> errs;
 
-    int getShiftSize() const {
-      return shift.first * shift.first + shift.second * shift.second;
+    const std::pair<float, float> avgShift;
+    const std::pair<float, float> stdShift;
+    const float avgErr;
+    const float ncc;
+
+    OFFeatures(const std::vector<std::pair<float, float>>& shifts, const std::vector<float>& errs)
+    : shifts(shifts), errs(errs), avgShift(getShiftAvg(shifts)), stdShift(getShiftStd(shifts)), avgErr(getAvgErr(errs)), ncc(getNCC(shifts)) {}
+
+    static std::pair<float, float> getShiftAvg(const std::vector<std::pair<float, float>>& shifts) {
+      if (shifts.empty()) {
+        return {0, 0};
+      }
+      std::pair<float, float> shift = {0, 0};
+      for (const auto&[x, y] : shifts) {
+        shift.first += x;
+        shift.second += y;
+      }
+      shift.first /= shifts.size();
+      shift.second /= shifts.size();
+      return shift;
+    }
+
+    static std::pair<float, float> getShiftStd(const std::vector<std::pair<float, float>>& shifts) {
+      if (shifts.empty()) {
+        return {0, 0};
+      }
+      std::pair<float, float> var = {0, 0};
+      auto[avgX, avgY] = getShiftAvg(shifts);
+      for (const auto&[x, y] : shifts) {
+        var.first += (x - avgX) * (x - avgX);
+        var.second += (y - avgY) * (y - avgY);
+      }
+      var.first /= shifts.size();
+      var.second /= shifts.size();
+      return {std::sqrt(var.first), std::sqrt(var.second)};
+    }
+
+    static float getAvgErr(const std::vector<float>& errs) {
+      if (errs.empty()) {
+        return 0;
+      }
+      float err = 0;
+      for (const float& e : errs) {
+        err += e;
+      }
+      return err /= errs.size();
+    }
+
+    static float getNCC(const std::vector<std::pair<float, float>>& shifts) {
+      if (shifts.empty()) {
+        return 0;
+      }
+      float ncc = 0;
+      for (int i = 0; i < shifts.size(); i++) {
+        for (int j = i + 1; j < shifts.size(); j++) {
+          auto&[Xi, Yi] = shifts[i];
+          auto&[Xj, Yj] = shifts[j];
+          float sizeI = Xi * Xi + Yi * Yi;
+          float sizeJ = Xj * Xj + Yj * Yj;
+          if (sizeI == 0 || sizeJ == 0) {
+            continue;
+          }
+          ncc += (Xi * Xj + Yi * Yj) / std::sqrt(sizeI * sizeJ);
+        }
+      }
+      return ncc / (shifts.size() * (shifts.size() - 1) / 2);
     }
   };
 
@@ -228,10 +292,6 @@ struct RoI {
     Type type;
     float xyRatio;
     OFFeatures ofFeatures;
-
-    int getShiftSize() const {
-      return ofFeatures.getShiftSize();
-    }
   };
 
   Frame* frame;
@@ -307,7 +367,7 @@ struct RoI {
     }
     std::unique_ptr<RoI> mergedRoI(
         new RoI(nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-                roiType, originNull, roiLabel, {std::make_pair(0, 0), 0}, false));
+                roiType, originNull, roiLabel, OFFeatures({}, {}), false));
     mergedRoI->targetSize = (pRoI0->targetSize * pRoI1->maxEdgeLength >
                              pRoI1->targetSize * pRoI0->maxEdgeLength) ?
                             mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :

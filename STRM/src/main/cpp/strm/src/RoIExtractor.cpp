@@ -223,27 +223,29 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
   }
 
   if (!boundingBoxes.empty()) {
-    const std::vector<std::pair<std::pair<int, int>, float>>& shiftAndErrors = getShiftAndErrors(
+    const std::vector<RoI::OFFeatures>& ofFeatures = opticalFlowTracking(
         prevFrame, currFrame, boundingRects, targetSize);
+    assert(ofFeatures.size() == boundingBoxes.size());
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
-      const std::pair<int, int>& shift = shiftAndErrors.at(boxIndex).first;
-      const float err = shiftAndErrors.at(boxIndex).second;
       const BoundingBox& box = boundingBoxes[boxIndex];
       const Rect& loc = box.location;
-      int newLeft = std::max(0, loc.left + shift.first);
-      int newTop = std::max(0, loc.top + shift.second);
-      int newRight = std::min(width, loc.right + shift.first);
-      int newBottom = std::min(height, loc.bottom + shift.second);
+      const RoI::OFFeatures& of = ofFeatures[boxIndex];
+      int x = (int) of.avgShift.first;
+      int y = (int) of.avgShift.second;
+      int newLeft = std::max(0, loc.left + x);
+      int newTop = std::max(0, loc.top + y);
+      int newRight = std::min(width, loc.right + x);
+      int newBottom = std::min(height, loc.bottom + y);
       if (newLeft < newRight && newTop < newBottom) {
         outChildRoIs.emplace_back(
             new RoI(box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-                    RoI::Type::OF, box.origin, box.label, {shift, err}, false));
+                    RoI::Type::OF, box.origin, box.label, of, false));
       }
     }
   }
 }
 
-std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErrors(
+std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
     const Frame* prevFrame, const Frame* currFrame,
     const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
   assert(!prevFrame->preProcessedMat.empty());
@@ -253,36 +255,70 @@ std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErro
   const cv::Mat& prevImage = prevFrame->preProcessedMat;
   const cv::Mat& currImage = currFrame->preProcessedMat;
 
+  std::vector<int> numPoints;
   std::vector<cv::Point2f> inputPoints;
   for (const Rect& bbx : boundingBoxes) {
-    int bbxCenterX = bbx.left + bbx.width() / 2;
-    int bbxCenterY = bbx.top + bbx.height() / 2;
-    inputPoints.emplace_back(bbxCenterX * targetSize.width / currFrame->width,
-                             bbxCenterY * targetSize.height / currFrame->height);
+    float xRatio = (float) targetSize.width / (float) prevImage.cols;
+    float yRatio = (float) targetSize.height / (float) prevImage.rows;
+    int x = (int) ((float) bbx.left * xRatio);
+    int y = (int) ((float) bbx.top * yRatio);
+    int w = (int) ((float) (bbx.right - bbx.left) * xRatio);
+    int h = (int) ((float) (bbx.bottom - bbx.top) * yRatio);
+    x = x < 0 ? 0 : (x > prevImage.cols ? prevImage.cols : x);
+    y = y < 0 ? 0 : (y > prevImage.rows ? prevImage.rows : y);
+    w = x + w > prevImage.cols ? prevImage.cols - x : w;
+    h = y + h > prevImage.rows ? prevImage.rows - y : h;
+
+    std::vector<cv::Point2f> points;
+    cv::Rect roiBbx = cv::Rect(x, y, w, h);
+    cv::goodFeaturesToTrack(prevImage(roiBbx), points, 100, 0.3, 7, cv::Mat(), 7, false, 0.04);
+    for (cv::Point2f& p : points) {
+      p.x += (float) roiBbx.x;
+      p.y += (float) roiBbx.y;
+    }
+    if (points.empty()) {
+      inputPoints.emplace_back((bbx.left + bbx.width() / 2) * targetSize.width / prevImage.cols,
+                               (bbx.top + bbx.height() / 2) * targetSize.height / prevImage.rows);
+      numPoints.push_back(1);
+    } else {
+      inputPoints.insert(inputPoints.end(), points.begin(), points.end());
+      numPoints.push_back((int) points.size());
+    }
   }
+
   std::vector<uchar> status;
-  std::vector<float> err;
+  std::vector<float> errs;
   std::vector<cv::Point2f> outputPoints;
-  cv::calcOpticalFlowPyrLK(prevImage, currImage, inputPoints, outputPoints, status, err,
+  cv::calcOpticalFlowPyrLK(prevImage, currImage, inputPoints, outputPoints, status, errs,
                            cv::Size(15, 15), 2, CRITERIA);
   assert(inputPoints.size() == outputPoints.size());
   assert(inputPoints.size() == status.size());
-  assert(inputPoints.size() == err.size());
+  assert(inputPoints.size() == errs.size());
 
-  std::vector<std::pair<std::pair<int, int>, float>> shiftAndErrors;
-  for (int i = 0; i < inputPoints.size(); i++) {
-    if (status[i] == 1) {
-      shiftAndErrors.emplace_back(std::make_pair(
-          (int) ((outputPoints[i].x - inputPoints[i].x)
-                 * (float) currFrame->width / (float) targetSize.width),
-          (int) ((outputPoints[i].y - inputPoints[i].y)
-                 * (float) currFrame->height / (float) targetSize.height)),
-                                  err[i]);
-    } else {
-      shiftAndErrors.emplace_back(std::make_pair(0, 0), 0);
+  std::vector<RoI::OFFeatures> ofFeatures;
+  int startIndex = 0;
+  int endIndex;
+  for (int numPoint : numPoints) {
+    endIndex = startIndex + numPoint;
+    std::vector<std::pair<float, float>> boxShifts;
+    std::vector<float> boxErrs;
+    for (int i = startIndex; i < endIndex; i++) {
+      if (status[i] == 1) {
+        float x = outputPoints[i].x - inputPoints[i].x;
+        float y = outputPoints[i].y - inputPoints[i].y;
+        boxShifts.emplace_back(
+            x * (float) currFrame->width / (float) targetSize.width,
+            y * (float) currFrame->height / (float) targetSize.height);
+        boxErrs.push_back(errs[i]);
+      } else {
+        boxShifts.emplace_back(0, 0);
+        boxErrs.push_back(0);
+      }
     }
+    ofFeatures.emplace_back(boxShifts, boxErrs);
+    startIndex = endIndex;
   }
-  return shiftAndErrors;
+  return ofFeatures;
 }
 
 void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
@@ -323,7 +359,7 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
         RoI::PD,
         fromPD,
         -1,
-        {std::make_pair(0, 0), 0},
+        RoI::OFFeatures({}, {}),
         false));
   }
 }
