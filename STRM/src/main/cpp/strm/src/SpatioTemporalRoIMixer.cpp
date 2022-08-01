@@ -288,7 +288,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
       mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
       mStartMtx.unlock();
       mStartCv.notify_all();
-      LOGD("Start %s video at %lu us", key.c_str(), NowMicros());
+      LOGD("Start %s video at %lld us", key.c_str(), NowMicros());
     }
     mRoIExtractor->enqueue(frame);
   }

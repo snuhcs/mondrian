@@ -170,7 +170,7 @@ void RoIExtractor::processPD(Frame* currFrame) {
   currFrame->pixelDiffRoIProcessStartTime = NowMicros();
   getPixelDiffRoIs(prevFrame, currFrame, mTargetSize, mConfig.MIN_ROI_AREA, currFrame->childRoIs);
   currFrame->pixelDiffRoIProcessEndTime = NowMicros();
-  LOGD("RoIExtractor::processPD(%s, %4d) took %4lu us  // %lu",
+  LOGD("RoIExtractor::processPD(%s, %4d) took %4lld us  // %lu",
        currFrame->shortKey.c_str(), currFrame->frameIndex,
        currFrame->pixelDiffRoIProcessEndTime - currFrame->pixelDiffRoIProcessStartTime,
        currFrame->childRoIs.size());
@@ -202,7 +202,7 @@ void RoIExtractor::processOF(Frame* currFrame) {
   currFrame->opticalFlowRoIProcessStartTime = NowMicros();
   getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes, mTargetSize, currFrame->childRoIs);
   currFrame->opticalFlowRoIProcessEndTime = NowMicros();
-  LOGD("RoIExtractor::processOF(%s, %4d) took %4lu us  // %lu",
+  LOGD("RoIExtractor::processOF(%s, %4d) took %4lld us  // %lu",
        currFrame->shortKey.c_str(), currFrame->frameIndex,
        currFrame->opticalFlowRoIProcessEndTime - currFrame->opticalFlowRoIProcessStartTime,
        std::count_if(currFrame->childRoIs.begin(), currFrame->childRoIs.end(),
