@@ -91,7 +91,7 @@ void Frame::addProbeRoIs(int numProbeSteps, int probeStepSize) {
     for (int i = 0; i < 2 * numProbeSteps + 1; i++) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->location, cRoI->type, cRoI->origin, cRoI->label,
-          cRoI->features.ofFeatures, cRoI->features.diffAreaRatio, true);
+          cRoI->features.ofFeatures, true);
       probeRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->targetSize + probe);
       cRoI->roisForProbing.push_back(probeRoI.get());
       cRoI->frame->probingRoIs.push_back(std::move(probeRoI));

@@ -228,7 +228,6 @@ struct RoI {
     Type type;
     float xyRatio;
     OFFeatures ofFeatures;
-    float diffAreaRatio;
 
     int getShiftSize() const {
       return ofFeatures.getShiftSize();
@@ -270,14 +269,12 @@ struct RoI {
       const Origin origin,
       const int label,
       const OFFeatures ofFeatures,
-      const float diffAreaRatio,
-      bool isProbingRoI = false)
+      bool isProbingRoI)
       : prevRoI(prevRoI), id(id), frame(frame), location(location), type(type), origin(origin), label(label),
         features{label,
                  type,
                  (float) location.width() / (float) location.height(),
-                 ofFeatures,
-                 diffAreaRatio},
+                 ofFeatures},
         maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
         packedLocation(NOT_PACKED), isMatchTried(false), nextRoI(nullptr), parentRoI(nullptr),
         box(nullptr), probingBox(nullptr), packedMixedFrameIndex(INT_MAX),
@@ -310,7 +307,7 @@ struct RoI {
     }
     std::unique_ptr<RoI> mergedRoI(
         new RoI(nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-                roiType, originNull, roiLabel, {std::make_pair(0, 0), 0}, 0));
+                roiType, originNull, roiLabel, {std::make_pair(0, 0), 0}, false));
     mergedRoI->targetSize = (pRoI0->targetSize * pRoI1->maxEdgeLength >
                              pRoI1->targetSize * pRoI0->maxEdgeLength) ?
                             mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :

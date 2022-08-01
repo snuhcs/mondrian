@@ -237,7 +237,7 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       if (newLeft < newRight && newTop < newBottom) {
         outChildRoIs.emplace_back(
             new RoI(box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-                    RoI::Type::OF, box.origin, box.label, {shift, err}, 0));
+                    RoI::Type::OF, box.origin, box.label, {shift, err}, false));
       }
     }
   }
@@ -300,33 +300,31 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
   cv::findContours(mat, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
   // replaces get boxes from contours.
-  std::vector<std::pair<Rect, float>> boxAndFeatures;
+  std::vector<Rect> boxes;
   for (const std::vector<cv::Point>& contour : contours) {
     double approxDistance = cv::arcLength(contour, true) * 0.02;
     std::vector<cv::Point> approxCurve;
     cv::approxPolyDP(contour, approxCurve, approxDistance, true);
     cv::Rect box = cv::boundingRect(approxCurve);
     if (box.area() >= mixRoIArea) {
-      Rect originalBox = Rect(box.x * currFrame->mat.cols / targetSize.width,
-                              box.y * currFrame->mat.rows / targetSize.height,
-                              (box.x + box.width) * currFrame->mat.cols / targetSize.width,
-                              (box.y + box.height) * currFrame->mat.rows / targetSize.height);
-      float diffAreaRatio = (float) cv::contourArea(approxCurve) / (float) box.area();
-      boxAndFeatures.emplace_back(originalBox, diffAreaRatio);
+      boxes.emplace_back(box.x * currFrame->mat.cols / targetSize.width,
+                         box.y * currFrame->mat.rows / targetSize.height,
+                         (box.x + box.width) * currFrame->mat.cols / targetSize.width,
+                         (box.y + box.height) * currFrame->mat.rows / targetSize.height);
     }
   }
 
-  for (const std::pair<Rect, float>& boxAndFeature : boxAndFeatures) {
+  for (const Rect& box : boxes) {
     outChildRoIs.emplace_back(new RoI(
         nullptr,
         RoI::getNewIds(1).first,
         currFrame,
-        boxAndFeature.first,
+        box,
         RoI::PD,
         fromPD,
         -1,
         {std::make_pair(0, 0), 0},
-        boxAndFeature.second));
+        false));
   }
 }
 
