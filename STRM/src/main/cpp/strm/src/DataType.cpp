@@ -33,15 +33,15 @@ void Frame::mergeRoIs(float mergeThreshold, int maxSize) {
       for (j = i + 1; j < parentRoIs.size(); j++) {
         const std::unique_ptr<RoI>& roi0 = parentRoIs[i];
         const std::unique_ptr<RoI>& roi1 = parentRoIs[j];
-        int intersection = roi0->location.intersection(roi1->location);
-        if ((float) intersection / (float) roi0->getArea() < mergeThreshold &&
-            (float) intersection / (float) roi1->getArea() < mergeThreshold) {
+        int intersection = roi0->paddedLoc.intersection(roi1->paddedLoc);
+        if ((float) intersection / (float) roi0->getPaddedArea() < mergeThreshold &&
+            (float) intersection / (float) roi1->getPaddedArea() < mergeThreshold) {
           continue;
         }
-        int newLeft = std::min(roi0->location.left, roi1->location.left);
-        int newTop = std::min(roi0->location.top, roi1->location.top);
-        int newRight = std::max(roi0->location.right, roi1->location.right);
-        int newBottom = std::max(roi0->location.bottom, roi1->location.bottom);
+        int newLeft = std::min(roi0->paddedLoc.left, roi1->paddedLoc.left);
+        int newTop = std::min(roi0->paddedLoc.top, roi1->paddedLoc.top);
+        int newRight = std::max(roi0->paddedLoc.right, roi1->paddedLoc.right);
+        int newBottom = std::max(roi0->paddedLoc.bottom, roi1->paddedLoc.bottom);
         if (newRight - newLeft > maxSize || newBottom - newTop > maxSize) {
           continue;
         }
@@ -90,8 +90,8 @@ void Frame::addProbeRoIs(int numProbeSteps, int probeStepSize) {
     int probe = -numProbeSteps * probeStepSize;
     for (int i = 0; i < 2 * numProbeSteps + 1; i++) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
-          nullptr, cRoI->id, cRoI->frame, cRoI->location, cRoI->type, cRoI->origin, cRoI->label,
-          cRoI->features.shift, cRoI->features.err, cRoI->features.diffAreaRatio, true);
+          nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
+          cRoI->features.ofFeatures, 0, true);
       probeRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->targetSize + probe);
       cRoI->roisForProbing.push_back(probeRoI.get());
       cRoI->frame->probingRoIs.push_back(std::move(probeRoI));
@@ -113,10 +113,10 @@ void Frame::filterPDRoIs(float threshold) {
     if (cRoI->type == RoI::Type::PD) {
       int totalOFCoverage = 0;
       for (RoI* OFRoI : OFRoIs) {
-        int intersection = cRoI->location.intersection(OFRoI->location);
+        int intersection = cRoI->paddedLoc.intersection(OFRoI->paddedLoc);
         totalOFCoverage += intersection;
       }
-      if ((float) totalOFCoverage / (float) cRoI->getArea() >= threshold) {
+      if ((float) totalOFCoverage / (float) cRoI->getPaddedArea() >= threshold) {
         it = childRoIs.erase(it);
         continue;
       }
@@ -160,7 +160,7 @@ std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& fra
 std::string toString(const std::map<std::string, SortedFrames>& frames) {
   std::stringstream ss;
   for (const auto&[aStreamKey, aStreamFrames] : frames) {
-    std::string shortKey = aStreamKey.substr(aStreamKey.size() - 5, 1);
+    std::string shortKey = aStreamKey.substr(aStreamKey.find_last_of('.') - 1, 1);
     ss << shortKey << ": ";
     if (aStreamFrames.empty()) {
       ss << "EMPTY, ";
@@ -174,7 +174,7 @@ std::string toString(const std::map<std::string, SortedFrames>& frames) {
 }
 
 FrameBuffer::FrameBuffer(const std::string& key, int capacity)
-    : key(key), shortKey(key.substr(key.size() - 5, 1)), capacity(capacity), count(0) {
+    : key(key), shortKey(key.substr(key.find_last_of('.') - 1, 1)), capacity(capacity), count(0) {
   frames.resize(capacity);
 }
 

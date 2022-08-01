@@ -336,7 +336,7 @@ void SpatioTemporalRoIMixer::outputWork() {
     cv::Mat mat = std::get<1>(result);
     const std::vector<BoundingBox>& boxes = std::get<2>(result);
     LOGD("Logger::logResult(%s, %4d)                     // %lu boxes",
-         key.substr(key.size() - 5, 1).c_str(), frameIndex, boxes.size());
+         key.substr(key.find_last_of('.') - 1, 1).c_str(), frameIndex, boxes.size());
     mResultLogger->logResult(key, frameIndex, time, boxes);
     if (draw) {
       drawObjectDetectionResult(mat, boxes);

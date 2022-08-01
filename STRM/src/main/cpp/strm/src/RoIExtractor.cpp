@@ -185,16 +185,16 @@ void RoIExtractor::processOF(Frame* currFrame) {
     for (const std::unique_ptr<BoundingBox>& box : prevFrame->boxes) {
       if (box->confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
         reliablePrevBoxes.emplace_back(box->id, Rect(
-            std::max(0, box->location.left - mConfig.ROI_PADDING),
-            std::max(0, box->location.top - mConfig.ROI_PADDING),
-            std::min(currFrame->width, box->location.right + mConfig.ROI_PADDING),
-            std::min(currFrame->height, box->location.bottom + mConfig.ROI_PADDING)),
+            std::max(0, box->location.left),
+            std::max(0, box->location.top),
+            std::min(currFrame->width, box->location.right),
+            std::min(currFrame->height, box->location.bottom)),
                                        box->confidence, box->label, fromBB);
       }
     }
   } else {
     for (auto& cRoI : currFrame->prevFrame->childRoIs) {
-      BoundingBox reliableBox(cRoI->id, cRoI->location, 1, cRoI->label, cRoI->origin);
+      BoundingBox reliableBox(cRoI->id, cRoI->origLoc, 1, cRoI->label, cRoI->origin);
       reliableBox.srcRoI = cRoI.get();
       reliablePrevBoxes.push_back(reliableBox);
     }
@@ -212,7 +212,7 @@ void RoIExtractor::processOF(Frame* currFrame) {
 void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
                                       const std::vector<BoundingBox>& boundingBoxes,
                                       const cv::Size& targetSize,
-                                      std::vector<std::unique_ptr<RoI>>& outChildRoIs) {
+                                      std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
   int width = currFrame->mat.cols;
   int height = currFrame->mat.rows;
 
@@ -223,27 +223,29 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
   }
 
   if (!boundingBoxes.empty()) {
-    const std::vector<std::pair<std::pair<int, int>, float>>& shiftAndErrors = getShiftAndErrors(
+    const std::vector<RoI::OFFeatures>& ofFeatures = opticalFlowTracking(
         prevFrame, currFrame, boundingRects, targetSize);
+    assert(ofFeatures.size() == boundingBoxes.size());
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
-      const std::pair<int, int>& shift = shiftAndErrors.at(boxIndex).first;
-      const float err = shiftAndErrors.at(boxIndex).second;
       const BoundingBox& box = boundingBoxes[boxIndex];
       const Rect& loc = box.location;
-      int newLeft = std::max(0, loc.left + shift.first);
-      int newTop = std::max(0, loc.top + shift.second);
-      int newRight = std::min(width, loc.right + shift.first);
-      int newBottom = std::min(height, loc.bottom + shift.second);
+      const RoI::OFFeatures& of = ofFeatures[boxIndex];
+      int x = (int) of.avgShift.first;
+      int y = (int) of.avgShift.second;
+      int newLeft = std::max(0, loc.left + x);
+      int newTop = std::max(0, loc.top + y);
+      int newRight = std::min(width, loc.right + x);
+      int newBottom = std::min(height, loc.bottom + y);
       if (newLeft < newRight && newTop < newBottom) {
         outChildRoIs.emplace_back(
             new RoI(box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-                    RoI::Type::OF, box.origin, box.label, shift, err, 0));
+                    RoI::Type::OF, box.origin, box.label, of, mConfig.ROI_PADDING, false));
       }
     }
   }
 }
 
-std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErrors(
+std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
     const Frame* prevFrame, const Frame* currFrame,
     const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
   assert(!prevFrame->preProcessedMat.empty());
@@ -253,42 +255,75 @@ std::vector<std::pair<std::pair<int, int>, float>> RoIExtractor::getShiftAndErro
   const cv::Mat& prevImage = prevFrame->preProcessedMat;
   const cv::Mat& currImage = currFrame->preProcessedMat;
 
-
+  std::vector<int> numPoints;
   std::vector<cv::Point2f> inputPoints;
   for (const Rect& bbx : boundingBoxes) {
-    int bbxCenterX = bbx.left + bbx.width() / 2;
-    int bbxCenterY = bbx.top + bbx.height() / 2;
-    inputPoints.emplace_back(bbxCenterX * targetSize.width / currFrame->width,
-                             bbxCenterY * targetSize.height / currFrame->height);
+    float xRatio = (float) targetSize.width / (float) prevFrame->width;
+    float yRatio = (float) targetSize.height / (float) prevFrame->height;
+    int x = (int) ((float) bbx.left * xRatio);
+    int y = (int) ((float) bbx.top * yRatio);
+    int w = (int) ((float) (bbx.right - bbx.left) * xRatio);
+    int h = (int) ((float) (bbx.bottom - bbx.top) * yRatio);
+    x = x < 0 ? 0 : (x > prevImage.cols ? prevImage.cols : x);
+    y = y < 0 ? 0 : (y > prevImage.rows ? prevImage.rows : y);
+    w = x + w > prevImage.cols ? prevImage.cols - x : w;
+    h = y + h > prevImage.rows ? prevImage.rows - y : h;
+
+    std::vector<cv::Point2f> points;
+    cv::Rect roiBbx = cv::Rect(x, y, w, h);
+    cv::goodFeaturesToTrack(prevImage(roiBbx), points, 100, 0.01, 5, cv::Mat(), 3, false, 0.03);
+    for (cv::Point2f& p : points) {
+      p.x += (float) roiBbx.x;
+      p.y += (float) roiBbx.y;
+    }
+    if (points.empty()) {
+      inputPoints.emplace_back(((float) bbx.left + (float) bbx.width() / 2) * xRatio,
+                               ((float) bbx.top + (float) bbx.height() / 2) * yRatio);
+      numPoints.push_back(1);
+    } else {
+      inputPoints.insert(inputPoints.end(), points.begin(), points.end());
+      numPoints.push_back((int) points.size());
+    }
   }
+
   std::vector<uchar> status;
-  std::vector<float> err;
+  std::vector<float> errs;
   std::vector<cv::Point2f> outputPoints;
-  cv::calcOpticalFlowPyrLK(prevImage, currImage, inputPoints, outputPoints, status, err,
+  cv::calcOpticalFlowPyrLK(prevImage, currImage, inputPoints, outputPoints, status, errs,
                            cv::Size(15, 15), 2, CRITERIA);
   assert(inputPoints.size() == outputPoints.size());
   assert(inputPoints.size() == status.size());
-  assert(inputPoints.size() == err.size());
+  assert(inputPoints.size() == errs.size());
 
-  std::vector<std::pair<std::pair<int, int>, float>> shiftAndErrors;
-  for (int i = 0; i < inputPoints.size(); i++) {
-    if (status[i] == 1) {
-      shiftAndErrors.emplace_back(std::make_pair(
-          (int) ((outputPoints[i].x - inputPoints[i].x)
-                 * (float) currFrame->width / (float) targetSize.width),
-          (int) ((outputPoints[i].y - inputPoints[i].y)
-                 * (float) currFrame->height / (float) targetSize.height)),
-                                  err[i]);
-    } else {
-      shiftAndErrors.emplace_back(std::make_pair(0, 0), 0);
+  std::vector<RoI::OFFeatures> ofFeatures;
+  int startIndex = 0;
+  int endIndex;
+  for (int numPoint : numPoints) {
+    endIndex = startIndex + numPoint;
+    std::vector<std::pair<float, float>> boxShifts;
+    std::vector<float> boxErrs;
+    for (int i = startIndex; i < endIndex; i++) {
+      if (status[i] == 1) {
+        float x = outputPoints[i].x - inputPoints[i].x;
+        float y = outputPoints[i].y - inputPoints[i].y;
+        boxShifts.emplace_back(
+            x * (float) currFrame->width / (float) targetSize.width,
+            y * (float) currFrame->height / (float) targetSize.height);
+        boxErrs.push_back(errs[i]);
+      } else {
+        boxShifts.emplace_back(0, 0);
+        boxErrs.push_back(0);
+      }
     }
+    ofFeatures.emplace_back(boxShifts, boxErrs);
+    startIndex = endIndex;
   }
-  return shiftAndErrors;
+  return ofFeatures;
 }
 
 void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
                                     const cv::Size& targetSize, const int mixRoIArea,
-                                    std::vector<std::unique_ptr<RoI>>& outChildRoIs) {
+                                    std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
   assert(!prevFrame->preProcessedMat.empty());
   assert(!currFrame->preProcessedMat.empty());
   assert(prevFrame->preProcessedMat.channels() == currFrame->preProcessedMat.channels());
@@ -301,34 +336,32 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
   cv::findContours(mat, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
   // replaces get boxes from contours.
-  std::vector<std::pair<Rect, float>> boxAndFeatures;
+  std::vector<Rect> boxes;
   for (const std::vector<cv::Point>& contour : contours) {
     double approxDistance = cv::arcLength(contour, true) * 0.02;
     std::vector<cv::Point> approxCurve;
     cv::approxPolyDP(contour, approxCurve, approxDistance, true);
     cv::Rect box = cv::boundingRect(approxCurve);
     if (box.area() >= mixRoIArea) {
-      Rect originalBox = Rect(box.x * currFrame->mat.cols / targetSize.width,
-                              box.y * currFrame->mat.rows / targetSize.height,
-                              (box.x + box.width) * currFrame->mat.cols / targetSize.width,
-                              (box.y + box.height) * currFrame->mat.rows / targetSize.height);
-      float diffAreaRatio = (float) cv::contourArea(approxCurve) / (float) box.area();
-      boxAndFeatures.emplace_back(originalBox, diffAreaRatio);
+      boxes.emplace_back(box.x * currFrame->mat.cols / targetSize.width,
+                         box.y * currFrame->mat.rows / targetSize.height,
+                         (box.x + box.width) * currFrame->mat.cols / targetSize.width,
+                         (box.y + box.height) * currFrame->mat.rows / targetSize.height);
     }
   }
 
-  for (const std::pair<Rect, float>& boxAndFeature : boxAndFeatures) {
+  for (const Rect& box : boxes) {
     outChildRoIs.emplace_back(new RoI(
         nullptr,
         RoI::getNewIds(1).first,
         currFrame,
-        boxAndFeature.first,
+        box,
         RoI::PD,
         fromPD,
         -1,
-        std::make_pair(0, 0),
-        0,
-        boxAndFeature.second));
+        RoI::OFFeatures({}, {}),
+        mConfig.ROI_PADDING,
+        false));
   }
 }
 

@@ -37,7 +37,9 @@ float RoIResizer::getSmoothedTargetSize(const idType id,
 
 float RoIResizer::getSizeWithFeature(const RoI::Features& features) {
   assert(features.type == RoI::OF);
-  return OFTree(features.xyRatio, (float) features.getShiftSize(), features.err);
+  auto&[x, y] = features.ofFeatures.avgShift;
+  float shiftSize = x * x + y * y;
+  return OFTree(features.xyRatio, shiftSize, features.ofFeatures.avgErr);
 }
 
 void RoIResizer::updateTable(RoI* roi) {
@@ -50,20 +52,20 @@ void RoIResizer::updateTable(RoI* roi) {
             [](const auto& r, const auto& l) { return r->targetSize > l->targetSize; });
 
   // find box from largest RoI
-  BoundingBox* boxFromLargestRoI = roi->roisForProbing.front()->probingBox;
+  RoI* largestRoI = roi->roisForProbing.front();
 
   float newResizeTarget;
-  if (boxFromLargestRoI == nullptr) {
+  if (largestRoI->probingBox == nullptr) {
     // if box is found nowhere, record to use even bigger size than biggest size
     newResizeTarget = (float) roi->roisForProbing.front()->targetSize
                       + (float) mConfig.PROBE_STEP_SIZE;
   } else {
     // if box is found for the largest probe, find the smallest target size with a usable box
-    newResizeTarget = (float) boxFromLargestRoI->targetSize;
+    newResizeTarget = (float) largestRoI->targetSize;
     for (auto& probeRoI : roi->roisForProbing) {
-      BoundingBox* probeBox = probeRoI->probingBox;
-      if (probeBox != nullptr && isUsable(probeBox, boxFromLargestRoI)) {
-        newResizeTarget = (float) probeBox->targetSize;
+      if (probeRoI->probingBox != nullptr &&
+          isUsable(probeRoI->probingBox, largestRoI->probingBox)) {
+        newResizeTarget = (float) probeRoI->targetSize;
       } else {
         break;
       }

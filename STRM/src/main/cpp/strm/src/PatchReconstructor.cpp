@@ -21,13 +21,13 @@ static Rect moveResizeRoIPos(const RoI* roi) {
 
 static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
   int newLeft = (packedBox.location.left - pRoI->packedLocation.first)
-                * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->location.left;
+                * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->paddedLoc.left;
   int newTop = (packedBox.location.top - pRoI->packedLocation.second)
-               * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->location.top;
+               * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->paddedLoc.top;
   int newRight = (packedBox.location.right - pRoI->packedLocation.first)
-                 * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->location.left;
+                 * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->paddedLoc.left;
   int newBottom = (packedBox.location.bottom - pRoI->packedLocation.second)
-                  * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->location.top;
+                  * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->paddedLoc.top;
   return Rect(std::max(0, newLeft),
               std::max(0, newTop),
               std::min(pRoI->frame->mat.cols, newRight),
@@ -68,12 +68,12 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
       if (maxRoI->isProbingRoI) {
         maxRoI->frame->probingBoxes.emplace_back(new BoundingBox(
             UNASSIGNED_ID, reconstructBoxPos(box, maxRoI),
-            box.confidence, box.label, maxRoI->origin, maxRoI->targetSize));
+            box.confidence, box.label, maxRoI->origin));
         maxRoI->probingBox = maxRoI->frame->probingBoxes.rbegin()->get();
       } else {
         maxRoI->frame->boxes.emplace_back(new BoundingBox(
             UNASSIGNED_ID, reconstructBoxPos(box, maxRoI),
-            box.confidence, box.label, maxRoI->origin, maxRoI->targetSize));
+            box.confidence, box.label, maxRoI->origin));
       }
     }
   }
@@ -107,7 +107,7 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
     RoI* maxRoI = nullptr;
     for (auto& cRoI : childRoIs) {
       if (isFullFrame || cRoI->parentRoI->isPacked()) {
-        int intersection = cRoI->location.intersection(box->location);
+        int intersection = cRoI->paddedLoc.intersection(box->location);
         assert(box->location.area() != 0);
         float overlapRatio = (float) intersection / (float) box->location.area();
         if (maxOverlap < overlapRatio) {
@@ -135,7 +135,7 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
       int maxIndex = -1;
       for (int i = 0; i < roiToBoxesMap[cRoIPtr].size(); ++i) {
         BoundingBox* box = roiToBoxesMap[cRoIPtr][i];
-        int intersection = cRoI->location.intersection(box->location);
+        int intersection = cRoI->paddedLoc.intersection(box->location);
         if (maxIntersection < intersection) {
           maxIntersection = intersection;
           maxIndex = i;
