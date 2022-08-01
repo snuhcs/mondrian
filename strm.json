@@ -11,14 +11,6 @@
             "fps": 10
         }
     ],
-    "resize_profile": {
-        "accuracy_aware_resize": true,
-        "resize_smoothing_factor": 0.1,
-        "probing": true,
-        "probing_step": 5,
-        "resize_margin": 10,
-        "static_target_size": 80
-    },
     "inference_engine": {
         "model": "YOLO_V4",
         "runtime": "TFLITE",
@@ -43,6 +35,12 @@
         "roi_padding": 10,
         "optical_flow_roi_confidence_threshold": 0.1,
         "pd_filter_threshold": 0.5
+    },
+    "resize_profile": {
+        "resize_smoothing_factor": 0.1,
+        "probing": true,
+        "probing_step": 5,
+        "resize_margin": 10
     },
     "patch_reconstructor": {
         "frame_boxes_iou_threshold": 0.5,

@@ -1,36 +1,31 @@
-#include "strm/impl/AccuracyAwareResizeProfile.hpp"
+#include "strm/ResizeProfile.hpp"
 
-#include "strm/impl/DecisionTree.hpp"
+#include "strm/DecisionTree.hpp"
 
 namespace rm {
 
-AccuracyAwareResizeProfile::AccuracyAwareResizeProfile(int resizeMargin,
-                                                       float resizeSmoothingFactor,
-                                                       int probeStep)
-    : resizeMargin(resizeMargin), resizeSmoothingFactor(resizeSmoothingFactor),
-      probeStep(probeStep), calibration(0) {
-  assert(0 <= resizeSmoothingFactor && resizeSmoothingFactor <= 1);
-}
+ResizeProfile::ResizeProfile(const ResizeProfileConfig& config)
+    : mConfig(config), calibration(0) {}
 
-int AccuracyAwareResizeProfile::getTargetSize(const idType id, const RoI::Features& features) {
+int ResizeProfile::getTargetSize(const idType id, const RoI::Features& features) {
   int targetSize = getSmoothedTargetSize(id, features);
   prevTargetSizeTable[id] = targetSize;
-  return targetSize + calibration + resizeMargin;
+  return targetSize + calibration + mConfig.RESIZE_MARGIN;
 }
 
-int AccuracyAwareResizeProfile::getSmoothedTargetSize(const idType id,
-                                                      const RoI::Features& features) {
+int ResizeProfile::getSmoothedTargetSize(const idType id,
+                                         const RoI::Features& features) {
   int sizeWithFeatures = getSizeWithFeature(features);
   auto record = prevTargetSizeTable.find(id);
   if (record == prevTargetSizeTable.end()) {
     return sizeWithFeatures;
   }
   int prevTargetSize = prevTargetSizeTable[id];
-  return (int) (resizeSmoothingFactor * (float) sizeWithFeatures +
-                (1 - resizeSmoothingFactor) * (float) prevTargetSize);
+  return (int) (mConfig.RESIZE_SMOOTHING_FACTOR * (float) sizeWithFeatures +
+                (1 - mConfig.RESIZE_SMOOTHING_FACTOR) * (float) prevTargetSize);
 }
 
-int AccuracyAwareResizeProfile::getSizeWithFeature(const RoI::Features& features) {
+int ResizeProfile::getSizeWithFeature(const RoI::Features& features) {
   if (features.type == RoI::OF) {
     return (int) OFTree(features.xyRatio, (float) features.getShiftSize(), features.err);
   } else if (features.type == RoI::PD) {
@@ -39,7 +34,7 @@ int AccuracyAwareResizeProfile::getSizeWithFeature(const RoI::Features& features
   return INT_MAX / 2;
 }
 
-void AccuracyAwareResizeProfile::updateTable(RoI* roi) {
+void ResizeProfile::updateTable(RoI* roi) {
   assert(!roi->roisForProbing.empty());
   assert(roi->roisForProbing.back()->targetSize > roi->targetSize);
   assert(prevTargetSizeTable.find(roi->id) != prevTargetSizeTable.end());
@@ -59,7 +54,7 @@ void AccuracyAwareResizeProfile::updateTable(RoI* roi) {
 
   // if box is found nowhere, record to use even bigger size than biggest size
   if (boxFromLargestRoI == nullptr) {
-    int newTargetSize = roi->roisForProbing.front()->targetSize + probeStep;
+    int newTargetSize = roi->roisForProbing.front()->targetSize + mConfig.PROBING_STEP;
     calibration += newTargetSize - roi->targetSize;
     return;
   }
@@ -82,13 +77,13 @@ void AccuracyAwareResizeProfile::updateTable(RoI* roi) {
   calibration += smallestSizePossible - roi->targetSize;
 }
 
-float AccuracyAwareResizeProfile::getOverlap(Rect& targetRect, Rect& baseRect) {
+float ResizeProfile::getOverlap(Rect& targetRect, Rect& baseRect) {
   int intersection = targetRect.intersection(baseRect);
   float overlapRatio = (float) intersection / (float) (baseRect.area());
   return overlapRatio;
 }
 
-bool AccuracyAwareResizeProfile::isUsable(BoundingBox& targetBox, BoundingBox& baseBox) {
+bool ResizeProfile::isUsable(BoundingBox& targetBox, BoundingBox& baseBox) {
   float overlapThreshold = 0.8;
   float confidenceThreshold = 0.3;
   float confidenceDiffThreshold = 0.1;

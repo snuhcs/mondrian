@@ -13,15 +13,6 @@ struct VideoConfig {
   int FPS = 5;
 };
 
-struct ResizeProfileConfig {
-  bool ACCURACY_AWARE_RESIZE = true;
-  float RESIZE_SMOOTHING_FACTOR = 0.1;
-  bool PROBING = true;
-  int PROBING_STEP = 5;
-  int RESIZE_MARGIN = 10;
-  int STATIC_TARGET_SIZE = 80;
-};
-
 struct InferenceEngineConfig {
   std::string MODEL = "YOLO_V4";
   std::string RUNTIME = "TFLITE";
@@ -38,12 +29,10 @@ struct IMPLConfig {
   bool DRAW_OUTPUT = true;
   bool DRAW_INFERENCE_RESULT = true;
   std::vector<VideoConfig> videoConfigs;
-  ResizeProfileConfig resizeProfileConfig;
   InferenceEngineConfig inferenceEngineConfig;
 };
 
 std::vector<VideoConfig> parseVideoConfigs(const Json::Value& json);
-ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json);
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json);
 IMPLConfig parseIMPLConfig(const std::string& jsonPath);
 

@@ -42,22 +42,20 @@ void FrameBuffer::freeImage(const std::vector<int>& frameIndices, Logger* logger
 }
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
-                                               ResizeProfile* resizeProfile,
                                                InferenceEngine* inferenceEngine,
                                                int numSourceVideo,
-                                               JavaVM* vm, JNIEnv* env, jobject strm, bool draw,
-                                               bool probing)
+                                               JavaVM* vm, JNIEnv* env, jobject strm, bool draw)
     : mConfig(config), mbStop(false),
       mLogger(new Logger("/data/data/hcs.offloading.strm/execution_log.csv")),
       mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
-      mResizeProfile(resizeProfile),
       mInferenceEngine(inferenceEngine),
       mNumSourceVideos(numSourceVideo),
       mRoIExtractor(new RoIExtractor(config.roIExtractorConfig,
                                      inferenceEngine->getInputSizes()[0])),
-      mPatchReconstructor(new PatchReconstructor(config.patchReconstructorConfig, resizeProfile)),
+      mResizeProfile(new ResizeProfile(config.resizeProfileConfig)),
+      mPatchReconstructor(new PatchReconstructor(config.patchReconstructorConfig, mResizeProfile.get())),
       jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw),
-      mProbing(probing) {
+      mProbing(config.resizeProfileConfig.PROBING) {
   mLogger->logHeader();
   mThread = std::thread([this]() { work(); });
   mResultThread = std::thread([this]() { outputWork(); });
@@ -131,7 +129,7 @@ void SpatioTemporalRoIMixer::work() {
     fullFrameInferenceTime = NowMicros();
 
     // Prepare packing. resize and merge RoIs
-    PatchMixer::preparePack(frames, mResizeProfile, mInferenceEngine->getInputSizes()[0],
+    PatchMixer::preparePack(frames, mResizeProfile.get(), mInferenceEngine->getInputSizes()[0],
                             mConfig.MERGE_THRESHOLD);
     mixingPreparationTime = NowMicros();
 

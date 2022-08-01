@@ -35,6 +35,23 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   return config;
 }
 
+ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json) {
+  ResizeProfileConfig config;
+  if (!json["resize_smoothing_factor"].isNull()) {
+    config.RESIZE_SMOOTHING_FACTOR = json["resize_smoothing_factor"].asFloat();
+  }
+  if (!json["probing"].isNull()) {
+    config.PROBING = json["probing"].asBool();
+  }
+  if (!json["probing_step"].isNull()) {
+    config.PROBING_STEP = json["probing_step"].asInt();
+  }
+  if (!json["resize_margin"].isNull()) {
+    config.RESIZE_MARGIN = json["resize_margin"].asInt();
+  }
+  return config;
+}
+
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) {
   PatchReconstructorConfig config;
   if (!json["frame_boxes_iou_threshold"].isNull()) {
@@ -78,6 +95,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
 
   if (!json["roi_extractor"].isNull()) {
     config.roIExtractorConfig = parseRoIExtractorConfig(json["roi_extractor"]);
+  }
+  if (!json["resize_profile"].isNull()) {
+    config.resizeProfileConfig = parseResizeProfileConfig(json["resize_profile"]);
   }
   if (!json["patch_reconstructor"].isNull()) {
     config.patchReconstructorConfig = parsePatchReconstructorConfig(

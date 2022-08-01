@@ -21,32 +21,6 @@ std::vector<VideoConfig> parseVideoConfigs(const Json::Value& json) {
   return configs;
 }
 
-ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json) {
-  ResizeProfileConfig config;
-  if (!json["accuracy_aware_resize"].isNull()) {
-    config.ACCURACY_AWARE_RESIZE = json["accuracy_aware_resize"].asBool();
-  }
-  if (!json["resize_smoothing_factor"].isNull()) {
-    config.RESIZE_SMOOTHING_FACTOR = json["resize_smoothing_factor"].asFloat();
-  }
-  if (!json["probing"].isNull()) {
-    config.PROBING = json["probing"].asBool();
-  }
-  if (!json["probing_step"].isNull()) {
-    config.PROBING_STEP = json["probing_step"].asInt();
-  }
-  if (config.ACCURACY_AWARE_RESIZE) {
-    if (!json["resize_margin"].isNull()) {
-      config.RESIZE_MARGIN = json["resize_margin"].asInt();
-    }
-  } else {
-    if (!json["static_target_size"].isNull()) {
-      config.STATIC_TARGET_SIZE = json["static_target_size"].asInt();
-    }
-  }
-  return config;
-}
-
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   InferenceEngineConfig config;
   if (!json["model"].isNull()) {
@@ -99,9 +73,6 @@ IMPLConfig parseIMPLConfig(const std::string& jsonPath) {
   }
   if (!json["video_configs"].isNull()) {
     implConfig.videoConfigs = parseVideoConfigs(json["video_configs"]);
-  }
-  if (!json["resize_profile"].isNull()) {
-    implConfig.resizeProfileConfig = parseResizeProfileConfig(json["resize_profile"]);
   }
   if (!json["inference_engine"].isNull()) {
     implConfig.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);

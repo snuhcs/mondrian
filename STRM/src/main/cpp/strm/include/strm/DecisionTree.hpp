@@ -1,5 +1,5 @@
-#ifndef IMPL_CUSTOM_TREE_HPP_
-#define IMPL_CUSTOM_TREE_HPP_
+#ifndef DECISION_TREE_HPP_
+#define DECISION_TREE_HPP_
 
 namespace rm {
 
@@ -9,4 +9,4 @@ float PDTree(float xy_ratio, float diff_area_ratio);
 
 } // namespace rm
 
-#endif // IMPL_CUSTOM_TREE_HPP_
+#endif // DECISION_TREE_HPP_

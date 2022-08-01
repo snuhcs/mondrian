@@ -22,6 +22,13 @@ struct RoIExtractorConfig {
   float PD_FILTER_THRESHOLD = 0.5;
 };
 
+struct ResizeProfileConfig {
+  float RESIZE_SMOOTHING_FACTOR = 0.1;
+  bool PROBING = true;
+  int PROBING_STEP = 5;
+  int RESIZE_MARGIN = 10;
+};
+
 struct PatchReconstructorConfig {
   float FRAME_BOXES_IOU_THRESHOLD = 0.5;
   float OVERLAP_THRESHOLD = 0.8;
@@ -33,10 +40,12 @@ struct STRMConfig {
   int LATENCY_SLO_MS = 10000;
   float MERGE_THRESHOLD = 0.5;
   RoIExtractorConfig roIExtractorConfig;
+  ResizeProfileConfig resizeProfileConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 };
 
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
+ResizeProfileConfig parseResizeProfileConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
 STRMConfig parseSTRMConfig(const std::string& jsonPath);
 

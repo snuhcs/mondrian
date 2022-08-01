@@ -1,4 +1,4 @@
-#include "strm/impl/DecisionTree.hpp"
+#include "strm/DecisionTree.hpp"
 
 namespace rm {
 
