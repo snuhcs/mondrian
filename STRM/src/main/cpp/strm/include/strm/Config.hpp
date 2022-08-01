@@ -63,6 +63,7 @@ struct STRMConfig {
 
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
 RoIResizerConfig parseRoIResizerConfig(const Json::Value& json);
+PatchMixerConfig parsePatchMixerConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
 STRMConfig parseSTRMConfig(const std::string& jsonPath);
 
