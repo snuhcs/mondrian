@@ -1,4 +1,0 @@
-<resources>
-    <!-- Customization of dimensions in res/values/dimens.xml -->
-    <dimen name="text_size">30sp</dimen>
-</resources>

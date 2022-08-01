@@ -1,1 +1,1 @@
-adb push ./strmcpp.json /data/local/tmp
+adb push ./strm.json /data/local/tmp

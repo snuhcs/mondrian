@@ -7,65 +7,44 @@ import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.util.Log;
 
+import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 import org.webrtc.TextureBufferImpl;
 import org.webrtc.VideoFrame;
 import org.webrtc.YuvConverter;
 
-import java.util.List;
-
-import hcs.offloading.edgedevice.config.SourceConfig;
+import hcs.offloading.edgedevice.config.Config;
 import hcs.offloading.network.webrtc.CustomCapturer;
 import hcs.offloading.strm.SpatioTemporalRoIMixer;
-import hcs.offloading.strm.datatypes.BoundingBox;
 
-public class VideoSource extends CustomCapturer implements Runnable {
+public class VideoSource extends CustomCapturer {
     private static final String TAG = VideoSource.class.getName();
 
-    private final int startIndex = 0;
+    static {
+        if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
+        else Log.d("OpenCV", "OpenCV loaded Successfully");
+    }
+
     private final String VIDEO_PATH;
 
     private final MediaMetadataRetriever retriever = new MediaMetadataRetriever();
 
     private final SpatioTemporalRoIMixer strm;
 
-    private final Thread drawThread;
-    private final ResultCallback mResultCallback;
-    private final float DRAW_CONFIDENCE;
+    private final boolean DRAW;
 
-    VideoSource(SourceConfig.VideoConfig config, SpatioTemporalRoIMixer strm, ResultCallback resultCallback, float drawConfidence) {
+    VideoSource(Config.VideoConfig config, SpatioTemporalRoIMixer strm, boolean draw) {
         VIDEO_PATH = config.PATH;
-        DRAW_CONFIDENCE = drawConfidence;
-        mResultCallback = resultCallback;
+        DRAW = draw;
         this.strm = strm;
-        this.strm.addSource(VIDEO_PATH);
         retriever.setDataSource(VIDEO_PATH);
-
-        Log.d(TAG, "Start drawThread");
-        drawThread = new Thread(this);
-        drawThread.start();
-    }
-
-    @Override
-    public void run() {
-        int frameIndex = startIndex;
-        try {
-            while (true) {
-                List<BoundingBox> results = strm.getResults(VIDEO_PATH, frameIndex);
-                mResultCallback.log(VIDEO_PATH, frameIndex, results);
-                frameIndex++;
-            }
-        } catch (InterruptedException e) {
-            Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
-        }
     }
 
     @Override
     public void startCapture(int width, int height, int fps) {
         Log.d(TAG, "startCapture");
         captureThread = new Thread(() -> {
-            long startTimeNs = System.nanoTime();
             capturerObs.onCapturerStarted(true);
 
             int[] textures = new int[1];
@@ -75,29 +54,37 @@ public class VideoSource extends CustomCapturer implements Runnable {
             TextureBufferImpl buffer = new TextureBufferImpl(width, height, VideoFrame.TextureBuffer.Type.RGB, textures[0], new Matrix(), surTexture.getHandler(), yuvConverter, null);
 
             int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
-            for (int frameIndex = startIndex; frameIndex < frameCount; frameIndex++) {
+            long startTimeNs = System.nanoTime();
+            for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
                 Log.v(TAG, VIDEO_PATH + " " + frameIndex + " loaded");
                 Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
 
-                surTexture.getHandler().post(() -> {
-                    GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-                    GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
-                    GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
+                if (DRAW) {
+                    surTexture.getHandler().post(() -> {
+                        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+                        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+                        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
-                    VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
+                        VideoFrame.I420Buffer i420Buf = yuvConverter.convert(buffer);
 
-                    long frameTime = System.nanoTime() - startTimeNs;
-                    VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
-                    capturerObs.onFrameCaptured(videoFrame);
-                    i420Buf.release();
-                });
+                        long frameTime = System.nanoTime() - startTimeNs;
+                        VideoFrame videoFrame = new VideoFrame(i420Buf, 180, frameTime);
+                        capturerObs.onFrameCaptured(videoFrame);
+                        i420Buf.release();
+                    });
+                }
 
                 Mat mat = new Mat();
                 Utils.bitmapToMat(bitmap, mat);
-                try {
-                    strm.enqueueImage(VIDEO_PATH, frameIndex, mat);
-                } catch (InterruptedException e) {
-                    Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+                strm.enqueueImage(VIDEO_PATH, mat);
+                long endTimeNs = System.nanoTime();
+                long nextStartTimeNs = startTimeNs + (long) (frameIndex + 1) * (long) (1e9 / fps);
+                if (nextStartTimeNs > endTimeNs) {
+                    try {
+                        Thread.sleep((nextStartTimeNs - endTimeNs) / 1000000);
+                    } catch (InterruptedException e) {
+                        Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
+                    }
                 }
             }
         });
@@ -105,12 +92,9 @@ public class VideoSource extends CustomCapturer implements Runnable {
     }
 
     public void close() {
-        strm.removeSource(VIDEO_PATH);
         try {
             captureThread.interrupt();
             captureThread.join();
-            drawThread.interrupt();
-            drawThread.join();
         } catch (InterruptedException e) {
             Log.e(TAG, e.getMessage() != null ? e.getMessage() : "e.getMessage() == null");
         }
