@@ -186,6 +186,8 @@ void PatchMixer::prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
 
 std::vector<MixedFrame> PatchMixer::packRoIs(
     std::vector<RoI*>& candidateRoIs, int mixedFrameSize, int maxNumMixedFrames) const {
+  time_us mixingStartTime = NowMicros();
+
   // Init data structures
   std::map<int, std::set<RoI*>> packedRoIsMap;
   std::map<int, std::vector<Rect>> freeRectsMap;
@@ -258,6 +260,12 @@ std::vector<MixedFrame> PatchMixer::packRoIs(
     if (!aMixedFrameRoIs.empty()) {
       mixedFrames.emplace_back(aMixedFrameRoIs, mixedFrameSize);
     }
+  }
+
+  time_us mixingEndTime = NowMicros();
+  for (RoI* roi : candidateRoIs) {
+    roi->frame->mixingStartTime = mixingStartTime;
+    roi->frame->mixingEndTime = mixingEndTime;
   }
   return mixedFrames;
 }
