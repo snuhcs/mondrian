@@ -25,11 +25,6 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
   mLogger->logHeader();
 
-  // Wait sources for synced start
-  std::unique_lock<std::mutex> startLock(mStartMtx);
-  mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
-  startLock.unlock();
-
   mThread = std::thread([this]() { work(); });
   mResultThread = std::thread([this]() { outputWork(); });
 
@@ -54,6 +49,12 @@ SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
 }
 
 void SpatioTemporalRoIMixer::work() {
+  // Wait sources for synced start
+  std::unique_lock<std::mutex> startLock(mStartMtx);
+  mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
+  startLock.unlock();
+  mStartCv.notify_all();
+
   int scheduleID = -1;
   int fullFrameInferenceStreamIndex = 0;
   time_us scheduleInterval = mConfig.LATENCY_SLO_MS * 1000 / 2;
