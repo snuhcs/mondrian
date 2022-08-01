@@ -218,7 +218,7 @@ std::vector<MixedFrame> PatchMixer::packRoIs(
         }
       }
     }
-      // 1-way packing : find the first matching freeRect
+    // 1-way packing : find the first matching freeRect
     else {
       for (auto&[mixedFrameIndex, freeRects] : freeRectsMap) {
         for (int freeRectIndex = 0; freeRectIndex < freeRects.size(); freeRectIndex++) {
@@ -254,9 +254,9 @@ std::vector<MixedFrame> PatchMixer::packRoIs(
     }
   }
   std::vector<MixedFrame> mixedFrames;
-  for (auto&[mixedFrameIndex, aMixedFrameRoIs] : packedRoIsMap) {
+  for (auto&[_, aMixedFrameRoIs] : packedRoIsMap) {
     if (!aMixedFrameRoIs.empty()) {
-      mixedFrames.emplace_back(aMixedFrameRoIs, mixedFrameIndex);
+      mixedFrames.emplace_back(aMixedFrameRoIs, mixedFrameSize);
     }
   }
   return mixedFrames;
