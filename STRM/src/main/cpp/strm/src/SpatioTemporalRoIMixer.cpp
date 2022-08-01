@@ -54,8 +54,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
                                      inferenceEngine->getInputSizes()[0])),
       mRoIResizer(new RoIResizer(config.roIResizerConfig)),
       mPatchReconstructor(new PatchReconstructor(config.patchReconstructorConfig, mRoIResizer.get())),
-      jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw),
-      mProbing(config.roIResizerConfig.PROBING) {
+      jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
   mLogger->logHeader();
   mThread = std::thread([this]() { work(); });
   mResultThread = std::thread([this]() { outputWork(); });
@@ -144,8 +143,9 @@ void SpatioTemporalRoIMixer::work() {
          mixingPreparationTime - roiGettingTime, remainingTime, inferenceTimeUs);
     std::vector<MixedFrame> mixedFrames = PatchMixer::pack(frames, fullFrameTarget,
                                                            mInferenceEngine->getInputSizes()[0],
-                                                           numMixedFrames, mProbing,
-                                                           mRoIResizer->getProbingStep());
+                                                           numMixedFrames, mRoIResizer->isProbing(),
+                                                           mRoIResizer->getNumProbeSteps(),
+                                                           mRoIResizer->getProbeStepSize());
 
     // Inference Mixed Frames
     std::vector<int> handles;

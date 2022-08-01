@@ -37,17 +37,32 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
 
 RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   RoIResizerConfig config;
+  if (!json["resize_margin"].isNull()) {
+    config.RESIZE_MARGIN = json["resize_margin"].asFloat();
+  }
   if (!json["resize_smoothing_factor"].isNull()) {
     config.RESIZE_SMOOTHING_FACTOR = json["resize_smoothing_factor"].asFloat();
   }
-  if (!json["probing"].isNull()) {
-    config.PROBING = json["probing"].asBool();
+  if (!json["static_resize_target"].isNull()) {
+    config.STATIC_RESIZE_TARGET = json["static_resize_target"].asFloat();
   }
-  if (!json["probing_step"].isNull()) {
-    config.PROBING_STEP = json["probing_step"].asInt();
+  if (!json["probe_step_size"].isNull()) {
+    config.PROBE_STEP_SIZE = json["probe_step_size"].asInt();
   }
-  if (!json["resize_margin"].isNull()) {
-    config.RESIZE_MARGIN = json["resize_margin"].asInt();
+  if (!json["num_probe_steps"].isNull()) {
+    config.NUM_PROBE_STEPS = json["num_probe_steps"].asInt();
+  }
+  if (!json["probe_reset_threshold"].isNull()) {
+    config.PROBE_RESET_THRESHOLD = json["probe_reset_threshold"].asFloat();
+  }
+  if (!json["overlap_threshold"].isNull()) {
+    config.OVERLAP_THRESHOLD = json["overlap_threshold"].asFloat();
+  }
+  if (!json["absolute_confidence_threshold"].isNull()) {
+    config.ABSOLUTE_CONFIDENCE_THRESHOLD = json["absolute_confidence_threshold"].asFloat();
+  }
+  if (!json["relative_confidence_threshold"].isNull()) {
+    config.RELATIVE_CONFIDENCE_THRESHOLD = json["relative_confidence_threshold"].asFloat();
   }
   return config;
 }

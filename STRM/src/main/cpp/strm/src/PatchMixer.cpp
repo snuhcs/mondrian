@@ -11,11 +11,24 @@ namespace rm {
 void PatchMixer::preparePack(std::map<std::string, SortedFrames>& frames,
                              RoIResizer* roiResizer, int maxRoISize, float mergeThreshold) {
   time_us resizeStartTime = NowMicros();
+  // Resize OF RoIs
   for (auto& it : frames) {
     for (Frame* frame : it.second) {
       for (auto& cRoI : frame->childRoIs) {
-        cRoI->targetSize = std::min(cRoI->maxEdgeLength,
-                                    roiResizer->getTargetSize(cRoI->id, cRoI->features));
+        if (cRoI->type == RoI::Type::OF) {
+          cRoI->targetSize = std::min(cRoI->maxEdgeLength,
+                                      (int) roiResizer->getTargetSize(cRoI->id, cRoI->features));
+        }
+      }
+    }
+  }
+  // Resize PD RoIs with next OF RoI if exists
+  for (auto& it : frames) {
+    for (Frame* frame : it.second) {
+      for (auto& cRoI : frame->childRoIs) {
+        if (cRoI->type == RoI::Type::PD && cRoI->nextRoI != nullptr) {
+          cRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->nextRoI->targetSize);
+        }
       }
     }
   }
@@ -124,7 +137,7 @@ void PatchMixer::mergeRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,
 std::vector<MixedFrame> PatchMixer::pack(std::map<std::string, SortedFrames>& frames,
                                          const Frame* fullFrameTarget,
                                          int mixedFrameSize, int numMixedFrames,
-                                         bool probing, const int probeStep) {
+                                         bool probing, int numProbeSteps, int probeStepSize) {
   // Collect RoIs. Later frame RoIs come first.
   std::vector<RoI*> packingCandidates;
   const float HIGH_PRIORITY = 1e9;
@@ -132,16 +145,15 @@ std::vector<MixedFrame> PatchMixer::pack(std::map<std::string, SortedFrames>& fr
   // 1. Insert probe RoIs
   int numProbes = 0;
   if (probing) {
-    assert(probeStep > 0);
-    int numProbSteps = 1; // total 2 * numProbSteps + 1 number of probeRoIs
+    assert(probeStepSize > 0);
     for (auto it : frames) {
       if (it.second.empty() || (fullFrameTarget != nullptr && fullFrameTarget->key == it.first)) {
         continue;
       }
       Frame* lastFrame = *it.second.rbegin();
       for (auto& cRoI : lastFrame->childRoIs) {
-        int probe = -probeStep * numProbSteps;
-        for (int i = 0; i < 2 * numProbSteps + 1; i++) {
+        int probe = -probeStepSize * numProbeSteps;
+        for (int i = 0; i < 2 * numProbeSteps + 1; i++) {
           cRoI->frame->probingRoIs.emplace_back(
               new RoI(nullptr, cRoI->id, cRoI->frame, cRoI->location, cRoI->type, cRoI->origin, cRoI->label,
                       cRoI->features.shift, cRoI->features.err, cRoI->features.diffAreaRatio,
@@ -151,7 +163,7 @@ std::vector<MixedFrame> PatchMixer::pack(std::map<std::string, SortedFrames>& fr
           probeRoI->priority = HIGH_PRIORITY;
           cRoI->roisForProbing.push_back(probeRoI);
           packingCandidates.push_back(probeRoI);
-          probe += probeStep;
+          probe += probeStepSize;
           numProbes++;
         }
       }
