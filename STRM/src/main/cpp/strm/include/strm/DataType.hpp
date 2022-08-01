@@ -88,15 +88,13 @@ struct BoundingBox {
   Rect location;
   float confidence;
   int label;
-  int targetSize;
   idType id;
   RoI* srcRoI;
   Origin origin;
 
-  BoundingBox(idType id, const Rect location, const float confidence, int label,
-              Origin origin, int targetSize = -1)
-      : id(id), location(location), confidence(confidence), label(label),
-        origin(origin), targetSize(targetSize), srcRoI(nullptr) {}
+  BoundingBox(idType id, const Rect location, const float confidence, int label, Origin origin)
+      : id(id), location(location), confidence(confidence), label(label), origin(origin),
+        srcRoI(nullptr) {}
 };
 
 enum RoIExtractionStatus {

@@ -68,12 +68,12 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
       if (maxRoI->isProbingRoI) {
         maxRoI->frame->probingBoxes.emplace_back(new BoundingBox(
             UNASSIGNED_ID, reconstructBoxPos(box, maxRoI),
-            box.confidence, box.label, maxRoI->origin, maxRoI->targetSize));
+            box.confidence, box.label, maxRoI->origin));
         maxRoI->probingBox = maxRoI->frame->probingBoxes.rbegin()->get();
       } else {
         maxRoI->frame->boxes.emplace_back(new BoundingBox(
             UNASSIGNED_ID, reconstructBoxPos(box, maxRoI),
-            box.confidence, box.label, maxRoI->origin, maxRoI->targetSize));
+            box.confidence, box.label, maxRoI->origin));
       }
     }
   }
