@@ -36,18 +36,18 @@ class RoIExtractor {
 
   void processOF(Frame* currFrame);
 
-  static void getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
-                                 const std::vector<BoundingBox>& boundingBoxes,
-                                 const cv::Size& targetSize,
-                                 std::vector<std::unique_ptr<RoI>>& outChildRoIs);
+  void getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
+                          const std::vector<BoundingBox>& boundingBoxes,
+                          const cv::Size& targetSize,
+                          std::vector<std::unique_ptr<RoI>>& outChildRoIs) const;
 
   static std::vector<RoI::OFFeatures> opticalFlowTracking(
       const Frame* prevFrame, const Frame* currFrame, const std::vector<Rect>& boundingBoxes,
       const cv::Size& targetSize);
 
-  static void getPixelDiffRoIs(
+  void getPixelDiffRoIs(
       const Frame* prevFrame, Frame* currFrame, const cv::Size& targetSize,
-      const int mixRoIArea, std::vector<std::unique_ptr<RoI>>& outChildRoIs);
+      const int mixRoIArea, std::vector<std::unique_ptr<RoI>>& outChildRoIs) const;
 
   static cv::Mat calculateDiffAndThreshold(
       const cv::Mat& prevMat, const cv::Mat& currMat);

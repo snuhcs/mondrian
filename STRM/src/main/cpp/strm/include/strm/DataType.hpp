@@ -293,7 +293,8 @@ struct RoI {
   };
 
   Frame* frame;
-  Rect location;
+  const Rect origLoc;
+  const Rect paddedLoc;
   Type type;
   Origin origin;
   int label;
@@ -322,21 +323,27 @@ struct RoI {
   RoI(RoI* prevRoI,
       const idType id,
       Frame* frame,
-      const Rect location,
+      const Rect origLoc,
       const Type type,
       const Origin origin,
       const int label,
       const OFFeatures ofFeatures,
+      int roiPadding,
       bool isProbingRoI)
-      : prevRoI(prevRoI), id(id), frame(frame), location(location), type(type), origin(origin), label(label),
-        features{label,
-                 type,
-                 (float) location.width() / (float) location.height(),
-                 ofFeatures},
-        maxEdgeLength(std::max(location.width(), location.height())), targetSize(maxEdgeLength),
-        packedLocation(NOT_PACKED), isMatchTried(false), nextRoI(nullptr), parentRoI(nullptr),
-        box(nullptr), probingBox(nullptr), packedMixedFrameIndex(INT_MAX),
-        isProbingRoI(isProbingRoI) {
+      : prevRoI(prevRoI), id(id), frame(frame), origLoc(origLoc), paddedLoc(
+      std::max(0, origLoc.left - roiPadding),
+      std::max(0, origLoc.top - roiPadding),
+      std::min(frame->mat.cols, origLoc.right + roiPadding),
+      std::min(frame->mat.rows, origLoc.bottom + roiPadding)),
+        type(type), origin(origin), label(label), features{
+          label,
+          type,
+          (float) origLoc.width() / (float) origLoc.height(),
+          ofFeatures
+      }, maxEdgeLength(std::max(paddedLoc.width(), paddedLoc.height())),
+        targetSize(maxEdgeLength), packedLocation(NOT_PACKED), isMatchTried(false),
+        nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
+        packedMixedFrameIndex(INT_MAX), isProbingRoI(isProbingRoI) {
     if (prevRoI != nullptr) {
       prevRoI->nextRoI = this;
     }
@@ -346,10 +353,10 @@ struct RoI {
 
   static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
     assert(pRoI0->frame == pRoI1->frame);
-    int newLeft = std::min(pRoI0->location.left, pRoI1->location.left);
-    int newTop = std::min(pRoI0->location.top, pRoI1->location.top);
-    int newRight = std::max(pRoI0->location.right, pRoI1->location.right);
-    int newBottom = std::max(pRoI0->location.bottom, pRoI1->location.bottom);
+    int newLeft = std::min(pRoI0->paddedLoc.left, pRoI1->paddedLoc.left);
+    int newTop = std::min(pRoI0->paddedLoc.top, pRoI1->paddedLoc.top);
+    int newRight = std::max(pRoI0->paddedLoc.right, pRoI1->paddedLoc.right);
+    int newBottom = std::max(pRoI0->paddedLoc.bottom, pRoI1->paddedLoc.bottom);
     RoI::Type roiType = pRoI0->type != RoI::Type::PD || pRoI1->type != RoI::Type::PD
                         ? RoI::Type::OF
                         : RoI::Type::PD;
@@ -365,7 +372,7 @@ struct RoI {
     }
     std::unique_ptr<RoI> mergedRoI(
         new RoI(nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-                roiType, originNull, roiLabel, OFFeatures({}, {}), false));
+                roiType, originNull, roiLabel, OFFeatures({}, {}), 0, false));
     mergedRoI->targetSize = (pRoI0->targetSize * pRoI1->maxEdgeLength >
                              pRoI1->targetSize * pRoI0->maxEdgeLength) ?
                             mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :
@@ -399,8 +406,8 @@ struct RoI {
     return childRoIs.size() > 1;
   }
 
-  int getArea() const {
-    return location.area();
+  int getPaddedArea() const {
+    return paddedLoc.area();
   }
 
   int getResizedArea() const {
@@ -410,24 +417,29 @@ struct RoI {
 
   std::pair<int, int> getResizedWidthHeight() const {
     if (maxEdgeLength <= targetSize) {
-      return std::make_pair(location.width(), location.height());
+      return std::make_pair(paddedLoc.width(), paddedLoc.height());
     }
-    if (location.width() > location.height()) {
-      return std::make_pair(targetSize, location.height() * targetSize / location.width());
+    if (paddedLoc.width() > paddedLoc.height()) {
+      return std::make_pair(targetSize, paddedLoc.height() * targetSize / paddedLoc.width());
     } else {
-      return std::make_pair(location.width() * targetSize / location.height(), targetSize);
+      return std::make_pair(paddedLoc.width() * targetSize / paddedLoc.height(), targetSize);
     }
   }
 
-  cv::Mat getMat() const {
+  cv::Mat getOrigMat() const {
     return frame->mat.operator()(
-        cv::Rect(location.left, location.top, location.width(), location.height()));
+        cv::Rect(origLoc.left, origLoc.top, origLoc.width(), origLoc.height()));
+  }
+
+  cv::Mat getPaddedMat() const {
+    return frame->mat.operator()(
+        cv::Rect(paddedLoc.left, paddedLoc.top, paddedLoc.width(), paddedLoc.height()));
   }
 
   cv::Mat getResizedMat() const {
     std::pair<int, int> wh = getResizedWidthHeight();
     cv::Mat resizedMat;
-    cv::resize(getMat(), resizedMat, cv::Size(wh.first, wh.second));
+    cv::resize(getPaddedMat(), resizedMat, cv::Size(wh.first, wh.second));
     return resizedMat;
   }
 

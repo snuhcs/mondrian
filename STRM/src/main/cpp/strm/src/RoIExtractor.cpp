@@ -185,16 +185,16 @@ void RoIExtractor::processOF(Frame* currFrame) {
     for (const std::unique_ptr<BoundingBox>& box : prevFrame->boxes) {
       if (box->confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
         reliablePrevBoxes.emplace_back(box->id, Rect(
-            std::max(0, box->location.left - mConfig.ROI_PADDING),
-            std::max(0, box->location.top - mConfig.ROI_PADDING),
-            std::min(currFrame->width, box->location.right + mConfig.ROI_PADDING),
-            std::min(currFrame->height, box->location.bottom + mConfig.ROI_PADDING)),
+            std::max(0, box->location.left),
+            std::max(0, box->location.top),
+            std::min(currFrame->width, box->location.right),
+            std::min(currFrame->height, box->location.bottom)),
                                        box->confidence, box->label, fromBB);
       }
     }
   } else {
     for (auto& cRoI : currFrame->prevFrame->childRoIs) {
-      BoundingBox reliableBox(cRoI->id, cRoI->location, 1, cRoI->label, cRoI->origin);
+      BoundingBox reliableBox(cRoI->id, cRoI->origLoc, 1, cRoI->label, cRoI->origin);
       reliableBox.srcRoI = cRoI.get();
       reliablePrevBoxes.push_back(reliableBox);
     }
@@ -212,7 +212,7 @@ void RoIExtractor::processOF(Frame* currFrame) {
 void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
                                       const std::vector<BoundingBox>& boundingBoxes,
                                       const cv::Size& targetSize,
-                                      std::vector<std::unique_ptr<RoI>>& outChildRoIs) {
+                                      std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
   int width = currFrame->mat.cols;
   int height = currFrame->mat.rows;
 
@@ -239,7 +239,7 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       if (newLeft < newRight && newTop < newBottom) {
         outChildRoIs.emplace_back(
             new RoI(box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-                    RoI::Type::OF, box.origin, box.label, of, false));
+                    RoI::Type::OF, box.origin, box.label, of, mConfig.ROI_PADDING, false));
       }
     }
   }
@@ -258,8 +258,8 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
   std::vector<int> numPoints;
   std::vector<cv::Point2f> inputPoints;
   for (const Rect& bbx : boundingBoxes) {
-    float xRatio = (float) targetSize.width / (float) prevImage.cols;
-    float yRatio = (float) targetSize.height / (float) prevImage.rows;
+    float xRatio = (float) targetSize.width / (float) prevFrame->width;
+    float yRatio = (float) targetSize.height / (float) prevFrame->height;
     int x = (int) ((float) bbx.left * xRatio);
     int y = (int) ((float) bbx.top * yRatio);
     int w = (int) ((float) (bbx.right - bbx.left) * xRatio);
@@ -271,14 +271,14 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
 
     std::vector<cv::Point2f> points;
     cv::Rect roiBbx = cv::Rect(x, y, w, h);
-    cv::goodFeaturesToTrack(prevImage(roiBbx), points, 100, 0.3, 7, cv::Mat(), 7, false, 0.04);
+    cv::goodFeaturesToTrack(prevImage(roiBbx), points, 100, 0.01, 5, cv::Mat(), 3, false, 0.03);
     for (cv::Point2f& p : points) {
       p.x += (float) roiBbx.x;
       p.y += (float) roiBbx.y;
     }
     if (points.empty()) {
-      inputPoints.emplace_back((bbx.left + bbx.width() / 2) * targetSize.width / prevImage.cols,
-                               (bbx.top + bbx.height() / 2) * targetSize.height / prevImage.rows);
+      inputPoints.emplace_back(((float) bbx.left + (float) bbx.width() / 2) * xRatio,
+                               ((float) bbx.top + (float) bbx.height() / 2) * yRatio);
       numPoints.push_back(1);
     } else {
       inputPoints.insert(inputPoints.end(), points.begin(), points.end());
@@ -323,7 +323,7 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
 
 void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
                                     const cv::Size& targetSize, const int mixRoIArea,
-                                    std::vector<std::unique_ptr<RoI>>& outChildRoIs) {
+                                    std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
   assert(!prevFrame->preProcessedMat.empty());
   assert(!currFrame->preProcessedMat.empty());
   assert(prevFrame->preProcessedMat.channels() == currFrame->preProcessedMat.channels());
@@ -360,6 +360,7 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
         fromPD,
         -1,
         RoI::OFFeatures({}, {}),
+        mConfig.ROI_PADDING,
         false));
   }
 }
