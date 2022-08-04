@@ -353,7 +353,7 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
   for (const Rect& box : boxes) {
     outChildRoIs.emplace_back(new RoI(
         nullptr,
-        RoI::getNewIds(1).first,
+        UNASSIGNED_ID,
         currFrame,
         box,
         RoI::PD,
