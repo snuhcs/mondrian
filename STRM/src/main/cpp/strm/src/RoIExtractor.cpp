@@ -12,10 +12,10 @@ namespace rm {
 const cv::TermCriteria RoIExtractor::CRITERIA = cv::TermCriteria(
     cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
 
-RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, int maxRoISize, bool run)
+RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run)
     : mConfig(config),
       mTargetSize(cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
-      mMaxRoISize(maxRoISize), mbStop(false) {
+      mbStop(false) {
   if (run) {
     mThreads.reserve(config.NUM_WORKERS);
     for (int i = 0; i < config.NUM_WORKERS; i++) {
