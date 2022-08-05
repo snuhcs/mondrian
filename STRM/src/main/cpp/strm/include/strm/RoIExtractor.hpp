@@ -17,7 +17,7 @@ namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, int maxRoISize);
+  RoIExtractor(const RoIExtractorConfig& config, int maxRoISize, bool run);
 
   ~RoIExtractor();
 
