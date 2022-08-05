@@ -52,6 +52,7 @@ struct PatchReconstructorConfig {
 };
 
 struct STRMConfig {
+  bool ROI_WISE_INFERENCE = false;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int BUFFER_SIZE = 1000;
   int LATENCY_SLO_MS = 10000;

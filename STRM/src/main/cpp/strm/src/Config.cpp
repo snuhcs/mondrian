@@ -112,6 +112,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["log_internal"].isNull()) {
     LOG_INTERNAL = json["log_internal"].asBool();
   }
+  if (!json["roi_wise_inference"].isNull()) {
+    config.ROI_WISE_INFERENCE = json["roi_wise_inference"].asBool();
+  }
   if (!json["full_frame_interval"].isNull()) {
     config.FULL_FRAME_INTERVAL = json["full_frame_interval"].asInt();
   }

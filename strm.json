@@ -19,6 +19,7 @@
         ]
     },
     "log_internal": true,
+    "roi_wise_inference": false,
     "full_frame_interval": 1,
     "buffer_size": 500,
     "latency_slo_ms": 6000,

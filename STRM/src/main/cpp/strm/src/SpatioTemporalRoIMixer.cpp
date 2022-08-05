@@ -16,12 +16,14 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
       mInferenceEngine(inferenceEngine),
       mNumSourceVideos(numSourceVideo),
+      mInputSizes(inferenceEngine->getInputSizes()),
       mRoIExtractor(new RoIExtractor(config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0)),
       mRoIResizer(new RoIResizer(config.roIResizerConfig)),
       mPatchMixer(new PatchMixer(config.patchMixerConfig)),
       mPatchReconstructor(
           new PatchReconstructor(config.patchReconstructorConfig, mRoIResizer.get())),
       jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
+  assert(!config.ROI_WISE_INFERENCE || inferenceEngine->getInputSizes().size() >= 2);
   mLogger->logHeader();
 
   mThread = std::thread([this]() { work(); });
@@ -93,7 +95,7 @@ void SpatioTemporalRoIMixer::work() {
          fullFrameTarget->frameIndex, logger.getDuration("full"));
 
     // Prepare packing. resize and merge RoIs
-    int inferenceFrameSize = mInferenceEngine->getInputSizes()[0];
+    int inferenceFrameSize = mConfig.ROI_WISE_INFERENCE ? mInputSizes.front() : mInputSizes.back();
     std::vector<RoI*> candidateRoIs = mPatchMixer->prepareRoIs(
         frames, fullFrameTarget, mRoIResizer.get(), inferenceFrameSize, mRoIResizer->isProbing(),
         mRoIResizer->getNumProbeSteps(), mRoIResizer->getProbeStepSize());
@@ -103,10 +105,14 @@ void SpatioTemporalRoIMixer::work() {
     // Inference
     // TODO : handle numInferences <= 0 case
     time_us remainingTime = scheduleInterval - logger.getDuration("pre", "start");
-    time_us inferenceTime = mInferenceEngine->getInferenceTimeMs() * 1000;
+    time_us inferenceTime = mInferenceEngine->getInferenceTimeMs(inferenceFrameSize) * 1000;
     int maxNumInferences = remainingTime < inferenceTime ? 1 :
                            (int) (remainingTime / inferenceTime);
-    mixedInference(candidateRoIs, inferenceFrameSize, maxNumInferences);
+    if (mConfig.ROI_WISE_INFERENCE) {
+      roiWiseInference(candidateRoIs, inferenceFrameSize, maxNumInferences);
+    } else {
+      mixedInference(candidateRoIs, inferenceFrameSize, maxNumInferences);
+    }
     logger.step("inf");
     LOGD("STRM::work() inference took %lld us             // %lld / %lld = %d",
          logger.getDuration("inf"), remainingTime, inferenceTime,
@@ -164,7 +170,7 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   assert(frame->isFullFrameTarget);
   frame->fullFrameEnqueueTime = NowMicros();
   std::vector<BoundingBox> results = mInferenceEngine->getResults(
-      mInferenceEngine->enqueue(frame->mat));
+      mInferenceEngine->enqueue(frame->mat, mInputSizes.back()));
   frame->fullFrameGetResultsTime = NowMicros();
   for (const BoundingBox& box : results) {
     frame->boxes.emplace_back(
@@ -199,8 +205,8 @@ void SpatioTemporalRoIMixer::mixedInference(std::vector<RoI*>& candidateRoIs, in
   // Enqueue Mixed Frames
   std::vector<int> handles;
   std::transform(mixedFrames.begin(), mixedFrames.end(), std::back_inserter(handles),
-                 [this](const MixedFrame& mixedFrame) {
-                   return mInferenceEngine->enqueue(mixedFrame.packedMat);
+                 [this, frameSize](const MixedFrame& mixedFrame) {
+                   return mInferenceEngine->enqueue(mixedFrame.packedMat, frameSize);
                  });
 
   // Get results of mixed frames sequentially
@@ -227,6 +233,54 @@ void SpatioTemporalRoIMixer::mixedInference(std::vector<RoI*>& candidateRoIs, in
     }
     mRoIExtractor->notify();
   }
+}
+
+void SpatioTemporalRoIMixer::roiWiseInference(std::vector<RoI*>& candidateRoIs, int frameSize,
+                                              int maxNumInferences) {
+  std::vector<std::pair<int, int>> packedLocations;
+  std::vector<int> handles;
+  for (int i = 0; i < std::min(maxNumInferences, (int) candidateRoIs.size()); i++) {
+    RoI* pRoI = candidateRoIs[i];
+    cv::Mat input = cv::Mat::zeros(frameSize, frameSize, CV_8UC4);
+    cv::Mat roi = pRoI->getPaddedMat();
+    if (pRoI->maxEdgeLength > frameSize) {
+      std::pair<int, int> wh = pRoI->getResizedWidthHeight();
+      cv::resize(roi, roi, cv::Size(wh.first, wh.second));
+    }
+    int x = (frameSize - roi.cols) / 2;
+    int y = (frameSize - roi.rows) / 2;
+    roi.copyTo(input(cv::Rect(x, y, roi.cols, roi.rows)));
+    packedLocations.emplace_back(x, y);
+    handles.push_back(mInferenceEngine->enqueue(input, frameSize));
+  }
+  assert(handles.size() == std::min(maxNumInferences, (int) candidateRoIs.size()));
+
+  SortedFrames inferenceFrames;
+  for (int i = 0; i < handles.size(); i++) {
+    std::vector<BoundingBox> boxes = mInferenceEngine->getResults(handles[i]);
+    std::pair<int, int>& xy = packedLocations[i];
+    RoI* pRoI = candidateRoIs[i];
+    inferenceFrames.insert(pRoI->frame);
+    for (BoundingBox& box : boxes) {
+      pRoI->frame->boxes.emplace_back(new BoundingBox(
+          UNASSIGNED_ID, Rect(
+              (box.location.left - xy.first) * pRoI->maxEdgeLength / pRoI->targetSize +
+              pRoI->origLoc.left,
+              (box.location.top - xy.second) * pRoI->maxEdgeLength / pRoI->targetSize +
+              pRoI->origLoc.top,
+              (box.location.right - xy.first) * pRoI->maxEdgeLength / pRoI->targetSize +
+              pRoI->origLoc.left,
+              (box.location.bottom - xy.second) * pRoI->maxEdgeLength / pRoI->targetSize +
+              pRoI->origLoc.top),
+          box.confidence, box.label, pRoI->origin));
+    }
+  }
+
+  for (Frame* frame : inferenceFrames) {
+    nms(frame->boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold());
+    mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, false);
+  }
+
 }
 
 void SpatioTemporalRoIMixer::releaseFrames(const std::map<std::string, SortedFrames>& frames) {

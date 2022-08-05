@@ -21,16 +21,16 @@ class CustomInferenceEngine : public InferenceEngine {
   CustomInferenceEngine(const InferenceEngineConfig& config,
                         JavaVM* vm, JNIEnv* env, jobject strm, bool draw);
 
-  int enqueue(const cv::Mat mat) override;
+  int enqueue(const cv::Mat mat, const int inputSize) override;
 
   std::vector<BoundingBox> getResults(const int handle) override;
 
-  long long getInferenceTimeMs() override;
+  long long getInferenceTimeMs(int inputSize) const override;
 
   std::vector<int> getInputSizes() const override;
 
  private:
-  std::tuple<int, const cv::Mat> getInput();
+  std::tuple<int, const cv::Mat, const int> getInput();
 
   void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
 
@@ -57,7 +57,7 @@ class CustomInferenceEngine : public InferenceEngine {
   jmethodID BoundingBox_init;
 
   int mHandle;
-  std::queue<std::tuple<int, const cv::Mat>> inputs;
+  std::queue<std::tuple<int, const cv::Mat, const int>> inputs;
   std::mutex inputMtx;
   std::condition_variable inputCv;
   std::map<int, std::vector<BoundingBox>> results;

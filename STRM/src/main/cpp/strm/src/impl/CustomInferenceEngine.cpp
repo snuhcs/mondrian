@@ -40,21 +40,21 @@ CustomInferenceEngine::CustomInferenceEngine(
 
 template<typename T>
 void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config) {
-  // TODO: Handle workers for multiple input sizes
+  std::map<int, Classifier*> classifierMap;
   for (const auto& inputSize : config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
         inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
     classifier->setInferenceTimeMs(classifier->profileInferenceTime());
-    //classifier->setInferenceTimeMs(0);
-    workers.push_back(std::make_unique<Worker>(this, classifier.get()));
+    classifierMap[inputSize] = classifier.get();
     classifiers.push_back(std::move(classifier));
   }
+  workers.emplace_back(new Worker(this, classifierMap));
 }
 
-int CustomInferenceEngine::enqueue(const cv::Mat mat) {
+int CustomInferenceEngine::enqueue(const cv::Mat mat, const int inputSize) {
   std::unique_lock<std::mutex> inputLock(inputMtx);
   int handle = mHandle++;
-  inputs.push(std::make_tuple(handle, mat));
+  inputs.push(std::make_tuple(handle, mat, inputSize));
   inputLock.unlock();
   inputCv.notify_all();
   return handle;
@@ -70,12 +70,12 @@ std::vector<BoundingBox> CustomInferenceEngine::getResults(const int handle) {
   return boxes;
 }
 
-std::tuple<int, const cv::Mat> CustomInferenceEngine::getInput() {
+std::tuple<int, const cv::Mat, const int> CustomInferenceEngine::getInput() {
   std::unique_lock<std::mutex> inputLock(inputMtx);
   inputCv.wait(inputLock, [this]() {
     return !inputs.empty();
   });
-  std::tuple<int, const cv::Mat> input = inputs.front();
+  auto input = inputs.front();
   inputs.pop();
   return input;
 }
@@ -114,11 +114,11 @@ void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
   jvm->DetachCurrentThread();
 }
 
-long long CustomInferenceEngine::getInferenceTimeMs() {
+long long CustomInferenceEngine::getInferenceTimeMs(int inputSize) const {
   long long inferenceTime = 0;
   int cnt = 0;
   for (auto& worker : workers) {
-    long long t_inf_worker = worker->getInferenceTimeMs();
+    long long t_inf_worker = worker->getInferenceTimeMs(inputSize);
     if (t_inf_worker > 0) {
       cnt++;
       inferenceTime += t_inf_worker;
