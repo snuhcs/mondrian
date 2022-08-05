@@ -13,6 +13,8 @@ class RoIResizer {
  public:
   RoIResizer(const RoIResizerConfig& config);
 
+  float getStaticTargetSize() const;
+
   float getTargetSize(const idType id, const RoI::Features& features);
 
   void updateTable(RoI* roi);

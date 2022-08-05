@@ -7,6 +7,10 @@ namespace rm {
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
     : mConfig(config), calibration(0) {}
 
+float RoIResizer::getStaticTargetSize() const {
+  return mConfig.STATIC_RESIZE_TARGET;
+}
+
 float RoIResizer::getTargetSize(const idType id, const RoI::Features& features) {
   assert(features.type == RoI::Type::OF);
   if (mConfig.RESIZE_SMOOTHING_FACTOR == 0) {

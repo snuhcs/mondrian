@@ -14,9 +14,11 @@ PatchMixer::PatchMixer(const PatchMixerConfig& config)
 std::vector<RoI*> PatchMixer::prepareRoIs(std::map<std::string, SortedFrames>& frames,
                                           Frame* fullFrameTarget, RoIResizer* roiResizer,
                                           int maxRoISize, bool probe, int numProbeSteps,
-                                          int probeStepSize) const {
+                                          int probeStepSize, bool emulatedBatch) const {
   time_us resizeStartTime = NowMicros();
-  resizeRoIs(frames, roiResizer);
+  if (!emulatedBatch) {
+    resizeRoIs(frames, roiResizer);
+  }
   time_us resizeEndTime = NowMicros();
   for (auto&[_, aStreamFrames] : frames) {
     for (Frame* frame : aStreamFrames) {
@@ -54,7 +56,7 @@ std::vector<RoI*> PatchMixer::prepareRoIs(std::map<std::string, SortedFrames>& f
   return packingCandidates;
 }
 
-void PatchMixer::resizeRoIs(std::map<std::string, SortedFrames>& frames, RoIResizer* roIResizer) {
+void PatchMixer::resizeRoIs(std::map<std::string, SortedFrames>& frames, RoIResizer* roiResizer) {
   // Resize OF RoIs
   for (auto&[_, aStreamFrames] : frames) {
     for (Frame* frame : aStreamFrames) {
