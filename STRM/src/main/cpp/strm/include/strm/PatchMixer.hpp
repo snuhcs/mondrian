@@ -20,10 +20,9 @@ class PatchMixer {
  public:
   PatchMixer(const PatchMixerConfig& config);
 
-  std::vector<RoI*> prepareRoIs(std::map <std::string, SortedFrames>& frames,
-                                Frame* fullFrameTarget, RoIResizer* roIResizer, int maxRoISize,
-                                bool probe, int numProbeSteps, int probeStepSize,
-                                bool emulatedBatch) const;
+  std::vector<RoI*> prepareRoIs(std::map<std::string, SortedFrames>& frames,
+                                Frame* fullFrameTarget, RoIResizer* roiResizer, int maxRoISize,
+                                bool probe, int numProbeSteps, int probeStepSize) const;
 
   std::vector<MixedFrame> packRoIs(std::vector<RoI*>& candidateRoIs, int mixedFrameSize,
                                    int maxNumMixedFrames) const;

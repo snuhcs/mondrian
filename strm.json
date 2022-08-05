@@ -47,7 +47,9 @@
         "merge": true,
         "merge_threshold": 0.5,
         "n_way_mixing": true,
-        "priority_mixing": true
+        "priority_mixing": true,
+        "emulated_batch": false,
+        "batch_size": 64
     },
     "patch_reconstructor": {
         "frame_boxes_iou_threshold": 0.5,

@@ -8,8 +8,8 @@
 namespace rm {
 
 PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
-                                       RoIResizer* roIResizer)
-    : mConfig(config), mRoIResizer(roIResizer) {}
+                                       RoIResizer* roiResizer)
+    : mConfig(config), mRoIResizer(roiResizer) {}
 
 static Rect moveResizeRoIPos(const RoI* roi) {
   std::pair<int, int> wh = roi->getResizedWidthHeight();

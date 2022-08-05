@@ -18,7 +18,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mNumSourceVideos(numSourceVideo),
       mInputSizes(inferenceEngine->getInputSizes()),
       mRoIExtractor(new RoIExtractor(config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0)),
-      mRoIResizer(new RoIResizer(config.roIResizerConfig)),
+      mRoIResizer(new RoIResizer(config.roiResizerConfig)),
       mPatchMixer(new PatchMixer(config.patchMixerConfig)),
       mPatchReconstructor(
           new PatchReconstructor(config.patchReconstructorConfig, mRoIResizer.get())),
@@ -98,7 +98,7 @@ void SpatioTemporalRoIMixer::work() {
     int inferenceFrameSize = mConfig.ROI_WISE_INFERENCE ? mInputSizes.front() : mInputSizes.back();
     std::vector<RoI*> candidateRoIs = mPatchMixer->prepareRoIs(
         frames, fullFrameTarget, mRoIResizer.get(), inferenceFrameSize, mRoIResizer->isProbing(),
-        mRoIResizer->getNumProbeSteps(), mRoIResizer->getProbeStepSize(), mConfig.EMULATED_BATCH);
+        mRoIResizer->getNumProbeSteps(), mRoIResizer->getProbeStepSize());
     logger.step("pre");
     LOGD("STRM::work() inferencePreparation took %lld us", logger.getDuration("pre"));
 

@@ -40,10 +40,17 @@ struct RoIResizerConfig {
 };
 
 struct PatchMixerConfig {
+  // Merge config
   bool MERGE = true;
   float MERGE_THRESHOLD = 0.5;
+
+  // Mixing config
   bool N_WAY_MIXING = true;
   bool PRIORITY_MIXING = true;
+
+  // Emulated batch
+  bool EMULATED_BATCH = false;
+  int BATCH_SIZE = 64;
 };
 
 struct PatchReconstructorConfig {
@@ -53,12 +60,11 @@ struct PatchReconstructorConfig {
 
 struct STRMConfig {
   bool ROI_WISE_INFERENCE = false;
-  bool EMULATED_BATCH = false;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int BUFFER_SIZE = 1000;
   int LATENCY_SLO_MS = 10000;
   RoIExtractorConfig roIExtractorConfig;
-  RoIResizerConfig roIResizerConfig;
+  RoIResizerConfig roiResizerConfig;
   PatchMixerConfig patchMixerConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 };

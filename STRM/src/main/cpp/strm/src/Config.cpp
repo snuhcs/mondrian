@@ -81,6 +81,12 @@ PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   if (!json["priority_mixing"].isNull()) {
     config.PRIORITY_MIXING = json["priority_mixing"].asBool();
   }
+  if (!json["emulated_batch"].isNull()) {
+    config.EMULATED_BATCH = json["emulated_batch"].asBool();
+  }
+  if (!json["batch_size"].isNull()) {
+    config.BATCH_SIZE = json["batch_size"].asInt();
+  }
   return config;
 }
 
@@ -129,7 +135,7 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
     config.roIExtractorConfig = parseRoIExtractorConfig(json["roi_extractor"]);
   }
   if (!json["roi_resizer"].isNull()) {
-    config.roIResizerConfig = parseRoIResizerConfig(json["roi_resizer"]);
+    config.roiResizerConfig = parseRoIResizerConfig(json["roi_resizer"]);
   }
   if (!json["patch_mixer"].isNull()) {
     config.patchMixerConfig = parsePatchMixerConfig(json["patch_mixer"]);

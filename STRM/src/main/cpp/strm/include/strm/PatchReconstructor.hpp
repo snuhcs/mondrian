@@ -13,7 +13,7 @@ namespace rm {
 
 class PatchReconstructor {
  public:
-  PatchReconstructor(const PatchReconstructorConfig& config, RoIResizer* roIResizer);
+  PatchReconstructor(const PatchReconstructorConfig& config, RoIResizer* roiResizer);
 
   void assignBoxesToFrame(MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const;
 
