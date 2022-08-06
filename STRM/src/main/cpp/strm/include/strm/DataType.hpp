@@ -286,6 +286,8 @@ struct RoI {
   };
 
   struct Features {
+    int width;
+    int height;
     int label;
     Type type;
     float xyRatio;
@@ -336,6 +338,8 @@ struct RoI {
       std::min(frame->mat.cols, origLoc.right + roiPadding),
       std::min(frame->mat.rows, origLoc.bottom + roiPadding)),
         type(type), origin(origin), label(label), features{
+          paddedLoc.width(),
+          paddedLoc.height(),
           label,
           type,
           (float) origLoc.width() / (float) origLoc.height(),

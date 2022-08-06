@@ -33,12 +33,13 @@
         "pd_filter_threshold": 0.5
     },
     "roi_resizer": {
-        "resize_margin": 10,
+        "resize_margin": 0,
+        "train_data": "MTA",
         "resize_smoothing_factor": 0.1,
         "static_resize_target": 100,
         "probe_step_size": 5,
         "num_probe_steps": 1,
-        "probe_reset_threshold": 10.0,
+        "probe_reset_threshold": 10,
         "overlap_threshold": 0.8,
         "absolute_confidence_threshold": 0.3,
         "relative_confidence_threshold": 0.1

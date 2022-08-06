@@ -27,6 +27,7 @@ struct RoIResizerConfig {
   float RESIZE_MARGIN = 10;
 
   // Predictive model configs
+  std::string TRAIN_DATA;
   float RESIZE_SMOOTHING_FACTOR = 0.1; // static resize when RESIZE_SMOOTHING_FACTOR == 0.0
   float STATIC_RESIZE_TARGET = 100;
 

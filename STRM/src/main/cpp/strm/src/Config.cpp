@@ -40,6 +40,11 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   if (!json["resize_margin"].isNull()) {
     config.RESIZE_MARGIN = json["resize_margin"].asFloat();
   }
+  assert(!json["train_data"].isNull());
+  config.TRAIN_DATA = json["train_data"].asString();
+  assert(config.TRAIN_DATA == "VIRAT" ||
+         config.TRAIN_DATA == "MTA" ||
+         config.TRAIN_DATA == "YouTube");
   if (!json["resize_smoothing_factor"].isNull()) {
     config.RESIZE_SMOOTHING_FACTOR = json["resize_smoothing_factor"].asFloat();
   }

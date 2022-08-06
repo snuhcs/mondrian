@@ -1,15 +1,25 @@
 #include "strm/RoIResizer.hpp"
 
-#include "strm/DecisionTree.hpp"
-
 namespace rm {
 
-RoIResizer::RoIResizer(const RoIResizerConfig& config)
-    : mConfig(config), calibration(0) {}
+const std::map<std::string, std::function<float(
+    float, float, float, float, float, float,
+    float, float, float, float, float, float)>> RoIResizer::candidatePredictors = {
+    {"VIRAT",   VIRAT},
+    {"MTA",     MTA},
+    {"YouTube", YouTube}
+};
 
-float RoIResizer::getStaticTargetSize() const {
-  return mConfig.STATIC_RESIZE_TARGET;
-}
+const std::map<std::string, std::vector<float>> RoIResizer::candidateResizeTargets = {
+    {"VIRAT",   {68.0f, 120.0f, 165.0f}},
+    {"MTA",     {52.0f, 66.0f,  165.0f}},
+    {"YouTube", {68.0f, 105.0f, 165.0f}}
+};
+
+RoIResizer::RoIResizer(const RoIResizerConfig& config)
+    : mConfig(config), calibration(0),
+      mPredictor(candidatePredictors.at(config.TRAIN_DATA)),
+      mResizeTargets(candidateResizeTargets.at(config.TRAIN_DATA)) {}
 
 float RoIResizer::getTargetSize(const idType id, const RoI::Features& features) {
   assert(features.type == RoI::Type::OF);
@@ -39,11 +49,15 @@ float RoIResizer::getSmoothedTargetSize(const idType id,
           (1 - mConfig.RESIZE_SMOOTHING_FACTOR) * prevTargetSize);
 }
 
-float RoIResizer::getSizeWithFeature(const RoI::Features& features) {
+float RoIResizer::getSizeWithFeature(const RoI::Features& features) const {
   assert(features.type == RoI::OF);
-  auto&[x, y] = features.ofFeatures.avgShift;
-  float shiftSize = x * x + y * y;
-  return OFTree(features.xyRatio, shiftSize, features.ofFeatures.avgErr);
+  auto&[avgX, avgY] = features.ofFeatures.avgShift;
+  auto&[stdX, stdY] = features.ofFeatures.stdShift;
+  float avg = avgX * avgX + avgY * avgY;
+  float std = stdX * stdX + stdY * stdY;
+  return mResizeTargets[(int) mPredictor(
+      (float) features.width, (float) features.height, (float) features.label, features.xyRatio,
+      avgX, avgY, avg, stdX, stdY, std, features.ofFeatures.avgErr, features.ofFeatures.ncc)];
 }
 
 void RoIResizer::updateTable(RoI* roi) {
