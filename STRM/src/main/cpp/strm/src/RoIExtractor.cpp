@@ -95,7 +95,7 @@ void RoIExtractor::work() {
    */
 
   auto isPDJobReady = [this]() {
-    return !mFramesForPD.empty() && !mFramesForPD.front()->prevFrame->preProcessedMat.empty();
+    return !mFramesForPD.empty() && mFramesForPD.front()->prevFrame->preProcessedMat.channels() == 1;
   };
   auto isOFJobReady = [this]() {
     if (mFramesForOF.empty()) {
