@@ -25,8 +25,8 @@
     "latency_slo_ms": 6000,
     "roi_extractor": {
         "num_workers": 2,
-        "extraction_resize_width": 640,
-        "extraction_resize_height": 360,
+        "extraction_resize_width": 1280,
+        "extraction_resize_height": 720,
         "min_roi_area": 5000,
         "roi_padding": 10,
         "optical_flow_roi_confidence_threshold": 0.1,
