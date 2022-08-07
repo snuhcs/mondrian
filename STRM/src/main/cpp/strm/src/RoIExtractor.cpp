@@ -1,5 +1,6 @@
 #include "strm/RoIExtractor.hpp"
 
+#include <numeric>
 #include <set>
 
 #include "opencv2/video/tracking.hpp"
@@ -34,16 +35,15 @@ RoIExtractor::~RoIExtractor() {
 
 void RoIExtractor::enqueue(Frame* frame) {
   std::unique_lock<std::mutex> lock(mtx);
-  mFramesForPD.push_back(frame);
-  int numPDs = (int) mFramesForPD.size();
-  int numOFs = 0;
-  for (const auto& it : mFramesForOF) {
-    numOFs += (int) it.second.size();
-  }
-  int numProcessed = 0;
-  for (const auto& it : mOFProcessingStartedFrames) {
-    numProcessed += (int) it.second.size();
-  }
+  mFramesForPD[frame->key].push_back(frame);
+  int numPDs = std::accumulate(mFramesForPD.begin(), mFramesForPD.end(), 0,
+                               [](int cnt, auto& it) { return cnt + it.second.size(); });
+  int numOFs = std::accumulate(mFramesForOF.begin(), mFramesForOF.end(), 0,
+                               [](int cnt, auto& it) { return cnt + it.second.size(); });
+  int numProcessed = std::accumulate(mOFProcessingStartedFrames.begin(),
+                                     mOFProcessingStartedFrames.end(),
+                                     0, [](int cnt, auto& it) { return cnt + it.second.size(); });
+  lock.unlock();
   cv.notify_all();
   LOGD("RoIExtractor::enqueue  (%s, %4d)               // PD %d | OF %d | Processed %d",
        frame->shortKey.c_str(), frame->frameIndex, numPDs, numOFs, numProcessed);
@@ -68,19 +68,18 @@ std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames() {
   std::map<std::string, SortedFrames> extractedFrames = std::move(mOFProcessingStartedFrames);
   mOFProcessingStartedFrames.clear();
   // TODO: set useInferenceResultForOF = true only for lastFrames
-  for (const auto& it : extractedFrames) {
-    for (auto frame : it.second) {
+  for (const auto&[key, aStreamFrames] : extractedFrames) {
+    for (auto* frame : aStreamFrames) {
       frame->useInferenceResultForOF = true;
     }
   }
   cv.wait(lock, [&extractedFrames]() {
-    for (auto it : extractedFrames) {
-      if (!it.second.empty() && (*it.second.rbegin())->roiExtractionStatus != OF_EXTRACTED) {
-        return false;
-      }
-    }
-    return true;
+    return std::all_of(extractedFrames.begin(), extractedFrames.end(), [](auto& it) {
+      return it.second.empty() || (*it.second.rbegin())->roiExtractionStatus == OF_EXTRACTED;
+    });
   });
+  lock.unlock();
+  cv.notify_all();
   return extractedFrames;
 }
 
@@ -94,19 +93,21 @@ void RoIExtractor::work() {
    * 5. OF extraction ended  | mOFProcessingStartedFrames | OF_EXTRACTED
    */
 
-  auto isPDJobReady = [this]() {
-    return !mFramesForPD.empty() && mFramesForPD.front()->prevFrame->preProcessedMat.channels() == 1;
-  };
-  auto isOFJobReady = [this]() {
-    if (mFramesForOF.empty()) {
-      return false;
-    }
-    for (const auto& it : mFramesForOF) {
-      if (!it.second.empty()) {
-        return it.second.front()->readyForOFExtraction();
+  auto getPDJob = [this]() {
+    for (auto&[key, aStreamFrames] : mFramesForPD) {
+      if (!aStreamFrames.empty() && aStreamFrames.front()->readyForPDExtraction()) {
+        return aStreamFrames.front();
       }
     }
-    return false;
+    return (Frame*) nullptr;
+  };
+  auto getOFJob = [this]() {
+    for (auto&[key, aStreamFrames] : mFramesForOF) {
+      if (!aStreamFrames.empty() && aStreamFrames.front()->readyForOFExtraction()) {
+        return aStreamFrames.front();
+      }
+    }
+    return (Frame*) nullptr;
   };
 
   while (true) {
@@ -114,34 +115,41 @@ void RoIExtractor::work() {
     Frame* frame = nullptr;
 
     std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [this, &isOF, &isOFJobReady, &isPDJobReady]() {
-      isOF = isOFJobReady();
-      return mbStop || isOF || isPDJobReady();
+    cv.wait(lock, [this, &isOF, &frame, &getPDJob, &getOFJob]() {
+      if (mbStop) {
+        return true;
+      }
+      frame = getOFJob();
+      if (frame != nullptr) {
+        isOF = true;
+        return true;
+      }
+      frame = getPDJob();
+      if (frame != nullptr) {
+        isOF = false;
+        return true;
+      }
+      return false;
     });
     if (mbStop) {
+      lock.unlock();
+      cv.notify_all();
       return;
     }
 
     if (isOF) {
-      for (const auto& it : mFramesForOF) {
-        if (!it.second.empty() && it.second.front()->readyForOFExtraction()) {
-          frame = it.second.front();
-        }
-      }
-      assert(frame != nullptr);
       frame->roiExtractionStatus = OF_EXTRACTING;
       mOFProcessingStartedFrames[frame->key].insert(frame);
       mFramesForOF[frame->key].pop_front();
     } else {
-      frame = mFramesForPD.front();
-      mFramesForPD.pop_front();
-      assert(frame != nullptr);
+      mFramesForPD[frame->key].pop_front();
     }
     lock.unlock();
 
     // Preprocess matrices
     if (!isOF) {
       preprocess(frame);
+      cv.notify_all();
     }
 
     if (isOF) {
@@ -327,7 +335,7 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
                                     std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
   assert(!prevFrame->preProcessedMat.empty());
   assert(!currFrame->preProcessedMat.empty());
-  assert(prevFrame->preProcessedMat.channels() == currFrame->preProcessedMat.channels());
+ assert(prevFrame->preProcessedMat.channels() == currFrame->preProcessedMat.channels());
   cv::Mat mat = calculateDiffAndThreshold(prevFrame->preProcessedMat, currFrame->preProcessedMat);
   cannyEdgeDetection(mat);
 
