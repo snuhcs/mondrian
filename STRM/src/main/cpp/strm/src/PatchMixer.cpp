@@ -14,9 +14,9 @@ PatchMixer::PatchMixer(const PatchMixerConfig& config)
 std::vector<RoI*> PatchMixer::prepareRoIs(std::map<std::string, SortedFrames>& frames,
                                           Frame* fullFrameTarget, RoIResizer* roiResizer,
                                           int maxRoISize, bool probe, int numProbeSteps,
-                                          int probeStepSize) const {
+                                          int probeStepSize, bool roiWiseInference) const {
   time_us resizeStartTime = NowMicros();
-  if (!mConfig.EMULATED_BATCH) {
+  if (!mConfig.EMULATED_BATCH && !roiWiseInference) {
     resizeRoIs(frames, roiResizer);
   }
   time_us resizeEndTime = NowMicros();
