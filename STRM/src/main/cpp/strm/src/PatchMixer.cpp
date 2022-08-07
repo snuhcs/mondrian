@@ -40,7 +40,7 @@ std::vector<RoI*> PatchMixer::prepareRoIs(std::map<std::string, SortedFrames>& f
     }
   }
 
-  if (probe) {
+  if (probe && !mConfig.EMULATED_BATCH) {
     addProbeRoIs(frames, fullFrameTarget, numProbeSteps, probeStepSize);
   }
 
@@ -259,7 +259,7 @@ std::vector<MixedFrame> PatchMixer::packRoIs(
               freeRect.left + (batchedRoISize - resizedWidth) / 2,
               freeRect.top + (batchedRoISize - resizedHeight) / 2);
         } else {
-          assert(pRoI->targetSize == pRoI->maxEdgeLength);
+          pRoI->targetSize = pRoI->maxEdgeLength;
           pRoI->packedLocation = std::make_pair(
               freeRect.left + (batchedRoISize - width) / 2,
               freeRect.top + (batchedRoISize - height) / 2);

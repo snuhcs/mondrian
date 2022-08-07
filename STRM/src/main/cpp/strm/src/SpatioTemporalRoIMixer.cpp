@@ -233,6 +233,16 @@ void SpatioTemporalRoIMixer::mixedInference(std::vector<RoI*>& candidateRoIs, in
     }
     mRoIExtractor->notify();
   }
+  for (int i = 0; i < mixedFrames.size(); i++) {
+    for (Frame* frame : mixedFrames[i].getPackedFrames()) {
+      if (std::any_of(frame->boxes.begin(), frame->boxes.end(),
+                      [](auto& box) { return box->id == UNASSIGNED_ID; })) {
+        // Match boxes with RoIs (per frame)
+        nms(frame->boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold());
+        mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, false);
+      }
+    }
+  }
 }
 
 void SpatioTemporalRoIMixer::roiWiseInference(std::vector<RoI*>& candidateRoIs, int frameSize,
@@ -280,7 +290,6 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<RoI*>& candidateRoIs, 
     nms(frame->boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold());
     mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, false);
   }
-
 }
 
 void SpatioTemporalRoIMixer::releaseFrames(const std::map<std::string, SortedFrames>& frames) {
