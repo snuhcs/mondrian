@@ -56,10 +56,9 @@ void RoIExtractor::notify() {
 void RoIExtractor::preprocess(Frame* frame) const {
   assert(frame != nullptr);
   // TODO: handle exceptional cases (!preProcessedMet.empty() == true)
-  if (frame->preProcessedMat.empty()) {
-    cv::resize(frame->mat, frame->preProcessedMat, mTargetSize);
-    cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGR2GRAY);
-  }
+  assert(frame->preProcessedMat.empty());
+  cv::resize(frame->mat, frame->preProcessedMat, mTargetSize);
+  cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGRA2GRAY);
   assert(frame->preProcessedMat.size() == mTargetSize);
   assert(frame->preProcessedMat.channels() == 1);
 }
@@ -96,7 +95,7 @@ void RoIExtractor::work() {
    */
 
   auto isPDJobReady = [this]() {
-    return !mFramesForPD.empty();
+    return !mFramesForPD.empty() && !mFramesForPD.front()->prevFrame->preProcessedMat.empty();
   };
   auto isOFJobReady = [this]() {
     if (mFramesForOF.empty()) {
