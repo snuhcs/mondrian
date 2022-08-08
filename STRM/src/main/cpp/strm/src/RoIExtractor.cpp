@@ -53,16 +53,6 @@ void RoIExtractor::notify() {
   cv.notify_all();
 }
 
-void RoIExtractor::preprocess(Frame* frame) const {
-  assert(frame != nullptr);
-  // TODO: handle exceptional cases (!preProcessedMet.empty() == true)
-  assert(frame->preProcessedMat.empty());
-  cv::resize(frame->mat, frame->preProcessedMat, mTargetSize);
-  cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGRA2GRAY);
-  assert(frame->preProcessedMat.size() == mTargetSize);
-  assert(frame->preProcessedMat.channels() == 1);
-}
-
 std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames() {
   std::unique_lock<std::mutex> lock(mtx);
   std::map<std::string, SortedFrames> extractedFrames = std::move(mOFProcessingStartedFrames);
@@ -145,12 +135,6 @@ void RoIExtractor::work() {
       mFramesForPD[frame->key].pop_front();
     }
     lock.unlock();
-
-    // Preprocess matrices
-    if (!isOF) {
-      preprocess(frame);
-      cv.notify_all();
-    }
 
     if (isOF) {
       processOF(frame);

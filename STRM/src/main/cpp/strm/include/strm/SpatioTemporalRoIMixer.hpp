@@ -39,6 +39,8 @@ class SpatioTemporalRoIMixer {
 
   void outputWork();
 
+  void preprocess(Frame* frame) const;
+
   void fullFrameInference(Frame* frame);
 
   void mixedInference(std::vector<RoI*>& candidateRoIs, int frameSize, int numInferences);

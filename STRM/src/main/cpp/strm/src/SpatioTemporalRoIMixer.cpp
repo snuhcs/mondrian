@@ -332,8 +332,11 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
   lock.unlock();
 
   Frame* frame = frameBuffer->enqueue(mat);
+  time_us startTime = NowMicros();
+  preprocess(frame);
+  LOGD("SpatioTemporalRoIMixer:preprocess(%s, %4d) took %4lld us",
+       frame->shortKey.c_str(), frame->frameIndex, NowMicros() - startTime);
   if (mConfig.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == 0) {
-    mRoIExtractor->preprocess(frame);
     frame->useInferenceResultForOF = true;
     frame->isFullFrameTarget = true;
     fullFrameInference(frame);
@@ -353,6 +356,11 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
     mRoIExtractor->enqueue(frame);
   }
   return frame->frameIndex;
+}
+
+void SpatioTemporalRoIMixer::preprocess(Frame* frame) const {
+  cv::resize(frame->mat, frame->preProcessedMat, mRoIExtractor->getTargetSize(), 0, 0, CV_INTER_NN);
+  cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGRA2GRAY);
 }
 
 void SpatioTemporalRoIMixer::outputWork() {

@@ -25,9 +25,11 @@ class RoIExtractor {
 
   void notify();
 
-  void preprocess(Frame* frame) const;
-
   std::map<std::string, SortedFrames> getExtractedFrames();
+
+  const cv::Size& getTargetSize() const {
+    return mTargetSize;
+  }
 
  private:
   void work();
