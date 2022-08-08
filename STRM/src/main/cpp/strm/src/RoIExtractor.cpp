@@ -269,14 +269,14 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
   for (const Rect& bbx : boundingBoxes) {
     float xRatio = (float) targetSize.width / (float) prevFrame->width;
     float yRatio = (float) targetSize.height / (float) prevFrame->height;
-    int x = (int) ((float) bbx.left * xRatio);
-    int y = (int) ((float) bbx.top * yRatio);
-    int w = (int) ((float) (bbx.right - bbx.left) * xRatio);
-    int h = (int) ((float) (bbx.bottom - bbx.top) * yRatio);
-    x = x < 0 ? 0 : (x > prevImage.cols ? prevImage.cols : x);
-    y = y < 0 ? 0 : (y > prevImage.rows ? prevImage.rows : y);
-    w = x + w > prevImage.cols ? prevImage.cols - x : w;
-    h = y + h > prevImage.rows ? prevImage.rows - y : h;
+    int x = (int) ((float) std::min(bbx.left, bbx.right) * xRatio);
+    int y = (int) ((float) std::min(bbx.top, bbx.bottom) * yRatio);
+    int w = (int) ((float) std::abs(bbx.right - bbx.left) * xRatio);
+    int h = (int) ((float) std::abs(bbx.bottom - bbx.top) * yRatio);
+    x = std::min(std::max(0, x), prevImage.cols);
+    y = std::min(std::max(0, y), prevImage.rows);
+    w = std::min(std::max(0, w), prevImage.cols - x);
+    h = std::min(std::max(0, h), prevImage.rows - y);
 
     std::vector<cv::Point2f> points;
     cv::Rect roiBbx = cv::Rect(x, y, w, h);
