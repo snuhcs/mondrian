@@ -61,6 +61,7 @@ class SpatioTemporalRoIMixer {
   std::thread mResultThread;
   std::unique_ptr<Logger> mResultLogger;
   std::unique_ptr<Logger> mLogger;
+  std::unique_ptr<Logger> mRoILogger;
   InferenceEngine* mInferenceEngine;
   const std::vector<int> mInputSizes;
 

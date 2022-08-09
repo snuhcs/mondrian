@@ -16,7 +16,11 @@ class Logger {
 
   void logHeader();
 
+  void logRoIHeader();
+
   void log(Frame* frame);
+
+  void logRoI(RoI* roi);
 
   void logResult(const std::string& key, int frameIndex, time_us time,
                  const std::vector<BoundingBox>& boxes);

@@ -12,8 +12,9 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
                                                int numSourceVideo,
                                                JavaVM* vm, JNIEnv* env, jobject strm, bool draw)
     : mConfig(config), mbStop(false),
-      mLogger(new Logger("/data/data/hcs.offloading.strm/execution_log.csv")),
       mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
+      mLogger(new Logger("/data/data/hcs.offloading.strm/execution_log.csv")),
+      mRoILogger(new Logger("/data/data/hcs.offloading.strm/roi_log.csv")),
       mInferenceEngine(inferenceEngine),
       mNumSourceVideos(numSourceVideo),
       mInputSizes(inferenceEngine->getInputSizes()),
@@ -25,6 +26,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
   assert(!config.ROI_WISE_INFERENCE || inferenceEngine->getInputSizes().size() >= 2);
   mLogger->logHeader();
+  mRoILogger->logRoIHeader();
 
   mThread = std::thread([this]() { work(); });
   mResultThread = std::thread([this]() { outputWork(); });
@@ -306,7 +308,7 @@ void SpatioTemporalRoIMixer::releaseFrames(const std::map<std::string, SortedFra
         frameIndices.push_back(frame->frameIndex);
       }
     }
-    mFrameBuffers.at(aStreamKey)->freeImage(frameIndices, mLogger.get());
+    mFrameBuffers.at(aStreamKey)->freeImage(frameIndices, mLogger.get(), mRoILogger.get());
   }
   framesLock.unlock();
 }
@@ -346,7 +348,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
     fullFrameInference(frame);
     if (mConfig.FULL_FRAME_INTERVAL == 0) {
       std::lock_guard<std::mutex> framesLock(mFrameBuffersMtx);
-      mFrameBuffers.at(frame->key)->freeImage({frame->frameIndex}, mLogger.get());
+      mFrameBuffers.at(frame->key)->freeImage({frame->frameIndex}, mLogger.get(), mRoILogger.get());
     }
   } else {
     if (frame->frameIndex == 1) {

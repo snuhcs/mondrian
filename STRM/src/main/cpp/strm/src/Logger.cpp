@@ -99,7 +99,8 @@ void Logger::logResult(const std::string& key, int frameIndex, time_us time,
           << fromBaseTime(time) * 1000 << ',';
   for (int i = 0; i < boxes.size(); i++) {
     const BoundingBox& box = boxes[i];
-    logFile << box.location.left << ','
+    logFile << box.id << ','
+            << box.location.left << ','
             << box.location.top << ','
             << box.location.right << ','
             << box.location.bottom << ','
@@ -110,6 +111,110 @@ void Logger::logResult(const std::string& key, int frameIndex, time_us time,
     }
   }
   logFile << '\n';
+  logFile.flush();
+}
+
+void Logger::logRoIHeader() {
+  if (!logFile.is_open()) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(mtx);
+  logFile
+      // frame
+      << "key" << delim
+      << "frameIndex" << delim
+
+      // origLoc
+      << "origLoc_l" << delim
+      << "origLoc_t" << delim
+      << "origLoc_r" << delim
+      << "origLoc_b" << delim
+
+      // paddedLoc
+      << "paddedLoc_l" << delim
+      << "paddedLoc_t" << delim
+      << "paddedLoc_r" << delim
+      << "paddedLoc_b" << delim
+
+      // type & origin
+      << "type" << delim
+      << "origin" << delim
+
+      // features
+      << "width" << delim
+      << "height" << delim
+      << "xyRatio" << delim
+
+      // OF features
+      << "avgShiftX" << delim
+      << "avgShiftY" << delim
+      << "stdShiftX" << delim
+      << "stdShiftY" << delim
+      << "avgErr" << delim
+      << "ncc" << delim
+
+      << "numProbingRoIs" << delim
+      << "priority" << delim
+      << "id" << delim
+
+      << "packedLocationX" << delim
+      << "packedLocationY" << delim
+      << "packedAbsMixedFrameIndex" << delim
+
+      << "maxEdgeLength" << delim
+      << "targetSize" << '\n';
+  logFile.flush();
+}
+
+void Logger::logRoI(RoI* roi) {
+  if (!logFile.is_open() || roi == nullptr) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(mtx);
+  logFile
+      // frame
+      << roi->frame->key << delim
+      << roi->frame->frameIndex << delim
+
+      // origLoc
+      << roi->origLoc.left << delim
+      << roi->origLoc.top << delim
+      << roi->origLoc.right << delim
+      << roi->origLoc.bottom << delim
+
+      // paddedLoc
+      << roi->paddedLoc.left << delim
+      << roi->paddedLoc.top << delim
+      << roi->paddedLoc.right << delim
+      << roi->paddedLoc.bottom << delim
+
+      // type & origin
+      << roi->type << delim
+      << roi->origin << delim
+
+      // features
+      << roi->features.width << delim
+      << roi->features.height << delim
+      << roi->features.xyRatio << delim
+
+      // OF features
+      << roi->features.ofFeatures.avgShift.first << delim
+      << roi->features.ofFeatures.avgShift.second << delim
+      << roi->features.ofFeatures.stdShift.first << delim
+      << roi->features.ofFeatures.stdShift.second << delim
+      << roi->features.ofFeatures.avgErr << delim
+      << roi->features.ofFeatures.ncc << delim
+
+      << roi->roisForProbing.size() << delim
+      << roi->priority << delim
+      << roi->id << delim
+
+      << roi->parentRoI->packedLocation.first << delim
+      << roi->parentRoI->packedLocation.second << delim
+      << roi->parentRoI->packedAbsMixedFrameIndex << delim
+
+      << roi->maxEdgeLength << delim
+      << roi->targetSize << '\n';
   logFile.flush();
 }
 

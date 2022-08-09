@@ -197,7 +197,7 @@ class FrameBuffer {
 
   Frame* enqueue(const cv::Mat& mat);
 
-  void freeImage(const std::vector<int>& frameIndices, Logger* logger);
+  void freeImage(const std::vector<int> &frameIndices, Logger *logger, Logger *roiLogger);
 
  private:
   const std::string key;
@@ -322,6 +322,7 @@ struct RoI {
   static const std::pair<int, int> NOT_PACKED;
 
   int packedMixedFrameIndex;
+  int packedAbsMixedFrameIndex;
   bool isProbingRoI;
   bool isMatchTried; // only valid within parentRoIs
   BoundingBox* box;
@@ -352,7 +353,8 @@ struct RoI {
       }, maxEdgeLength(std::max(paddedLoc.width(), paddedLoc.height())),
         targetSize(maxEdgeLength), packedLocation(NOT_PACKED), isMatchTried(false),
         nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
-        packedMixedFrameIndex(INT_MAX), isProbingRoI(isProbingRoI) {
+        packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1),
+        isProbingRoI(isProbingRoI) {
     if (prevRoI != nullptr) {
       prevRoI->nextRoI = this;
     }
@@ -472,6 +474,7 @@ struct MixedFrame {
       roi->getResizedMat().copyTo(
           packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
                              wh.first, wh.second)));
+      roi->packedAbsMixedFrameIndex = mixedFrameIndex;
     }
   }
 
