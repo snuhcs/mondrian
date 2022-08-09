@@ -53,7 +53,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
 
   // Insert boxes to appropriate frame.boxes
   for (const BoundingBox& box : results) {
-    float maxOverlap = -1;
+    float maxOverlap = 0;
     RoI* maxRoI = nullptr;
     for (RoI* pRoI : packedRoIs) {
       assert(pRoI->isPacked());
@@ -104,11 +104,11 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
   std::map<RoI*, std::vector<BoundingBox*>> roiToBoxesMap;
   for (std::unique_ptr<BoundingBox>& box : boxes) {
     // find RoI with largest overlap
-    float maxOverlap = -1;
+    float maxOverlap = 0;
     RoI* maxRoI = nullptr;
     for (auto& cRoI : childRoIs) {
       if (isFullFrame || cRoI->parentRoI->isPacked()) {
-        int intersection = cRoI->paddedLoc.intersection(box->location);
+        int intersection = cRoI->origLoc.intersection(box->location);
         assert(box->location.area() != 0);
         float overlapRatio = (float) intersection / (float) box->location.area();
         if (maxOverlap < overlapRatio) {
