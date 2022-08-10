@@ -123,6 +123,12 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["log_internal"].isNull()) {
     LOG_INTERNAL = json["log_internal"].asBool();
   }
+  if (!json["log_execution"].isNull()) {
+    config.LOG_EXECUTION = json["log_execution"].asBool();
+  }
+  if (!json["log_roi"].isNull()) {
+    config.LOG_ROI = json["log_roi"].asBool();
+  }
   if (!json["roi_wise_inference"].isNull()) {
     config.ROI_WISE_INFERENCE = json["roi_wise_inference"].asBool();
   }

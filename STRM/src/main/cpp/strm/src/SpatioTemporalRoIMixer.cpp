@@ -13,8 +13,6 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
                                                JavaVM* vm, JNIEnv* env, jobject strm, bool draw)
     : mConfig(config), mbStop(false),
       mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
-      mLogger(new Logger("/data/data/hcs.offloading.strm/execution_log.csv")),
-      mRoILogger(new Logger("/data/data/hcs.offloading.strm/roi_log.csv")),
       mInferenceEngine(inferenceEngine),
       mNumSourceVideos(numSourceVideo),
       mInputSizes(inferenceEngine->getInputSizes()),
@@ -25,8 +23,14 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
           new PatchReconstructor(config.patchReconstructorConfig, mRoIResizer.get())),
       jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
   assert(!config.ROI_WISE_INFERENCE || inferenceEngine->getInputSizes().size() >= 2);
-  mLogger->logHeader();
-  mRoILogger->logRoIHeader();
+  if (config.LOG_EXECUTION) {
+    mLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");
+    mLogger->logHeader();
+  }
+  if (config.LOG_ROI) {
+    mRoILogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/roi_log.csv");
+    mRoILogger->logRoIHeader();
+  }
 
   mThread = std::thread([this]() { work(); });
   mResultThread = std::thread([this]() { outputWork(); });

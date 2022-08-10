@@ -23,6 +23,8 @@
         ]
     },
     "log_internal": true,
+    "log_execution": false,
+    "log_roi": false,
     "roi_wise_inference": false,
     "full_frame_interval": 1,
     "buffer_size": 500,
