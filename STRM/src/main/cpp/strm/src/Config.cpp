@@ -15,16 +15,16 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
     config.NUM_WORKERS = json["num_workers"].asInt();
   }
   if (!json["extraction_resize_width"].isNull()) {
-    config.EXTRACTION_RESIZE_WIDTH = json["extraction_resize_width"].asInt();
+    config.EXTRACTION_RESIZE_WIDTH = json["extraction_resize_width"].asFloat();
   }
   if (!json["extraction_resize_height"].isNull()) {
-    config.EXTRACTION_RESIZE_HEIGHT = json["extraction_resize_height"].asInt();
+    config.EXTRACTION_RESIZE_HEIGHT = json["extraction_resize_height"].asFloat();
   }
   if (!json["min_roi_area"].isNull()) {
-    config.MIN_ROI_AREA = json["min_roi_area"].asInt();
+    config.MIN_ROI_AREA = json["min_roi_area"].asFloat();
   }
   if (!json["roi_padding"].isNull()) {
-    config.ROI_PADDING = json["roi_padding"].asInt();
+    config.ROI_PADDING = json["roi_padding"].asFloat();
   }
   if (!json["optical_flow_roi_confidence_threshold"].isNull()) {
     config.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = json["optical_flow_roi_confidence_threshold"].asFloat();
@@ -52,7 +52,7 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
     config.STATIC_RESIZE_TARGET = json["static_resize_target"].asFloat();
   }
   if (!json["probe_step_size"].isNull()) {
-    config.PROBE_STEP_SIZE = json["probe_step_size"].asInt();
+    config.PROBE_STEP_SIZE = json["probe_step_size"].asFloat();
   }
   if (!json["num_probe_steps"].isNull()) {
     config.NUM_PROBE_STEPS = json["num_probe_steps"].asInt();

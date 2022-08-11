@@ -8,7 +8,7 @@ namespace rm {
 const idType UNASSIGNED_ID = -1;
 const idType MERGED_ROI_ID = -2;
 
-const std::pair<int, int> RoI::NOT_PACKED{-1, -1};
+const std::pair<float, float> RoI::NOT_PACKED{-1, -1};
 
 void Frame::initParentRoIs() {
   assert(parentRoIs.empty());
@@ -25,7 +25,7 @@ void Frame::initParentRoIs() {
   }
 }
 
-void Frame::mergeRoIs(float mergeThreshold, int maxSize) {
+void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
   while (true) {
     bool updated = false;
     int i, j;
@@ -33,19 +33,19 @@ void Frame::mergeRoIs(float mergeThreshold, int maxSize) {
       for (j = i + 1; j < parentRoIs.size(); j++) {
         const std::unique_ptr<RoI>& roi0 = parentRoIs[i];
         const std::unique_ptr<RoI>& roi1 = parentRoIs[j];
-        int intersection = roi0->paddedLoc.intersection(roi1->paddedLoc);
-        if ((float) intersection / (float) roi0->getPaddedArea() < mergeThreshold &&
-            (float) intersection / (float) roi1->getPaddedArea() < mergeThreshold) {
+        float intersection = roi0->paddedLoc.intersection(roi1->paddedLoc);
+        if (intersection / roi0->getPaddedArea() < mergeThreshold &&
+            intersection / roi1->getPaddedArea() < mergeThreshold) {
           continue;
         }
-        int newLeft = std::min(roi0->paddedLoc.left, roi1->paddedLoc.left);
-        int newTop = std::min(roi0->paddedLoc.top, roi1->paddedLoc.top);
-        int newRight = std::max(roi0->paddedLoc.right, roi1->paddedLoc.right);
-        int newBottom = std::max(roi0->paddedLoc.bottom, roi1->paddedLoc.bottom);
+        float newLeft = std::min(roi0->paddedLoc.left, roi1->paddedLoc.left);
+        float newTop = std::min(roi0->paddedLoc.top, roi1->paddedLoc.top);
+        float newRight = std::max(roi0->paddedLoc.right, roi1->paddedLoc.right);
+        float newBottom = std::max(roi0->paddedLoc.bottom, roi1->paddedLoc.bottom);
         if (newRight - newLeft > maxSize || newBottom - newTop > maxSize) {
           continue;
         }
-        int newArea = (newRight - newLeft) * (newBottom - newLeft);
+        float newArea = (newRight - newLeft) * (newBottom - newLeft);
         if (roi0->targetSize * roi1->maxEdgeLength > roi1->targetSize * roi0->maxEdgeLength) {
           // If roi0 resizes conservatively than roi1
           newArea = newArea * roi0->targetSize * roi0->targetSize
@@ -55,7 +55,7 @@ void Frame::mergeRoIs(float mergeThreshold, int maxSize) {
           newArea = newArea * roi1->targetSize * roi1->targetSize
                     / roi1->maxEdgeLength / roi1->maxEdgeLength;
         }
-        int originalArea = roi0->getResizedArea() + roi1->getResizedArea();
+        float originalArea = roi0->getResizedArea() + roi1->getResizedArea();
         if (newArea >= originalArea) {
           continue;
         }
@@ -85,9 +85,9 @@ void Frame::mergeRoIs(float mergeThreshold, int maxSize) {
   }
 }
 
-void Frame::addProbeRoIs(int numProbeSteps, int probeStepSize) {
+void Frame::addProbeRoIs(int numProbeSteps, float probeStepSize) {
   for (auto& cRoI : childRoIs) {
-    int probe = -numProbeSteps * probeStepSize;
+    float probe = float(-numProbeSteps) * probeStepSize;
     for (int i = 0; i < 2 * numProbeSteps + 1; i++) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
@@ -111,12 +111,12 @@ void Frame::filterPDRoIs(float threshold) {
   for (auto it = childRoIs.begin(); it != childRoIs.end();) {
     auto& cRoI = *it;
     if (cRoI->type == RoI::Type::PD) {
-      int totalOFCoverage = 0;
+      float totalOFCoverage = 0;
       for (RoI* OFRoI : OFRoIs) {
-        int intersection = cRoI->paddedLoc.intersection(OFRoI->paddedLoc);
+        float intersection = cRoI->paddedLoc.intersection(OFRoI->paddedLoc);
         totalOFCoverage += intersection;
       }
-      if ((float) totalOFCoverage / (float) cRoI->getPaddedArea() >= threshold) {
+      if (totalOFCoverage / cRoI->getPaddedArea() >= threshold) {
         it = childRoIs.erase(it);
         continue;
       }

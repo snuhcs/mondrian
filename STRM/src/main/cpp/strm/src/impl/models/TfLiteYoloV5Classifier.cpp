@@ -121,7 +121,7 @@ const float* TfLiteYoloV5Classifier::getClassConfidences(const int i) const {
 }
 
 Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
-                                            int imageWidth, int imageHeight) {
+                                            float imageWidth, float imageHeight) {
   x *= (float) inputSize.width;
   y *= (float) inputSize.height;
   w *= (float) inputSize.width;
@@ -131,10 +131,10 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
   float xPad = ((float) inputSize.width - (float) imageWidth * gain) / 2;
   float yPad = ((float) inputSize.height - (float) imageHeight * gain) / 2;
   return Rect(
-      std::max(0, (int) ((x - w / 2 - xPad) / gain)),
-      std::max(0, (int) ((y - h / 2 - yPad) / gain)),
-      std::min(imageWidth, (int) ((x + w / 2 - xPad) / gain)),
-      std::min(imageHeight, (int) ((y + h / 2 - yPad) / gain)));
+      std::max(0.0f, ((x - w / 2 - xPad) / gain)),
+      std::max(0.0f, ((y - h / 2 - yPad) / gain)),
+      std::min(imageWidth, ((x + w / 2 - xPad) / gain)),
+      std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
 }
 
 long long int TfLiteYoloV5Classifier::profileInferenceTime() {

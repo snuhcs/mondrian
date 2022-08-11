@@ -64,12 +64,12 @@ void Interpolator::extrapolateLeft(std::vector<RoI*> childRoIs, int idx) {
   assert(prevRoI->box != nullptr);
   assert(0 <= prevRoI->box->label);
   assert(0 <= prevRoI->label);
-  std::pair<int, int> prevCenter = prevRoI->box->location.center();
+  std::pair<float, float> prevCenter = prevRoI->box->location.center();
   for (int current = idx - 1; current >= 0; current--) {
     RoI* currRoI = childRoIs.at(current);
     std::pair<float, float> shift = prevRoI->features.ofFeatures.avgShift;
-    std::pair<int, int> newCenter = std::make_pair(prevCenter.first - (int) shift.first,
-                                                   prevCenter.second - (int) shift.second);
+    std::pair<float, float> newCenter = std::make_pair(prevCenter.first - shift.first,
+                                                   prevCenter.second - shift.second);
     BoundingBox* prevBox = prevRoI->box;
     assert(prevBox->id == prevRoI->id);
     addBoxWithPrevInfo(currRoI, prevBox, newCenter);
@@ -84,12 +84,12 @@ void Interpolator::extrapolateRight(std::vector<RoI*> childRoIs, int idx) {
   assert(prevRoI->box != nullptr);
   assert(0 <= prevRoI->box->label);
   assert(0 <= prevRoI->label);
-  std::pair<int, int> prevCenter = prevRoI->box->location.center();
+  std::pair<float, float> prevCenter = prevRoI->box->location.center();
   for (int current = idx + 1; current < childRoIs.size(); current++) {
     RoI* currRoI = childRoIs.at(current);
     std::pair<float, float> shift = currRoI->features.ofFeatures.avgShift;
-    std::pair<int, int> newCenter = std::make_pair(prevCenter.first + (int) shift.first,
-                                                   prevCenter.second + (int) shift.second);
+    std::pair<float, float> newCenter = std::make_pair(prevCenter.first + shift.first,
+                                                   prevCenter.second + shift.second);
     BoundingBox* prevBox = prevRoI->box;
     assert(prevBox->id == prevRoI->id);
     addBoxWithPrevInfo(currRoI, prevBox, newCenter);
@@ -101,7 +101,7 @@ void Interpolator::extrapolateRight(std::vector<RoI*> childRoIs, int idx) {
 
 void Interpolator::interpolateBetween(std::vector<RoI*> childRoIs, int leftIdx, int rightIdx) {
   std::pair<float, float> totalShift = sumMotionVectors(childRoIs, leftIdx, rightIdx);
-  std::pair<int, int> bbxShift = getBbxShift(childRoIs, leftIdx, rightIdx);
+  std::pair<float, float> bbxShift = getBbxShift(childRoIs, leftIdx, rightIdx);
 
   RoI* prevRoI = childRoIs.at(leftIdx);
   assert(prevRoI->box != nullptr);
@@ -116,7 +116,7 @@ void Interpolator::interpolateBetween(std::vector<RoI*> childRoIs, int leftIdx, 
         prevCenter.second + shift.second * (float) bbxShift.second / totalShift.second);
     BoundingBox* prevBox = prevRoI->box;
     assert(prevBox->id == prevRoI->id);
-    addBoxWithPrevInfo(currRoI, prevBox, {(int) newCenter.first, (int) newCenter.second});
+    addBoxWithPrevInfo(currRoI, prevBox, {newCenter.first, newCenter.second});
 
     prevRoI = currRoI;
     prevCenter = newCenter;
@@ -134,18 +134,18 @@ std::pair<float, float> Interpolator::sumMotionVectors(std::vector<RoI*> childRo
   return std::make_pair(xShift, yShift);
 }
 
-std::pair<int, int> Interpolator::getBbxShift(std::vector<RoI*> childRoIs, int start, int end) {
+std::pair<float, float> Interpolator::getBbxShift(std::vector<RoI*> childRoIs, int start, int end) {
   BoundingBox* bbx1 = childRoIs.at(start)->box;
-  std::pair<int, int> c1 = bbx1->location.center();
+  std::pair<float, float> c1 = bbx1->location.center();
   BoundingBox* bbx2 = childRoIs.at(end)->box;
-  std::pair<int, int> c2 = bbx2->location.center();
+  std::pair<float, float> c2 = bbx2->location.center();
   return std::make_pair(c2.first - c1.first, c2.second - c2.second);
 }
 
 void Interpolator::addBoxWithPrevInfo(RoI* currRoI, const BoundingBox* prevBox,
-                                      const std::pair<int, int>& newCenter) {
-  int newWidth = prevBox->location.width();
-  int newHeight = prevBox->location.height();
+                                      const std::pair<float, float>& newCenter) {
+  float newWidth = prevBox->location.width();
+  float newHeight = prevBox->location.height();
   Rect newBox(newCenter, newWidth, newHeight);
   currRoI->frame->boxes.emplace_back(
       new BoundingBox(prevBox->id, newBox, prevBox->confidence, prevBox->label, fromIP));
