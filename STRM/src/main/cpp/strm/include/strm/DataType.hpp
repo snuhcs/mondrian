@@ -439,12 +439,12 @@ struct RoI {
 
   cv::Mat getOrigMat() const {
     return frame->mat.operator()(
-        cv::Rect2f(origLoc.left, origLoc.top, origLoc.width(), origLoc.height()));
+        cv::Rect(origLoc.left, origLoc.top, origLoc.width(), origLoc.height()));
   }
 
   cv::Mat getPaddedMat() const {
     return frame->mat.operator()(
-        cv::Rect2f(paddedLoc.left, paddedLoc.top, paddedLoc.width(), paddedLoc.height()));
+        cv::Rect(paddedLoc.left, paddedLoc.top, paddedLoc.width(), paddedLoc.height()));
   }
 
   cv::Mat getResizedMat() const {
@@ -472,7 +472,7 @@ struct MixedFrame {
       assert(roi->isPacked());
       std::pair<float, float> wh = roi->getResizedWidthHeight();
       roi->getResizedMat().copyTo(
-          packedMat(cv::Rect2f(roi->packedLocation.first, roi->packedLocation.second,
+          packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
                              wh.first, wh.second)));
       roi->packedAbsMixedFrameIndex = mixedFrameIndex;
     }

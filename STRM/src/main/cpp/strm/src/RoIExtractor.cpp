@@ -263,11 +263,11 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
     h = std::min(std::max(0.0f, h), float(prevImage.rows) - y);
 
     std::vector<cv::Point2f> points;
-    cv::Rect2f roiBbx = cv::Rect2f(x, y, w, h);
+    cv::Rect roiBbx = cv::Rect(x, y, w, h);
     cv::goodFeaturesToTrack(prevImage(roiBbx), points, 100, 0.01, 5, cv::Mat(), 3, false, 0.03);
     for (cv::Point2f& p : points) {
-      p.x += roiBbx.x;
-      p.y += roiBbx.y;
+      p.x += x;
+      p.y += y;
     }
     if (points.empty()) {
       inputPoints.emplace_back(((float) bbx.left + (float) bbx.width() / 2) * xRatio,

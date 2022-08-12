@@ -267,7 +267,7 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<RoI*>& candidateRoIs, 
     cv::Mat roi = pRoI->getResizedMat();
     float x = float(frameSize - roi.cols) / 2;
     float y = float(frameSize - roi.rows) / 2;
-    roi.copyTo(input(cv::Rect2f(x, y, roi.cols, roi.rows)));
+    roi.copyTo(input(cv::Rect(int(std::round(x)), int(std::round(y)), roi.cols, roi.rows)));
     packedLocations.emplace_back(x, y);
     handles.push_back(mInferenceEngine->enqueue(input, frameSize));
   }
