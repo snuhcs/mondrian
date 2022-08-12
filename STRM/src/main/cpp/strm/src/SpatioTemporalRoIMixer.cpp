@@ -16,8 +16,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
       mInferenceEngine(inferenceEngine),
       mNumSourceVideos(numSourceVideo),
-      mRoIExtractor(new RoIExtractor(config.roIExtractorConfig,
-                                     inferenceEngine->getInputSizes()[0])),
+      mRoIExtractor(new RoIExtractor(config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0)),
       mRoIResizer(new RoIResizer(config.roIResizerConfig)),
       mPatchMixer(new PatchMixer(config.patchMixerConfig)),
       mPatchReconstructor(
@@ -63,7 +62,7 @@ void SpatioTemporalRoIMixer::work() {
 
   // When FULL_FRAME_INTERVAL == 0, always run full frame inference
   // See SpatioTemporalRoIMixer::enqueueImage(...)
-  while (!mbStop) {
+  while (!mbStop && mConfig.FULL_FRAME_INTERVAL > 0) {
     scheduleID++;
     // Wait for scheduling interval
     time_us elapsedTime = logger.getElapsedTime();
@@ -277,11 +276,15 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
   lock.unlock();
 
   Frame* frame = frameBuffer->enqueue(mat);
-  if (frame->frameIndex == 0) {
+  if (mConfig.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == 0) {
     mRoIExtractor->preprocess(frame);
     frame->useInferenceResultForOF = true;
     frame->isFullFrameTarget = true;
     fullFrameInference(frame);
+    if (mConfig.FULL_FRAME_INTERVAL == 0) {
+      std::lock_guard<std::mutex> framesLock(mFrameBuffersMtx);
+      mFrameBuffers.at(frame->key)->freeImage({frame->frameIndex}, mLogger.get());
+    }
   } else {
     if (frame->frameIndex == 1) {
       std::unique_lock<std::mutex> startLock(mStartMtx);

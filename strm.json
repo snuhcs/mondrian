@@ -3,11 +3,7 @@
     "draw_inference_result": true,
     "video_configs": [
         {
-            "path": "/data/local/tmp/video/VIRAT/VIRAT_S_000001_5256_5856.mp4",
-            "fps": 10
-        },
-        {
-            "path": "/data/local/tmp/video/VIRAT/VIRAT_S_000002_1801_2401.mp4",
+            "path": "/data/local/tmp/video/MTA/test_cam_3_1000_1450.mp4",
             "fps": 10
         }
     ],
@@ -25,7 +21,7 @@
     "log_internal": true,
     "full_frame_interval": 1,
     "buffer_size": 500,
-    "latency_slo_ms": 5000,
+    "latency_slo_ms": 6000,
     "roi_extractor": {
         "num_workers": 2,
         "extraction_resize_width": 640,

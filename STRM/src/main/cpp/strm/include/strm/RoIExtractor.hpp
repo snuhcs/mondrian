@@ -17,7 +17,7 @@ namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, int maxRoISize);
+  RoIExtractor(const RoIExtractorConfig& config, bool run);
 
   ~RoIExtractor();
 
@@ -55,7 +55,6 @@ class RoIExtractor {
   static void cannyEdgeDetection(cv::Mat mat);
 
   const RoIExtractorConfig mConfig;
-  const int mMaxRoISize;
   std::vector<std::thread> mThreads;
   bool mbStop;
 
