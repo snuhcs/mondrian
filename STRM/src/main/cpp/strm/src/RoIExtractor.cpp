@@ -263,11 +263,11 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
     h = std::min(std::max(0.0f, h), float(prevImage.rows) - y);
 
     std::vector<cv::Point2f> points;
-    cv::Rect roiBbx = cv::Rect(x, y, w, h);
+    cv::Rect2f roiBbx = cv::Rect2f(x, y, w, h);
     cv::goodFeaturesToTrack(prevImage(roiBbx), points, 100, 0.01, 5, cv::Mat(), 3, false, 0.03);
     for (cv::Point2f& p : points) {
-      p.x += (float) roiBbx.x;
-      p.y += (float) roiBbx.y;
+      p.x += roiBbx.x;
+      p.y += roiBbx.y;
     }
     if (points.empty()) {
       inputPoints.emplace_back(((float) bbx.left + (float) bbx.width() / 2) * xRatio,
@@ -334,12 +334,12 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
     double approxDistance = cv::arcLength(contour, true) * 0.02;
     std::vector<cv::Point> approxCurve;
     cv::approxPolyDP(contour, approxCurve, approxDistance, true);
-    cv::Rect box = cv::boundingRect(approxCurve);
+    cv::Rect2f box = cv::boundingRect(approxCurve);
     if (box.area() >= mixRoIArea) {
-      boxes.emplace_back(box.x * currFrame->mat.cols / targetSize.width,
-                         box.y * currFrame->mat.rows / targetSize.height,
-                         (box.x + box.width) * currFrame->mat.cols / targetSize.width,
-                         (box.y + box.height) * currFrame->mat.rows / targetSize.height);
+      boxes.emplace_back(box.x * float(currFrame->mat.cols) / float(targetSize.width),
+                         box.y * float(currFrame->mat.rows) / float(targetSize.height),
+                         (box.x + box.width) * float(currFrame->mat.cols) / float(targetSize.width),
+                         (box.y + box.height) * float(currFrame->mat.rows) / float(targetSize.height));
     }
   }
 
