@@ -148,7 +148,7 @@ struct Frame {
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime)
-      : key(key), shortKey(key.substr(key.find_last_of('.') - 1, 1)), frameIndex(frameIndex), mat(mat),
+      : key(key), shortKey(toShortKey(key)), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
         roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime), isFullFrameTarget(false),
         isBoxesReady(false), isRoIsReady(false) {}
@@ -170,6 +170,8 @@ struct Frame {
   bool readyForPDExtraction() const;
 
   bool readyForOFExtraction() const;
+
+  static std::string toShortKey(const std::string& key);
 };
 
 struct FrameIndexComp {
@@ -224,7 +226,8 @@ struct RoI {
     const float ncc;
 
     OFFeatures(const std::vector<std::pair<float, float>>& shifts, const std::vector<float>& errs)
-    : shifts(shifts), errs(errs), avgShift(getShiftAvg(shifts)), stdShift(getShiftStd(shifts)), avgErr(getAvgErr(errs)), ncc(getNCC(shifts)) {}
+        : shifts(shifts), errs(errs), avgShift(getShiftAvg(shifts)), stdShift(getShiftStd(shifts)),
+          avgErr(getAvgErr(errs)), ncc(getNCC(shifts)) {}
 
     static std::pair<float, float> getShiftAvg(const std::vector<std::pair<float, float>>& shifts) {
       if (shifts.empty()) {
@@ -455,10 +458,13 @@ struct RoI {
 };
 
 struct MixedFrame {
+  static int numMixedFrames;
+  const int mixedFrameIndex;
   cv::Mat packedMat;
   std::set<RoI*> packedRoIs;
 
-  MixedFrame(std::set<RoI*> packedRoIs, int mixedFrameSize) : packedRoIs(packedRoIs) {
+  MixedFrame(std::set<RoI*> packedRoIs, int mixedFrameSize)
+      : packedRoIs(packedRoIs), mixedFrameIndex(numMixedFrames++) {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
     for (RoI* roi : packedRoIs) {
       assert(roi->isPacked());

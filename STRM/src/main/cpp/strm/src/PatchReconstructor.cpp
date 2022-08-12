@@ -83,8 +83,9 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
     frame->reconstructStartTime = reconstructStartTime;
     frame->reconstructEndTime = reconstructEndTime;
   }
-  LOGD("PatchReconstructor::assignBoxesToFrame(%lu, %lu) took %lld us",
-       packedRoIs.size(), results.size(), reconstructEndTime - reconstructStartTime);
+  LOGD("%-25s took %-6lld us for             mixed %-4d // %4lu packedRoIs %4lu boxes",
+       "PR::assignBoxesToFrame", reconstructEndTime - reconstructStartTime,
+       mixedFrame.mixedFrameIndex, packedFrames.size(), results.size());
 }
 
 void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,

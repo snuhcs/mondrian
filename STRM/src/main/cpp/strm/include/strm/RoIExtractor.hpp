@@ -25,9 +25,11 @@ class RoIExtractor {
 
   void notify();
 
-  void preprocess(Frame* frame) const;
-
   std::map<std::string, SortedFrames> getExtractedFrames();
+
+  const cv::Size& getTargetSize() const {
+    return mTargetSize;
+  }
 
  private:
   void work();
@@ -63,7 +65,7 @@ class RoIExtractor {
 
   std::mutex mtx;
   std::condition_variable cv;
-  std::map<std::string, std::list<Frame*>> mFramesForPD;
+  std::list<Frame*> mFramesForPD;
   std::map<std::string, std::list<Frame*>> mFramesForOF;
   std::map<std::string, SortedFrames> mOFProcessingStartedFrames;
 };

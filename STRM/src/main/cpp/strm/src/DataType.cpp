@@ -160,6 +160,10 @@ bool Frame::readyForOFExtraction() const {
   }
 }
 
+std::string Frame::toShortKey(const std::string& key) {
+  return key.substr(key.size() - 1, 1);
+}
+
 std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& frames) {
   std::set<Frame*> lastFrames;
   for (auto it : frames) {
@@ -172,22 +176,25 @@ std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& fra
 
 std::string toString(const std::map<std::string, SortedFrames>& frames) {
   std::stringstream ss;
-  for (const auto&[aStreamKey, aStreamFrames] : frames) {
-    std::string shortKey = aStreamKey.substr(aStreamKey.find_last_of('.') - 1, 1);
-    ss << shortKey << ": ";
-    if (aStreamFrames.empty()) {
-      ss << "EMPTY, ";
+  for (auto it = frames.begin(); it != frames.end(); it++) {
+    std::string shortKey = Frame::toShortKey(it->first);
+    ss << "video " << shortKey << ": ";
+    if (it->first.empty()) {
+      ss << "EMPTY";
     } else {
-      Frame* firstFrame = *aStreamFrames.begin();
-      Frame* lastFrame = *aStreamFrames.rbegin();
-      ss << firstFrame->frameIndex << " ~ " << lastFrame->frameIndex << ", ";
+      Frame* firstFrame = *(it->second.begin());
+      Frame* lastFrame = *(it->second.rbegin());
+      ss << firstFrame->frameIndex << " ~ " << lastFrame->frameIndex;
+    }
+    if (it != std::prev(frames.end())) {
+      ss << ", ";
     }
   }
   return ss.str();
 }
 
 FrameBuffer::FrameBuffer(const std::string& key, int capacity)
-    : key(key), shortKey(key.substr(key.find_last_of('.') - 1, 1)), capacity(capacity), count(0) {
+    : key(key), shortKey(Frame::toShortKey(key)), capacity(capacity), count(0) {
   frames.resize(capacity);
 }
 
@@ -203,7 +210,8 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
   }
   Frame* currFrame = frames[frameIndex % capacity].get();
   lock.unlock();
-  LOGD("FrameBuffer%s::enqueue  (%d)", shortKey.c_str(), frameIndex);
+  LOGD("%-25s                for video %-5s frame %-4d",
+       "FrameBuffer::enqueue", shortKey.c_str(), frameIndex);
   return currFrame;
 }
 
@@ -217,7 +225,10 @@ void FrameBuffer::freeImage(const std::vector<int>& frameIndices, Logger* logger
   }
   lock.unlock();
   cv.notify_all();
-  LOGD("FrameBuffer%s::freeImage(%lu)", shortKey.c_str(), frameIndices.size());
+  LOGD("%-25s                for video %-5s frame %-4d ~ %-4d",
+       "FrameBuffer::freeImage", shortKey.c_str(), frameIndices.front(), frameIndices.back());
 }
+
+int MixedFrame::numMixedFrames = 0;
 
 } // namespace rm
