@@ -13,8 +13,9 @@ namespace rm {
 const cv::TermCriteria RoIExtractor::CRITERIA = cv::TermCriteria(
     cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
 
-RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run)
+RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, int maxQueueSize)
     : mConfig(config),
+      mMaxQueueSize(maxQueueSize),
       mTargetSize(cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
       mbStop(false) {
   if (run) {
@@ -35,6 +36,7 @@ RoIExtractor::~RoIExtractor() {
 
 void RoIExtractor::enqueue(Frame* frame) {
   std::unique_lock<std::mutex> lock(mtx);
+  cv.wait(lock, [this]() { return mFramesForPD.size() < mMaxQueueSize; });
   mFramesForPD.push_back(frame);
   int numPDs = (int) mFramesForPD.size();
   int numOFs = std::accumulate(mFramesForOF.begin(), mFramesForOF.end(), 0,

@@ -17,7 +17,7 @@ namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, bool run);
+  RoIExtractor(const RoIExtractorConfig& config, bool run, int maxQueueSize);
 
   ~RoIExtractor();
 
@@ -65,6 +65,7 @@ class RoIExtractor {
 
   std::mutex mtx;
   std::condition_variable cv;
+  const int mMaxQueueSize;
   std::list<Frame*> mFramesForPD;
   std::map<std::string, std::list<Frame*>> mFramesForOF;
   std::map<std::string, SortedFrames> mOFProcessingStartedFrames;

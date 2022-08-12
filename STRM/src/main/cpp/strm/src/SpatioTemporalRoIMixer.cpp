@@ -17,7 +17,9 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mInferenceEngine(inferenceEngine),
       mNumSourceVideos(numSourceVideo),
       mInputSizes(inferenceEngine->getInputSizes()),
-      mRoIExtractor(new RoIExtractor(config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0)),
+      mRoIExtractor(new RoIExtractor(
+          config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0,
+          config.INTERPOLATION ? INT_MAX / 2 : config.patchMixerConfig.NUM_CANDIDATE_FRAMES)),
       mRoIResizer(new RoIResizer(config.roiResizerConfig)),
       mPatchMixer(new PatchMixer(config.patchMixerConfig)),
       mPatchReconstructor(
