@@ -10,20 +10,20 @@ namespace rm {
 
 class Worker {
  public:
-  Worker(CustomInferenceEngine* engine, Classifier* classifier);
+  Worker(CustomInferenceEngine* engine, std::map<int, Classifier*> classifierMap);
 
   ~Worker() {
     isClosed.store(true);
     thread.join();
   }
 
-  long long getInferenceTimeMs();
+  long long getInferenceTimeMs(int inputSize);
 
  private:
   void Work();
 
   CustomInferenceEngine* engine;
-  Classifier* classifier;
+  std::map<int, Classifier*> classifierMap;
 
   std::atomic_bool isClosed;
   std::thread thread;

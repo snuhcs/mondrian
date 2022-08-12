@@ -4,8 +4,8 @@
 
 namespace rm {
 
-Worker::Worker(CustomInferenceEngine* engine, Classifier* cls)
-    : engine(engine), classifier(cls), isClosed(false) {
+Worker::Worker(CustomInferenceEngine* engine, std::map<int, Classifier*> classifierMap)
+    : engine(engine), classifierMap(std::move(classifierMap)), isClosed(false) {
   thread = std::thread([this]() {
     while (!isClosed.load()) {
       Work();
@@ -14,16 +14,19 @@ Worker::Worker(CustomInferenceEngine* engine, Classifier* cls)
 }
 
 void Worker::Work() {
-  std::tuple<int, const cv::Mat> input = engine->getInput();
+  auto input = engine->getInput();
   int handle = std::get<0>(input);
   const cv::Mat mat = std::get<1>(input);
-  std::vector<BoundingBox> boxes = classifier->recognizeImage(mat);
+  const int resizeTarget = std::get<2>(input);
+  assert(classifierMap.find(resizeTarget) != classifierMap.end());
+  std::vector<BoundingBox> boxes = classifierMap[resizeTarget]->recognizeImage(mat);
   engine->drawInferenceResult(mat, boxes);
   engine->enqueueResults(handle, boxes);
 }
 
-long long Worker::getInferenceTimeMs() {
-  return classifier->getInferenceTimeMs();
+long long Worker::getInferenceTimeMs(int inputSize) {
+  assert(classifierMap.find(inputSize) != classifierMap.end());
+  return classifierMap[inputSize]->getInferenceTimeMs();
 }
 
 } // namespace rm
