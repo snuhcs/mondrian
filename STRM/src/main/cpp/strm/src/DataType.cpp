@@ -123,6 +123,15 @@ void Frame::filterPDRoIs(float threshold) {
     }
     it++;
   }
+
+  for (auto& cRoI: childRoIs) {
+    if (cRoI->type == RoI::PD) {
+      assert(cRoI->id == UNASSIGNED_ID);
+      cRoI->id = RoI::getNewIds(1).first;
+    } else {
+      assert(cRoI->id != UNASSIGNED_ID);
+    }
+  }
 }
 
 bool Frame::isReadyToMarry(int mixedFrameIndex) const {
