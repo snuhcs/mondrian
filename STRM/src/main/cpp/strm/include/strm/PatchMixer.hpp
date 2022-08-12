@@ -21,14 +21,14 @@ class PatchMixer {
   PatchMixer(const PatchMixerConfig& config);
 
   std::vector<RoI*> prepareRoIs(std::map<std::string, SortedFrames>& frames,
-                                Frame* fullFrameTarget, RoIResizer* roIResizer, int maxRoISize,
+                                Frame* fullFrameTarget, RoIResizer* roiResizer, int maxRoISize,
                                 bool probe, int numProbeSteps, int probeStepSize) const;
 
   std::vector<MixedFrame> packRoIs(std::vector<RoI*>& candidateRoIs, int mixedFrameSize,
                                    int maxNumMixedFrames) const;
 
  private:
-  static void resizeRoIs(std::map<std::string, SortedFrames>& frames, RoIResizer* roiResizer);
+  static void resizeRoIs(std::map <std::string, SortedFrames>& frames, RoIResizer* roiResizer);
 
   static void initParentRoIs(std::map<std::string, SortedFrames>& frames);
 
