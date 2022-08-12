@@ -74,6 +74,9 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
 
 PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   PatchMixerConfig config;
+  if (!json["num_candidate_frames"].isNull()) {
+    config.NUM_CANDIDATE_FRAMES = json["num_candidate_frames"].asInt();
+  }
   if (!json["merge"].isNull()) {
     config.MERGE = json["merge"].asBool();
   }
@@ -128,6 +131,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   }
   if (!json["log_roi"].isNull()) {
     config.LOG_ROI = json["log_roi"].asBool();
+  }
+  if (!json["interpolation"].isNull()) {
+    config.INTERPOLATION = json["interpolation"].asBool();
   }
   if (!json["roi_wise_inference"].isNull()) {
     config.ROI_WISE_INFERENCE = json["roi_wise_inference"].asBool();

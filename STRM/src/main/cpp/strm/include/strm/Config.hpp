@@ -41,6 +41,8 @@ struct RoIResizerConfig {
 };
 
 struct PatchMixerConfig {
+  int NUM_CANDIDATE_FRAMES = 200; // valid when INTERPOLATION == false
+
   // Merge config
   bool MERGE = true;
   float MERGE_THRESHOLD = 0.5;
@@ -62,6 +64,7 @@ struct PatchReconstructorConfig {
 struct STRMConfig {
   bool LOG_EXECUTION = false;
   bool LOG_ROI = false;
+  bool INTERPOLATION = false;
   bool ROI_WISE_INFERENCE = false;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int BUFFER_SIZE = 1000;

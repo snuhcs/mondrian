@@ -25,6 +25,7 @@
     "log_internal": true,
     "log_execution": false,
     "log_roi": false,
+    "interpolation": false,
     "roi_wise_inference": false,
     "full_frame_interval": 1,
     "buffer_size": 500,
@@ -51,6 +52,7 @@
         "relative_confidence_threshold": 0.1
     },
     "patch_mixer": {
+        "num_candidate_frames": 200,
         "merge": true,
         "merge_threshold": 0.5,
         "n_way_mixing": true,
