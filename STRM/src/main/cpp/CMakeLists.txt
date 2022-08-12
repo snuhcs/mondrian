@@ -29,7 +29,6 @@ add_library(
         SHARED
         strm/src/Config.cpp
         strm/src/DataType.cpp
-        strm/src/DecisionTree.cpp
         strm/src/Interpolator.cpp
         strm/src/Logger.cpp
         strm/src/PatchMixer.cpp
@@ -40,6 +39,9 @@ add_library(
         strm/src/Test.cpp
         strm/src/Time.cpp
         strm/src/Utils.cpp
+        strm/src/tree/MTA.cpp
+        strm/src/tree/VIRAT.cpp
+        strm/src/tree/YouTube.cpp
         strm/src/impl/CustomInferenceEngine.cpp
         strm/src/impl/ImplConfig.cpp
         strm/src/impl/Worker.cpp

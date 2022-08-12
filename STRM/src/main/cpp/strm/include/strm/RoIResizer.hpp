@@ -6,14 +6,15 @@
 
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
+#include "strm/tree/VIRAT.hpp"
+#include "strm/tree/MTA.hpp"
+#include "strm/tree/YouTube.hpp"
 
 namespace rm {
 
 class RoIResizer {
  public:
   RoIResizer(const RoIResizerConfig& config);
-
-  float getStaticTargetSize() const;
 
   float getTargetSize(const idType id, const RoI::Features& features);
 
@@ -34,13 +35,22 @@ class RoIResizer {
  private:
   float getSmoothedTargetSize(const idType id, const RoI::Features& features);
 
-  static float getSizeWithFeature(const RoI::Features& features);
+  float getSizeWithFeature(const RoI::Features& features) const;
 
   bool isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const;
 
   static float getOverlap(Rect& targetRect, Rect& baseRect);
 
+  static const std::map<std::string, std::function<float(
+      float, float, float, float, float, float,
+      float, float, float, float, float, float)>> candidatePredictors;
+  static const std::map<std::string, std::vector<float>> candidateResizeTargets;
+
   const RoIResizerConfig mConfig;
+  const std::function<float(
+      float, float, float, float, float, float,
+      float, float, float, float, float, float)> mPredictor;
+  const std::vector<float> mResizeTargets;
 
   // Save prev prediction to smooth the predicted size
   std::map<idType, float> prevTargetSizeTable;
