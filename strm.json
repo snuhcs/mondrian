@@ -5,6 +5,10 @@
         {
             "path": "/data/local/tmp/video/MTA/test_cam_3_1000_1450.mp4",
             "fps": 10
+        },
+        {
+            "path": "/data/local/tmp/video/MTA/test_cam_3_1000_1450.mp4",
+            "fps": 10
         }
     ],
     "inference_engine": {
@@ -19,6 +23,8 @@
         ]
     },
     "log_internal": true,
+    "log_execution": false,
+    "log_roi": false,
     "roi_wise_inference": false,
     "full_frame_interval": 1,
     "buffer_size": 500,
