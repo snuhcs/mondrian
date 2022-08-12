@@ -167,6 +167,8 @@ struct Frame {
 
   bool isReadyToMarry(int mixedFrameIndex) const;
 
+  bool readyForPDExtraction() const;
+
   bool readyForOFExtraction() const;
 };
 

@@ -22,7 +22,8 @@ class PatchMixer {
 
   std::vector<RoI*> prepareRoIs(std::map<std::string, SortedFrames>& frames,
                                 Frame* fullFrameTarget, RoIResizer* roiResizer, int maxRoISize,
-                                bool probe, int numProbeSteps, int probeStepSize) const;
+                                bool probe, int numProbeSteps, int probeStepSize,
+                                bool roiWiseInference) const;
 
   std::vector<MixedFrame> packRoIs(std::vector<RoI*>& candidateRoIs, int mixedFrameSize,
                                    int maxNumMixedFrames) const;

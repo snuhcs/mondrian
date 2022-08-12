@@ -148,6 +148,10 @@ bool Frame::isReadyToMarry(int mixedFrameIndex) const {
   return atLeastOneIndexIsSame;
 }
 
+bool Frame::readyForPDExtraction() const {
+  return prevFrame->preProcessedMat.channels() == 1;
+}
+
 bool Frame::readyForOFExtraction() const {
   if (prevFrame->useInferenceResultForOF) {
     return prevFrame->isBoxesReady;

@@ -14,9 +14,9 @@ PatchMixer::PatchMixer(const PatchMixerConfig& config)
 std::vector<RoI*> PatchMixer::prepareRoIs(std::map<std::string, SortedFrames>& frames,
                                           Frame* fullFrameTarget, RoIResizer* roiResizer,
                                           int maxRoISize, bool probe, int numProbeSteps,
-                                          int probeStepSize) const {
+                                          int probeStepSize, bool roiWiseInference) const {
   time_us resizeStartTime = NowMicros();
-  if (!mConfig.EMULATED_BATCH) {
+  if (!mConfig.EMULATED_BATCH && !roiWiseInference) {
     resizeRoIs(frames, roiResizer);
   }
   time_us resizeEndTime = NowMicros();
@@ -40,7 +40,7 @@ std::vector<RoI*> PatchMixer::prepareRoIs(std::map<std::string, SortedFrames>& f
     }
   }
 
-  if (probe) {
+  if (probe && !mConfig.EMULATED_BATCH) {
     addProbeRoIs(frames, fullFrameTarget, numProbeSteps, probeStepSize);
   }
 
@@ -259,7 +259,7 @@ std::vector<MixedFrame> PatchMixer::packRoIs(
               freeRect.left + (batchedRoISize - resizedWidth) / 2,
               freeRect.top + (batchedRoISize - resizedHeight) / 2);
         } else {
-          assert(pRoI->targetSize == pRoI->maxEdgeLength);
+          pRoI->targetSize = pRoI->maxEdgeLength;
           pRoI->packedLocation = std::make_pair(
               freeRect.left + (batchedRoISize - width) / 2,
               freeRect.top + (batchedRoISize - height) / 2);

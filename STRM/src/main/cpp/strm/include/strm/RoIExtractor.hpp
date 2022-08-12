@@ -63,7 +63,7 @@ class RoIExtractor {
 
   std::mutex mtx;
   std::condition_variable cv;
-  std::list<Frame*> mFramesForPD;
+  std::map<std::string, std::list<Frame*>> mFramesForPD;
   std::map<std::string, std::list<Frame*>> mFramesForOF;
   std::map<std::string, SortedFrames> mOFProcessingStartedFrames;
 };
