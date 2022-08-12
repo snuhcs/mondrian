@@ -56,7 +56,7 @@ float RoIResizer::getSizeWithFeature(const RoI::Features& features) const {
   float avg = avgX * avgX + avgY * avgY;
   float std = stdX * stdX + stdY * stdY;
   return mResizeTargets[(int) mPredictor(
-      (float) features.width, (float) features.height, (float) features.label, features.xyRatio,
+      features.width, features.height, (float) features.label, features.xyRatio,
       avgX, avgY, avg, stdX, stdY, std, features.ofFeatures.avgErr, features.ofFeatures.ncc)];
 }
 
@@ -99,8 +99,8 @@ bool RoIResizer::isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const {
 }
 
 float RoIResizer::getOverlap(Rect& targetRect, Rect& baseRect) {
-  int intersection = targetRect.intersection(baseRect);
-  float overlapRatio = (float) intersection / (float) (baseRect.area());
+  float intersection = targetRect.intersection(baseRect);
+  float overlapRatio = intersection / (baseRect.area());
   return overlapRatio;
 }
 

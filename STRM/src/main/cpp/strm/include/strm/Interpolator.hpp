@@ -20,7 +20,7 @@ class Interpolator {
 
   static std::pair<float, float> sumMotionVectors(std::vector<RoI*> childRoIs, int start, int end);
 
-  static std::pair<int, int> getBbxShift(std::vector<RoI*> childRoIs, int start, int end);
+  static std::pair<float, float> getBbxShift(std::vector<RoI*> childRoIs, int start, int end);
 
   static void extrapolateLeft(std::vector<RoI*> childRoIs, int idx);
 
@@ -29,7 +29,7 @@ class Interpolator {
   static void interpolateBetween(std::vector<RoI*> childRoIs, int leftIdx, int rightIdx);
 
   static void addBoxWithPrevInfo(RoI* currRoI, const BoundingBox* prevBox,
-                                 const std::pair<int, int>& newCenter);
+                                 const std::pair<float, float>& newCenter);
 };
 
 } // namespace rm

@@ -6,6 +6,8 @@
 #include "strm/impl/models/TfLiteYoloV4Classifier.hpp"
 #include "strm/impl/models/TfLiteYoloV5Classifier.hpp"
 
+#include <cmath>
+
 namespace rm {
 
 CustomInferenceEngine::CustomInferenceEngine(
@@ -102,8 +104,8 @@ void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
     const rm::BoundingBox& b = boxes.at(i);
     jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
                                  b.id,
-                                 b.location.left, b.location.top, b.location.right,
-                                 b.location.bottom,
+                                 int(std::round(b.location.left)), int(std::round(b.location.top)), int(std::round(b.location.right)),
+                                                                                                     int(std::round(b.location.bottom)),
                                  b.confidence, b.label, int(b.origin), (b.srcRoI == nullptr));
     env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
   }

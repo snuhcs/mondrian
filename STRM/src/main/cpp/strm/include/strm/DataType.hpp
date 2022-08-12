@@ -25,45 +25,45 @@ extern const idType MERGED_ROI_ID;
 struct RoI;
 
 struct Rect {
-  int left;
-  int top;
-  int right;
-  int bottom;
+  float left;
+  float top;
+  float right;
+  float bottom;
 
   Rect() {}
 
-  Rect(const int left, const int top, const int right, const int bottom)
+  Rect(const float left, const float top, const float right, const float bottom)
       : left(left), top(top), right(right), bottom(bottom) {};
 
   Rect(const Rect& r)
       : left(r.left), top(r.top), right(r.right), bottom(r.bottom) {};
 
-  Rect(const std::pair<int, int> center, const int width, const int height) {
+  Rect(const std::pair<float, float> center, const float width, const float height) {
     left = center.first - width / 2;
     right = center.first + width / 2;
     top = center.second - height / 2;
     bottom = center.second + height / 2;
   }
 
-  int width() const {
+  float width() const {
     return right - left;
   }
 
-  int height() const {
+  float height() const {
     return bottom - top;
   }
 
-  int area() const {
+  float area() const {
     return width() * height();
   }
 
-  std::pair<int, int> center() const {
+  std::pair<float, float> center() const {
     return std::make_pair((right + left) / 2, (bottom + top) / 2);
   }
 
-  int intersection(const Rect& other) const {
-    int width = std::min(right, other.right) - std::max(left, other.left);
-    int height = std::min(bottom, other.bottom) - std::max(top, other.top);
+  float intersection(const Rect& other) const {
+    float width = std::min(right, other.right) - std::max(left, other.left);
+    float height = std::min(bottom, other.bottom) - std::max(top, other.top);
     if (width <= 0 || height <= 0) {
       return 0;
     } else {
@@ -72,8 +72,8 @@ struct Rect {
   }
 
   float iou(const Rect& other) const {
-    int inter = intersection(other);
-    return (float) inter / (area() + other.area() - inter);
+    float inter = intersection(other);
+    return inter / (area() + other.area() - inter);
   }
 };
 
@@ -112,8 +112,8 @@ struct Frame {
   Frame* nextFrame;
   cv::Mat preProcessedMat;
 
-  const int width;
-  const int height;
+  const float width;
+  const float height;
 
   bool useInferenceResultForOF;
 
@@ -159,9 +159,9 @@ struct Frame {
 
   void initParentRoIs();
 
-  void mergeRoIs(float mergeThreshold, int maxSize);
+  void mergeRoIs(float mergeThreshold, float maxSize);
 
-  void addProbeRoIs(int numProbeSteps, int probeStepSize);
+  void addProbeRoIs(int numProbeSteps, float probeStepSize);
 
   void filterPDRoIs(float threshold);
 
@@ -291,8 +291,8 @@ struct RoI {
   };
 
   struct Features {
-    int width;
-    int height;
+    float width;
+    float height;
     int label;
     Type type;
     float xyRatio;
@@ -316,10 +316,10 @@ struct RoI {
   std::vector<RoI*> childRoIs;
   RoI* parentRoI;
 
-  int maxEdgeLength;
-  int targetSize;
-  std::pair<int, int> packedLocation;
-  static const std::pair<int, int> NOT_PACKED;
+  float maxEdgeLength;
+  float targetSize;
+  std::pair<float, float> packedLocation;
+  static const std::pair<float, float> NOT_PACKED;
 
   int packedMixedFrameIndex;
   int packedAbsMixedFrameIndex;
@@ -336,13 +336,13 @@ struct RoI {
       const Origin origin,
       const int label,
       const OFFeatures ofFeatures,
-      int roiPadding,
+      float roiPadding,
       bool isProbingRoI)
       : prevRoI(prevRoI), id(id), frame(frame), origLoc(origLoc), paddedLoc(
-      std::max(0, origLoc.left - roiPadding),
-      std::max(0, origLoc.top - roiPadding),
-      std::min(frame->mat.cols, origLoc.right + roiPadding),
-      std::min(frame->mat.rows, origLoc.bottom + roiPadding)),
+      std::max(0.0f, origLoc.left - roiPadding),
+      std::max(0.0f, origLoc.top - roiPadding),
+      std::min(float(frame->mat.cols), origLoc.right + roiPadding),
+      std::min(float(frame->mat.rows), origLoc.bottom + roiPadding)),
         type(type), origin(origin), label(label), features{
           paddedLoc.width(),
           paddedLoc.height(),
@@ -364,10 +364,10 @@ struct RoI {
 
   static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
     assert(pRoI0->frame == pRoI1->frame);
-    int newLeft = std::min(pRoI0->paddedLoc.left, pRoI1->paddedLoc.left);
-    int newTop = std::min(pRoI0->paddedLoc.top, pRoI1->paddedLoc.top);
-    int newRight = std::max(pRoI0->paddedLoc.right, pRoI1->paddedLoc.right);
-    int newBottom = std::max(pRoI0->paddedLoc.bottom, pRoI1->paddedLoc.bottom);
+    float newLeft = std::min(pRoI0->paddedLoc.left, pRoI1->paddedLoc.left);
+    float newTop = std::min(pRoI0->paddedLoc.top, pRoI1->paddedLoc.top);
+    float newRight = std::max(pRoI0->paddedLoc.right, pRoI1->paddedLoc.right);
+    float newBottom = std::max(pRoI0->paddedLoc.bottom, pRoI1->paddedLoc.bottom);
     RoI::Type roiType = pRoI0->type != RoI::Type::PD || pRoI1->type != RoI::Type::PD
                         ? RoI::Type::OF
                         : RoI::Type::PD;
@@ -417,16 +417,16 @@ struct RoI {
     return childRoIs.size() > 1;
   }
 
-  int getPaddedArea() const {
+  float getPaddedArea() const {
     return paddedLoc.area();
   }
 
-  int getResizedArea() const {
-    const std::pair<int, int> resizedWH = getResizedWidthHeight();
+  float getResizedArea() const {
+    const std::pair<float, float> resizedWH = getResizedWidthHeight();
     return resizedWH.first * resizedWH.second;
   }
 
-  std::pair<int, int> getResizedWidthHeight() const {
+  std::pair<float, float> getResizedWidthHeight() const {
     if (maxEdgeLength <= targetSize) {
       return std::make_pair(paddedLoc.width(), paddedLoc.height());
     }
@@ -448,7 +448,7 @@ struct RoI {
   }
 
   cv::Mat getResizedMat() const {
-    std::pair<int, int> wh = getResizedWidthHeight();
+    std::pair<float, float> wh = getResizedWidthHeight();
     cv::Mat resizedMat;
     cv::resize(getPaddedMat(), resizedMat, cv::Size(wh.first, wh.second));
     return resizedMat;
@@ -470,7 +470,7 @@ struct MixedFrame {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
     for (RoI* roi : packedRoIs) {
       assert(roi->isPacked());
-      std::pair<int, int> wh = roi->getResizedWidthHeight();
+      std::pair<float, float> wh = roi->getResizedWidthHeight();
       roi->getResizedMat().copyTo(
           packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
                              wh.first, wh.second)));

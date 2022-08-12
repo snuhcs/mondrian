@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "strm/Interpolator.hpp"
+#include <cmath>
 
 namespace rm {
 
@@ -257,16 +258,16 @@ void SpatioTemporalRoIMixer::mixedInference(std::vector<RoI*>& candidateRoIs, in
 
 void SpatioTemporalRoIMixer::roiWiseInference(std::vector<RoI*>& candidateRoIs, int frameSize,
                                               int maxNumInferences) {
-  std::vector<std::pair<int, int>> packedLocations;
+  std::vector<std::pair<float, float>> packedLocations;
   std::vector<int> handles;
   for (int i = 0; i < std::min(maxNumInferences, (int) candidateRoIs.size()); i++) {
     RoI* pRoI = candidateRoIs[i];
     cv::Mat input = cv::Mat::zeros(frameSize, frameSize, CV_8UC4);
-    pRoI->targetSize = std::min(pRoI->maxEdgeLength, frameSize);
+    pRoI->targetSize = std::min(pRoI->maxEdgeLength, float(frameSize));
     cv::Mat roi = pRoI->getResizedMat();
-    int x = (frameSize - roi.cols) / 2;
-    int y = (frameSize - roi.rows) / 2;
-    roi.copyTo(input(cv::Rect(x, y, roi.cols, roi.rows)));
+    float x = float(frameSize - roi.cols) / 2;
+    float y = float(frameSize - roi.rows) / 2;
+    roi.copyTo(input(cv::Rect(int(std::round(x)), int(std::round(y)), roi.cols, roi.rows)));
     packedLocations.emplace_back(x, y);
     handles.push_back(mInferenceEngine->enqueue(input, frameSize));
   }
@@ -432,8 +433,8 @@ void SpatioTemporalRoIMixer::drawObjectDetectionResult(const cv::Mat& mat,
     const rm::BoundingBox& b = boxes.at(i);
     jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
                                  b.id,
-                                 b.location.left, b.location.top, b.location.right,
-                                 b.location.bottom,
+                                 int(std::round(b.location.left)), int(std::round(b.location.top)), int(std::round(b.location.right)),
+                                 int(std::round(b.location.bottom)),
                                  b.confidence, b.label, int(b.origin), (b.srcRoI == nullptr));
     env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
   }

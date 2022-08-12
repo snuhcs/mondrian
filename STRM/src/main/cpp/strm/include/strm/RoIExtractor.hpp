@@ -49,7 +49,7 @@ class RoIExtractor {
 
   void getPixelDiffRoIs(
       const Frame* prevFrame, Frame* currFrame, const cv::Size& targetSize,
-      const int mixRoIArea, std::vector<std::unique_ptr<RoI>>& outChildRoIs) const;
+      const float mixRoIArea, std::vector<std::unique_ptr<RoI>>& outChildRoIs) const;
 
   static cv::Mat calculateDiffAndThreshold(
       const cv::Mat& prevMat, const cv::Mat& currMat);

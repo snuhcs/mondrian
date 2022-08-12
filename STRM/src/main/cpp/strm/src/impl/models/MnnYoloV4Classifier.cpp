@@ -112,14 +112,14 @@ const float* MnnYoloV4Classifier::getClassConfidences(const int i) const {
 }
 
 Rect MnnYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
-                                         int imageWidth, int imageHeight) {
+                                         float imageWidth, float imageHeight) {
   float widthRatio = (float) imageWidth / (float) inputSize.width;
   float heightRatio = (float) imageHeight / (float) inputSize.height;
   return Rect(
-      std::max(0, (int) ((x - w / 2) * widthRatio)),
-      std::max(0, (int) ((y - h / 2) * heightRatio)),
-      std::min(imageWidth, (int) ((x + w / 2) * widthRatio)),
-      std::min(imageHeight, (int) ((y + h / 2) * heightRatio)));
+      std::max(0.0f, ((x - w / 2) * widthRatio)),
+      std::max(0.0f, ((y - h / 2) * heightRatio)),
+      std::min(imageWidth, ((x + w / 2) * widthRatio)),
+      std::min(imageHeight, ((y + h / 2) * heightRatio)));
 }
 
 long long int MnnYoloV4Classifier::profileInferenceTime() {

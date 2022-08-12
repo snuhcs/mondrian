@@ -34,7 +34,7 @@ class Classifier {
   virtual const float* getClassConfidences(const int i) const = 0;
 
   virtual Rect reconstructBox(float x, float y, float w, float h,
-                              int imageWidth, int imageHeight) = 0;
+                              float imageWidth, float imageHeight) = 0;
 
   const int numLabels;
   const cv::Size inputSize; // width, height

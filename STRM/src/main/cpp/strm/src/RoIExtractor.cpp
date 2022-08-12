@@ -178,10 +178,10 @@ void RoIExtractor::processOF(Frame* currFrame) {
     for (const std::unique_ptr<BoundingBox>& box : prevFrame->boxes) {
       if (box->confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
         reliablePrevBoxes.emplace_back(box->id, Rect(
-            std::max(0, box->location.left),
-            std::max(0, box->location.top),
-            std::min(currFrame->width, box->location.right),
-            std::min(currFrame->height, box->location.bottom)),
+            std::max(0.0f, box->location.left),
+            std::max(0.0f, box->location.top),
+            std::min(float(currFrame->width), box->location.right),
+            std::min(float(currFrame->height), box->location.bottom)),
                                        box->confidence, box->label, fromBB);
       }
     }
@@ -206,8 +206,8 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
                                       const std::vector<BoundingBox>& boundingBoxes,
                                       const cv::Size& targetSize,
                                       std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
-  int width = currFrame->mat.cols;
-  int height = currFrame->mat.rows;
+  float width = float(currFrame->mat.cols);
+  float height = float(currFrame->mat.rows);
 
   std::vector<Rect> boundingRects;
   boundingRects.reserve(boundingBoxes.size());
@@ -223,12 +223,12 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       const BoundingBox& box = boundingBoxes[boxIndex];
       const Rect& loc = box.location;
       const RoI::OFFeatures& of = ofFeatures[boxIndex];
-      int x = (int) of.avgShift.first;
-      int y = (int) of.avgShift.second;
-      int newLeft = std::max(0, loc.left + x);
-      int newTop = std::max(0, loc.top + y);
-      int newRight = std::min(width, loc.right + x);
-      int newBottom = std::min(height, loc.bottom + y);
+      float x = of.avgShift.first;
+      float y = of.avgShift.second;
+      float newLeft = std::max(0.0f, loc.left + x);
+      float newTop = std::max(0.0f, loc.top + y);
+      float newRight = std::min(float(width), loc.right + x);
+      float newBottom = std::min(float(height), loc.bottom + y);
       if (newLeft < newRight && newTop < newBottom) {
         outChildRoIs.emplace_back(
             new RoI(box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
@@ -253,21 +253,21 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
   for (const Rect& bbx : boundingBoxes) {
     float xRatio = (float) targetSize.width / (float) prevFrame->width;
     float yRatio = (float) targetSize.height / (float) prevFrame->height;
-    int x = (int) ((float) std::min(bbx.left, bbx.right) * xRatio);
-    int y = (int) ((float) std::min(bbx.top, bbx.bottom) * yRatio);
-    int w = (int) ((float) std::abs(bbx.right - bbx.left) * xRatio);
-    int h = (int) ((float) std::abs(bbx.bottom - bbx.top) * yRatio);
-    x = std::min(std::max(0, x), prevImage.cols);
-    y = std::min(std::max(0, y), prevImage.rows);
-    w = std::min(std::max(0, w), prevImage.cols - x);
-    h = std::min(std::max(0, h), prevImage.rows - y);
+    float x = std::min(bbx.left, bbx.right) * xRatio;
+    float y = std::min(bbx.top, bbx.bottom) * yRatio;
+    float w = std::abs(bbx.right - bbx.left) * xRatio;
+    float h = std::abs(bbx.bottom - bbx.top) * yRatio;
+    x = std::min(std::max(0.0f, x), float(prevImage.cols));
+    y = std::min(std::max(0.0f, y), float(prevImage.rows));
+    w = std::min(std::max(0.0f, w), float(prevImage.cols) - x);
+    h = std::min(std::max(0.0f, h), float(prevImage.rows) - y);
 
     std::vector<cv::Point2f> points;
     cv::Rect roiBbx = cv::Rect(x, y, w, h);
     cv::goodFeaturesToTrack(prevImage(roiBbx), points, 100, 0.01, 5, cv::Mat(), 3, false, 0.03);
     for (cv::Point2f& p : points) {
-      p.x += (float) roiBbx.x;
-      p.y += (float) roiBbx.y;
+      p.x += x;
+      p.y += y;
     }
     if (points.empty()) {
       inputPoints.emplace_back(((float) bbx.left + (float) bbx.width() / 2) * xRatio,
@@ -315,7 +315,7 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
 }
 
 void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
-                                    const cv::Size& targetSize, const int mixRoIArea,
+                                    const cv::Size& targetSize, const float mixRoIArea,
                                     std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
   assert(!prevFrame->preProcessedMat.empty());
   assert(!currFrame->preProcessedMat.empty());
@@ -334,12 +334,12 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
     double approxDistance = cv::arcLength(contour, true) * 0.02;
     std::vector<cv::Point> approxCurve;
     cv::approxPolyDP(contour, approxCurve, approxDistance, true);
-    cv::Rect box = cv::boundingRect(approxCurve);
+    cv::Rect2f box = cv::boundingRect(approxCurve);
     if (box.area() >= mixRoIArea) {
-      boxes.emplace_back(box.x * currFrame->mat.cols / targetSize.width,
-                         box.y * currFrame->mat.rows / targetSize.height,
-                         (box.x + box.width) * currFrame->mat.cols / targetSize.width,
-                         (box.y + box.height) * currFrame->mat.rows / targetSize.height);
+      boxes.emplace_back(box.x * float(currFrame->mat.cols) / float(targetSize.width),
+                         box.y * float(currFrame->mat.rows) / float(targetSize.height),
+                         (box.x + box.width) * float(currFrame->mat.cols) / float(targetSize.width),
+                         (box.y + box.height) * float(currFrame->mat.rows) / float(targetSize.height));
     }
   }
 

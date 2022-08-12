@@ -21,8 +21,8 @@ class PatchMixer {
   PatchMixer(const PatchMixerConfig& config);
 
   std::vector<RoI*> prepareRoIs(std::map<std::string, SortedFrames>& frames,
-                                Frame* fullFrameTarget, RoIResizer* roiResizer, int maxRoISize,
-                                bool probe, int numProbeSteps, int probeStepSize,
+                                Frame* fullFrameTarget, RoIResizer* roiResizer, float maxRoISize,
+                                bool probe, int numProbeSteps, float probeStepSize,
                                 bool roiWiseInference) const;
 
   std::vector<MixedFrame> packRoIs(std::vector<RoI*>& candidateRoIs, int mixedFrameSize,
@@ -33,11 +33,11 @@ class PatchMixer {
 
   static void initParentRoIs(std::map<std::string, SortedFrames>& frames);
 
-  static void mergeRoIs(std::map<std::string, SortedFrames>& frames, int maxRoISize,
+  static void mergeRoIs(std::map<std::string, SortedFrames>& frames, float maxRoISize,
                         float mergeThreshold);
 
   static void addProbeRoIs(std::map<std::string, SortedFrames>& frames,
-                           const Frame* fullFrameTarget, int numProbeSteps, int probeStepSize);
+                           const Frame* fullFrameTarget, int numProbeSteps, float probeStepSize);
 
   static std::vector<RoI*> collectRoIs(std::map<std::string, SortedFrames>& frames,
                                        const Frame* fullFrameTarget);
@@ -45,9 +45,9 @@ class PatchMixer {
   static void prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
                              const Frame* fullFrameTarget);
 
-  static bool canFit(std::pair<int, int> wh, const Rect& rect);
+  static bool canFit(std::pair<float, float> wh, const Rect& rect);
 
-  static std::pair<Rect, Rect> splitFreeRect(std::pair<int, int> wh, const Rect& rect);
+  static std::pair<Rect, Rect> splitFreeRect(std::pair<float, float> wh, const Rect& rect);
 
   static const float HIGH_PRIORITY;
 
