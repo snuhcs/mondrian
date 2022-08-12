@@ -75,6 +75,20 @@ std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames() {
   return extractedFrames;
 }
 
+void RoIExtractor::reEnqueueFrames(const std::vector<Frame*>& frames) {
+  std::unique_lock<std::mutex> lock(mtx);
+  for (auto* frame : frames) {
+    frame->childRoIs.erase(std::remove_if(
+        frame->childRoIs.begin(), frame->childRoIs.end(),
+        [](std::unique_ptr<RoI>& cRoI) { return cRoI->type == RoI::OF; }), frame->childRoIs.end());
+    frame->roiExtractionStatus = OF_WAITING;
+    frame->useInferenceResultForOF = false;
+    mFramesForOF[frame->key].push_front(frame);
+  }
+  lock.unlock();
+  cv.notify_all();
+}
+
 void RoIExtractor::work() {
   /*
    *    Frame Status           Containing data structure    Frame Status
