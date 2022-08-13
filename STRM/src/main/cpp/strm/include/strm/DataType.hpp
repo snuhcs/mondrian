@@ -220,14 +220,38 @@ struct RoI {
     const std::vector<std::pair<float, float>> shifts;
     const std::vector<float> errs;
 
-    const std::pair<float, float> avgShift;
-    const std::pair<float, float> stdShift;
-    const float avgErr;
-    const float ncc;
+    std::pair<float, float> avgShift;
+    std::pair<float, float> stdShift;
+    float avgErr;
+    float ncc;
 
     OFFeatures(const std::vector<std::pair<float, float>>& shifts, const std::vector<float>& errs)
         : shifts(shifts), errs(errs), avgShift(getShiftAvg(shifts)), stdShift(getShiftStd(shifts)),
-          avgErr(getAvgErr(errs)), ncc(getNCC(shifts)) {}
+          avgErr(getAvgErr(errs)), ncc(getNCC(shifts)) {
+      if (!shifts.empty()) {
+        std::vector<std::pair<float, float>> filtered = filterShifts(shifts);
+        avgShift = getShiftAvg(filtered);
+        stdShift = getShiftStd(filtered);
+        ncc = getNCC(filtered);
+      }
+    }
+
+    static std::vector<std::pair<float, float>> filterShifts(const std::vector<std::pair<float, float>>& shifts) {
+      std::vector<float> distances;
+      for (const auto&[x, y] : shifts) {
+        distances.push_back(sqrt(pow(x, 2) + pow(y, 2)));
+      }
+      auto const q1_index = int(float(distances.size()) * 0.25);
+      std::nth_element(distances.begin(), distances.begin() + q1_index, distances.end());
+      float q1 = distances[q1_index];
+      std::vector<std::pair<float, float>> filteredShifts;
+      for (int i=0; i<distances.size(); i++) {
+        if (distances[i] > q1) {
+          filteredShifts.push_back(shifts[i]);
+        }
+      }
+      return filteredShifts;
+    }
 
     static std::pair<float, float> getShiftAvg(const std::vector<std::pair<float, float>>& shifts) {
       if (shifts.empty()) {
