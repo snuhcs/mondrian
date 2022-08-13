@@ -16,7 +16,10 @@
 
 namespace rm {
 
+class RoIExtractor;
+
 class PatchMixer {
+  friend RoIExtractor;
  public:
   PatchMixer(const PatchMixerConfig& config);
 

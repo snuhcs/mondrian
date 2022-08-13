@@ -71,9 +71,10 @@ class RoIExtractor {
   const bool mAllowInterpolation;
   const PatchMixer* mPatchMixer;
   const int mFrameSize;
+  std::mutex packMtx;
   int mNumFrames;
-  bool isPackingReady;
-  std::vector<Rect> mFreeRects;
+  bool isFullyPacked;
+  std::map<int, std::vector<Rect>> freeRectsMap;
 
   static const cv::TermCriteria CRITERIA;
   const cv::Size mTargetSize;
