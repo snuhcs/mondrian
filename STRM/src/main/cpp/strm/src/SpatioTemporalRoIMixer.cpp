@@ -1,10 +1,10 @@
 #include "strm/SpatioTemporalRoIMixer.hpp"
 
+#include <cmath>
 #include <memory>
 #include <utility>
 
 #include "strm/Interpolator.hpp"
-#include <cmath>
 
 namespace rm {
 
@@ -17,16 +17,28 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mInferenceEngine(inferenceEngine),
       mNumSourceVideos(numSourceVideo),
       mInputSizes(inferenceEngine->getInputSizes()),
+      mInferenceFrameSize(mConfig.ROI_WISE_INFERENCE ? mInputSizes.front() : mInputSizes.back()),
+      mScheduleInterval(mConfig.LATENCY_SLO_MS * 1000 / 2),
       mRoIResizer(new RoIResizer(config.roiResizerConfig)),
       mPatchMixer(new PatchMixer(config.patchMixerConfig)),
       mPatchReconstructor(
           new PatchReconstructor(config.patchReconstructorConfig, mRoIResizer.get())),
       jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
-  mRoIExtractor = std::make_unique<RoIExtractor>(config.roIExtractorConfig,
-                                                 config.FULL_FRAME_INTERVAL > 0,
-                                                 config.ALLOW_INTERPOLATION, mPatchMixer.get(),
-                                                 mRoIResizer.get(), mInputSizes.back());
-  assert(!config.ROI_WISE_INFERENCE || inferenceEngine->getInputSizes().size() >= 2);
+  assert(!config.ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
+  for (int inputSize : mInputSizes) {
+    if (inputSize != mInputSizes.back()) {
+      for (int i = 0; i < 3; i++) {
+        mInferenceEngine->getResults(mInferenceEngine->enqueue(
+            cv::Mat::zeros(inputSize, inputSize, CV_8UC4), inputSize));
+      }
+    }
+  }
+
+  mRoIExtractor = std::make_unique<RoIExtractor>(
+      config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0, config.ALLOW_INTERPOLATION,
+      mPatchMixer.get(), mRoIResizer.get(), mInferenceFrameSize,
+      getNumFrames(mScheduleInterval, mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize)));
+
   if (config.LOG_EXECUTION) {
     mLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");
     mLogger->logHeader();
@@ -68,7 +80,6 @@ void SpatioTemporalRoIMixer::work() {
 
   int scheduleID = -1;
   int fullFrameInferenceStreamIndex = 0;
-  time_us scheduleInterval = mConfig.LATENCY_SLO_MS * 1000 / 2;
   TimeLogger logger;
   logger.start();
 
@@ -78,13 +89,14 @@ void SpatioTemporalRoIMixer::work() {
     scheduleID++;
     // Wait for scheduling interval
     time_us elapsedTime = logger.getElapsedTime();
-    if (scheduleInterval > elapsedTime) {
-      std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval - elapsedTime));
+    if (mScheduleInterval > elapsedTime) {
+      std::this_thread::sleep_for(std::chrono::microseconds(mScheduleInterval - elapsedTime));
     }
 
     // Extract RoIs
     logger.start();
-    std::map<std::string, SortedFrames> frames = mRoIExtractor->getExtractedFrames();
+    std::map<std::string, SortedFrames> frames = mRoIExtractor->getExtractedFrames(
+        getNumFrames(mScheduleInterval, mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize)));
     logger.step("roi");
     LOGD("===== Schedule %d start =====", scheduleID);
     LOGD("%-25s took %-6lld us for %s",
@@ -106,9 +118,8 @@ void SpatioTemporalRoIMixer::work() {
          fullFrameTarget->frameIndex);
 
     // Prepare packing. resize and merge RoIs
-    int inferenceFrameSize = mConfig.ROI_WISE_INFERENCE ? mInputSizes.front() : mInputSizes.back();
     std::vector<RoI*> candidateRoIs = mPatchMixer->prepareRoIs(
-        frames, fullFrameTarget, mRoIResizer.get(), inferenceFrameSize, mRoIResizer->isProbing(),
+        frames, fullFrameTarget, mRoIResizer.get(), mInferenceFrameSize, mRoIResizer->isProbing(),
         mRoIResizer->getNumProbeSteps(), mRoIResizer->getProbeStepSize(),
         mConfig.ROI_WISE_INFERENCE);
     logger.step("pre");
@@ -117,14 +128,14 @@ void SpatioTemporalRoIMixer::work() {
 
     // Inference
     // TODO : handle numInferences <= 0 case
-    time_us remainingTime = scheduleInterval - logger.getDuration("pre", "start");
-    time_us inferenceTime = mInferenceEngine->getInferenceTimeMs(inferenceFrameSize) * 1000;
+    time_us remainingTime = mScheduleInterval - logger.getDuration("pre", "start");
+    time_us inferenceTime = mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize) * 1000;
     int maxNumInferences = remainingTime < inferenceTime ? 1 :
                            (int) (remainingTime / inferenceTime);
     if (mConfig.ROI_WISE_INFERENCE) {
-      roiWiseInference(candidateRoIs, inferenceFrameSize, maxNumInferences);
+      roiWiseInference(candidateRoIs, mInferenceFrameSize, maxNumInferences);
     } else {
-      mixedInference(candidateRoIs, inferenceFrameSize, maxNumInferences);
+      mixedInference(candidateRoIs, mInferenceFrameSize, maxNumInferences);
     }
     logger.step("inf");
     LOGD("%-25s took %-6lld us                            // %5lld / %-5lld = %-4d inferences",
@@ -446,6 +457,10 @@ void SpatioTemporalRoIMixer::drawObjectDetectionResult(const cv::Mat& mat,
   env->CallVoidMethod(strm, SpatioTemporalRoIMixer_drawObjectDetectionResult, (long) jMat, jBoxes);
 
   jvm->DetachCurrentThread();
+}
+
+int SpatioTemporalRoIMixer::getNumFrames(time_us scheduleInterval, time_us inferenceTime) {
+  return std::max(1, int(scheduleInterval / inferenceTime));
 }
 
 } // namespace rm

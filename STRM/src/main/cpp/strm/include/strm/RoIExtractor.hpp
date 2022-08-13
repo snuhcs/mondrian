@@ -19,7 +19,8 @@ namespace rm {
 class RoIExtractor {
  public:
   RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
-               const PatchMixer* patchMixer, RoIResizer* roiResizer, int maxRoISize);
+               const PatchMixer* patchMixer, RoIResizer* roiResizer,
+               int frameSize, int numFrames);
 
   ~RoIExtractor();
 
@@ -27,7 +28,7 @@ class RoIExtractor {
 
   void notify();
 
-  std::map<std::string, SortedFrames> getExtractedFrames();
+  std::map<std::string, SortedFrames> getExtractedFrames(int numFrames);
 
   void reEnqueueFrames(const std::vector<Frame*>& frames);
 
@@ -37,6 +38,8 @@ class RoIExtractor {
 
  private:
   void work();
+
+  void resetPack();
 
   void processPD(Frame* currFrame);
 
@@ -62,12 +65,15 @@ class RoIExtractor {
 
   const RoIExtractorConfig mConfig;
   std::vector<std::thread> mThreads;
-  const bool mAllowInterpolation;
-  const int mMaxRoISize;
-  const PatchMixer* mPatchMixer;
   RoIResizer* mRoIResizer;
-  bool isPackingReady;
   bool mbStop;
+
+  const bool mAllowInterpolation;
+  const PatchMixer* mPatchMixer;
+  const int mFrameSize;
+  int mNumFrames;
+  bool isPackingReady;
+  std::vector<Rect> mFreeRects;
 
   static const cv::TermCriteria CRITERIA;
   const cv::Size mTargetSize;

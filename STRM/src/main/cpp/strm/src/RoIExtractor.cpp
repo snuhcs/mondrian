@@ -14,11 +14,16 @@ const cv::TermCriteria RoIExtractor::CRITERIA = cv::TermCriteria(
     cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
 
 RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
-                           const PatchMixer* patchMixer, RoIResizer* roiResizer, int maxRoISize)
-    : mConfig(config), mPatchMixer(patchMixer), mRoIResizer(roiResizer), mMaxRoISize(maxRoISize),
-      mTargetSize(cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
+                           const PatchMixer* patchMixer, RoIResizer* roiResizer,
+                           int frameSize, int numFrames)
+    : mConfig(config), mPatchMixer(patchMixer), mRoIResizer(roiResizer), mFrameSize(frameSize),
+      mNumFrames(numFrames), mTargetSize(
+        cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
       mAllowInterpolation(allowInterpolation), mbStop(false), isPackingReady(false) {
   if (run) {
+    if (mAllowInterpolation) {
+      resetPack();
+    }
     mThreads.reserve(config.NUM_WORKERS);
     for (int i = 0; i < config.NUM_WORKERS; i++) {
       mThreads.emplace_back([this]() { work(); });
@@ -55,7 +60,8 @@ void RoIExtractor::notify() {
   cv.notify_all();
 }
 
-std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames() {
+std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames(int numFrames) {
+  mNumFrames = numFrames;
   std::unique_lock<std::mutex> lock(mtx);
   cv.wait(lock, [this]() { return !mAllowInterpolation || isPackingReady; });
   std::map<std::string, SortedFrames> extractedFrames = std::move(mOFProcessingStartedFrames);
@@ -88,6 +94,12 @@ void RoIExtractor::reEnqueueFrames(const std::vector<Frame*>& frames) {
   }
   lock.unlock();
   cv.notify_all();
+}
+
+void RoIExtractor::resetPack() {
+  for (int i = 0; i < mNumFrames; i++) {
+    mFreeRects.push_back({Rect(0, 0, mFrameSize, mFrameSize)});
+  }
 }
 
 void RoIExtractor::work() {
@@ -168,7 +180,7 @@ void RoIExtractor::work() {
       frame->mergeRoIStartTime = NowMicros();
       if (mConfig.MERGE) {
         frame->resetParentRoIs();
-        frame->mergeRoIs(mConfig.MERGE_THRESHOLD, (float) mMaxRoISize);
+        frame->mergeRoIs(mConfig.MERGE_THRESHOLD, (float) mFrameSize);
         testAssignedUniqueRoIID(frame->childRoIs);
         testParentChildrenIDsAndChildIDsSame(frame->childRoIs, frame->parentRoIs);
         testChildRoIsFrameRelation(frame->childRoIs);

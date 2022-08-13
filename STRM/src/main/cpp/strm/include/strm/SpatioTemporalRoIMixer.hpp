@@ -54,7 +54,10 @@ class SpatioTemporalRoIMixer {
 
   void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
+  static int getNumFrames(time_us scheduleInterval, time_us inferenceTime);
+
   const STRMConfig mConfig;
+  const time_us mScheduleInterval;
   std::thread mThread;
   bool mbStop;
 
@@ -64,6 +67,7 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<Logger> mRoILogger;
   InferenceEngine* mInferenceEngine;
   const std::vector<int> mInputSizes;
+  const int mInferenceFrameSize;
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;

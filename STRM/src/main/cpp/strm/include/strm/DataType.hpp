@@ -356,7 +356,7 @@ struct RoI {
         targetSize(maxEdgeLength), packedLocation(NOT_PACKED), isMatchTried(false),
         nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
         packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1),
-        isProbingRoI(isProbingRoI) {
+        isProbingRoI(isProbingRoI), priority(-1.0f) {
     if (prevRoI != nullptr) {
       prevRoI->nextRoI = this;
     }
