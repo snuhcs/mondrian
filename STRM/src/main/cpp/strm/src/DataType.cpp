@@ -2,6 +2,7 @@
 
 #include "strm/Log.hpp"
 #include "strm/Logger.hpp"
+#include "strm/RoIResizer.hpp"
 
 namespace rm {
 
@@ -10,10 +11,24 @@ const idType MERGED_ROI_ID = -2;
 
 const std::pair<float, float> RoI::NOT_PACKED{-1, -1};
 
-void Frame::initParentRoIs() {
+void Frame::resizeRoIs(RoIResizer* roiResizer) {
+  for (auto& cRoI : childRoIs) {
+    if (cRoI->type == RoI::Type::OF) {
+      cRoI->targetSize = std::min(cRoI->maxEdgeLength,
+                                  roiResizer->getTargetSize(cRoI->id, cRoI->features));
+    }
+  }
+  for (auto& cRoI : childRoIs) {
+    if (cRoI->type == RoI::Type::PD && cRoI->nextRoI != nullptr) {
+      cRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->nextRoI->targetSize);
+    }
+  }
+}
+
+void Frame::resetParentRoIs() {
+  parentRoIs.clear();
   assert(parentRoIs.empty());
   for (auto& cRoI : childRoIs) {
-    assert(cRoI->parentRoI == nullptr);
     assert(cRoI->childRoIs.empty());
     assert(cRoI->roisForProbing.empty());
   }
@@ -71,7 +86,7 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
     }
     parentRoIs.push_back(std::move(RoI::mergeRoIs(parentRoIs[i].get(), parentRoIs[j].get())));
     // Match child parent
-    RoI* mergedRoI = parentRoIs.rbegin()->get();
+    RoI* mergedRoI = parentRoIs.back().get();
     mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
                                 parentRoIs[i]->childRoIs.begin(), parentRoIs[i]->childRoIs.end());
     mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
@@ -146,10 +161,6 @@ bool Frame::isReadyToMarry(int mixedFrameIndex) const {
     atLeastOneIndexIsSame |= (pRoI->packedMixedFrameIndex == mixedFrameIndex);
   }
   return atLeastOneIndexIsSame;
-}
-
-bool Frame::readyForPDExtraction() const {
-  return prevFrame->preProcessedMat.channels() == 1;
 }
 
 bool Frame::readyForOFExtraction() const {

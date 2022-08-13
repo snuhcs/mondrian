@@ -25,19 +25,22 @@
     "log_internal": true,
     "log_execution": false,
     "log_roi": false,
-    "interpolation": false,
+    "allow_interpolation": false,
     "roi_wise_inference": false,
     "full_frame_interval": 1,
     "buffer_size": 500,
     "latency_slo_ms": 6000,
     "roi_extractor": {
+        "max_pd_queue_size": 200,
         "num_workers": 2,
         "extraction_resize_width": 1280,
         "extraction_resize_height": 720,
         "min_roi_area": 5000,
         "roi_padding": 10,
         "optical_flow_roi_confidence_threshold": 0.1,
-        "pd_filter_threshold": 0.5
+        "pd_filter_threshold": 0.5,
+        "merge": true,
+        "merge_threshold": 0.5
     },
     "roi_resizer": {
         "resize_margin": 0,
@@ -52,9 +55,6 @@
         "relative_confidence_threshold": 0.1
     },
     "patch_mixer": {
-        "num_candidate_frames": 200,
-        "merge": true,
-        "merge_threshold": 0.5,
         "n_way_mixing": true,
         "priority_mixing": true,
         "emulated_batch": false,

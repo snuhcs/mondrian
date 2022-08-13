@@ -10,6 +10,7 @@
 
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
+#include "strm/PatchMixer.hpp"
 #include "strm/RoIResizer.hpp"
 #include "strm/Utils.hpp"
 
@@ -17,7 +18,8 @@ namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, bool run, int maxQueueSize);
+  RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
+               const PatchMixer* patchMixer, RoIResizer* roiResizer, int maxRoISize);
 
   ~RoIExtractor();
 
@@ -60,6 +62,11 @@ class RoIExtractor {
 
   const RoIExtractorConfig mConfig;
   std::vector<std::thread> mThreads;
+  const bool mAllowInterpolation;
+  const int mMaxRoISize;
+  const PatchMixer* mPatchMixer;
+  RoIResizer* mRoIResizer;
+  bool isPackingReady;
   bool mbStop;
 
   static const cv::TermCriteria CRITERIA;
@@ -67,7 +74,6 @@ class RoIExtractor {
 
   std::mutex mtx;
   std::condition_variable cv;
-  const int mMaxQueueSize;
   std::list<Frame*> mFramesForPD;
   std::map<std::string, std::list<Frame*>> mFramesForOF;
   std::map<std::string, SortedFrames> mOFProcessingStartedFrames;

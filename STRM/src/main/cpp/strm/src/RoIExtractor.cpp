@@ -13,11 +13,11 @@ namespace rm {
 const cv::TermCriteria RoIExtractor::CRITERIA = cv::TermCriteria(
     cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
 
-RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, int maxQueueSize)
-    : mConfig(config),
-      mMaxQueueSize(maxQueueSize),
+RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
+                           const PatchMixer* patchMixer, RoIResizer* roiResizer, int maxRoISize)
+    : mConfig(config), mPatchMixer(patchMixer), mRoIResizer(roiResizer), mMaxRoISize(maxRoISize),
       mTargetSize(cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
-      mbStop(false) {
+      mAllowInterpolation(allowInterpolation), mbStop(false), isPackingReady(false) {
   if (run) {
     mThreads.reserve(config.NUM_WORKERS);
     for (int i = 0; i < config.NUM_WORKERS; i++) {
@@ -36,7 +36,7 @@ RoIExtractor::~RoIExtractor() {
 
 void RoIExtractor::enqueue(Frame* frame) {
   std::unique_lock<std::mutex> lock(mtx);
-  cv.wait(lock, [this]() { return mFramesForPD.size() < mMaxQueueSize; });
+  cv.wait(lock, [this]() { return mFramesForPD.size() < mConfig.MAX_PD_QUEUE_SIZE; });
   mFramesForPD.push_back(frame);
   int numPDs = (int) mFramesForPD.size();
   int numOFs = std::accumulate(mFramesForOF.begin(), mFramesForOF.end(), 0,
@@ -57,6 +57,7 @@ void RoIExtractor::notify() {
 
 std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames() {
   std::unique_lock<std::mutex> lock(mtx);
+  cv.wait(lock, [this]() { return !mAllowInterpolation || isPackingReady; });
   std::map<std::string, SortedFrames> extractedFrames = std::move(mOFProcessingStartedFrames);
   mOFProcessingStartedFrames.clear();
   // TODO: set useInferenceResultForOF = true only for lastFrames
@@ -161,6 +162,19 @@ void RoIExtractor::work() {
     if (isOF) {
       frame->filterPDRoIs(mConfig.PD_FILTER_THRESHOLD);
       testAssignedUniqueRoIID(frame->childRoIs);
+      frame->resizeStartTime = NowMicros();
+      frame->resizeRoIs(mRoIResizer);
+      frame->resizeEndTime = NowMicros();
+      frame->mergeRoIStartTime = NowMicros();
+      if (mConfig.MERGE) {
+        frame->resetParentRoIs();
+        frame->mergeRoIs(mConfig.MERGE_THRESHOLD, (float) mMaxRoISize);
+        testAssignedUniqueRoIID(frame->childRoIs);
+        testParentChildrenIDsAndChildIDsSame(frame->childRoIs, frame->parentRoIs);
+        testChildRoIsFrameRelation(frame->childRoIs);
+        testParentRoIsFrameRelation(frame->parentRoIs);
+      }
+      frame->mergeRoIEndTime = NowMicros();
       frame->prevFrame->preProcessedMat.release();
       frame->roiExtractionStatus = OF_EXTRACTED;
       frame->isRoIsReady = true;

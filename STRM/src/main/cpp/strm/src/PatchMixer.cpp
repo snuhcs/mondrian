@@ -15,31 +15,6 @@ std::vector<RoI*> PatchMixer::prepareRoIs(std::map<std::string, SortedFrames>& f
                                           Frame* fullFrameTarget, RoIResizer* roiResizer,
                                           float maxRoISize, bool probe, int numProbeSteps,
                                           float probeStepSize, bool roiWiseInference) const {
-  time_us resizeStartTime = NowMicros();
-  if (!mConfig.EMULATED_BATCH && !roiWiseInference) {
-    resizeRoIs(frames, roiResizer);
-  }
-  time_us resizeEndTime = NowMicros();
-  for (auto&[_, aStreamFrames] : frames) {
-    for (Frame* frame : aStreamFrames) {
-      frame->resizeStartTime = resizeStartTime;
-      frame->resizeEndTime = resizeEndTime;
-    }
-  }
-
-  time_us mergeStartTime = NowMicros();
-  initParentRoIs(frames);
-  if (mConfig.MERGE) {
-    mergeRoIs(frames, maxRoISize, mConfig.MERGE_THRESHOLD);
-  }
-  time_us mergeEndTime = NowMicros();
-  for (auto&[_, aStreamFrames] : frames) {
-    for (Frame* frame : aStreamFrames) {
-      frame->mergeRoIStartTime = mergeStartTime;
-      frame->mergeRoIEndTime = mergeEndTime;
-    }
-  }
-
   if (probe && !mConfig.EMULATED_BATCH) {
     addProbeRoIs(frames, fullFrameTarget, numProbeSteps, probeStepSize);
   }
@@ -54,57 +29,6 @@ std::vector<RoI*> PatchMixer::prepareRoIs(std::map<std::string, SortedFrames>& f
   }
 
   return packingCandidates;
-}
-
-void PatchMixer::resizeRoIs(std::map<std::string, SortedFrames>& frames, RoIResizer* roiResizer) {
-  // Resize OF RoIs
-  for (auto&[_, aStreamFrames] : frames) {
-    for (Frame* frame : aStreamFrames) {
-      for (auto& cRoI : frame->childRoIs) {
-        if (cRoI->type == RoI::Type::OF) {
-          cRoI->targetSize = std::min(cRoI->maxEdgeLength,
-                                      roiResizer->getTargetSize(cRoI->id, cRoI->features));
-        }
-      }
-    }
-  }
-
-  // Resize PD RoIs with next OF RoI if exists
-  for (auto&[_, aStreamFrames] : frames) {
-    for (Frame* frame : aStreamFrames) {
-      for (auto& cRoI : frame->childRoIs) {
-        if (cRoI->type == RoI::Type::PD && cRoI->nextRoI != nullptr) {
-          cRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->nextRoI->targetSize);
-        }
-      }
-    }
-  }
-}
-
-void PatchMixer::initParentRoIs(std::map<std::string, SortedFrames>& frames) {
-  for (auto&[_, aStreamFrames] : frames) {
-    for (Frame* frame : aStreamFrames) {
-      frame->initParentRoIs();
-    }
-  }
-}
-
-void PatchMixer::mergeRoIs(std::map<std::string, SortedFrames>& frames, float maxRoISize,
-                           float mergeThreshold) {
-  for (auto&[_, aStreamFrames] : frames) {
-    for (Frame* frame : aStreamFrames) {
-      frame->mergeRoIs(mergeThreshold, maxRoISize);
-    }
-  }
-
-  for (auto&[_, aStreamFrames] : frames) {
-    for (Frame* frame : aStreamFrames) {
-      testAssignedUniqueRoIID(frame->childRoIs);
-      testParentChildrenIDsAndChildIDsSame(frame->childRoIs, frame->parentRoIs);
-      testChildRoIsFrameRelation(frame->childRoIs);
-      testParentRoIsFrameRelation(frame->parentRoIs);
-    }
-  }
 }
 
 void PatchMixer::addProbeRoIs(std::map<std::string, SortedFrames>& frames, const Frame* fullFrameTarget,
@@ -200,77 +124,7 @@ std::vector<MixedFrame> PatchMixer::packRoIs(
   // Pack RoIs
   float batchedRoISize = float(mixedFrameSize) / std::ceil(std::sqrt(mConfig.BATCH_SIZE));
   for (RoI* pRoI : candidateRoIs) {
-    std::pair<float, float> resizedWH = mConfig.EMULATED_BATCH ?
-                                    std::make_pair(batchedRoISize, batchedRoISize) :
-                                    pRoI->getResizedWidthHeight();
-    const float roiArea = resizedWH.first * resizedWH.second;
-    auto indices = std::make_pair(-1, -1);
-    // N-way packing : find the best matching freeRect
-    if (mConfig.N_WAY_MIXING && !mConfig.EMULATED_BATCH) {
-      float minDiffArea = -1.0f;
-      for (auto&[mixedFrameIndex, freeRects] : freeRectsMap) {
-        for (int freeRectIndex = 0; freeRectIndex < freeRects.size(); freeRectIndex++) {
-          const Rect& freeRect = freeRects[freeRectIndex];
-          if (canFit(resizedWH, freeRect)) {
-            float diffArea = freeRect.area() - roiArea;
-            if (minDiffArea == -1.0f || diffArea < minDiffArea) {
-              minDiffArea = diffArea;
-              indices = std::make_pair(mixedFrameIndex, freeRectIndex);
-            }
-          }
-          // For High priority RoI, use the first possible mixed frame.
-          if (pRoI->priority == HIGH_PRIORITY && minDiffArea != -1.0f) {
-            break;
-          }
-        }
-      }
-    }
-    // 1-way packing : find the first matching freeRect
-    else {
-      for (auto&[mixedFrameIndex, freeRects] : freeRectsMap) {
-        for (int freeRectIndex = 0; freeRectIndex < freeRects.size(); freeRectIndex++) {
-          const Rect& freeRect = freeRects[freeRectIndex];
-          if (canFit(resizedWH, freeRect)) {
-            indices = std::make_pair(mixedFrameIndex, freeRectIndex);
-            break;
-          }
-        }
-      }
-    }
-    auto&[packedIndex, freeRectIndex] = indices;
-    if (packedIndex != -1) {
-      assert(freeRectIndex != -1);
-      assert(pRoI->packedMixedFrameIndex == INT_MAX);
-
-      packedRoIsMap[packedIndex].insert(pRoI);
-      pRoI->packedMixedFrameIndex = packedIndex;
-
-      const Rect freeRect = freeRectsMap[packedIndex][freeRectIndex];
-      if (!mConfig.EMULATED_BATCH) {
-        pRoI->packedLocation = std::make_pair(freeRect.left, freeRect.top);
-      } else {
-        float width = pRoI->paddedLoc.width();
-        float height = pRoI->paddedLoc.height();
-        if (pRoI->maxEdgeLength > batchedRoISize) {
-          float resizedWidth = width > height ? batchedRoISize : width * batchedRoISize / height;
-          float resizedHeight = width > height ? height * batchedRoISize / width : batchedRoISize;
-          pRoI->targetSize = batchedRoISize;
-          pRoI->packedLocation = std::make_pair(
-              freeRect.left + (batchedRoISize - resizedWidth) / 2,
-              freeRect.top + (batchedRoISize - resizedHeight) / 2);
-        } else {
-          pRoI->targetSize = pRoI->maxEdgeLength;
-          pRoI->packedLocation = std::make_pair(
-              freeRect.left + (batchedRoISize - width) / 2,
-              freeRect.top + (batchedRoISize - height) / 2);
-        }
-      }
-      freeRectsMap[packedIndex].erase(freeRectsMap[packedIndex].begin() + freeRectIndex);
-
-      std::pair<Rect, Rect> newFreeRectPair = splitFreeRect(resizedWH, freeRect);
-      freeRectsMap[packedIndex].push_back(newFreeRectPair.first);
-      freeRectsMap[packedIndex].push_back(newFreeRectPair.second);
-    }
+    tryPackRoI(pRoI, batchedRoISize, freeRectsMap, packedRoIsMap);
   }
   for (auto&[mixedFrameIndex, aMixedFrameRoIs] : packedRoIsMap) {
     for (RoI* pRoI : aMixedFrameRoIs) {
@@ -291,6 +145,85 @@ std::vector<MixedFrame> PatchMixer::packRoIs(
     roi->frame->mixingEndTime = mixingEndTime;
   }
   return mixedFrames;
+}
+
+bool PatchMixer::tryPackRoI(RoI* pRoI, float batchedRoISize,
+                            std::map<int, std::vector<Rect>>& freeRectsMap,
+                            std::map<int, std::set<RoI*>>& packedRoIsMap) const {
+  std::pair<float, float> resizedWH = mConfig.EMULATED_BATCH ?
+                                      std::make_pair(batchedRoISize, batchedRoISize) :
+                                      pRoI->getResizedWidthHeight();
+  const float roiArea = resizedWH.first * resizedWH.second;
+  auto indices = std::make_pair(-1, -1);
+  // N-way packing : find the best matching freeRect
+  if (mConfig.N_WAY_MIXING && !mConfig.EMULATED_BATCH) {
+    float minDiffArea = -1.0f;
+    for (auto&[mixedFrameIndex, freeRects] : freeRectsMap) {
+      for (int freeRectIndex = 0; freeRectIndex < freeRects.size(); freeRectIndex++) {
+        const Rect& freeRect = freeRects[freeRectIndex];
+        if (canFit(resizedWH, freeRect)) {
+          float diffArea = freeRect.area() - roiArea;
+          if (minDiffArea == -1.0f || diffArea < minDiffArea) {
+            minDiffArea = diffArea;
+            indices = std::make_pair(mixedFrameIndex, freeRectIndex);
+          }
+        }
+        // For High priority RoI, use the first possible mixed frame.
+        if (pRoI->priority == HIGH_PRIORITY && minDiffArea != -1.0f) {
+          break;
+        }
+      }
+    }
+  }
+  // 1-way packing : find the first matching freeRect
+  else {
+    for (auto&[mixedFrameIndex, freeRects] : freeRectsMap) {
+      for (int freeRectIndex = 0; freeRectIndex < freeRects.size(); freeRectIndex++) {
+        const Rect& freeRect = freeRects[freeRectIndex];
+        if (canFit(resizedWH, freeRect)) {
+          indices = std::make_pair(mixedFrameIndex, freeRectIndex);
+          break;
+        }
+      }
+    }
+  }
+  auto&[packedIndex, freeRectIndex] = indices;
+  if (packedIndex != -1) {
+    assert(freeRectIndex != -1);
+    assert(pRoI->packedMixedFrameIndex == INT_MAX);
+
+    packedRoIsMap[packedIndex].insert(pRoI);
+    pRoI->packedMixedFrameIndex = packedIndex;
+
+    const Rect freeRect = freeRectsMap[packedIndex][freeRectIndex];
+    if (!mConfig.EMULATED_BATCH) {
+      pRoI->packedLocation = std::make_pair(freeRect.left, freeRect.top);
+    } else {
+      float width = pRoI->paddedLoc.width();
+      float height = pRoI->paddedLoc.height();
+      if (pRoI->maxEdgeLength > batchedRoISize) {
+        float resizedWidth = width > height ? batchedRoISize : width * batchedRoISize / height;
+        float resizedHeight = width > height ? height * batchedRoISize / width : batchedRoISize;
+        pRoI->targetSize = batchedRoISize;
+        pRoI->packedLocation = std::make_pair(
+            freeRect.left + (batchedRoISize - resizedWidth) / 2,
+            freeRect.top + (batchedRoISize - resizedHeight) / 2);
+      } else {
+        pRoI->targetSize = pRoI->maxEdgeLength;
+        pRoI->packedLocation = std::make_pair(
+            freeRect.left + (batchedRoISize - width) / 2,
+            freeRect.top + (batchedRoISize - height) / 2);
+      }
+    }
+    freeRectsMap[packedIndex].erase(freeRectsMap[packedIndex].begin() + freeRectIndex);
+
+    std::pair<Rect, Rect> newFreeRectPair = splitFreeRect(resizedWH, freeRect);
+    freeRectsMap[packedIndex].push_back(newFreeRectPair.first);
+    freeRectsMap[packedIndex].push_back(newFreeRectPair.second);
+    return true;
+  } else {
+    return false;
+  }
 }
 
 bool PatchMixer::canFit(std::pair<float, float> wh, const Rect& rect) {

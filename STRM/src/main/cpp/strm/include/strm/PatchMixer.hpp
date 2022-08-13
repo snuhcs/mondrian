@@ -28,14 +28,10 @@ class PatchMixer {
   std::vector<MixedFrame> packRoIs(std::vector<RoI*>& candidateRoIs, int mixedFrameSize,
                                    int maxNumMixedFrames) const;
 
+  bool tryPackRoI(RoI* pRoI, float batchedRoISize, std::map<int, std::vector<Rect>>& freeRectsMap,
+                  std::map<int, std::set<RoI*>>& packedRoIsMap) const;
+
  private:
-  static void resizeRoIs(std::map <std::string, SortedFrames>& frames, RoIResizer* roiResizer);
-
-  static void initParentRoIs(std::map<std::string, SortedFrames>& frames);
-
-  static void mergeRoIs(std::map<std::string, SortedFrames>& frames, float maxRoISize,
-                        float mergeThreshold);
-
   static void addProbeRoIs(std::map<std::string, SortedFrames>& frames,
                            const Frame* fullFrameTarget, int numProbeSteps, float probeStepSize);
 
@@ -52,6 +48,9 @@ class PatchMixer {
   static const float HIGH_PRIORITY;
 
   PatchMixerConfig mConfig;
+
+  bool tryPackRoI(RoI* pRoI, float batchedRoISize, std::map<int, std::vector<Rect>>& freeRectsMap,
+                  std::map<int, std::set<RoI*>>& packedRoIsMap);
 };
 
 } // namespace rm

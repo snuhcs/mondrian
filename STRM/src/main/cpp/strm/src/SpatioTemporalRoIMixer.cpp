@@ -17,14 +17,15 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mInferenceEngine(inferenceEngine),
       mNumSourceVideos(numSourceVideo),
       mInputSizes(inferenceEngine->getInputSizes()),
-      mRoIExtractor(new RoIExtractor(
-          config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0,
-          config.INTERPOLATION ? INT_MAX / 2 : config.patchMixerConfig.NUM_CANDIDATE_FRAMES)),
       mRoIResizer(new RoIResizer(config.roiResizerConfig)),
       mPatchMixer(new PatchMixer(config.patchMixerConfig)),
       mPatchReconstructor(
           new PatchReconstructor(config.patchReconstructorConfig, mRoIResizer.get())),
       jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
+  mRoIExtractor = std::make_unique<RoIExtractor>(config.roIExtractorConfig,
+                                                 config.FULL_FRAME_INTERVAL > 0,
+                                                 config.ALLOW_INTERPOLATION, mPatchMixer.get(),
+                                                 mRoIResizer.get(), mInputSizes.back());
   assert(!config.ROI_WISE_INFERENCE || inferenceEngine->getInputSizes().size() >= 2);
   if (config.LOG_EXECUTION) {
     mLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");

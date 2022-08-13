@@ -13,6 +13,7 @@ constexpr int NUM_LABELS = 80;
 extern bool LOG_INTERNAL;
 
 struct RoIExtractorConfig {
+  int MAX_PD_QUEUE_SIZE = 200; // valid when ALLOW_INTERPOLATION == true
   int NUM_WORKERS = 2;
   int EXTRACTION_RESIZE_WIDTH = 640;
   int EXTRACTION_RESIZE_HEIGHT = 360;
@@ -20,6 +21,8 @@ struct RoIExtractorConfig {
   int ROI_PADDING = 10;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
   float PD_FILTER_THRESHOLD = 0.5;
+  bool MERGE = true;
+  float MERGE_THRESHOLD = 0.5;
 };
 
 struct RoIResizerConfig {
@@ -41,12 +44,6 @@ struct RoIResizerConfig {
 };
 
 struct PatchMixerConfig {
-  int NUM_CANDIDATE_FRAMES = 200; // valid when INTERPOLATION == false
-
-  // Merge config
-  bool MERGE = true;
-  float MERGE_THRESHOLD = 0.5;
-
   // Mixing config
   bool N_WAY_MIXING = true;
   bool PRIORITY_MIXING = true;
@@ -64,7 +61,7 @@ struct PatchReconstructorConfig {
 struct STRMConfig {
   bool LOG_EXECUTION = false;
   bool LOG_ROI = false;
-  bool INTERPOLATION = false;
+  bool ALLOW_INTERPOLATION = false;
   bool ROI_WISE_INFERENCE = false;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int BUFFER_SIZE = 1000;

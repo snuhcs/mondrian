@@ -103,6 +103,8 @@ enum RoIExtractionStatus {
   OF_EXTRACTED = 3,
 };
 
+class RoIResizer;
+
 struct Frame {
   const std::string key;
   const std::string shortKey;
@@ -157,7 +159,9 @@ struct Frame {
     endTime = NowMicros();
   }
 
-  void initParentRoIs();
+  void resizeRoIs(RoIResizer* roiResizer);
+
+  void resetParentRoIs();
 
   void mergeRoIs(float mergeThreshold, float maxSize);
 
@@ -166,8 +170,6 @@ struct Frame {
   void filterPDRoIs(float threshold);
 
   bool isReadyToMarry(int mixedFrameIndex) const;
-
-  bool readyForPDExtraction() const;
 
   bool readyForOFExtraction() const;
 
