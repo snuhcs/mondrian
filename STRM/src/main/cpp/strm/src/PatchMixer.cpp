@@ -11,26 +11,6 @@ const float PatchMixer::HIGH_PRIORITY = 1e9;
 PatchMixer::PatchMixer(const PatchMixerConfig& config)
     : mConfig(config) {}
 
-std::vector<RoI*> PatchMixer::prepareRoIs(std::map<std::string, SortedFrames>& frames,
-                                          Frame* fullFrameTarget, RoIResizer* roiResizer,
-                                          float maxRoISize, bool probe, int numProbeSteps,
-                                          float probeStepSize, bool roiWiseInference) const {
-  if (probe && !mConfig.EMULATED_BATCH) {
-    addProbeRoIs(frames, fullFrameTarget, numProbeSteps, probeStepSize);
-  }
-
-  std::vector<RoI*> packingCandidates = collectRoIs(frames, fullFrameTarget);
-
-  prioritizeRoIs(frames, fullFrameTarget);
-
-  if (mConfig.PRIORITY_MIXING) {
-    std::sort(packingCandidates.begin(), packingCandidates.end(),
-              [](const RoI* l, const RoI* r) { return l->priority > r->priority; });
-  }
-
-  return packingCandidates;
-}
-
 void PatchMixer::addProbeRoIs(std::map<std::string, SortedFrames>& frames, const Frame* fullFrameTarget,
                               int numProbeSteps, float probeStepSize) {
   std::set<Frame*> lastFrames = filterLastFrames(frames);
@@ -110,47 +90,77 @@ void PatchMixer::prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
   }
 }
 
-std::vector<MixedFrame> PatchMixer::packRoIs(
-    std::vector<RoI*>& candidateRoIs, int mixedFrameSize, int maxNumMixedFrames) const {
+std::tuple<std::vector<MixedFrame>, Frame*, std::vector<Frame*>> PatchMixer::packRoIs(
+    std::map<std::string, SortedFrames>& frames, const std::string& targetStream, int frameSize,
+    int numFrames, bool allowInterpolation, bool roiWiseInference,
+    bool probe, int numProbeSteps, float probeStepSize) const {
+
   time_us mixingStartTime = NowMicros();
-
-  // Init data structures
-  std::map<int, std::set<RoI*>> packedRoIsMap;
-  std::map<int, std::vector<Rect>> freeRectsMap;
-  for (int mixedFrameIndex = 0; mixedFrameIndex < maxNumMixedFrames; mixedFrameIndex++) {
-    freeRectsMap[mixedFrameIndex] = {Rect(0, 0, mixedFrameSize, mixedFrameSize)};
-  }
-
-  // Pack RoIs
-  float batchedRoISize = float(mixedFrameSize) / std::ceil(std::sqrt(mConfig.BATCH_SIZE));
-  for (RoI* pRoI : candidateRoIs) {
-    std::pair<float, float> resizedWH = mConfig.EMULATED_BATCH ?
-                                        std::make_pair(batchedRoISize, batchedRoISize) :
-                                        pRoI->getResizedWidthHeight();
-    tryPackRoI(
-        resizedWH, freeRectsMap,
-        pRoI->priority == HIGH_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
-        pRoI, &packedRoIsMap, mConfig.EMULATED_BATCH);
-  }
-  for (auto&[mixedFrameIndex, aMixedFrameRoIs] : packedRoIsMap) {
-    for (RoI* pRoI : aMixedFrameRoIs) {
-      assert(pRoI->isPacked());
-      assert(pRoI->packedMixedFrameIndex == mixedFrameIndex);
-    }
-  }
+  Frame* fullFrameTarget;
   std::vector<MixedFrame> mixedFrames;
-  for (auto&[_, aMixedFrameRoIs] : packedRoIsMap) {
-    if (!aMixedFrameRoIs.empty()) {
-      mixedFrames.emplace_back(aMixedFrameRoIs, mixedFrameSize);
+
+  if (allowInterpolation) {
+    fullFrameTarget = *frames[targetStream].rbegin();
+    fullFrameTarget->isFullFrameTarget = true;
+    if (probe && !mConfig.EMULATED_BATCH) {
+      addProbeRoIs(frames, fullFrameTarget, numProbeSteps, probeStepSize);
+    }
+    std::vector<RoI*> candidateRoIs = collectRoIs(frames, fullFrameTarget);
+    prioritizeRoIs(frames, fullFrameTarget);
+    if (mConfig.PRIORITY_MIXING) {
+      std::sort(candidateRoIs.begin(), candidateRoIs.end(),
+                [](RoI* l, RoI* r) { return l->priority > r->priority; });
+    }
+
+    if (roiWiseInference) {
+      for (int i = 0; i < std::min(numFrames, (int) candidateRoIs.size()); i++) {
+        RoI* pRoI = candidateRoIs[i];
+        pRoI->targetSize = std::min(pRoI->maxEdgeLength, float(frameSize));
+        auto[resizedWidth, resizedHeight] = pRoI->getResizedWidthHeight();
+        float x = float(frameSize - resizedWidth) / 2;
+        float y = float(frameSize - resizedHeight) / 2;
+        pRoI->packedLocation = {x, y};
+        mixedFrames.push_back(MixedFrame({pRoI}, frameSize));
+      }
+    } else {
+      // Init data structures
+      std::map<int, std::set<RoI*>> packedRoIsMap;
+      std::map<int, std::vector<Rect>> freeRectsMap;
+      for (int mixedFrameIndex = 0; mixedFrameIndex < numFrames; mixedFrameIndex++) {
+        freeRectsMap[mixedFrameIndex] = {Rect(0, 0, frameSize, frameSize)};
+      }
+
+      // Pack RoIs
+      float batchedRoISize = float(frameSize) / std::ceil(std::sqrt(mConfig.BATCH_SIZE));
+      for (RoI* pRoI : candidateRoIs) {
+        std::pair<float, float> resizedWH = mConfig.EMULATED_BATCH ?
+                                            std::make_pair(batchedRoISize, batchedRoISize) :
+                                            pRoI->getResizedWidthHeight();
+        tryPackRoI(
+            resizedWH, freeRectsMap,
+            pRoI->priority == HIGH_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
+            pRoI, &packedRoIsMap, mConfig.EMULATED_BATCH);
+      }
+      for (auto&[mixedFrameIndex, aMixedFrameRoIs] : packedRoIsMap) {
+        for (RoI* pRoI : aMixedFrameRoIs) {
+          assert(pRoI->isPacked());
+          assert(pRoI->packedMixedFrameIndex == mixedFrameIndex);
+        }
+      }
+      for (auto&[_, aMixedFrameRoIs] : packedRoIsMap) {
+        if (!aMixedFrameRoIs.empty()) {
+          mixedFrames.emplace_back(aMixedFrameRoIs, frameSize);
+        }
+      }
+
+      time_us mixingEndTime = NowMicros();
+      for (RoI* roi : candidateRoIs) {
+        roi->frame->mixingStartTime = mixingStartTime;
+        roi->frame->mixingEndTime = mixingEndTime;
+      }
     }
   }
-
-  time_us mixingEndTime = NowMicros();
-  for (RoI* roi : candidateRoIs) {
-    roi->frame->mixingStartTime = mixingStartTime;
-    roi->frame->mixingEndTime = mixingEndTime;
-  }
-  return mixedFrames;
+  return {mixedFrames, fullFrameTarget, {}};
 }
 
 bool PatchMixer::tryPackRoI(const std::pair<float, float>& resizedWH,

@@ -23,13 +23,10 @@ class PatchMixer {
  public:
   PatchMixer(const PatchMixerConfig& config);
 
-  std::vector<RoI*> prepareRoIs(std::map<std::string, SortedFrames>& frames,
-                                Frame* fullFrameTarget, RoIResizer* roiResizer, float maxRoISize,
-                                bool probe, int numProbeSteps, float probeStepSize,
-                                bool roiWiseInference) const;
-
-  std::vector<MixedFrame> packRoIs(std::vector<RoI*>& candidateRoIs, int mixedFrameSize,
-                                   int maxNumMixedFrames) const;
+  std::tuple<std::vector<MixedFrame>, Frame*, std::vector<Frame*>> packRoIs(
+      std::map<std::string, SortedFrames>& frames, const std::string& targetStream, int frameSize,
+      int numFrames, bool allowInterpolation, bool roiWiseInference,
+      bool probe, int numProbeSteps, float probeStepSize) const;
 
   static bool tryPackRoI(const std::pair<float, float>& resizedWH,
                          std::map<int, std::vector<Rect>>& freeRectsMap,
