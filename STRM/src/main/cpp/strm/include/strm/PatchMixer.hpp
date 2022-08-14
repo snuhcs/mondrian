@@ -23,10 +23,10 @@ class PatchMixer {
  public:
   PatchMixer(const PatchMixerConfig& config);
 
-  std::tuple<std::vector<MixedFrame>, Frame*, std::vector<Frame*>> packRoIs(
-      std::map<std::string, SortedFrames>& frames, const std::string& targetStream, int frameSize,
-      int numFrames, bool allowInterpolation, bool roiWiseInference,
-      bool probe, int numProbeSteps, float probeStepSize) const;
+  std::tuple<std::vector<MixedFrame>, Frame*, std::map<std::string, SortedFrames>, SortedFrames>
+  packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameStreamIndex,
+           int frameSize, int numFrames, bool allowInterpolation, bool roiWiseInference, bool probe,
+           int numProbeSteps, float probeStepSize) const;
 
   static bool tryPackRoI(const std::pair<float, float>& resizedWH,
                          std::map<int, std::vector<Rect>>& freeRectsMap,
@@ -34,9 +34,13 @@ class PatchMixer {
                          std::map<int, std::set<RoI*>>* packedRoIsMap = nullptr,
                          bool emulatedBatch = false);
 
+  static std::string getFullFrameTargetStream(const std::map<std::string, SortedFrames>& selectedFrames,
+                                              int fullFrameStreamIndex);
+
  private:
   static void addProbeRoIs(std::map<std::string, SortedFrames>& frames,
-                           const Frame* fullFrameTarget, int numProbeSteps, float probeStepSize);
+                           const Frame* fullFrameTarget, int numProbeSteps,
+                           float probeStepSize);
 
   static std::vector<RoI*> collectRoIs(std::map<std::string, SortedFrames>& frames,
                                        const Frame* fullFrameTarget);

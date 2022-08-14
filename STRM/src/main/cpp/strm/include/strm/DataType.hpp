@@ -167,6 +167,8 @@ struct Frame {
 
   void addProbeRoIs(int numProbeSteps, float probeStepSize);
 
+  void resetProbeRoIs();
+
   void filterPDRoIs(float threshold);
 
   bool isReadyToMarry(int mixedFrameIndex) const;

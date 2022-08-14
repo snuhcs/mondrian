@@ -30,7 +30,7 @@ class RoIExtractor {
 
   std::map<std::string, SortedFrames> getExtractedFrames(int numFrames);
 
-  void reEnqueueFrames(const std::vector<Frame*>& frames);
+  void reEnqueueFrames(const SortedFrames& droppedFrames);
 
   const cv::Size& getTargetSize() const {
     return mTargetSize;

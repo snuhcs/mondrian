@@ -49,9 +49,6 @@ class SpatioTemporalRoIMixer {
 
   void releaseFrames(const std::map<std::string, SortedFrames>& frames);
 
-  static std::string getFullFrameTargetStream(const std::map<std::string, SortedFrames>& lastFrames,
-                                              int fullFrameInferenceStreamIndex);
-
   void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
   static int getNumInferences(time_us remainingTime, time_us inferenceTime);

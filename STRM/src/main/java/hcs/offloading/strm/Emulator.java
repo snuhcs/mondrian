@@ -40,7 +40,7 @@ public class Emulator {
 
     private static class VideoConfig {
         String PATH;
-        int FPS;
+        int FPS = 0;
     }
 
     private static final String TAG = Emulator.class.getName();
@@ -87,7 +87,7 @@ public class Emulator {
                     enqueueImage(handle, key, mat.getNativeObjAddr());
                     long endTimeNs = System.nanoTime();
                     long nextStartTimeNs = startTimeNs + (long) (frameIndex + 1) * (long) (1e9 / config.FPS);
-                    if (nextStartTimeNs > endTimeNs) {
+                    if (config.FPS != 0 && nextStartTimeNs > endTimeNs) {
                         try {
                             Thread.sleep((nextStartTimeNs - endTimeNs) / 1000000);
                         } catch (InterruptedException e) {

@@ -101,7 +101,10 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
 }
 
 void Frame::addProbeRoIs(int numProbeSteps, float probeStepSize) {
+  assert(probingRoIs.empty());
   for (auto& cRoI : childRoIs) {
+    assert(cRoI->frame == this);
+    assert(cRoI->roisForProbing.empty());
     float probe = float(-numProbeSteps) * probeStepSize;
     for (int i = 0; i < 2 * numProbeSteps + 1; i++) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
@@ -109,9 +112,16 @@ void Frame::addProbeRoIs(int numProbeSteps, float probeStepSize) {
           cRoI->features.ofFeatures, 0, true);
       probeRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->targetSize + probe);
       cRoI->roisForProbing.push_back(probeRoI.get());
-      cRoI->frame->probingRoIs.push_back(std::move(probeRoI));
+      probingRoIs.push_back(std::move(probeRoI));
       probe += probeStepSize;
     }
+  }
+}
+
+void Frame::resetProbeRoIs() {
+  for (auto& cRoI : childRoIs) {
+    cRoI->roisForProbing.clear();
+    probingRoIs.clear();
   }
 }
 
@@ -221,7 +231,7 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
   }
   Frame* currFrame = frames[frameIndex % capacity].get();
   lock.unlock();
-  LOGD("%-25s                for video %-5s frame %-4d",
+  LOGD("%-25s                 for video %-5s frame %-4d",
        "FrameBuffer::enqueue", shortKey.c_str(), frameIndex);
   return currFrame;
 }
@@ -243,7 +253,7 @@ FrameBuffer::freeImage(const std::vector<int> &frameIndices, Logger *logger, Log
   }
   lock.unlock();
   cv.notify_all();
-  LOGD("%-25s                for video %-5s frame %-4d ~ %-4d",
+  LOGD("%-25s                 for video %-5s frame %-4d ~ %-4d",
        "FrameBuffer::freeImage", shortKey.c_str(), frameIndices.front(), frameIndices.back());
 }
 

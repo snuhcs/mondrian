@@ -51,7 +51,7 @@ void RoIExtractor::enqueue(Frame* frame) {
                                      0, [](int cnt, auto& it) { return cnt + it.second.size(); });
   lock.unlock();
   cv.notify_all();
-  LOGD("%-25s                for video %-5s frame %-4d // %4d PD | %4d OF | %4d Processed",
+   ("%-25s                for video %-5s frame %-4d // %4d PD | %4d OF | %4d Processed",
        "RoIExtractor::enqueue", frame->shortKey.c_str(), frame->frameIndex,
        numPDs, numOFs, numProcessed);
 }
@@ -82,17 +82,27 @@ std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames(int numFram
   return extractedFrames;
 }
 
-void RoIExtractor::reEnqueueFrames(const std::vector<Frame*>& frames) {
+void RoIExtractor::reEnqueueFrames(const SortedFrames& droppedFrames) {
   std::unique_lock<std::mutex> lock(mtx);
-  for (auto* frame : frames) {
+  const Frame* firstFrame = *droppedFrames.cbegin();
+  std::map<std::string, std::list<Frame*>> newFramesForOF;
+  for (Frame* frame : droppedFrames) {
     frame->childRoIs.erase(std::remove_if(
         frame->childRoIs.begin(), frame->childRoIs.end(),
-        [](std::unique_ptr<RoI>& cRoI) { return cRoI->type == RoI::OF; }), frame->childRoIs.end());
+        [](const auto& cRoI) { return cRoI->type == RoI::OF; }), frame->childRoIs.end());
+    std::for_each(frame->childRoIs.begin(), frame->childRoIs.end(), [](auto& cRoI) {
+      if (cRoI->type == RoI::PD) { cRoI->id = UNASSIGNED_ID; }
+    });
     frame->roiExtractionStatus = OF_WAITING;
     frame->useInferenceResultForOF = false;
     frame->isRoIsReady = false;
-    mFramesForOF[frame->key].push_front(frame);
+    newFramesForOF[frame->key].push_back(frame);
   }
+  for (auto&[aStreamKey, aStreamFrames] : mFramesForOF) {
+    newFramesForOF[aStreamKey].insert(newFramesForOF[aStreamKey].end(), aStreamFrames.begin(),
+                                      aStreamFrames.end());
+  }
+  mFramesForOF = std::move(newFramesForOF);
   lock.unlock();
   cv.notify_all();
 }
@@ -215,7 +225,6 @@ void RoIExtractor::work() {
           isFullyPacked = true;
         }
       }
-      frame->prevFrame->preProcessedMat.release();
       frame->roiExtractionStatus = OF_EXTRACTED;
       frame->isRoIsReady = true;
     } else {
@@ -233,7 +242,7 @@ void RoIExtractor::processPD(Frame* currFrame) {
   currFrame->pixelDiffRoIProcessStartTime = NowMicros();
   getPixelDiffRoIs(prevFrame, currFrame, mTargetSize, mConfig.MIN_ROI_AREA, currFrame->childRoIs);
   currFrame->pixelDiffRoIProcessEndTime = NowMicros();
-  LOGD("%-25s took %-6lld us for video %-5s frame %-4d // %4lu PD RoIs",
+  LOGD("%-25s took %-7lld us for video %-5s frame %-4d // %4lu PD RoIs",
        "RoIExtractor::processPD",
        currFrame->pixelDiffRoIProcessEndTime - currFrame->pixelDiffRoIProcessStartTime,
        currFrame->shortKey.c_str(), currFrame->frameIndex, currFrame->childRoIs.size());
@@ -265,7 +274,7 @@ void RoIExtractor::processOF(Frame* currFrame) {
   currFrame->opticalFlowRoIProcessStartTime = NowMicros();
   getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes, mTargetSize, currFrame->childRoIs);
   currFrame->opticalFlowRoIProcessEndTime = NowMicros();
-  LOGD("%-25s took %-6lld us for video %-5s frame %-4d // %4lu OF RoIs", "RoIExtractor::processOF",
+  LOGD("%-25s took %-7lld us for video %-5s frame %-4d // %4lu OF RoIs", "RoIExtractor::processOF",
        currFrame->opticalFlowRoIProcessEndTime - currFrame->opticalFlowRoIProcessStartTime,
        currFrame->shortKey.c_str(), currFrame->frameIndex,
        std::count_if(currFrame->childRoIs.begin(), currFrame->childRoIs.end(),
