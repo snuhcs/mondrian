@@ -177,12 +177,13 @@ void RoIExtractor::processOF(Frame* currFrame) {
     testAssignedUniqueBoxID(prevFrame->boxes);
     for (const std::unique_ptr<BoundingBox>& box : prevFrame->boxes) {
       if (box->confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
-        reliablePrevBoxes.emplace_back(box->id, Rect(
+        BoundingBox reliableBox(box->id, Rect(
             std::max(0.0f, box->location.left),
             std::max(0.0f, box->location.top),
             std::min(float(currFrame->width), box->location.right),
-            std::min(float(currFrame->height), box->location.bottom)),
-                                       box->confidence, box->label, fromBB);
+            std::min(float(currFrame->height), box->location.bottom)), box->confidence, box->label, origin_BB);
+        reliableBox.srcRoI = box->srcRoI;
+        reliablePrevBoxes.push_back(reliableBox);
       }
     }
   } else {
@@ -350,7 +351,7 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
         currFrame,
         box,
         RoI::PD,
-        fromPD,
+        origin_PD,
         -1,
         RoI::OFFeatures({}, {}),
         mConfig.ROI_PADDING,

@@ -171,15 +171,15 @@ public class DrawUtil {
                 canvas.drawRect(mRect, mPaint);
             } else {
                 switch (box.origin) {
-                    case 0: // originNull
-                    case 1: // fromBB
+                    case 0: // origin_Null
+                    case 1: // origin_BB
                         canvas.drawRect(mRect, mPaint);
                         break;
-                    case 2: // fromPD
+                    case 2: // origin_PD
                         int roundSize = 20;
                         canvas.drawRoundRect(mRectF, roundSize, roundSize, mPaint);
                         break;
-                    case 3: // fromIP
+                    case 3: // origin_IP
                         mPaint.setPathEffect(new DashPathEffect(new float[]{10f, 10f}, 0f));
                         canvas.drawRect(mRect, mPaint);
                         mPaint.setPathEffect(null);

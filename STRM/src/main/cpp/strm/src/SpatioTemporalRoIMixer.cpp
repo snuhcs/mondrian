@@ -99,8 +99,8 @@ void SpatioTemporalRoIMixer::work() {
     }
     logger.step("full");
     LOGD("%-25s took %-6lld us for video %-5s frame %-4d",
-         "STRM::fullFrameInference", logger.getDuration("full"), fullFrameTarget->shortKey.c_str(),
-         fullFrameTarget->frameIndex);
+         "STRM::fullFrameInference", logger.getDuration("full"), fullFrameTarget != nullptr ? fullFrameTarget->shortKey.c_str() : "-1",
+         fullFrameTarget != nullptr ? fullFrameTarget->frameIndex : -1);
 
     // Prepare packing. resize and merge RoIs
     int inferenceFrameSize = mConfig.ROI_WISE_INFERENCE ? mInputSizes.front() : mInputSizes.back();
@@ -185,9 +185,10 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   frame->fullFrameGetResultsTime = NowMicros();
   for (const BoundingBox& box : results) {
     frame->boxes.emplace_back(
-        new BoundingBox(UNASSIGNED_ID, box.location, box.confidence, box.label, box.origin));
+        new BoundingBox(UNASSIGNED_ID, box.location, box.confidence, box.label, origin_FF));
   }
   mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, true);
+
   for (auto& box : frame->boxes) {
     assert(box->id != UNASSIGNED_ID);
   }
