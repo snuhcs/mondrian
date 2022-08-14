@@ -197,7 +197,7 @@ class FrameBuffer {
 
   Frame* enqueue(const cv::Mat& mat);
 
-  void freeImage(const std::vector<int> &frameIndices, Logger *logger, Logger *roiLogger);
+  void freeImage(const std::vector<int>& frameIndices, Logger* logger, Logger* roiLogger);
 
  private:
   const std::string key;
@@ -236,7 +236,8 @@ struct RoI {
       }
     }
 
-    static std::vector<std::pair<float, float>> filterShifts(const std::vector<std::pair<float, float>>& shifts) {
+    static std::vector<std::pair<float, float>> filterShifts(
+        const std::vector<std::pair<float, float>>& shifts) {
       std::vector<float> distances;
       for (const auto&[x, y] : shifts) {
         distances.push_back(sqrt(pow(x, 2) + pow(y, 2)));
@@ -245,7 +246,7 @@ struct RoI {
       std::nth_element(distances.begin(), distances.begin() + q1_index, distances.end());
       float q1 = distances[q1_index];
       std::vector<std::pair<float, float>> filteredShifts;
-      for (int i=0; i<distances.size(); i++) {
+      for (int i = 0; i < distances.size(); i++) {
         if (distances[i] > q1) {
           filteredShifts.push_back(shifts[i]);
         }
