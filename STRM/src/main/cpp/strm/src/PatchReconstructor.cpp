@@ -64,7 +64,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
         maxRoI = pRoI;
       }
     }
-    if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
+    if (maxRoI != nullptr && maxOverlap >= mConfig.BOX_FILTER_OVERLAP_THRESHOLD) {
       // filter overly large boxes from mixed frame inference by OVERLAP_THRESHOLD
       if (maxRoI->isProbingRoI) {
         maxRoI->frame->probingBoxes.emplace_back(new BoundingBox(
@@ -119,9 +119,9 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
     }
     // if overlap is large enough, assign box to roi.boxes
     // else that bounding box is considered as newly appeared object
-    if (maxRoI != nullptr && maxIoU >= 0.1) {
+    if (maxRoI != nullptr && maxIoU >= mConfig.ID_MAPPING_IOU_THRESHOLD) {
       roiToBoxesMap[maxRoI].push_back(box.get());
-      box->choiceofBox = maxRoI->id;
+      box->choiceOfBox = maxRoI->id;
     } else {
       unassignedBoxes.push_back(box.get());
     }

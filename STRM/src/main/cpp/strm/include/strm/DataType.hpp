@@ -91,14 +91,14 @@ struct BoundingBox {
   Rect location;
   float confidence;
   int label;
-  idType choiceofBox;
+  idType choiceOfBox;
   idType id;
   RoI* srcRoI;
   Origin origin;
 
   BoundingBox(idType id, const Rect location, const float confidence, int label, Origin origin)
       : id(id), location(location), confidence(confidence), label(label), origin(origin),
-        srcRoI(nullptr), choiceofBox(UNASSIGNED_ID){}
+        srcRoI(nullptr), choiceOfBox(UNASSIGNED_ID) {}
 };
 
 enum RoIExtractionStatus {

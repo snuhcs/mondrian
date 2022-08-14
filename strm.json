@@ -60,6 +60,7 @@
     },
     "patch_reconstructor": {
         "frame_boxes_iou_threshold": 0.5,
-        "overlap_threshold": 0.8
+        "box_filter_overlap_threshold": 0.8,
+        "id_mapping_iou_threshold": 0.1
     }
 }

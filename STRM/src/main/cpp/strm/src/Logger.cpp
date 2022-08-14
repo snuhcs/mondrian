@@ -106,7 +106,7 @@ void Logger::logResult(const std::string& key, int frameIndex, time_us time,
             << box.location.bottom << ','
             << box.confidence << ','
             << box.origin << ','
-            << box.choiceofBox << ','
+            << box.choiceOfBox << ','
             << COCO_LABELS[box.label];
     if (i != boxes.size() - 1) {
       logFile << ',';

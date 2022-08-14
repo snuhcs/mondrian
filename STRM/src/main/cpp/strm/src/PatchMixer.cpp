@@ -152,11 +152,11 @@ void PatchMixer::prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
   for (auto&[_, aStreamFrames] : frames) {
     for (Frame* frame : aStreamFrames) {
       for (auto& pRoI : frame->parentRoIs) {
-        //if (pRoI->prevRoI != nullptr) {
+        // if (pRoI->prevRoI != nullptr) {
         if (std::all_of(pRoI->childRoIs.begin(), pRoI->childRoIs.end(),
-                        [](RoI* cRoI){return cRoI->type==RoI::OF;})) {
+                        [](RoI* cRoI) { return cRoI->type == RoI::OF; })) {
           if (std::any_of(pRoI->childRoIs.begin(), pRoI->childRoIs.end(),
-                          [](RoI* cRoI){return cRoI->prevRoI== nullptr;})){
+                          [](RoI* cRoI) { return cRoI->prevRoI == nullptr; })) {
             pRoI->priority = 0.1234;
             continue;
           }
@@ -169,7 +169,7 @@ void PatchMixer::prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
             float diffY = cy - py;
             diffNorm += (diffX * diffX + diffY * diffY);
           }
-          diffNorm /= pRoI->childRoIs.size();
+          diffNorm /= float(pRoI->childRoIs.size());
 
           pRoI->priority = pRoI->features.ofFeatures.avgErr * diffNorm;
         } else {
