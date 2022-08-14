@@ -240,15 +240,15 @@ struct RoI {
         const std::vector<std::pair<float, float>>& shifts) {
       std::vector<float> distances;
       for (const auto&[x, y] : shifts) {
-        distances.push_back(sqrt(pow(x, 2) + pow(y, 2)));
+        distances.push_back(x * x + y * y);
       }
       auto const q1_index = int(float(distances.size()) * 0.25);
       std::nth_element(distances.begin(), distances.begin() + q1_index, distances.end());
       float q1 = distances[q1_index];
       std::vector<std::pair<float, float>> filteredShifts;
-      for (int i = 0; i < distances.size(); i++) {
-        if (distances[i] > q1) {
-          filteredShifts.push_back(shifts[i]);
+      for (auto&[x, y] : shifts) {
+        if (x * x + y * y > q1) {
+          filteredShifts.emplace_back(x, y);
         }
       }
       return filteredShifts;
