@@ -19,7 +19,7 @@ namespace rm {
 class RoIExtractor {
  public:
   RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
-               const PatchMixer* patchMixer, RoIResizer* roiResizer,
+               bool roiWiseInference, const PatchMixer* patchMixer, RoIResizer* roiResizer,
                int frameSize, int numFrames);
 
   ~RoIExtractor();
@@ -69,12 +69,14 @@ class RoIExtractor {
   bool mbStop;
 
   const bool mAllowInterpolation;
+  const bool mRoIWiseInference;
   const PatchMixer* mPatchMixer;
   const int mFrameSize;
   std::mutex packMtx;
   int mNumFrames;
   bool isFullyPacked;
-  std::map<int, std::vector<Rect>> freeRectsMap;
+  std::map<int, std::vector<Rect>> mFreeRectsMap;
+  int mRoICount;
 
   static const cv::TermCriteria CRITERIA;
   const cv::Size mTargetSize;

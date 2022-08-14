@@ -36,7 +36,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
 
   mRoIExtractor = std::make_unique<RoIExtractor>(
       config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0, config.ALLOW_INTERPOLATION,
-      mPatchMixer.get(), mRoIResizer.get(), mInferenceFrameSize,
+      config.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(), mInferenceFrameSize,
       getNumFrames(mScheduleInterval, mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize)));
 
   if (config.LOG_EXECUTION) {

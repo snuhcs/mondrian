@@ -14,10 +14,10 @@ const cv::TermCriteria RoIExtractor::CRITERIA = cv::TermCriteria(
     cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
 
 RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
-                           const PatchMixer* patchMixer, RoIResizer* roiResizer,
-                           int frameSize, int numFrames)
+                           bool roiWiseInference, const PatchMixer* patchMixer,
+                           RoIResizer* roiResizer, int frameSize, int numFrames)
     : mConfig(config), mPatchMixer(patchMixer), mRoIResizer(roiResizer), mFrameSize(frameSize),
-      mNumFrames(numFrames), mTargetSize(
+      mNumFrames(numFrames), mRoIWiseInference(roiWiseInference), mTargetSize(
         cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
       mAllowInterpolation(allowInterpolation), mbStop(false), isFullyPacked(false) {
   if (run) {
@@ -98,8 +98,12 @@ void RoIExtractor::reEnqueueFrames(const std::vector<Frame*>& frames) {
 }
 
 void RoIExtractor::resetPack() {
-  for (int i = 0; i < mNumFrames; i++) {
-    freeRectsMap[i] = {Rect(0, 0, mFrameSize, mFrameSize)};
+  if (mRoIWiseInference) {
+    mRoICount = mNumFrames;
+  } else {
+    for (int i = 0; i < mNumFrames; i++) {
+      mFreeRectsMap[i] = {Rect(0, 0, mFrameSize, mFrameSize)};
+    }
   }
 }
 
@@ -190,16 +194,21 @@ void RoIExtractor::work() {
       frame->mergeRoIEndTime = NowMicros();
       if (!mAllowInterpolation) {
         std::lock_guard<std::mutex> packLock(packMtx);
-        auto& config = mPatchMixer->mConfig;
-        float batchedRoISize = float(mFrameSize) / std::ceil(std::sqrt(config.BATCH_SIZE));
         bool isAllPacked = true;
-        for (auto& pRoI : frame->parentRoIs) {
-          std::pair<float, float> resizedWH = config.EMULATED_BATCH ?
-              std::make_pair(batchedRoISize, batchedRoISize) :
-              pRoI->getResizedWidthHeight();
-          isAllPacked = PatchMixer::tryPackRoI(resizedWH, freeRectsMap, config.EMULATED_BATCH);
-          if (!isAllPacked) {
-            break;
+        if (mRoIWiseInference) {
+          mRoICount -= int(frame->parentRoIs.size());
+          isAllPacked = mRoICount >= 0;
+        } else {
+          auto& config = mPatchMixer->mConfig;
+          float batchedRoISize = float(mFrameSize) / std::ceil(std::sqrt(config.BATCH_SIZE));
+          for (auto& pRoI : frame->parentRoIs) {
+            std::pair<float, float> resizedWH = config.EMULATED_BATCH ?
+                                                std::make_pair(batchedRoISize, batchedRoISize) :
+                                                pRoI->getResizedWidthHeight();
+            isAllPacked = PatchMixer::tryPackRoI(resizedWH, mFreeRectsMap, config.EMULATED_BATCH);
+            if (!isAllPacked) {
+              break;
+            }
           }
         }
         if (!isAllPacked) {
