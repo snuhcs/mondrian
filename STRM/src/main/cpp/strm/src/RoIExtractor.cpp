@@ -51,7 +51,7 @@ void RoIExtractor::enqueue(Frame* frame) {
                                      0, [](int cnt, auto& it) { return cnt + it.second.size(); });
   lock.unlock();
   cv.notify_all();
-  LOGD("%-25s                for video %-5s frame %-4d // %4d PD | %4d OF | %4d Processed",
+  LOGD("%-25s                 for video %-5s frame %-4d // %4d PD | %4d OF | %4d Processed",
        "RoIExtractor::enqueue", frame->shortKey.c_str(), frame->frameIndex,
        numPDs, numOFs, numProcessed);
 }
