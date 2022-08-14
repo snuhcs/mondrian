@@ -21,7 +21,7 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, bool allo
         cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
       mAllowInterpolation(allowInterpolation), mbStop(false), isFullyPacked(false) {
   if (run) {
-    if (mAllowInterpolation) {
+    if (!mAllowInterpolation) {
       resetPack();
     }
     mThreads.reserve(config.NUM_WORKERS);
@@ -144,7 +144,7 @@ void RoIExtractor::work() {
   };
 
   while (true) {
-    bool isOF;
+    bool isOF = false;
     Frame* frame = nullptr;
 
     std::unique_lock<std::mutex> lock(mtx);
@@ -207,6 +207,7 @@ void RoIExtractor::work() {
         bool isAllPacked = true;
         if (mRoIWiseInference) {
           mRoICount -= int(frame->parentRoIs.size());
+          LOGD("mRoICount %d", mRoICount);
           isAllPacked = mRoICount >= 0;
         } else {
           auto& config = mPatchMixer->mConfig;

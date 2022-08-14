@@ -479,9 +479,10 @@ struct RoI {
   }
 
   cv::Mat getResizedMat() const {
-    std::pair<float, float> wh = getResizedWidthHeight();
+    auto[w, h] = getResizedWidthHeight();
+    assert(w >= 1 && h >= 1);
     cv::Mat resizedMat;
-    cv::resize(getPaddedMat(), resizedMat, cv::Size(wh.first, wh.second));
+    cv::resize(getPaddedMat(), resizedMat, cv::Size(w, h));
     return resizedMat;
   }
 

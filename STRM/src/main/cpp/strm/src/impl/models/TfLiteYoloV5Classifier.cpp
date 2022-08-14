@@ -94,6 +94,7 @@ cv::Mat TfLiteYoloV5Classifier::preprocess(const cv::Mat& mat) {
     left = (inputSize.width - resizeWidth) / 2;
     right = (inputSize.width - resizeWidth) - left;
   }
+  assert(resizeWidth >= 1 && resizeHeight >= 1);
   cv::resize(mat, preprocessedMat, cv::Size(resizeWidth, resizeHeight));
   cv::copyMakeBorder(preprocessedMat, preprocessedMat, top, bottom, left, right,
                      cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));

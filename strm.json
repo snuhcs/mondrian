@@ -1,5 +1,5 @@
 {
-    "draw_output": true,
+    "draw_output": false,
     "draw_inference_result": true,
     "video_configs": [
         {
@@ -19,14 +19,14 @@
         "iou_threshold": 0.5,
         "num_workers": 1,
         "input_sizes": [
-            800
+            160, 800
         ]
     },
     "log_internal": true,
     "log_execution": false,
     "log_roi": false,
     "allow_interpolation": false,
-    "roi_wise_inference": false,
+    "roi_wise_inference": true,
     "full_frame_interval": 1,
     "buffer_size": 500,
     "latency_slo_ms": 6000,

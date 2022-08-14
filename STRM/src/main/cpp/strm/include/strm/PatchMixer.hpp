@@ -26,7 +26,7 @@ class PatchMixer {
   std::tuple<std::vector<MixedFrame>, Frame*, std::map<std::string, SortedFrames>, SortedFrames>
   packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameStreamIndex,
            int frameSize, int numFrames, bool allowInterpolation, bool roiWiseInference, bool probe,
-           int numProbeSteps, float probeStepSize) const;
+           int numProbeSteps, float probeStepSize);
 
   static bool tryPackRoI(const std::pair<float, float>& resizedWH,
                          std::map<int, std::vector<Rect>>& freeRectsMap,
@@ -57,6 +57,7 @@ class PatchMixer {
   static const float HIGH_PRIORITY;
 
   PatchMixerConfig mConfig;
+  int mNumFramesToKeep = -1;
 };
 
 } // namespace rm
