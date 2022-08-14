@@ -6,13 +6,16 @@
 
 namespace rm {
 
-const float PatchMixer::HIGH_PRIORITY = 1e9;
+const float PatchMixer::HIGHEST_PRIORITY = 103;
+const float PatchMixer::HIGHER_PRIORITY = 102;
+const float PatchMixer::HIGH_PRIORITY = 101;
 
 PatchMixer::PatchMixer(const PatchMixerConfig& config)
     : mConfig(config) {}
 
-void PatchMixer::addProbeRoIs(std::map<std::string, SortedFrames>& frames, const Frame* fullFrameTarget,
-                              int numProbeSteps, float probeStepSize) {
+void
+PatchMixer::addProbeRoIs(std::map<std::string, SortedFrames>& frames, const Frame* fullFrameTarget,
+                         int numProbeSteps, float probeStepSize) {
   std::set<Frame*> lastFrames = filterLastFrames(frames);
   for (Frame* lastFrame : lastFrames) {
     if (lastFrame != fullFrameTarget && lastFrame->probingRoIs.empty()) {
@@ -54,14 +57,28 @@ void PatchMixer::prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
   for (auto&[_, aStreamFrames] : frames) {
     for (Frame* frame : aStreamFrames) {
       for (auto& pRoI : frame->parentRoIs) {
-        if (pRoI->prevRoI != nullptr) {
-          auto&[prevX, prevY] = pRoI->prevRoI->features.ofFeatures.avgShift;
-          auto&[currX, currY] = pRoI->features.ofFeatures.avgShift;
-          float diffX = currX - prevX;
-          float diffY = currY - prevY;
-          pRoI->priority = pRoI->features.ofFeatures.avgErr + (diffX * diffX + diffY * diffY);
+        // if (pRoI->prevRoI != nullptr) {
+        if (std::all_of(pRoI->childRoIs.begin(), pRoI->childRoIs.end(),
+                        [](RoI* cRoI) { return cRoI->type == RoI::OF; })) {
+          if (std::any_of(pRoI->childRoIs.begin(), pRoI->childRoIs.end(),
+                          [](RoI* cRoI) { return cRoI->prevRoI == nullptr; })) {
+            pRoI->priority = 0.1234;
+            continue;
+          }
+
+          float diffNorm = 0;
+          for (auto& cRoI : pRoI->childRoIs) {
+            const auto&[px, py] = cRoI->prevRoI->features.ofFeatures.avgShift;
+            const auto&[cx, cy] = cRoI->features.ofFeatures.avgShift;
+            float diffX = cx - px;
+            float diffY = cy - py;
+            diffNorm += (diffX * diffX + diffY * diffY);
+          }
+          diffNorm /= float(pRoI->childRoIs.size());
+
+          pRoI->priority = pRoI->features.ofFeatures.avgErr * diffNorm;
         } else {
-          pRoI->priority = HIGH_PRIORITY;
+          pRoI->priority = HIGHER_PRIORITY;
         }
       }
     }
@@ -84,7 +101,7 @@ void PatchMixer::prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
     if (fullFrameTarget == nullptr || fullFrameTarget->key != aStreamKey) {
       Frame* lastFrame = *aStreamFrames.rbegin();
       for (auto& pRoI : lastFrame->parentRoIs) {
-        pRoI->priority = HIGH_PRIORITY;
+        pRoI->priority = HIGHEST_PRIORITY;
       }
     }
   }
@@ -188,7 +205,8 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
         std::pair<float, float> resizedWH = mConfig.EMULATED_BATCH ?
                                             std::make_pair(batchedRoISize, batchedRoISize) :
                                             pRoI->getResizedWidthHeight();
-        if (!tryPackRoI(resizedWH, freeRectsMap,
+        if (!tryPackRoI(
+            resizedWH, freeRectsMap,
             pRoI->priority == HIGH_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
             pRoI, &packedRoIsMap, mConfig.EMULATED_BATCH)) {
           isAllPacked = false;
@@ -220,12 +238,13 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
         }
         std::sort(allSelectedFrames.begin(), allSelectedFrames.end(),
                   [](Frame* l, Frame* r) {
-          if (l->frameIndex == r->frameIndex) {
-            return l->key < r->key;
-          }
-          return l->frameIndex < r->frameIndex;
-        });
-        for (auto it = allSelectedFrames.begin() + numFramesToKeep; it != allSelectedFrames.end(); it++) {
+                    if (l->frameIndex == r->frameIndex) {
+                      return l->key < r->key;
+                    }
+                    return l->frameIndex < r->frameIndex;
+                  });
+        for (auto it = allSelectedFrames.begin() + numFramesToKeep;
+             it != allSelectedFrames.end(); it++) {
           Frame* frameToDrop = *it;
           frameToDrop->resetProbeRoIs();
           for (auto& pRoI: frameToDrop->parentRoIs) {

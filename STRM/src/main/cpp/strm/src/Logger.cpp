@@ -105,6 +105,8 @@ void Logger::logResult(const std::string& key, int frameIndex, time_us time,
             << box.location.right << ','
             << box.location.bottom << ','
             << box.confidence << ','
+            << box.origin << ','
+            << box.choiceOfBox << ','
             << COCO_LABELS[box.label];
     if (i != boxes.size() - 1) {
       logFile << ',';
@@ -206,7 +208,7 @@ void Logger::logRoI(RoI* roi) {
       << roi->features.ofFeatures.ncc << delim
 
       << roi->roisForProbing.size() << delim
-      << roi->priority << delim
+      << roi->parentRoI->priority << delim
       << roi->id << delim
 
       << roi->parentRoI->packedLocation.first << delim

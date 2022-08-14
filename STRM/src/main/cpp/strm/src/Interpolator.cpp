@@ -69,7 +69,7 @@ void Interpolator::extrapolateLeft(std::vector<RoI*> childRoIs, int idx) {
     RoI* currRoI = childRoIs.at(current);
     std::pair<float, float> shift = prevRoI->features.ofFeatures.avgShift;
     std::pair<float, float> newCenter = std::make_pair(prevCenter.first - shift.first,
-                                                   prevCenter.second - shift.second);
+                                                       prevCenter.second - shift.second);
     BoundingBox* prevBox = prevRoI->box;
     assert(prevBox->id == prevRoI->id);
     addBoxWithPrevInfo(currRoI, prevBox, newCenter);
@@ -89,7 +89,7 @@ void Interpolator::extrapolateRight(std::vector<RoI*> childRoIs, int idx) {
     RoI* currRoI = childRoIs.at(current);
     std::pair<float, float> shift = currRoI->features.ofFeatures.avgShift;
     std::pair<float, float> newCenter = std::make_pair(prevCenter.first + shift.first,
-                                                   prevCenter.second + shift.second);
+                                                       prevCenter.second + shift.second);
     BoundingBox* prevBox = prevRoI->box;
     assert(prevBox->id == prevRoI->id);
     addBoxWithPrevInfo(currRoI, prevBox, newCenter);
@@ -148,7 +148,7 @@ void Interpolator::addBoxWithPrevInfo(RoI* currRoI, const BoundingBox* prevBox,
   float newHeight = prevBox->location.height();
   Rect newBox(newCenter, newWidth, newHeight);
   currRoI->frame->boxes.emplace_back(
-      new BoundingBox(prevBox->id, newBox, prevBox->confidence, prevBox->label, fromIP));
+      new BoundingBox(prevBox->id, newBox, prevBox->confidence, prevBox->label, origin_IP));
 
   BoundingBox* box = currRoI->frame->boxes.back().get();
   assert(box->id == prevBox->id);

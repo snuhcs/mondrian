@@ -51,7 +51,7 @@ void RoIExtractor::enqueue(Frame* frame) {
                                      0, [](int cnt, auto& it) { return cnt + it.second.size(); });
   lock.unlock();
   cv.notify_all();
-   ("%-25s                for video %-5s frame %-4d // %4d PD | %4d OF | %4d Processed",
+  LOGD("%-25s                for video %-5s frame %-4d // %4d PD | %4d OF | %4d Processed",
        "RoIExtractor::enqueue", frame->shortKey.c_str(), frame->frameIndex,
        numPDs, numOFs, numProcessed);
 }
@@ -256,12 +256,14 @@ void RoIExtractor::processOF(Frame* currFrame) {
     testAssignedUniqueBoxID(prevFrame->boxes);
     for (const std::unique_ptr<BoundingBox>& box : prevFrame->boxes) {
       if (box->confidence > mConfig.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
-        reliablePrevBoxes.emplace_back(box->id, Rect(
+        BoundingBox reliableBox(box->id, Rect(
             std::max(0.0f, box->location.left),
             std::max(0.0f, box->location.top),
             std::min(float(currFrame->width), box->location.right),
             std::min(float(currFrame->height), box->location.bottom)),
-                                       box->confidence, box->label, fromBB);
+                                box->confidence, box->label, origin_BB);
+        reliableBox.srcRoI = box->srcRoI;
+        reliablePrevBoxes.push_back(reliableBox);
       }
     }
   } else {
@@ -343,7 +345,7 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
 
     std::vector<cv::Point2f> points;
     cv::Rect roiBbx = cv::Rect(x, y, w, h);
-    cv::goodFeaturesToTrack(prevImage(roiBbx), points, 100, 0.01, 5, cv::Mat(), 3, false, 0.03);
+    cv::goodFeaturesToTrack(prevImage(roiBbx), points, 50, 0.01, 5, cv::Mat(), 3, false, 0.03);
     for (cv::Point2f& p : points) {
       p.x += x;
       p.y += y;
@@ -415,10 +417,11 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
     cv::approxPolyDP(contour, approxCurve, approxDistance, true);
     cv::Rect2f box = cv::boundingRect(approxCurve);
     if (box.area() >= mixRoIArea) {
-      boxes.emplace_back(box.x * float(currFrame->mat.cols) / float(targetSize.width),
-                         box.y * float(currFrame->mat.rows) / float(targetSize.height),
-                         (box.x + box.width) * float(currFrame->mat.cols) / float(targetSize.width),
-                         (box.y + box.height) * float(currFrame->mat.rows) / float(targetSize.height));
+      boxes.emplace_back(
+          box.x * float(currFrame->mat.cols) / float(targetSize.width),
+          box.y * float(currFrame->mat.rows) / float(targetSize.height),
+          (box.x + box.width) * float(currFrame->mat.cols) / float(targetSize.width),
+          (box.y + box.height) * float(currFrame->mat.rows) / float(targetSize.height));
     }
   }
 
@@ -429,7 +432,7 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
         currFrame,
         box,
         RoI::PD,
-        fromPD,
+        origin_PD,
         -1,
         RoI::OFFeatures({}, {}),
         mConfig.ROI_PADDING,
@@ -441,19 +444,20 @@ cv::Mat RoIExtractor::calculateDiffAndThreshold(
     const cv::Mat& prevMat, const cv::Mat& currMat) {
   cv::Mat diff;
   cv::absdiff(prevMat, currMat, diff);
-  for (int i = 0; i < 3; i++) {
-    cv::dilate(diff, diff, cv::getStructuringElement(
-        cv::MORPH_RECT, cv::Size(3, 3)), cv::Point(0, 0), i + 1);
-  }
-  cv::threshold(diff, diff, 30, 255, cv::THRESH_BINARY);
+  cv::dilate(diff, diff,
+             cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)),
+             cv::Point(0, 0),
+             5);
+  cv::threshold(diff, diff, 35, 255, cv::THRESH_BINARY);
   return diff;
 }
 
 void RoIExtractor::cannyEdgeDetection(cv::Mat mat) {
-  cv::GaussianBlur(mat, mat, cv::Size(3, 3), 0);
-  cv::Canny(mat, mat, 120, 255, 3, true);
-  cv::dilate(mat, mat, cv::getStructuringElement(
-      cv::MORPH_RECT, cv::Size(5, 5)), cv::Point(0, 0), 1);
+  cv::Canny(mat, mat, 120, 255, 3, false);
+  cv::dilate(mat, mat,
+             cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)),
+             cv::Point(0, 0),
+             1);
 }
 
 } // namespace rm

@@ -55,7 +55,8 @@ struct PatchMixerConfig {
 
 struct PatchReconstructorConfig {
   float FRAME_BOXES_IOU_THRESHOLD = 0.5;
-  float OVERLAP_THRESHOLD = 0.8;
+  float BOX_FILTER_OVERLAP_THRESHOLD = 0.8;
+  float ID_MAPPING_IOU_THRESHOLD = 0.1;
 };
 
 struct STRMConfig {

@@ -37,7 +37,8 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
   mRoIExtractor = std::make_unique<RoIExtractor>(
       config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0, config.ALLOW_INTERPOLATION,
       config.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(), mInferenceFrameSize,
-      getNumInferences(mScheduleInterval, mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize) * 1000));
+      getNumInferences(mScheduleInterval,
+                       mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize) * 1000));
 
   if (config.LOG_EXECUTION) {
     mLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");
@@ -110,7 +111,8 @@ void SpatioTemporalRoIMixer::work() {
 
     // Schedule
     auto[mixedFrames, fullFrameTarget, selectedFrames, droppedFrames] = mPatchMixer->packRoIs(
-        frames, fullFrameStreamIndex++, mInferenceFrameSize, numInferences, mConfig.ALLOW_INTERPOLATION,
+        frames, fullFrameStreamIndex++, mInferenceFrameSize, numInferences,
+        mConfig.ALLOW_INTERPOLATION,
         mConfig.ROI_WISE_INFERENCE, mRoIResizer->isProbing(), mRoIResizer->getNumProbeSteps(),
         mRoIResizer->getProbeStepSize());
     if (!mConfig.ALLOW_INTERPOLATION) {
@@ -134,8 +136,9 @@ void SpatioTemporalRoIMixer::work() {
     }
     logger.step("full");
     LOGD("%-25s took %-7lld us for video %-5s frame %-4d",
-         "STRM::fullFrameInference", logger.getDuration("full"), fullFrameTarget->shortKey.c_str(),
-         fullFrameTarget->frameIndex);
+         "STRM::fullFrameInference", logger.getDuration("full"),
+         fullFrameTarget != nullptr ? fullFrameTarget->shortKey.c_str() : "-1",
+         fullFrameTarget != nullptr ? fullFrameTarget->frameIndex : -1);
 
     // Inference
     if (mConfig.ROI_WISE_INFERENCE) {
@@ -205,9 +208,10 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   frame->fullFrameGetResultsTime = NowMicros();
   for (const BoundingBox& box : results) {
     frame->boxes.emplace_back(
-        new BoundingBox(UNASSIGNED_ID, box.location, box.confidence, box.label, box.origin));
+        new BoundingBox(UNASSIGNED_ID, box.location, box.confidence, box.label, origin_FF));
   }
   mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, true);
+
   for (auto& box : frame->boxes) {
     assert(box->id != UNASSIGNED_ID);
   }
@@ -424,7 +428,8 @@ void SpatioTemporalRoIMixer::drawObjectDetectionResult(const cv::Mat& mat,
     const rm::BoundingBox& b = boxes.at(i);
     jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
                                  b.id,
-                                 int(std::round(b.location.left)), int(std::round(b.location.top)), int(std::round(b.location.right)),
+                                 int(std::round(b.location.left)), int(std::round(b.location.top)),
+                                 int(std::round(b.location.right)),
                                  int(std::round(b.location.bottom)),
                                  b.confidence, b.label, int(b.origin), (b.srcRoI == nullptr));
     env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
