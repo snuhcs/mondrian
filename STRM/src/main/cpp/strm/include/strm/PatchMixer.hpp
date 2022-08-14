@@ -34,10 +34,10 @@ class PatchMixer {
                          std::map<int, std::set<RoI*>>* packedRoIsMap = nullptr,
                          bool emulatedBatch = false);
 
+ private:
   static std::string getFullFrameTargetStream(
       const std::map<std::string, SortedFrames>& selectedFrames, int fullFrameStreamIndex);
 
- private:
   static void addProbeRoIs(std::map<std::string, SortedFrames>& frames,
                            const Frame* fullFrameTarget, int numProbeSteps,
                            float probeStepSize);
