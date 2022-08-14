@@ -264,7 +264,7 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
 
     std::vector<cv::Point2f> points;
     cv::Rect roiBbx = cv::Rect(x, y, w, h);
-    cv::goodFeaturesToTrack(prevImage(roiBbx), points, 100, 0.01, 5, cv::Mat(), 3, false, 0.03);
+    cv::goodFeaturesToTrack(prevImage(roiBbx), points, 50, 0.01, 5, cv::Mat(), 3, false, 0.03);
     for (cv::Point2f& p : points) {
       p.x += x;
       p.y += y;
@@ -362,19 +362,15 @@ cv::Mat RoIExtractor::calculateDiffAndThreshold(
     const cv::Mat& prevMat, const cv::Mat& currMat) {
   cv::Mat diff;
   cv::absdiff(prevMat, currMat, diff);
-  for (int i = 0; i < 3; i++) {
-    cv::dilate(diff, diff, cv::getStructuringElement(
-        cv::MORPH_RECT, cv::Size(3, 3)), cv::Point(0, 0), i + 1);
-  }
-  cv::threshold(diff, diff, 30, 255, cv::THRESH_BINARY);
+  cv::dilate(diff, diff, cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)), cv::Point(0, 0), 5);
+  cv::threshold(diff, diff, 35, 255, cv::THRESH_BINARY);
   return diff;
 }
 
 void RoIExtractor::cannyEdgeDetection(cv::Mat mat) {
-  cv::GaussianBlur(mat, mat, cv::Size(3, 3), 0);
-  cv::Canny(mat, mat, 120, 255, 3, true);
+  cv::Canny(mat, mat, 120, 255, 3, false);
   cv::dilate(mat, mat, cv::getStructuringElement(
-      cv::MORPH_RECT, cv::Size(5, 5)), cv::Point(0, 0), 1);
+      cv::MORPH_RECT, cv::Size(3, 3)), cv::Point(0, 0), 1);
 }
 
 } // namespace rm

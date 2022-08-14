@@ -197,7 +197,7 @@ class FrameBuffer {
 
   Frame* enqueue(const cv::Mat& mat);
 
-  void freeImage(const std::vector<int> &frameIndices, Logger *logger, Logger *roiLogger);
+  void freeImage(const std::vector<int>& frameIndices, Logger* logger, Logger* roiLogger);
 
  private:
   const std::string key;
@@ -220,14 +220,39 @@ struct RoI {
     const std::vector<std::pair<float, float>> shifts;
     const std::vector<float> errs;
 
-    const std::pair<float, float> avgShift;
-    const std::pair<float, float> stdShift;
-    const float avgErr;
-    const float ncc;
+    std::pair<float, float> avgShift;
+    std::pair<float, float> stdShift;
+    float avgErr;
+    float ncc;
 
     OFFeatures(const std::vector<std::pair<float, float>>& shifts, const std::vector<float>& errs)
         : shifts(shifts), errs(errs), avgShift(getShiftAvg(shifts)), stdShift(getShiftStd(shifts)),
-          avgErr(getAvgErr(errs)), ncc(getNCC(shifts)) {}
+          avgErr(getAvgErr(errs)), ncc(getNCC(shifts)) {
+      if (!shifts.empty()) {
+        std::vector<std::pair<float, float>> filtered = filterShifts(shifts);
+        avgShift = getShiftAvg(filtered);
+        stdShift = getShiftStd(filtered);
+        ncc = getNCC(filtered);
+      }
+    }
+
+    static std::vector<std::pair<float, float>> filterShifts(
+        const std::vector<std::pair<float, float>>& shifts) {
+      std::vector<float> distances;
+      for (const auto&[x, y] : shifts) {
+        distances.push_back(x * x + y * y);
+      }
+      auto const q1_index = int(float(distances.size()) * 0.25);
+      std::nth_element(distances.begin(), distances.begin() + q1_index, distances.end());
+      float q1 = distances[q1_index];
+      std::vector<std::pair<float, float>> filteredShifts;
+      for (auto&[x, y] : shifts) {
+        if (x * x + y * y > q1) {
+          filteredShifts.emplace_back(x, y);
+        }
+      }
+      return filteredShifts;
+    }
 
     static std::pair<float, float> getShiftAvg(const std::vector<std::pair<float, float>>& shifts) {
       if (shifts.empty()) {
