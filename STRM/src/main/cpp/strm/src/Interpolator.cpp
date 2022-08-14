@@ -148,7 +148,7 @@ void Interpolator::addBoxWithPrevInfo(RoI* currRoI, const BoundingBox* prevBox,
   float newHeight = prevBox->location.height();
   Rect newBox(newCenter, newWidth, newHeight);
   currRoI->frame->boxes.emplace_back(
-      new BoundingBox(prevBox->id, newBox, prevBox->confidence, prevBox->label, fromIP));
+      new BoundingBox(prevBox->id, newBox, prevBox->confidence, prevBox->label, origin_IP));
 
   BoundingBox* box = currRoI->frame->boxes.back().get();
   assert(box->id == prevBox->id);

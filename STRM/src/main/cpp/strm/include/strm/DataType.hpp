@@ -78,23 +78,27 @@ struct Rect {
 };
 
 enum Origin {
-  originNull = 0,
-  fromBB = 1,
-  fromPD = 2,
-  fromIP = 3,
+  origin_Null = 0,  // null value for initialization
+  origin_FF = 1,    // (Box) matched Box from full frame
+  origin_BB = 2,    // (RoI, Box) OF RoI from bounding box, Box from those RoIs
+  origin_PD = 3,    // (RoI, Box) PD RoI, OF RoI originated from PD RoI, Box from those RoIs
+  origin_IP = 4,    // (Box) interpolated Box
+  origin_NewFF = 5, // (Box) unmatched Box from full frame
+  origin_NewMF = 6, // (Box) unmatched Box from mixed frame
 };
 
 struct BoundingBox {
   Rect location;
   float confidence;
   int label;
+  idType choiceOfBox;
   idType id;
   RoI* srcRoI;
   Origin origin;
 
   BoundingBox(idType id, const Rect location, const float confidence, int label, Origin origin)
       : id(id), location(location), confidence(confidence), label(label), origin(origin),
-        srcRoI(nullptr) {}
+        srcRoI(nullptr), choiceOfBox(UNASSIGNED_ID) {}
 };
 
 enum RoIExtractionStatus {
@@ -379,13 +383,12 @@ struct RoI {
         targetSize(maxEdgeLength), packedLocation(NOT_PACKED), isMatchTried(false),
         nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
         packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1),
-        isProbingRoI(isProbingRoI) {
+        isProbingRoI(isProbingRoI), priority(-1) {
     if (prevRoI != nullptr) {
       prevRoI->nextRoI = this;
     }
   };
 
-  RoI(const RoI& roi) = default;
 
   static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
     assert(pRoI0->frame == pRoI1->frame);
@@ -408,7 +411,7 @@ struct RoI {
     }
     std::unique_ptr<RoI> mergedRoI(
         new RoI(nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-                roiType, originNull, roiLabel, OFFeatures({}, {}), 0, false));
+                roiType, origin_Null, roiLabel, OFFeatures({}, {}), 0, false));
     mergedRoI->targetSize = (pRoI0->targetSize * pRoI1->maxEdgeLength >
                              pRoI1->targetSize * pRoI0->maxEdgeLength) ?
                             mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :

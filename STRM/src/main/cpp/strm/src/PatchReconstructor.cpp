@@ -64,7 +64,8 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
         maxRoI = pRoI;
       }
     }
-    if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
+    if (maxRoI != nullptr && maxOverlap >= mConfig.BOX_FILTER_OVERLAP_THRESHOLD) {
+      // filter overly large boxes from mixed frame inference by OVERLAP_THRESHOLD
       if (maxRoI->isProbingRoI) {
         maxRoI->frame->probingBoxes.emplace_back(new BoundingBox(
             UNASSIGNED_ID, reconstructBoxPos(box, maxRoI),
@@ -73,7 +74,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
       } else {
         maxRoI->frame->boxes.emplace_back(new BoundingBox(
             UNASSIGNED_ID, reconstructBoxPos(box, maxRoI),
-            box.confidence, box.label, maxRoI->origin));
+            box.confidence, box.label, origin_Null));
       }
     }
   }
@@ -104,23 +105,23 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
   std::map<RoI*, std::vector<BoundingBox*>> roiToBoxesMap;
   for (std::unique_ptr<BoundingBox>& box : boxes) {
     // find RoI with largest overlap
-    float maxOverlap = 0;
+    float maxIoU = 0;
     RoI* maxRoI = nullptr;
     for (auto& cRoI : childRoIs) {
       if (isFullFrame || cRoI->parentRoI->isPacked()) {
-        float intersection = cRoI->origLoc.intersection(box->location);
+        float iou = cRoI->paddedLoc.iou(box->location);
         assert(box->location.area() != 0);
-        float overlapRatio = intersection / box->location.area();
-        if (maxOverlap < overlapRatio) {
-          maxOverlap = overlapRatio;
+        if (maxIoU < iou) {
+          maxIoU = iou;
           maxRoI = cRoI.get();
         }
       }
     }
     // if overlap is large enough, assign box to roi.boxes
     // else that bounding box is considered as newly appeared object
-    if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
+    if (maxRoI != nullptr && maxIoU >= mConfig.ID_MAPPING_IOU_THRESHOLD) {
       roiToBoxesMap[maxRoI].push_back(box.get());
+      box->choiceOfBox = maxRoI->id;
     } else {
       unassignedBoxes.push_back(box.get());
     }
@@ -148,6 +149,9 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
         BoundingBox* maxBox = roiToBoxesMap[cRoIPtr][maxIndex];
         maxBox->id = cRoI->id;
         maxBox->srcRoI = cRoIPtr;
+        if (!isFullFrame) {
+          maxBox->origin = cRoI->origin;
+        }
         cRoI->box = maxBox;
         cRoI->label = maxBox->label;
 
@@ -172,6 +176,11 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
     for (BoundingBox* box : unassignedBoxes) {
       assert(id < idRange.second);
       box->id = id++;
+      if (isFullFrame) {
+        box->origin = origin_NewFF;
+      } else {
+        box->origin = origin_NewMF;
+      }
       assert(box->srcRoI == nullptr);
     }
   }

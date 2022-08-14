@@ -49,6 +49,8 @@ class PatchMixer {
 
   static std::pair<Rect, Rect> splitFreeRect(std::pair<float, float> wh, const Rect& rect);
 
+  static const float HIGHEST_PRIORITY;
+  static const float HIGHER_PRIORITY;
   static const float HIGH_PRIORITY;
 
   PatchMixerConfig mConfig;
