@@ -108,7 +108,7 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
     RoI* maxRoI = nullptr;
     for (auto& cRoI : childRoIs) {
       if (isFullFrame || cRoI->parentRoI->isPacked()) {
-        float intersection = cRoI->origLoc.intersection(box->location);
+        float intersection = cRoI->paddedLoc.intersection(box->location);
         assert(box->location.area() != 0);
         float overlapRatio = intersection / box->location.area();
         if (maxOverlap < overlapRatio) {
@@ -119,7 +119,7 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
     }
     // if overlap is large enough, assign box to roi.boxes
     // else that bounding box is considered as newly appeared object
-    if (maxRoI != nullptr && maxOverlap >= mConfig.OVERLAP_THRESHOLD) {
+    if (maxRoI != nullptr && maxOverlap >= 0.6) {
       roiToBoxesMap[maxRoI].push_back(box.get());
     } else {
       unassignedBoxes.push_back(box.get());
