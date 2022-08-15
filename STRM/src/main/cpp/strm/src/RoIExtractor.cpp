@@ -230,6 +230,12 @@ void RoIExtractor::work() {
         frame->isRoIsReady = true;
         mExtractionFinished.insert(frame);
       }
+      if (!mAllowInterpolation &&
+          mPDWaiting.empty() &&
+          mOFWaiting.empty() &&
+          mOFProcessing.empty()) {
+        isFullyPacked = true;
+      }
       lock.unlock();
     } else {
       lock.lock();
