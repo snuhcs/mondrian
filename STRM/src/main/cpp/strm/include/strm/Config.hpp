@@ -17,7 +17,7 @@ struct RoIExtractorConfig {
   int NUM_WORKERS = 2;
   float EXTRACTION_RESIZE_WIDTH = 960;
   float EXTRACTION_RESIZE_HEIGHT = 540;
-  float MIN_ROI_AREA = 5000;
+  float MIN_ROI_AREA = 1000;
   float ROI_PADDING = 10;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
   float PD_FILTER_THRESHOLD = 0.5;
@@ -68,7 +68,7 @@ struct STRMConfig {
   bool ROI_WISE_INFERENCE = false;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int BUFFER_SIZE = 1000;
-  int LATENCY_SLO_MS = 10000;
+  int LATENCY_SLO_MS = 6000;
   RoIExtractorConfig roIExtractorConfig;
   RoIResizerConfig roiResizerConfig;
   PatchMixerConfig patchMixerConfig;
