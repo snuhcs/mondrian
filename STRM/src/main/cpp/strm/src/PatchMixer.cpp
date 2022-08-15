@@ -180,46 +180,59 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
     }
   } else {
     if (roiWiseInference) { // allowInterpolation == false && roiWiseInference == true
-      std::vector<Frame*> allSelectedFrames;
-      for (auto&[aStreamKey, aStreamFrames] : selectedFrames) {
-        allSelectedFrames.insert(
-            allSelectedFrames.end(), aStreamFrames.begin(), aStreamFrames.end());
-      }
-      std::sort(allSelectedFrames.begin(), allSelectedFrames.end(), FrameComp());
-      int roiCount = 0;
-      int endPackFrameIndex = 0;
-      for (int i = 0; i < allSelectedFrames.size(); i++) {
-        Frame* frame = allSelectedFrames[i];
-        if (roiCount + frame->parentRoIs.size() * (1 + numProbeSteps * 2) > numFrames) {
-          endPackFrameIndex = i - 1;
-          break;
+      while (true) {
+        fullFrameTarget = getFullFrameTarget(selectedFrames, fullFrameStreamIndex);
+        std::vector<Frame*> probeFrames;
+        if (probe && !mConfig.EMULATED_BATCH) {
+          probeFrames = addProbeRoIs(selectedFrames, fullFrameTarget, numProbeSteps, probeStepSize);
         }
-        roiCount += int(frame->parentRoIs.size());
-      }
-      endPackFrameIndex = std::max(1, endPackFrameIndex);
-      for (int i = 0; i < allSelectedFrames.size(); i++) {
-        Frame* frame = allSelectedFrames[i];
-        if (i < endPackFrameIndex) {
-          selectedFrames[frame->key].insert(frame);
-        } else {
-          droppedFrames.insert(frame);
-        }
-      }
-      fullFrameTarget = getFullFrameTarget(selectedFrames, fullFrameStreamIndex);
-      fullFrameTarget->resetProbeRoIs();
-      for (int i = 0; i < endPackFrameIndex; i++) {
-        assert(mixedFrames.size() <= numFrames);
-        for (auto& pRoI : allSelectedFrames[i]->parentRoIs) {
-          if (mixedFrames.size() >= numFrames) {
-            break;
+        std::vector<RoI*> candidateRoIs = collectRoIs(selectedFrames, fullFrameTarget);
+
+        int numSelectedFrames = std::accumulate(
+            selectedFrames.begin(), selectedFrames.end(), 0,
+            [](int cnt, auto& it) {
+              return cnt + it.second.size();
+            });
+        LOGD("PatchMixer::packRoIs: Try pack %-4d Frames => %-4lu / %-4d RoIs can be inference",
+             numSelectedFrames, candidateRoIs.size(), numFrames);
+
+        int numPackableFrames = numSelectedFrames - 1;
+        if (numPackableFrames > 1 && candidateRoIs.size() > numFrames) {
+          SortedFrames allSelectedFrames;
+          for (auto&[aStreamKey, aStreamFrames] : selectedFrames) {
+            allSelectedFrames.insert(aStreamFrames.begin(), aStreamFrames.end());
           }
+          auto it = allSelectedFrames.begin();
+          for (int i = 0; i < allSelectedFrames.size(); i++) {
+            if (numPackableFrames <= i) {
+              Frame* frameToDrop = *it;
+              droppedFrames.insert(frameToDrop);
+              selectedFrames[frameToDrop->key].erase(frameToDrop);
+            }
+            it++;
+          }
+          for (Frame* frame : probeFrames) {
+            frame->resetProbeRoIs();
+          }
+          continue;
+        }
+
+        prioritizeRoIs(selectedFrames, fullFrameTarget);
+        if (mConfig.PRIORITY_MIXING) {
+          // Descending order
+          std::sort(candidateRoIs.begin(), candidateRoIs.end(),
+                    [](RoI* l, RoI* r) { return l->priority > r->priority; });
+        }
+        for (int i = 0; i < std::min(numFrames, (int) candidateRoIs.size()); i++) {
+          RoI* pRoI = candidateRoIs[i];
           pRoI->setTargetSize(float(frameSize));
           auto[resizedWidth, resizedHeight] = pRoI->getResizedWidthHeight();
           float x = float(frameSize - resizedWidth) / 2;
           float y = float(frameSize - resizedHeight) / 2;
           pRoI->packedLocation = {x, y};
-          mixedFrames.push_back(MixedFrame({pRoI.get()}, frameSize));
+          mixedFrames.push_back(MixedFrame({pRoI}, frameSize));
         }
+        break;
       }
     } else { // allowInterpolation == false && roiWiseInference == false
       while (true) {
@@ -264,34 +277,29 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
             }
           }
         }
-        int numChildRoIs = std::accumulate(
-            selectedFrames.begin(), selectedFrames.end(), 0,
-            [](int cnt, auto& it) {
-              return cnt + std::accumulate(
-                  it.second.begin(), it.second.end(), 0,
-                  [](int cnt, auto& it) {
-                    return cnt + it->childRoIs.size();
-                  });
-            });
         int numSelectedFrames = std::accumulate(
             selectedFrames.begin(), selectedFrames.end(), 0,
             [](int cnt, auto& it) {
               return cnt + it.second.size();
             });
+        LOGD("PatchMixer::packRoIs "
+             " Try pack %-4d Frames => %-4d childRoIs + %-4d ProbeRoIs packed among %-4lu RoIs",
+             numSelectedFrames, numPackedChildRoIs, numPackedProbeRoIs, candidateRoIs.size());
 //        int numPackableFrames = std::max(1, numSelectedFrames * numPackedChildRoIs / numChildRoIs);
         int numPackableFrames = numSelectedFrames - 1;
-        LOGD("packRoIs: %-5d * %-5d / %-5d = %-5d (%-5d Packed Probe RoIs)",
-             numSelectedFrames, numPackedChildRoIs, numChildRoIs, numPackableFrames, numPackedProbeRoIs);
-        if (!isAllPacked) {
-          std::vector<Frame*> allSelectedFrames;
+        if (numPackableFrames > 1 && !isAllPacked) {
+          SortedFrames allSelectedFrames;
           for (auto&[aStreamKey, aStreamFrames] : selectedFrames) {
-            allSelectedFrames.insert(allSelectedFrames.end(), aStreamFrames.begin(), aStreamFrames.end());
+            allSelectedFrames.insert(aStreamFrames.begin(), aStreamFrames.end());
           }
-          std::sort(allSelectedFrames.begin(), allSelectedFrames.end(), FrameComp());
-          for (auto it = allSelectedFrames.begin() + numPackableFrames; it != allSelectedFrames.end(); it++) {
-            Frame* frameToDrop = *it;
-            droppedFrames.insert(frameToDrop);
-            selectedFrames[frameToDrop->key].erase(frameToDrop);
+          auto it = allSelectedFrames.begin();
+          for (int i = 0; i < allSelectedFrames.size(); i++) {
+            if (numPackableFrames <= i) {
+              Frame* frameToDrop = *it;
+              droppedFrames.insert(frameToDrop);
+              selectedFrames[frameToDrop->key].erase(frameToDrop);
+            }
+            it++;
           }
           for (Frame* frame : probeFrames) {
             frame->resetProbeRoIs();
