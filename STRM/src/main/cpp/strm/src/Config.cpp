@@ -46,6 +46,9 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
 
 RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   RoIResizerConfig config;
+  if (!json["max_cache_size"].isNull()) {
+    config.MAX_CACHE_SIZE = json["max_cache_size"].asInt();
+  }
   if (!json["resize_margin"].isNull()) {
     config.RESIZE_MARGIN = json["resize_margin"].asFloat();
   }

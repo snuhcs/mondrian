@@ -13,15 +13,18 @@ const float PatchMixer::HIGH_PRIORITY = 101;
 PatchMixer::PatchMixer(const PatchMixerConfig& config)
     : mConfig(config) {}
 
-void
-PatchMixer::addProbeRoIs(std::map<std::string, SortedFrames>& frames, const Frame* fullFrameTarget,
-                         int numProbeSteps, float probeStepSize) {
+std::vector<Frame*> PatchMixer::addProbeRoIs(std::map<std::string, SortedFrames>& frames,
+                                             const Frame* fullFrameTarget,
+                                             int numProbeSteps, float probeStepSize) {
+  std::vector<Frame*> probeFrames;
   std::set<Frame*> lastFrames = filterLastFrames(frames);
   for (Frame* lastFrame : lastFrames) {
-    if (lastFrame != fullFrameTarget && lastFrame->probingRoIs.empty()) {
+    if (lastFrame != fullFrameTarget) {
       lastFrame->addProbeRoIs(numProbeSteps, probeStepSize);
+      probeFrames.push_back(lastFrame);
     }
   }
+  return probeFrames;
 }
 
 std::vector<RoI*> PatchMixer::collectRoIs(std::map<std::string, SortedFrames>& frames,
@@ -131,7 +134,7 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
     if (roiWiseInference) { // allowInterpolation == true && roiWiseInference == true
       for (int i = 0; i < std::min(numFrames, (int) candidateRoIs.size()); i++) {
         RoI* pRoI = candidateRoIs[i];
-        pRoI->targetSize = std::min(pRoI->maxEdgeLength, float(frameSize));
+        pRoI->setTargetSize(float(frameSize));
         auto[resizedWidth, resizedHeight] = pRoI->getResizedWidthHeight();
         float x = float(frameSize - resizedWidth) / 2;
         float y = float(frameSize - resizedHeight) / 2;
@@ -182,7 +185,7 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
         allSelectedFrames.insert(
             allSelectedFrames.end(), aStreamFrames.begin(), aStreamFrames.end());
       }
-      std::sort(allSelectedFrames.begin(), allSelectedFrames.end(), FrameIndexComp());
+      std::sort(allSelectedFrames.begin(), allSelectedFrames.end(), FrameComp());
       int roiCount = 0;
       int endPackFrameIndex = 0;
       for (int i = 0; i < allSelectedFrames.size(); i++) {
@@ -210,7 +213,7 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
           if (mixedFrames.size() >= numFrames) {
             break;
           }
-          pRoI->targetSize = std::min(pRoI->maxEdgeLength, float(frameSize));
+          pRoI->setTargetSize(float(frameSize));
           auto[resizedWidth, resizedHeight] = pRoI->getResizedWidthHeight();
           float x = float(frameSize - resizedWidth) / 2;
           float y = float(frameSize - resizedHeight) / 2;
@@ -221,9 +224,9 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
     } else { // allowInterpolation == false && roiWiseInference == false
       while (true) {
         fullFrameTarget = getFullFrameTarget(selectedFrames, fullFrameStreamIndex);
-        fullFrameTarget->resetProbeRoIs();
+        std::vector<Frame*> probeFrames;
         if (probe && !mConfig.EMULATED_BATCH) {
-          addProbeRoIs(selectedFrames, fullFrameTarget, numProbeSteps, probeStepSize);
+          probeFrames = addProbeRoIs(selectedFrames, fullFrameTarget, numProbeSteps, probeStepSize);
         }
         std::vector<RoI*> candidateRoIs = collectRoIs(selectedFrames, fullFrameTarget);
         prioritizeRoIs(selectedFrames, fullFrameTarget);
@@ -240,7 +243,8 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
         }
 
         // Pack RoIs
-        int numPackedRoIs = 0;
+        int numPackedChildRoIs = 0;
+        int numPackedProbeRoIs = 0;
         float batchedRoISize = float(frameSize) / std::ceil(std::sqrt(mConfig.BATCH_SIZE));
         bool isAllPacked = true;
         for (RoI* pRoI : candidateRoIs) {
@@ -253,16 +257,20 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
               pRoI, &packedRoIsMap, mConfig.EMULATED_BATCH)) {
             isAllPacked = false;
           } else {
-            numPackedRoIs++;
+            if (pRoI->isProbingRoI) {
+              numPackedProbeRoIs++;
+            } else {
+              numPackedChildRoIs++;
+            }
           }
         }
-        int numSelectedRoIs = std::accumulate(
+        int numChildRoIs = std::accumulate(
             selectedFrames.begin(), selectedFrames.end(), 0,
             [](int cnt, auto& it) {
               return cnt + std::accumulate(
                   it.second.begin(), it.second.end(), 0,
                   [](int cnt, auto& it) {
-                    return cnt + it->childRoIs.size() + it->probingRoIs.size();
+                    return cnt + it->childRoIs.size();
                   });
             });
         int numSelectedFrames = std::accumulate(
@@ -270,32 +278,23 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
             [](int cnt, auto& it) {
               return cnt + it.second.size();
             });
-        int avgRoIsPerFrame = numSelectedRoIs / numSelectedFrames;
-        int numFramesToKeep = std::min(numSelectedFrames - 1, numPackedRoIs / avgRoIsPerFrame);
-        LOGD("packRoIs: numPackedRoIs %-5d numSelectedRoIs %-5d numSelectedFrames %-5d avgRoIsPerFrame %-5d numFramesToKeep %-5d",
-             numPackedRoIs, numSelectedRoIs, numSelectedFrames, avgRoIsPerFrame, numFramesToKeep);
+//        int numPackableFrames = std::max(1, numSelectedFrames * numPackedChildRoIs / numChildRoIs);
+        int numPackableFrames = numSelectedFrames - 1;
+        LOGD("packRoIs: %-5d * %-5d / %-5d = %-5d (%-5d Packed Probe RoIs)",
+             numSelectedFrames, numPackedChildRoIs, numChildRoIs, numPackableFrames, numPackedProbeRoIs);
         if (!isAllPacked) {
           std::vector<Frame*> allSelectedFrames;
           for (auto&[aStreamKey, aStreamFrames] : selectedFrames) {
-            allSelectedFrames.insert(
-                allSelectedFrames.end(), aStreamFrames.begin(), aStreamFrames.end());
+            allSelectedFrames.insert(allSelectedFrames.end(), aStreamFrames.begin(), aStreamFrames.end());
           }
-          std::sort(allSelectedFrames.begin(), allSelectedFrames.end(),
-                    [](Frame* l, Frame* r) {
-                      if (l->frameIndex == r->frameIndex) {
-                        return l->key < r->key;
-                      }
-                      return l->frameIndex < r->frameIndex;
-                    });
-          for (auto it = allSelectedFrames.begin() + numFramesToKeep;
-               it != allSelectedFrames.end(); it++) {
+          std::sort(allSelectedFrames.begin(), allSelectedFrames.end(), FrameComp());
+          for (auto it = allSelectedFrames.begin() + numPackableFrames; it != allSelectedFrames.end(); it++) {
             Frame* frameToDrop = *it;
-            frameToDrop->resetProbeRoIs();
-            for (auto& pRoI: frameToDrop->parentRoIs) {
-              pRoI->packedLocation = RoI::NOT_PACKED;
-            }
             droppedFrames.insert(frameToDrop);
             selectedFrames[frameToDrop->key].erase(frameToDrop);
+          }
+          for (Frame* frame : probeFrames) {
+            frame->resetProbeRoIs();
           }
           continue;
         }
@@ -386,12 +385,12 @@ bool PatchMixer::tryPackRoI(const std::pair<float, float>& resizedWH,
         if (pRoI->maxEdgeLength > batchedRoISize) {
           float resizedWidth = width > height ? batchedRoISize : width * batchedRoISize / height;
           float resizedHeight = width > height ? height * batchedRoISize / width : batchedRoISize;
-          pRoI->targetSize = batchedRoISize;
+          pRoI->setTargetSize(batchedRoISize);
           pRoI->packedLocation = std::make_pair(
               freeRect.left + (batchedRoISize - resizedWidth) / 2,
               freeRect.top + (batchedRoISize - resizedHeight) / 2);
         } else {
-          pRoI->targetSize = pRoI->maxEdgeLength;
+          pRoI->setTargetSize(pRoI->maxEdgeLength);
           pRoI->packedLocation = std::make_pair(
               freeRect.left + (batchedRoISize - width) / 2,
               freeRect.top + (batchedRoISize - height) / 2);
@@ -412,6 +411,7 @@ Frame* PatchMixer::getFullFrameTarget(
       nonEmptyStreamKeys.push_back(aStreamKey);
     }
   }
+  assert(!nonEmptyStreamKeys.empty());
   fullFrameStreamIndex %= (int) nonEmptyStreamKeys.size();
   Frame* fullFrameTarget = *selectedFrames.at(nonEmptyStreamKeys[fullFrameStreamIndex]).rbegin();
   return fullFrameTarget;

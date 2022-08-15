@@ -292,10 +292,10 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
     for (BoundingBox& b : boxes) {
       pRoI->frame->boxes.emplace_back(new BoundingBox(
           UNASSIGNED_ID, Rect(
-              (b.location.left - x) * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->origLoc.left,
-              (b.location.top - y) * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->origLoc.top,
-              (b.location.right - x) * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->origLoc.left,
-              (b.location.bottom - y) * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->origLoc.top),
+              (b.location.left - x) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.left,
+              (b.location.top - y) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.top,
+              (b.location.right - x) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.left,
+              (b.location.bottom - y) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.top),
           b.confidence, b.label, pRoI->origin));
     }
   }

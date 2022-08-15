@@ -38,9 +38,9 @@ class PatchMixer {
   static Frame* getFullFrameTarget(
       const std::map<std::string, SortedFrames>& selectedFrames, int fullFrameStreamIndex);
 
-  static void addProbeRoIs(std::map<std::string, SortedFrames>& frames,
-                           const Frame* fullFrameTarget, int numProbeSteps,
-                           float probeStepSize);
+  static std::vector<Frame*> addProbeRoIs(std::map<std::string, SortedFrames>& frames,
+                                          const Frame* fullFrameTarget, int numProbeSteps,
+                                          float probeStepSize);
 
   static std::vector<RoI*> collectRoIs(std::map<std::string, SortedFrames>& frames,
                                        const Frame* fullFrameTarget);

@@ -26,6 +26,8 @@ struct RoIExtractorConfig {
 };
 
 struct RoIResizerConfig {
+  int MAX_CACHE_SIZE = 200;
+
   // Margin to add after resize target estimation
   float RESIZE_MARGIN = 10;
 

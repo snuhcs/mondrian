@@ -41,6 +41,8 @@ class RoIExtractor {
 
   void resetPack();
 
+  static void resetOFRoIExtraction(Frame* frame);
+
   void processPD(Frame* currFrame);
 
   void processOF(Frame* currFrame);
@@ -63,30 +65,32 @@ class RoIExtractor {
 
   static void cannyEdgeDetection(cv::Mat mat);
 
-  const RoIExtractorConfig mConfig;
   std::vector<std::thread> mThreads;
-  RoIResizer* mRoIResizer;
   bool mbStop;
 
+  const RoIExtractorConfig mConfig;
   const bool mAllowInterpolation;
   const bool mRoIWiseInference;
+
+  RoIResizer* mRoIResizer;
   const PatchMixer* mPatchMixer;
   const int mFrameSize;
+
   std::mutex packMtx;
-  int mNumFramesPerInterval;
-  bool isFullyPacked;
-  bool firstPack;
   std::map<int, std::vector<Rect>> mFreeRectsMap;
   int mRoICount;
+  int mNumFramesPerInterval;
+  bool isFullyPacked;
 
   static const cv::TermCriteria CRITERIA;
   const cv::Size mTargetSize;
 
   std::mutex mtx;
   std::condition_variable cv;
-  std::list<Frame*> mFramesForPD;
-  std::map<std::string, std::list<Frame*>> mFramesForOF;
-  std::map<std::string, SortedFrames> mOFProcessingStartedFrames;
+  SortedFrames mPDWaiting;
+  SortedFrames mOFWaiting;
+  SortedFrames mOFProcessing;
+  SortedFrames mExtractionFinished;
 };
 
 } // namespace rm

@@ -14,13 +14,12 @@ const std::pair<float, float> RoI::NOT_PACKED{-1, -1};
 void Frame::resizeRoIs(RoIResizer* roiResizer) {
   for (auto& cRoI : childRoIs) {
     if (cRoI->type == RoI::Type::OF) {
-      cRoI->targetSize = std::min(cRoI->maxEdgeLength,
-                                  roiResizer->getTargetSize(cRoI->id, cRoI->features));
+      cRoI->setTargetSize(roiResizer->getTargetSize(cRoI->id, frameIndex, cRoI->features));
     }
   }
   for (auto& cRoI : childRoIs) {
     if (cRoI->type == RoI::Type::PD && cRoI->nextRoI != nullptr) {
-      cRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->nextRoI->targetSize);
+      cRoI->setTargetSize(cRoI->nextRoI->getTargetSize());
     }
   }
 }
@@ -61,13 +60,14 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
           continue;
         }
         float newArea = (newRight - newLeft) * (newBottom - newLeft);
-        if (roi0->targetSize * roi1->maxEdgeLength > roi1->targetSize * roi0->maxEdgeLength) {
+        if (roi0->getTargetSize() * roi1->maxEdgeLength >
+            roi1->getTargetSize() * roi0->maxEdgeLength) {
           // If roi0 resizes conservatively than roi1
-          newArea = newArea * roi0->targetSize * roi0->targetSize
+          newArea = newArea * roi0->getTargetSize() * roi0->getTargetSize()
                     / roi0->maxEdgeLength / roi0->maxEdgeLength;
         } else {
           // If roi1 resizes conservatively than roi0
-          newArea = newArea * roi1->targetSize * roi1->targetSize
+          newArea = newArea * roi1->getTargetSize() * roi1->getTargetSize()
                     / roi1->maxEdgeLength / roi1->maxEdgeLength;
         }
         float originalArea = roi0->getResizedArea() + roi1->getResizedArea();
@@ -110,7 +110,7 @@ void Frame::addProbeRoIs(int numProbeSteps, float probeStepSize) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
           cRoI->features.ofFeatures, 0, true);
-      probeRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->targetSize + probe);
+      probeRoI->setTargetSize(cRoI->getTargetSize() + probe);
       cRoI->roisForProbing.push_back(probeRoI.get());
       probingRoIs.push_back(std::move(probeRoI));
       probe += probeStepSize;

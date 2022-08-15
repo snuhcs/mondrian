@@ -216,7 +216,7 @@ void Logger::logRoI(RoI* roi) {
       << roi->parentRoI->packedAbsMixedFrameIndex << delim
 
       << roi->maxEdgeLength << delim
-      << roi->targetSize << '\n';
+      << roi->getTargetSize() << '\n';
   logFile.flush();
 }
 

@@ -16,7 +16,7 @@ class RoIResizer {
  public:
   RoIResizer(const RoIResizerConfig& config);
 
-  float getTargetSize(const idType id, const RoI::Features& features);
+  float getTargetSize(const idType id, const int frameIndex, const RoI::Features& features);
 
   void updateTable(RoI* roi);
 
@@ -33,7 +33,7 @@ class RoIResizer {
   }
 
  private:
-  float getSmoothedTargetSize(const idType id, const RoI::Features& features);
+  float getSmoothedTargetSize(const idType id, const int frameIndex, const RoI::Features& features);
 
   float getSizeWithFeature(const RoI::Features& features) const;
 
@@ -53,7 +53,7 @@ class RoIResizer {
   const std::vector<float> mResizeTargets;
 
   // Save prev prediction to smooth the predicted size
-  std::map<idType, float> prevTargetSizeTable;
+  std::map<std::pair<idType, int>, float> prevTargetSizeTable;
 
   // Save probing start size to reset the reactive calibration
   std::map<idType, float> calibrationStartSizeTable;
