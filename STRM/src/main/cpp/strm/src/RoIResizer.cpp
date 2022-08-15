@@ -79,8 +79,7 @@ void RoIResizer::updateTable(RoI* roi) {
   float newResizeTarget;
   if (largestRoI->probingBox == nullptr) {
     // if box is found nowhere, record to use even bigger size than biggest size
-    newResizeTarget = (float) roi->roisForProbing.front()->getTargetSize()
-                      + (float) mConfig.PROBE_STEP_SIZE;
+    newResizeTarget = roi->roisForProbing.front()->getTargetSize() + mConfig.PROBE_STEP_SIZE;
   } else {
     // if box is found for the largest probe, find the smallest target size with a usable box
     newResizeTarget = (float) largestRoI->getTargetSize();

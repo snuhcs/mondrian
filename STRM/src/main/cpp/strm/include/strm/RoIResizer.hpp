@@ -24,7 +24,7 @@ class RoIResizer {
     return mConfig.NUM_PROBE_STEPS;
   }
 
-  int getProbeStepSize() const {
+  float getProbeStepSize() const {
     return mConfig.PROBE_STEP_SIZE;
   }
 

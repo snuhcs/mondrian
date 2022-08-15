@@ -15,10 +15,10 @@ extern bool LOG_INTERNAL;
 struct RoIExtractorConfig {
   int MAX_QUEUE_SIZE = 200;
   int NUM_WORKERS = 2;
-  int EXTRACTION_RESIZE_WIDTH = 640;
-  int EXTRACTION_RESIZE_HEIGHT = 360;
-  int MIN_ROI_AREA = 5000;
-  int ROI_PADDING = 10;
+  float EXTRACTION_RESIZE_WIDTH = 960;
+  float EXTRACTION_RESIZE_HEIGHT = 540;
+  float MIN_ROI_AREA = 5000;
+  float ROI_PADDING = 10;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
   float PD_FILTER_THRESHOLD = 0.5;
   bool MERGE = true;
@@ -37,7 +37,7 @@ struct RoIResizerConfig {
   float STATIC_RESIZE_TARGET = 100;
 
   // Reactive probing configs
-  int PROBE_STEP_SIZE = 5; // No probing when PROBE_STEP_SIZE == 0
+  float PROBE_STEP_SIZE = 5; // No probing when PROBE_STEP_SIZE == 0
   int NUM_PROBE_STEPS = 1; // Num probes == 2 * NUM_PROBE_STEPS + 1
   float PROBE_RESET_THRESHOLD = 10.0;
   float OVERLAP_THRESHOLD = 0.8;
