@@ -37,8 +37,9 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
   mRoIExtractor = std::make_unique<RoIExtractor>(
       config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0, config.ALLOW_INTERPOLATION,
       config.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(), mInferenceFrameSize,
-      getNumInferences(mScheduleInterval,
-                       mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize) * 1000));
+      getNumInferences(
+          mScheduleInterval - mInferenceEngine->getInferenceTimeMs(mInputSizes.back()) * 1000,
+          mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize) * 1000));
 
   if (config.LOG_EXECUTION) {
     mLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");
@@ -97,7 +98,7 @@ void SpatioTemporalRoIMixer::work() {
     // Extract RoIs
     logger.start();
     int numInferences = getNumInferences(
-        mScheduleInterval - mInferenceEngine->getInferenceTimeMs(mInputSizes.back()),
+        mScheduleInterval - mInferenceEngine->getInferenceTimeMs(mInputSizes.back()) * 1000,
         mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize) * 1000);
     std::map<std::string, SortedFrames> frames = mRoIExtractor->getExtractedFrames(numInferences);
     logger.step("roi");
