@@ -197,7 +197,8 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
              numSelectedFrames, candidateRoIs.size(), numFrames);
 
         int numPackableFrames = numSelectedFrames - 1;
-        if (numPackableFrames > 1 && candidateRoIs.size() > numFrames) {
+        if ((fullFrameTarget == nullptr ? numPackableFrames > 0 : numPackableFrames > 1) &&
+            candidateRoIs.size() > numFrames) {
           SortedFrames allSelectedFrames;
           for (auto&[aStreamKey, aStreamFrames] : selectedFrames) {
             allSelectedFrames.insert(aStreamFrames.begin(), aStreamFrames.end());
@@ -287,7 +288,8 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
              numSelectedFrames, numPackedChildRoIs, numPackedProbeRoIs, candidateRoIs.size());
 //        int numPackableFrames = std::max(1, numSelectedFrames * numPackedChildRoIs / numChildRoIs);
         int numPackableFrames = numSelectedFrames - 1;
-        if (numPackableFrames > 1 && !isAllPacked) {
+        if ((fullFrameTarget == nullptr ? numPackableFrames > 0 : numPackableFrames > 1) &&
+            !isAllPacked) {
           SortedFrames allSelectedFrames;
           for (auto&[aStreamKey, aStreamFrames] : selectedFrames) {
             allSelectedFrames.insert(aStreamFrames.begin(), aStreamFrames.end());
@@ -413,6 +415,9 @@ bool PatchMixer::tryPackRoI(const std::pair<float, float>& resizedWH,
 
 Frame* PatchMixer::getFullFrameTarget(
     const std::map<std::string, SortedFrames>& selectedFrames, int fullFrameStreamIndex) {
+  if (fullFrameStreamIndex == -1) {
+    return nullptr;
+  }
   std::vector<std::string> nonEmptyStreamKeys;
   for (const auto&[aStreamKey, aStreamFrames] : selectedFrames) {
     if (!aStreamFrames.empty()) {

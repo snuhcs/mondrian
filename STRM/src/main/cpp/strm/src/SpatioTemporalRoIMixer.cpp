@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <memory>
+#include <numeric>
 #include <utility>
 
 #include "strm/Interpolator.hpp"
@@ -111,19 +112,30 @@ void SpatioTemporalRoIMixer::work() {
     }
 
     // Schedule
+    bool runFullFrameInference = scheduleID % mConfig.FULL_FRAME_INTERVAL == 0;
     auto[mixedFrames, fullFrameTarget, selectedFrames, droppedFrames] = mPatchMixer->packRoIs(
-        frames, fullFrameStreamIndex++, mInferenceFrameSize, numInferences,
-        mConfig.ALLOW_INTERPOLATION,
-        mConfig.ROI_WISE_INFERENCE, mRoIResizer->isProbing(), mRoIResizer->getNumProbeSteps(),
-        mRoIResizer->getProbeStepSize());
+        frames, (runFullFrameInference ? fullFrameStreamIndex++ : -1), mInferenceFrameSize,
+        numInferences, mConfig.ALLOW_INTERPOLATION, mConfig.ROI_WISE_INFERENCE,
+        mRoIResizer->isProbing(), mRoIResizer->getNumProbeSteps(), mRoIResizer->getProbeStepSize());
     if (!mConfig.ALLOW_INTERPOLATION) {
+      int numWrong = 0;
+      int numCorrect = 0;
       for (auto&[aStreamKey, aStreamFrames]: frames) {
         for (Frame* frame : aStreamFrames) {
           if (!std::all_of(frame->parentRoIs.begin(), frame->parentRoIs.end(),
                            [](const std::unique_ptr<RoI>& pRoI) { return pRoI->isPacked(); })) {
-            assert(droppedFrames.find(frame) != droppedFrames.end() || frame == fullFrameTarget);
+            if (droppedFrames.find(frame) == droppedFrames.end() && frame != fullFrameTarget) {
+              numWrong++;
+            }
+          } else {
+            numCorrect++;
           }
         }
+      }
+      if (numCorrect > 0) {
+        assert(numWrong == 0);
+      } else {
+        assert(numWrong <= 1);
       }
     }
     mRoIExtractor->reEnqueueFrames(droppedFrames);
@@ -132,7 +144,7 @@ void SpatioTemporalRoIMixer::work() {
          "PatchMixer::packRoIs", logger.getDuration("pack"), mixedFrames.size());
 
     // Full Frame Inference Target Stream
-    if (scheduleID % mConfig.FULL_FRAME_INTERVAL == 0) {
+    if (runFullFrameInference) {
       fullFrameInference(fullFrameTarget);
     }
     logger.step("full");
@@ -148,7 +160,7 @@ void SpatioTemporalRoIMixer::work() {
       mixedInference(mixedFrames);
     }
     logger.step("inf");
-    LOGD("%-25s took %-7lld us                            // %-4d inferences",
+    LOGD("%-25s took %-7lld us                            // %4d inferences",
          mConfig.ROI_WISE_INFERENCE ? "STRM::roiWiseInference" : "STRM:mixedFrameInference",
          logger.getDuration("inf"), numInferences);
 
