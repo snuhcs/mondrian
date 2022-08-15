@@ -5,10 +5,6 @@
         {
             "path": "/data/local/tmp/video/MTA/test_cam_3_1000_1450.mp4",
             "fps": 0
-        },
-        {
-            "path": "/data/local/tmp/video/MTA/test_cam_3_1000_1450.mp4",
-            "fps": 0
         }
     ],
     "inference_engine": {
