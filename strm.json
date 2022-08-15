@@ -4,11 +4,11 @@
     "video_configs": [
         {
             "path": "/data/local/tmp/video/MTA/test_cam_3_1000_1450.mp4",
-            "fps": 5
+            "fps": 0
         },
         {
             "path": "/data/local/tmp/video/MTA/test_cam_3_1000_1450.mp4",
-            "fps": 5
+            "fps": 0
         }
     ],
     "inference_engine": {
@@ -19,23 +19,23 @@
         "iou_threshold": 0.5,
         "num_workers": 1,
         "input_sizes": [
-            160, 800
+            800
         ]
     },
     "log_internal": true,
-    "log_execution": false,
-    "log_roi": false,
+    "log_execution": true,
+    "log_roi": true,
     "allow_interpolation": false,
-    "roi_wise_inference": true,
+    "roi_wise_inference": false,
     "full_frame_interval": 1,
     "buffer_size": 500,
     "latency_slo_ms": 6000,
     "roi_extractor": {
         "max_pd_queue_size": 200,
         "num_workers": 2,
-        "extraction_resize_width": 1280,
-        "extraction_resize_height": 720,
-        "min_roi_area": 5000,
+        "extraction_resize_width": 960,
+        "extraction_resize_height": 540,
+        "min_roi_area": 1000,
         "roi_padding": 10,
         "optical_flow_roi_confidence_threshold": 0.1,
         "pd_filter_threshold": 0.5,
