@@ -37,8 +37,10 @@ time_us TimeLogger::getDuration(const char* next, const char* prev) const {
 std::string TimeLogger::getLog() const {
   std::stringstream ss;
   for (const auto& name : names) {
-    assert(timestamps.find(name) != timestamps.end());
-    ss << name << ": " << (timestamps.at(name) - timestamps.at(startName));
+    if (name == names.front()) {
+      continue;
+    }
+    ss << name << ": " << getDuration(name);
     if (name != names.back()) {
       ss << ", ";
     }
