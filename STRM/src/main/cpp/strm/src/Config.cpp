@@ -11,8 +11,8 @@ bool LOG_INTERNAL = true;
 
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   RoIExtractorConfig config;
-  if (!json["max_pd_queue_size"].isNull()) {
-    config.MAX_PD_QUEUE_SIZE = json["max_pd_queue_size"].asInt();
+  if (!json["max_queue_size"].isNull()) {
+    config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
   }
   if (!json["num_workers"].isNull()) {
     config.NUM_WORKERS = json["num_workers"].asInt();

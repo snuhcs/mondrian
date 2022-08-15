@@ -13,7 +13,7 @@ constexpr int NUM_LABELS = 80;
 extern bool LOG_INTERNAL;
 
 struct RoIExtractorConfig {
-  int MAX_PD_QUEUE_SIZE = 200;
+  int MAX_QUEUE_SIZE = 200;
   int NUM_WORKERS = 2;
   int EXTRACTION_RESIZE_WIDTH = 640;
   int EXTRACTION_RESIZE_HEIGHT = 360;

@@ -20,7 +20,7 @@ class RoIExtractor {
  public:
   RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
                bool roiWiseInference, const PatchMixer* patchMixer, RoIResizer* roiResizer,
-               int frameSize, int numFrames);
+               int frameSize, int numFramesPerInterval);
 
   ~RoIExtractor();
 
@@ -73,8 +73,9 @@ class RoIExtractor {
   const PatchMixer* mPatchMixer;
   const int mFrameSize;
   std::mutex packMtx;
-  int mNumFrames;
+  int mNumFramesPerInterval;
   bool isFullyPacked;
+  bool firstPack;
   std::map<int, std::vector<Rect>> mFreeRectsMap;
   int mRoICount;
 

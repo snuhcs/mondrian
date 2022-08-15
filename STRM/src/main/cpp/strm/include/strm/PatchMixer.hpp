@@ -57,7 +57,6 @@ class PatchMixer {
   static const float HIGH_PRIORITY;
 
   PatchMixerConfig mConfig;
-  int mNumFramesToKeep = -1;
 };
 
 } // namespace rm

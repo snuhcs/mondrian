@@ -15,11 +15,12 @@ const cv::TermCriteria RoIExtractor::CRITERIA = cv::TermCriteria(
 
 RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
                            bool roiWiseInference, const PatchMixer* patchMixer,
-                           RoIResizer* roiResizer, int frameSize, int numFrames)
+                           RoIResizer* roiResizer, int frameSize, int numFramePerInterval)
     : mConfig(config), mPatchMixer(patchMixer), mRoIResizer(roiResizer), mFrameSize(frameSize),
-      mNumFrames(numFrames), mRoIWiseInference(roiWiseInference), mTargetSize(
+      mNumFramesPerInterval(numFramePerInterval), mRoIWiseInference(roiWiseInference), mTargetSize(
         cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
-      mAllowInterpolation(allowInterpolation), mbStop(false), isFullyPacked(false) {
+      mAllowInterpolation(allowInterpolation), mbStop(false), isFullyPacked(false),
+      firstPack(true) {
   if (run) {
     if (!mAllowInterpolation) {
       resetPack();
@@ -41,19 +42,20 @@ RoIExtractor::~RoIExtractor() {
 
 void RoIExtractor::enqueue(Frame* frame) {
   std::unique_lock<std::mutex> lock(mtx);
-  cv.wait(lock, [this]() { return mFramesForPD.size() < mConfig.MAX_PD_QUEUE_SIZE; });
+  cv.wait(lock, [this]() { return mFramesForPD.size() < mConfig.MAX_QUEUE_SIZE; });
   mFramesForPD.push_back(frame);
-  int numPDs = (int) mFramesForPD.size();
-  int numOFs = std::accumulate(mFramesForOF.begin(), mFramesForOF.end(), 0,
-                               [](int cnt, auto& it) { return cnt + it.second.size(); });
-  int numProcessed = std::accumulate(mOFProcessingStartedFrames.begin(),
-                                     mOFProcessingStartedFrames.end(),
-                                     0, [](int cnt, auto& it) { return cnt + it.second.size(); });
+  int numPDJobs = (int) mFramesForPD.size();
+  int numOFJobs = std::accumulate(
+      mFramesForOF.begin(), mFramesForOF.end(), 0,
+      [](int cnt, auto& it) { return cnt + it.second.size(); });
+  int numProcessedJobs = std::accumulate(
+      mOFProcessingStartedFrames.begin(), mOFProcessingStartedFrames.end(), 0,
+      [](int cnt, auto& it) { return cnt + it.second.size(); });
   lock.unlock();
   cv.notify_all();
   LOGD("%-25s                 for video %-5s frame %-4d // %4d PD | %4d OF | %4d Processed",
        "RoIExtractor::enqueue", frame->shortKey.c_str(), frame->frameIndex,
-       numPDs, numOFs, numProcessed);
+       numPDJobs, numOFJobs, numProcessedJobs);
 }
 
 void RoIExtractor::notify() {
@@ -61,7 +63,7 @@ void RoIExtractor::notify() {
 }
 
 std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames(int numFrames) {
-  mNumFrames = numFrames;
+  mNumFramesPerInterval = numFrames;
   std::unique_lock<std::mutex> lock(mtx);
   cv.wait(lock, [this]() { return mAllowInterpolation || isFullyPacked; });
   std::map<std::string, SortedFrames> extractedFrames = std::move(mOFProcessingStartedFrames);
@@ -77,6 +79,7 @@ std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames(int numFram
       return it.second.empty() || (*it.second.rbegin())->roiExtractionStatus == OF_EXTRACTED;
     });
   });
+  resetPack();
   lock.unlock();
   cv.notify_all();
   return extractedFrames;
@@ -84,7 +87,14 @@ std::map<std::string, SortedFrames> RoIExtractor::getExtractedFrames(int numFram
 
 void RoIExtractor::reEnqueueFrames(const SortedFrames& droppedFrames) {
   std::unique_lock<std::mutex> lock(mtx);
-  const Frame* firstFrame = *droppedFrames.cbegin();
+  int prevNumPDJobs = (int) mFramesForPD.size();
+  int prevNumOFJobs = std::accumulate(
+      mFramesForOF.begin(), mFramesForOF.end(), 0,
+      [](int cnt, auto& it) { return cnt + it.second.size(); });
+  int prevNumProcessedJobs = std::accumulate(
+      mOFProcessingStartedFrames.begin(), mOFProcessingStartedFrames.end(), 0,
+      [](int cnt, auto& it) { return cnt + it.second.size(); });
+  assert(mOFProcessingStartedFrames.empty());
   std::map<std::string, std::list<Frame*>> newFramesForOF;
   for (Frame* frame : droppedFrames) {
     frame->childRoIs.erase(std::remove_if(
@@ -103,15 +113,28 @@ void RoIExtractor::reEnqueueFrames(const SortedFrames& droppedFrames) {
                                       aStreamFrames.end());
   }
   mFramesForOF = std::move(newFramesForOF);
+  int numPDJobs = (int) mFramesForPD.size();
+  int numOFJobs = std::accumulate(
+      mFramesForOF.begin(), mFramesForOF.end(), 0,
+      [](int cnt, auto& it) { return cnt + it.second.size(); });
+  int numProcessedJobs = std::accumulate(
+      mOFProcessingStartedFrames.begin(), mOFProcessingStartedFrames.end(), 0,
+      [](int cnt, auto& it) { return cnt + it.second.size(); });
   lock.unlock();
   cv.notify_all();
+  LOGD(
+      "%-25s                                        // %4d PD | %4d OF | %4d Processed => %4d PD | %4d OF | %4d Processed",
+      "RoIExtractor::reEnqueueFrames", prevNumPDJobs, prevNumOFJobs, prevNumProcessedJobs,
+      numPDJobs, numOFJobs, numProcessedJobs);
 }
 
 void RoIExtractor::resetPack() {
+  firstPack = true;
+  isFullyPacked = false;
   if (mRoIWiseInference) {
-    mRoICount = mNumFrames;
+    mRoICount = mNumFramesPerInterval;
   } else {
-    for (int i = 0; i < mNumFrames; i++) {
+    for (int i = 0; i < mNumFramesPerInterval; i++) {
       mFreeRectsMap[i] = {Rect(0, 0, mFrameSize, mFrameSize)};
     }
   }
@@ -128,10 +151,13 @@ void RoIExtractor::work() {
    */
 
   auto getPDJob = [this]() {
-    if (mFramesForPD.empty()) {
-      return (Frame*) nullptr;
-    } else {
+    int numOFJobs = std::accumulate(
+        mFramesForOF.begin(), mFramesForOF.end(), 0,
+        [](int cnt, auto& it) { return cnt + it.second.size(); });
+    if (!mFramesForPD.empty() && numOFJobs < mConfig.MAX_QUEUE_SIZE) {
       return mFramesForPD.front();
+    } else {
+      return (Frame*) nullptr;
     }
   };
   auto getOFJob = [this]() {
@@ -206,8 +232,11 @@ void RoIExtractor::work() {
         std::lock_guard<std::mutex> packLock(packMtx);
         bool isAllPacked = true;
         if (mRoIWiseInference) {
-          mRoICount -= int(frame->parentRoIs.size());
-          LOGD("mRoICount %d", mRoICount);
+          if (firstPack) {
+            mRoICount -= int(frame->parentRoIs.size()) * (2 * mRoIResizer->getNumProbeSteps() + 1);
+          } else {
+            mRoICount -= int(frame->parentRoIs.size());
+          }
           isAllPacked = mRoICount >= 0;
         } else {
           auto& config = mPatchMixer->mConfig;
@@ -216,7 +245,17 @@ void RoIExtractor::work() {
             std::pair<float, float> resizedWH = config.EMULATED_BATCH ?
                                                 std::make_pair(batchedRoISize, batchedRoISize) :
                                                 pRoI->getResizedWidthHeight();
-            isAllPacked = PatchMixer::tryPackRoI(resizedWH, mFreeRectsMap, config.EMULATED_BATCH);
+            if (firstPack) {
+              for (int i = 0; i < std::max(1, 2 * mRoIResizer->getNumProbeSteps() + 1); i++) {
+                isAllPacked = PatchMixer::tryPackRoI(
+                    resizedWH, mFreeRectsMap, config.EMULATED_BATCH);
+                if (!isAllPacked) {
+                  break;
+                }
+              }
+            } else {
+              isAllPacked = PatchMixer::tryPackRoI(resizedWH, mFreeRectsMap, config.EMULATED_BATCH);
+            }
             if (!isAllPacked) {
               break;
             }

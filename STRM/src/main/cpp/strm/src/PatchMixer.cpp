@@ -240,6 +240,7 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
         }
 
         // Pack RoIs
+        int numPackedRoIs = 0;
         float batchedRoISize = float(frameSize) / std::ceil(std::sqrt(mConfig.BATCH_SIZE));
         bool isAllPacked = true;
         for (RoI* pRoI : candidateRoIs) {
@@ -251,31 +252,29 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
               pRoI->priority == HIGH_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
               pRoI, &packedRoIsMap, mConfig.EMULATED_BATCH)) {
             isAllPacked = false;
+          } else {
+            numPackedRoIs++;
           }
         }
+        int numSelectedRoIs = std::accumulate(
+            selectedFrames.begin(), selectedFrames.end(), 0,
+            [](int cnt, auto& it) {
+              return cnt + std::accumulate(
+                  it.second.begin(), it.second.end(), 0,
+                  [](int cnt, auto& it) {
+                    return cnt + it->childRoIs.size() + it->probingRoIs.size();
+                  });
+            });
+        int numSelectedFrames = std::accumulate(
+            selectedFrames.begin(), selectedFrames.end(), 0,
+            [](int cnt, auto& it) {
+              return cnt + it.second.size();
+            });
+        int avgRoIsPerFrame = numSelectedRoIs / numSelectedFrames;
+        int numFramesToKeep = std::min(numSelectedFrames - 1, numPackedRoIs / avgRoIsPerFrame);
+        LOGD("packRoIs: numPackedRoIs %-5d numSelectedRoIs %-5d numSelectedFrames %-5d avgRoIsPerFrame %-5d numFramesToKeep %-5d",
+             numPackedRoIs, numSelectedRoIs, numSelectedFrames, avgRoIsPerFrame, numFramesToKeep);
         if (!isAllPacked) {
-          int numPackedRoIs = int(candidateRoIs.size());
-          int numSelectedRoIs = std::accumulate(
-              selectedFrames.begin(), selectedFrames.end(), 0,
-              [](int cnt, auto& it) {
-                return cnt + std::accumulate(
-                    it.second.begin(), it.second.end(), 0,
-                    [](int cnt, auto& it) {
-                      return cnt + it->childRoIs.size() + it->probingRoIs.size();
-                    });
-              });
-          int numSelectedFrames = std::accumulate(
-              selectedFrames.begin(), selectedFrames.end(), 0,
-              [](int cnt, auto& it) {
-                return cnt + it.second.size();
-              });
-          int avgRoIsPerFrame = numSelectedRoIs / numSelectedFrames;
-          int numFramesToKeep = std::min(numSelectedFrames - 1, numPackedRoIs / avgRoIsPerFrame);
-          if (mNumFramesToKeep != -1) {
-            numFramesToKeep = (mNumFramesToKeep * 9 + numFramesToKeep * 1) / 10;
-          }
-          mNumFramesToKeep = numFramesToKeep;
-
           std::vector<Frame*> allSelectedFrames;
           for (auto&[aStreamKey, aStreamFrames] : selectedFrames) {
             allSelectedFrames.insert(
