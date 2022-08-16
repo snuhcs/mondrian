@@ -13,8 +13,7 @@ const float PatchMixer::HIGH_PRIORITY = 101;
 PatchMixer::PatchMixer(const PatchMixerConfig& config)
     : mConfig(config) {}
 
-std::vector<Frame*> PatchMixer::addProbeRoIs(std::map<std::string, SortedFrames>& frames,
-                                             const Frame* fullFrameTarget,
+std::vector<Frame*> PatchMixer::addProbeRoIs(MultiStream& frames, const Frame* fullFrameTarget,
                                              int numProbeSteps, float probeStepSize) {
   std::vector<Frame*> probeFrames;
   std::set<Frame*> lastFrames = filterLastFrames(frames);
@@ -27,8 +26,7 @@ std::vector<Frame*> PatchMixer::addProbeRoIs(std::map<std::string, SortedFrames>
   return probeFrames;
 }
 
-std::vector<RoI*> PatchMixer::collectRoIs(std::map<std::string, SortedFrames>& frames,
-                                          const Frame* fullFrameTarget) {
+std::vector<RoI*> PatchMixer::collectRoIs(MultiStream& frames, const Frame* fullFrameTarget) {
   std::vector<RoI*> packingCandidates;
 
   // Add probeRoIs
@@ -54,8 +52,7 @@ std::vector<RoI*> PatchMixer::collectRoIs(std::map<std::string, SortedFrames>& f
   return packingCandidates;
 }
 
-void PatchMixer::prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
-                                const Frame* fullFrameTarget) {
+void PatchMixer::prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarget) {
   // Set priority with err and acceleration (shift difference)
   for (auto&[_, aStreamFrames] : frames) {
     for (Frame* frame : aStreamFrames) {
@@ -110,15 +107,15 @@ void PatchMixer::prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
   }
 }
 
-std::tuple<std::vector<MixedFrame>, Frame*, std::map<std::string, SortedFrames>, SortedFrames>
-PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameStreamIndex,
-                     int frameSize, int numFrames, bool allowInterpolation, bool roiWiseInference,
-                     bool probe, int numProbeSteps, float probeStepSize) {
+std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::packRoIs(
+    MultiStream& frames, int fullFrameStreamIndex, int frameSize, int numFrames,
+    bool allowInterpolation, bool roiWiseInference, bool probe, int numProbeSteps,
+    float probeStepSize) {
   time_us mixingStartTime = NowMicros();
   std::vector<MixedFrame> mixedFrames;
   Frame* fullFrameTarget;
-  std::map<std::string, SortedFrames> selectedFrames = frames;
-  SortedFrames droppedFrames;
+  MultiStream selectedFrames = frames;
+  Stream droppedFrames;
   if (allowInterpolation) {
     fullFrameTarget = getFullFrameTarget(selectedFrames, fullFrameStreamIndex);
     if (probe && !mConfig.EMULATED_BATCH) {
@@ -199,7 +196,7 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
         int numPackableFrames = numSelectedFrames - 1;
         if ((fullFrameTarget == nullptr ? numPackableFrames > 0 : numPackableFrames > 1) &&
             candidateRoIs.size() > numFrames) {
-          SortedFrames allSelectedFrames;
+          Stream allSelectedFrames;
           for (auto&[aStreamKey, aStreamFrames] : selectedFrames) {
             allSelectedFrames.insert(aStreamFrames.begin(), aStreamFrames.end());
           }
@@ -290,7 +287,7 @@ PatchMixer::packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameS
         int numPackableFrames = numSelectedFrames - 1;
         if ((fullFrameTarget == nullptr ? numPackableFrames > 0 : numPackableFrames > 1) &&
             !isAllPacked) {
-          SortedFrames allSelectedFrames;
+          Stream allSelectedFrames;
           for (auto&[aStreamKey, aStreamFrames] : selectedFrames) {
             allSelectedFrames.insert(aStreamFrames.begin(), aStreamFrames.end());
           }
@@ -413,8 +410,7 @@ bool PatchMixer::tryPackRoI(const std::pair<float, float>& resizedWH,
   }
 }
 
-Frame* PatchMixer::getFullFrameTarget(
-    const std::map<std::string, SortedFrames>& selectedFrames, int fullFrameStreamIndex) {
+Frame* PatchMixer::getFullFrameTarget(const MultiStream& selectedFrames, int fullFrameStreamIndex) {
   if (fullFrameStreamIndex == -1) {
     return nullptr;
   }

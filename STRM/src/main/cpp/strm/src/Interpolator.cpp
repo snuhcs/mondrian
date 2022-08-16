@@ -2,7 +2,7 @@
 
 namespace rm {
 
-std::set<idType> Interpolator::interpolate(std::map<std::string, SortedFrames>& frames) {
+std::set<idType> Interpolator::interpolate(MultiStream& frames) {
   std::set<idType> droppedIDs;
   for (const auto& it : frames) {
     std::set<idType> roIIds = getRoIIds(it.second);
@@ -26,7 +26,7 @@ std::set<idType> Interpolator::interpolate(std::map<std::string, SortedFrames>& 
   return droppedIDs;
 }
 
-std::set<idType> Interpolator::getRoIIds(const SortedFrames& frames) {
+std::set<idType> Interpolator::getRoIIds(const Stream& frames) {
   std::set<idType> childIDs;
   for (const Frame* frame : frames) {
     for (const auto& cRoI : frame->childRoIs) {
@@ -36,7 +36,7 @@ std::set<idType> Interpolator::getRoIIds(const SortedFrames& frames) {
   return childIDs;
 }
 
-std::vector<RoI*> Interpolator::getRoIStream(const SortedFrames& frames, idType roIId) {
+std::vector<RoI*> Interpolator::getRoIStream(const Stream& frames, idType roIId) {
   std::vector<RoI*> childRoIStream;
   for (const Frame* frame : frames) {
     for (const auto& cRoI : frame->childRoIs) {

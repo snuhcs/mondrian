@@ -101,7 +101,7 @@ void SpatioTemporalRoIMixer::work() {
     int numInferences = getNumInferences(
         mScheduleInterval - mInferenceEngine->getInferenceTimeMs(mInputSizes.back()) * 1000,
         mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize) * 1000);
-    std::map<std::string, SortedFrames> frames = mRoIExtractor->getExtractedFrames(numInferences);
+    MultiStream frames = mRoIExtractor->getExtractedFrames(numInferences);
     logger.step("roi");
     LOGD("===== Schedule %d start =====", scheduleID);
     LOGD("%-25s took %-7lld us for %s",
@@ -195,8 +195,7 @@ void SpatioTemporalRoIMixer::work() {
 }
 
 void SpatioTemporalRoIMixer::testNoInterpolationPacking(
-    const std::map<std::string, SortedFrames>& frames, const SortedFrames& droppedFrames,
-    Frame* fullFrameTarget) {
+    const MultiStream& frames, const Stream& droppedFrames, Frame* fullFrameTarget) {
   int numWrong = 0;
   int numCorrect = 0;
   for (auto&[aStreamKey, aStreamFrames]: frames) {
@@ -301,7 +300,7 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
                    return mInferenceEngine->enqueue(mixedFrame.packedMat, mInferenceFrameSize);
                  });
 
-  SortedFrames inferenceFrames;
+  Stream inferenceFrames;
   for (int i = 0; i < handles.size(); i++) {
     std::vector<BoundingBox> boxes = mInferenceEngine->getResults(handles[i]);
     assert(mixedFrames[i].packedRoIs.size() == 1);
@@ -310,7 +309,7 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
     inferenceFrames.insert(pRoI->frame);
     for (BoundingBox& b : boxes) {
       pRoI->frame->boxes.emplace_back(new BoundingBox(
-          UNASSIGNED_ID, Rect(
+          UNASSIGNED_ID,Rect(
               (b.location.left - x) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.left,
               (b.location.top - y) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.top,
               (b.location.right - x) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.left,
@@ -325,7 +324,7 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
   }
 }
 
-void SpatioTemporalRoIMixer::releaseFrames(const std::map<std::string, SortedFrames>& frames) {
+void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
   std::unique_lock<std::mutex> framesLock(mFrameBuffersMtx);
   for (auto&[aStreamKey, aStreamFrames] : frames) {
     if (aStreamFrames.empty()) {

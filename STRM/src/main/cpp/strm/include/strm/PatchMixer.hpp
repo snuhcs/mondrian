@@ -23,10 +23,10 @@ class PatchMixer {
  public:
   PatchMixer(const PatchMixerConfig& config);
 
-  std::tuple<std::vector<MixedFrame>, Frame*, std::map<std::string, SortedFrames>, SortedFrames>
-  packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameStreamIndex,
-           int frameSize, int numFrames, bool allowInterpolation, bool roiWiseInference, bool probe,
-           int numProbeSteps, float probeStepSize);
+  std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> packRoIs(
+      MultiStream& frames, int fullFrameStreamIndex, int frameSize, int numFrames,
+      bool allowInterpolation, bool roiWiseInference, bool probe, int numProbeSteps,
+      float probeStepSize);
 
   static bool tryPackRoI(const std::pair<float, float>& resizedWH,
                          std::map<int, std::vector<Rect>>& freeRectsMap,
@@ -35,18 +35,15 @@ class PatchMixer {
                          bool emulatedBatch = false);
 
  private:
-  static Frame* getFullFrameTarget(
-      const std::map<std::string, SortedFrames>& selectedFrames, int fullFrameStreamIndex);
+  static Frame* getFullFrameTarget(const MultiStream& selectedFrames,
+                                   int fullFrameStreamIndex);
 
-  static std::vector<Frame*> addProbeRoIs(std::map<std::string, SortedFrames>& frames,
-                                          const Frame* fullFrameTarget, int numProbeSteps,
-                                          float probeStepSize);
+  static std::vector<Frame*> addProbeRoIs(MultiStream& frames, const Frame* fullFrameTarget,
+                                          int numProbeSteps, float probeStepSize);
 
-  static std::vector<RoI*> collectRoIs(std::map<std::string, SortedFrames>& frames,
-                                       const Frame* fullFrameTarget);
+  static std::vector<RoI*> collectRoIs(MultiStream& frames, const Frame* fullFrameTarget);
 
-  static void prioritizeRoIs(std::map<std::string, SortedFrames>& frames,
-                             const Frame* fullFrameTarget);
+  static void prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarget);
 
   static bool canFit(std::pair<float, float> wh, const Rect& rect);
 
