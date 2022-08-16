@@ -39,8 +39,6 @@
         "merge_threshold": 0.5
     },
     "roi_resizer": {
-        "max_cache_size": 200,
-        "resize_margin": 0,
         "train_data": "MTA",
         "resize_smoothing_factor": 0.1,
         "static_resize_target": 100,

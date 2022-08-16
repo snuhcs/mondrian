@@ -14,7 +14,7 @@ const std::pair<float, float> RoI::NOT_PACKED{-1, -1};
 void Frame::resizeRoIs(RoIResizer* roiResizer) {
   for (auto& cRoI : childRoIs) {
     if (cRoI->type == RoI::Type::OF) {
-      cRoI->setTargetSize(roiResizer->getTargetSize(cRoI->id, frameIndex, cRoI->features));
+      cRoI->setTargetSize(roiResizer->getTargetSize(cRoI->id, cRoI->features));
     }
   }
   for (auto& cRoI : childRoIs) {
