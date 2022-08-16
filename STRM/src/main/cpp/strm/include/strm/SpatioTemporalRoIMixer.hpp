@@ -47,14 +47,14 @@ class SpatioTemporalRoIMixer {
 
   void roiWiseInference(std::vector<MixedFrame>& mixedFrames);
 
-  void releaseFrames(const std::map<std::string, SortedFrames>& frames);
+  void releaseFrames(const MultiStream& frames);
 
   void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
   static int getNumInferences(time_us remainingTime, time_us inferenceTime);
 
-  static void testNoInterpolationPacking(const std::map<std::string, SortedFrames>& frames,
-                                         const SortedFrames& droppedFrames, Frame* fullFrameTarget);
+  static void testNoInterpolationPacking(const MultiStream& frames, const Stream& droppedFrames,
+                                         Frame* fullFrameTarget);
 
   const STRMConfig mConfig;
   const time_us mScheduleInterval;

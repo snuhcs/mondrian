@@ -28,9 +28,9 @@ class RoIExtractor {
 
   void notify();
 
-  std::map<std::string, SortedFrames> getExtractedFrames(int numFrames);
+  MultiStream getExtractedFrames(int numFrames);
 
-  void reEnqueueFrames(const SortedFrames& droppedFrames);
+  void reEnqueueFrames(const Stream& droppedFrames);
 
   const cv::Size& getTargetSize() const {
     return mTargetSize;
@@ -87,10 +87,10 @@ class RoIExtractor {
 
   std::mutex mtx;
   std::condition_variable cv;
-  SortedFrames mPDWaiting;
-  SortedFrames mOFWaiting;
-  SortedFrames mOFProcessing;
-  SortedFrames mExtractionFinished;
+  Stream mPDWaiting;
+  Stream mOFWaiting;
+  Stream mOFProcessing;
+  Stream mExtractionFinished;
 };
 
 } // namespace rm

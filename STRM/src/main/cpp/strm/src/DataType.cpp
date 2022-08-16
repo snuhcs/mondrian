@@ -185,7 +185,7 @@ std::string Frame::toShortKey(const std::string& key) {
   return key.substr(key.size() - 1, 1);
 }
 
-std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& frames) {
+std::set<Frame*> filterLastFrames(const MultiStream& frames) {
   std::set<Frame*> lastFrames;
   for (auto it : frames) {
     if (!it.second.empty()) {
@@ -195,7 +195,7 @@ std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& fra
   return lastFrames;
 }
 
-std::string toString(const std::map<std::string, SortedFrames>& frames) {
+std::string toString(const MultiStream& frames) {
   std::stringstream ss;
   for (auto it = frames.begin(); it != frames.end(); it++) {
     std::string shortKey = Frame::toShortKey(it->first);
@@ -237,7 +237,7 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
 }
 
 void
-FrameBuffer::freeImage(const std::vector<int> &frameIndices, Logger *logger, Logger *roiLogger) {
+FrameBuffer::freeImage(const std::vector<int>& frameIndices, Logger* logger, Logger* roiLogger) {
   std::unique_lock<std::mutex> lock(mtx);
   for (int frameIndex : frameIndices) {
     Frame* frame = frames[frameIndex % capacity].get();

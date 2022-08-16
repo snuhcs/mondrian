@@ -37,7 +37,7 @@ static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
 void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
                                             const std::vector<BoundingBox>& results) const {
   time_us reconstructStartTime = NowMicros();
-  SortedFrames packedFrames = mixedFrame.getPackedFrames();
+  Stream packedFrames = mixedFrame.getPackedFrames();
   std::set<RoI*>& packedRoIs = mixedFrame.packedRoIs;
 
   for (RoI* pRoI : packedRoIs) {

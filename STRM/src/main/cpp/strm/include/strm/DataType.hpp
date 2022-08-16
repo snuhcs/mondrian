@@ -185,11 +185,12 @@ struct FrameComp {
   }
 };
 
-using SortedFrames = std::set<Frame*, FrameComp>;
+using Stream = std::set<Frame*, FrameComp>;
+using MultiStream = std::map<std::string, Stream>;
 
-std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& frames);
+std::set<Frame*> filterLastFrames(const MultiStream& frames);
 
-std::string toString(const std::map<std::string, SortedFrames>& frames);
+std::string toString(const MultiStream& frames);
 
 class Logger;
 
@@ -519,8 +520,8 @@ struct MixedFrame {
     }
   }
 
-  SortedFrames getPackedFrames() {
-    SortedFrames packedFrames;
+  Stream getPackedFrames() {
+    Stream packedFrames;
     for (RoI* roi : packedRoIs) {
       packedFrames.insert(roi->frame);
     }
