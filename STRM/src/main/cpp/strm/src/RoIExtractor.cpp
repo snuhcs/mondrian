@@ -198,12 +198,12 @@ void RoIExtractor::work() {
         testParentRoIsFrameRelation(frame->parentRoIs);
       }
       frame->mergeRoIEndTime = NowMicros();
+      bool isAllPacked = true;
       if (!mAllowInterpolation) {
         std::lock_guard<std::mutex> packLock(packMtx);
-        bool isAllPacked = true;
         if (mRoIWiseInference) {
           mRoICount -= int(frame->parentRoIs.size());
-          isAllPacked = mRoICount >= 0;
+          isAllPacked = mRoICount <= 0;
         } else {
           auto& config = mPatchMixer->mConfig;
           float batchedRoISize = float(mFrameSize) / std::ceil(std::sqrt(config.BATCH_SIZE));
@@ -217,9 +217,6 @@ void RoIExtractor::work() {
             }
           }
         }
-        if (!isAllPacked) {
-          isFullyPacked = true;
-        }
       }
       lock.lock();
       mOFProcessing.erase(frame);
@@ -229,6 +226,9 @@ void RoIExtractor::work() {
       } else {
         frame->isRoIsReady = true;
         mExtractionFinished.insert(frame);
+      }
+      if (!isAllPacked && mExtractionFinished.size() >= 2) {
+        isFullyPacked = true;
       }
       if (!mAllowInterpolation &&
           mPDWaiting.empty() &&

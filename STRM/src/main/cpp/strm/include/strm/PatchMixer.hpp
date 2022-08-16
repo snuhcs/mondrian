@@ -37,7 +37,10 @@ class PatchMixer {
  private:
   std::tuple<Frame*, std::vector<Frame*>, std::vector<RoI*>> preparePack(
       MultiStream& selectedFrames, int fullFrameStreamIndex, bool probe, int numProbeSteps,
-      float probeStepSize);
+      float probeStepSize) const;
+
+  static void splitFrames(MultiStream& selectedFrames, Stream& droppedFrames,
+                          int numPackableFrames);
 
   static Frame* getFullFrameTarget(const MultiStream& selectedFrames,
                                    int fullFrameStreamIndex);
