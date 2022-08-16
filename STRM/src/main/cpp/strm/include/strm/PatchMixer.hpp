@@ -35,6 +35,10 @@ class PatchMixer {
                          bool emulatedBatch = false);
 
  private:
+  std::tuple<Frame*, std::vector<Frame*>, std::vector<RoI*>> preparePack(
+      MultiStream& selectedFrames, int fullFrameStreamIndex, bool probe, int numProbeSteps,
+      float probeStepSize);
+
   static Frame* getFullFrameTarget(const MultiStream& selectedFrames,
                                    int fullFrameStreamIndex);
 

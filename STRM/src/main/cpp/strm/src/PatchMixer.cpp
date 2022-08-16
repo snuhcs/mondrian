@@ -117,16 +117,11 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
   MultiStream selectedFrames = frames;
   Stream droppedFrames;
   if (allowInterpolation) {
-    fullFrameTarget = getFullFrameTarget(selectedFrames, fullFrameStreamIndex);
-    if (probe && !mConfig.EMULATED_BATCH) {
-      addProbeRoIs(frames, fullFrameTarget, numProbeSteps, probeStepSize);
-    }
-    std::vector<RoI*> candidateRoIs = collectRoIs(frames, fullFrameTarget);
-    prioritizeRoIs(frames, fullFrameTarget);
-    if (mConfig.PRIORITY_MIXING) {
-      std::sort(candidateRoIs.begin(), candidateRoIs.end(),
-                [](RoI* l, RoI* r) { return l->priority > r->priority; });
-    }
+    auto ret = preparePack(selectedFrames, fullFrameStreamIndex, probe, numProbeSteps,
+                           probeStepSize);
+    fullFrameTarget = std::get<0>(ret);
+    std::vector<Frame*>& probeFrames = std::get<1>(ret);
+    std::vector<RoI*>& candidateRoIs = std::get<2>(ret);
 
     if (roiWiseInference) { // allowInterpolation == true && roiWiseInference == true
       for (int i = 0; i < std::min(numFrames, (int) candidateRoIs.size()); i++) {
@@ -178,12 +173,11 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
   } else {
     if (roiWiseInference) { // allowInterpolation == false && roiWiseInference == true
       while (true) {
-        fullFrameTarget = getFullFrameTarget(selectedFrames, fullFrameStreamIndex);
-        std::vector<Frame*> probeFrames;
-        if (probe && !mConfig.EMULATED_BATCH) {
-          probeFrames = addProbeRoIs(selectedFrames, fullFrameTarget, numProbeSteps, probeStepSize);
-        }
-        std::vector<RoI*> candidateRoIs = collectRoIs(selectedFrames, fullFrameTarget);
+        auto ret = preparePack(selectedFrames, fullFrameStreamIndex, probe, numProbeSteps,
+                               probeStepSize);
+        fullFrameTarget = std::get<0>(ret);
+        std::vector<Frame*>& probeFrames = std::get<1>(ret);
+        std::vector<RoI*>& candidateRoIs = std::get<2>(ret);
 
         int numSelectedFrames = std::accumulate(
             selectedFrames.begin(), selectedFrames.end(), 0,
@@ -215,12 +209,6 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
           continue;
         }
 
-        prioritizeRoIs(selectedFrames, fullFrameTarget);
-        if (mConfig.PRIORITY_MIXING) {
-          // Descending order
-          std::sort(candidateRoIs.begin(), candidateRoIs.end(),
-                    [](RoI* l, RoI* r) { return l->priority > r->priority; });
-        }
         for (int i = 0; i < std::min(numFrames, (int) candidateRoIs.size()); i++) {
           RoI* pRoI = candidateRoIs[i];
           pRoI->setTargetSize(float(frameSize));
@@ -234,18 +222,11 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
       }
     } else { // allowInterpolation == false && roiWiseInference == false
       while (true) {
-        fullFrameTarget = getFullFrameTarget(selectedFrames, fullFrameStreamIndex);
-        std::vector<Frame*> probeFrames;
-        if (probe && !mConfig.EMULATED_BATCH) {
-          probeFrames = addProbeRoIs(selectedFrames, fullFrameTarget, numProbeSteps, probeStepSize);
-        }
-        std::vector<RoI*> candidateRoIs = collectRoIs(selectedFrames, fullFrameTarget);
-        prioritizeRoIs(selectedFrames, fullFrameTarget);
-        if (mConfig.PRIORITY_MIXING) {
-          // Descending order
-          std::sort(candidateRoIs.begin(), candidateRoIs.end(),
-                    [](RoI* l, RoI* r) { return l->priority > r->priority; });
-        }
+        auto ret = preparePack(selectedFrames, fullFrameStreamIndex, probe, numProbeSteps,
+                               probeStepSize);
+        fullFrameTarget = std::get<0>(ret);
+        std::vector<Frame*>& probeFrames = std::get<1>(ret);
+        std::vector<RoI*>& candidateRoIs = std::get<2>(ret);
 
         std::map<int, std::set<RoI*>> packedRoIsMap;
         std::map<int, std::vector<Rect>> freeRectsMap;
@@ -328,6 +309,24 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
   }
   fullFrameTarget->isFullFrameTarget = true;
   return {mixedFrames, fullFrameTarget, selectedFrames, droppedFrames};
+}
+
+std::tuple<Frame*, std::vector<Frame*>, std::vector<RoI*>> PatchMixer::preparePack(
+    MultiStream& selectedFrames, int fullFrameStreamIndex, bool probe, int numProbeSteps,
+    float probeStepSize) {
+  Frame* fullFrameTarget = getFullFrameTarget(selectedFrames, fullFrameStreamIndex);
+  std::vector<Frame*> probeFrames;
+  if (probe && !mConfig.EMULATED_BATCH) {
+    probeFrames = addProbeRoIs(selectedFrames, fullFrameTarget, numProbeSteps, probeStepSize);
+  }
+  std::vector<RoI*> candidateRoIs = collectRoIs(selectedFrames, fullFrameTarget);
+  prioritizeRoIs(selectedFrames, fullFrameTarget);
+  if (mConfig.PRIORITY_MIXING) {
+    // Descending order
+    std::sort(candidateRoIs.begin(), candidateRoIs.end(),
+              [](RoI* l, RoI* r) { return l->priority > r->priority; });
+  }
+  return {fullFrameTarget, probeFrames, candidateRoIs};
 }
 
 bool PatchMixer::tryPackRoI(const std::pair<float, float>& resizedWH,
