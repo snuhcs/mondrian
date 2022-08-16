@@ -11,9 +11,9 @@ const std::map<std::string, std::function<float(
 };
 
 const std::map<std::string, std::vector<float>> RoIResizer::candidateResizeTargets = {
-    {"VIRAT",   {68.0f, 120.0f, 165.0f}},
-    {"MTA",     {52.0f, 66.0f,  165.0f}},
-    {"YouTube", {68.0f, 105.0f, 165.0f}}
+    {"VIRAT",   {140.0f, 155.0f, 165.0f}},
+    {"MTA",     {100.0f, 140.0f, 165.0f}},
+    {"YouTube", {125.0f, 140.0f, 165.0f}}
 };
 
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
