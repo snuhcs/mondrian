@@ -463,8 +463,6 @@ struct RoI {
     float minEdgeLength = std::min(paddedLoc.width(), paddedLoc.height());
     targetSize = std::max(maxEdgeLength / minEdgeLength,
                           std::min(maxEdgeLength, newTargetSize));
-    auto[w, h] = getResizedWidthHeight();
-    assert(w >= 1 && h >= 1);
   }
 
   std::pair<float, float> getResizedWidthHeight() const {
