@@ -468,14 +468,16 @@ struct RoI {
 
   std::pair<float, float> getResizedWidthHeight() const {
     assert(targetSize <= maxEdgeLength);
+    std::pair<float, float> wh;
     if (targetSize == maxEdgeLength) {
-      return std::make_pair(paddedLoc.width(), paddedLoc.height());
+      wh = {paddedLoc.width(), paddedLoc.height()};
     }
     if (paddedLoc.width() > paddedLoc.height()) {
-      return std::make_pair(targetSize, paddedLoc.height() * targetSize / paddedLoc.width());
+      wh = {targetSize, paddedLoc.height() * targetSize / paddedLoc.width()};
     } else {
-      return std::make_pair(paddedLoc.width() * targetSize / paddedLoc.height(), targetSize);
+      wh = {paddedLoc.width() * targetSize / paddedLoc.height(), targetSize};
     }
+    return {std::max(1.0f, wh.first), std::max(1.0f, wh.second)};
   }
 
   cv::Mat getOrigMat() const {
