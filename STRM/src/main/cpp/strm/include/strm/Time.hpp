@@ -27,6 +27,8 @@ class TimeLogger {
  private:
   void reset();
 
+  static const char* startName;
+
   int index = 0;
   std::vector<const char*> names;
   std::map<const char*, int> nameIndices;

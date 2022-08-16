@@ -13,16 +13,21 @@ constexpr int NUM_LABELS = 80;
 extern bool LOG_INTERNAL;
 
 struct RoIExtractorConfig {
+  int MAX_QUEUE_SIZE = 200;
   int NUM_WORKERS = 2;
-  int EXTRACTION_RESIZE_WIDTH = 640;
-  int EXTRACTION_RESIZE_HEIGHT = 360;
-  int MIN_ROI_AREA = 5000;
-  int ROI_PADDING = 10;
+  float EXTRACTION_RESIZE_WIDTH = 960;
+  float EXTRACTION_RESIZE_HEIGHT = 540;
+  float MIN_ROI_AREA = 1000;
+  float ROI_PADDING = 10;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
   float PD_FILTER_THRESHOLD = 0.5;
+  bool MERGE = true;
+  float MERGE_THRESHOLD = 0.5;
 };
 
 struct RoIResizerConfig {
+  int MAX_CACHE_SIZE = 200;
+
   // Margin to add after resize target estimation
   float RESIZE_MARGIN = 10;
 
@@ -32,7 +37,7 @@ struct RoIResizerConfig {
   float STATIC_RESIZE_TARGET = 100;
 
   // Reactive probing configs
-  int PROBE_STEP_SIZE = 5; // No probing when PROBE_STEP_SIZE == 0
+  float PROBE_STEP_SIZE = 5; // No probing when PROBE_STEP_SIZE == 0
   int NUM_PROBE_STEPS = 1; // Num probes == 2 * NUM_PROBE_STEPS + 1
   float PROBE_RESET_THRESHOLD = 10.0;
   float OVERLAP_THRESHOLD = 0.8;
@@ -41,10 +46,6 @@ struct RoIResizerConfig {
 };
 
 struct PatchMixerConfig {
-  // Merge config
-  bool MERGE = true;
-  float MERGE_THRESHOLD = 0.5;
-
   // Mixing config
   bool N_WAY_MIXING = true;
   bool PRIORITY_MIXING = true;
@@ -63,10 +64,11 @@ struct PatchReconstructorConfig {
 struct STRMConfig {
   bool LOG_EXECUTION = false;
   bool LOG_ROI = false;
+  bool ALLOW_INTERPOLATION = false;
   bool ROI_WISE_INFERENCE = false;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int BUFFER_SIZE = 1000;
-  int LATENCY_SLO_MS = 10000;
+  int LATENCY_SLO_MS = 6000;
   RoIExtractorConfig roIExtractorConfig;
   RoIResizerConfig roiResizerConfig;
   PatchMixerConfig patchMixerConfig;

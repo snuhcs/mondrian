@@ -11,6 +11,9 @@ bool LOG_INTERNAL = true;
 
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   RoIExtractorConfig config;
+  if (!json["max_queue_size"].isNull()) {
+    config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
+  }
   if (!json["num_workers"].isNull()) {
     config.NUM_WORKERS = json["num_workers"].asInt();
   }
@@ -32,11 +35,20 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["pd_filter_threshold"].isNull()) {
     config.PD_FILTER_THRESHOLD = json["pd_filter_threshold"].asFloat();
   }
+  if (!json["merge"].isNull()) {
+    config.MERGE = json["merge"].asBool();
+  }
+  if (!json["merge_threshold"].isNull()) {
+    config.MERGE_THRESHOLD = json["merge_threshold"].asFloat();
+  }
   return config;
 }
 
 RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   RoIResizerConfig config;
+  if (!json["max_cache_size"].isNull()) {
+    config.MAX_CACHE_SIZE = json["max_cache_size"].asInt();
+  }
   if (!json["resize_margin"].isNull()) {
     config.RESIZE_MARGIN = json["resize_margin"].asFloat();
   }
@@ -74,12 +86,6 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
 
 PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   PatchMixerConfig config;
-  if (!json["merge"].isNull()) {
-    config.MERGE = json["merge"].asBool();
-  }
-  if (!json["merge_threshold"].isNull()) {
-    config.MERGE_THRESHOLD = json["merge_threshold"].asFloat();
-  }
   if (!json["n_way_mixing"].isNull()) {
     config.N_WAY_MIXING = json["n_way_mixing"].asBool();
   }
@@ -131,6 +137,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   }
   if (!json["log_roi"].isNull()) {
     config.LOG_ROI = json["log_roi"].asBool();
+  }
+  if (!json["allow_interpolation"].isNull()) {
+    config.ALLOW_INTERPOLATION = json["allow_interpolation"].asBool();
   }
   if (!json["roi_wise_inference"].isNull()) {
     config.ROI_WISE_INFERENCE = json["roi_wise_inference"].asBool();

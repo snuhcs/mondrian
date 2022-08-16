@@ -21,13 +21,13 @@ static Rect moveResizeRoIPos(const RoI* roi) {
 
 static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
   float newLeft = (packedBox.location.left - pRoI->packedLocation.first)
-                * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->paddedLoc.left;
+                  * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->paddedLoc.left;
   float newTop = (packedBox.location.top - pRoI->packedLocation.second)
-               * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->paddedLoc.top;
+                 * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->paddedLoc.top;
   float newRight = (packedBox.location.right - pRoI->packedLocation.first)
-                 * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->paddedLoc.left;
+                   * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->paddedLoc.left;
   float newBottom = (packedBox.location.bottom - pRoI->packedLocation.second)
-                  * pRoI->maxEdgeLength / pRoI->targetSize + pRoI->paddedLoc.top;
+                    * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->paddedLoc.top;
   return Rect(std::max(0.0f, newLeft),
               std::max(0.0f, newTop),
               std::min(float(pRoI->frame->mat.cols), newRight),
@@ -84,7 +84,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
     frame->reconstructStartTime = reconstructStartTime;
     frame->reconstructEndTime = reconstructEndTime;
   }
-  LOGD("%-25s took %-6lld us for             mixed %-4d // %4lu packedRoIs %4lu boxes",
+  LOGD("%-25s took %-7lld us for             mixed %-4d // %4lu packedRoIs %4lu boxes",
        "PR::assignBoxesToFrame", reconstructEndTime - reconstructStartTime,
        mixedFrame.mixedFrameIndex, packedFrames.size(), results.size());
 }

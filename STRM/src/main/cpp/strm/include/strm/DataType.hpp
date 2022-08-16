@@ -101,11 +101,7 @@ struct BoundingBox {
         srcRoI(nullptr), choiceOfBox(UNASSIGNED_ID) {}
 };
 
-enum RoIExtractionStatus {
-  OF_WAITING = 1,
-  OF_EXTRACTING = 2,
-  OF_EXTRACTED = 3,
-};
+class RoIResizer;
 
 struct Frame {
   const std::string key;
@@ -127,7 +123,7 @@ struct Frame {
   std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
   std::vector<std::unique_ptr<RoI>> probingRoIs;
 
-  RoIExtractionStatus roiExtractionStatus;
+  bool extractOFAgain;
   std::vector<std::unique_ptr<RoI>> childRoIs; // => box
   std::vector<std::unique_ptr<RoI>> parentRoIs;
 
@@ -154,31 +150,33 @@ struct Frame {
         Frame* prevFrame, const time_us& enqueueTime)
       : key(key), shortKey(toShortKey(key)), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
-        roiExtractionStatus(OF_WAITING), enqueueTime(enqueueTime), isFullFrameTarget(false),
+        extractOFAgain(false), enqueueTime(enqueueTime), isFullFrameTarget(false),
         isBoxesReady(false), isRoIsReady(false) {}
 
   ~Frame() {
     endTime = NowMicros();
   }
 
-  void initParentRoIs();
+  void resizeRoIs(RoIResizer* roiResizer);
+
+  void resetParentRoIs();
 
   void mergeRoIs(float mergeThreshold, float maxSize);
 
   void addProbeRoIs(int numProbeSteps, float probeStepSize);
 
+  void resetProbeRoIs();
+
   void filterPDRoIs(float threshold);
 
   bool isReadyToMarry(int mixedFrameIndex) const;
-
-  bool readyForPDExtraction() const;
 
   bool readyForOFExtraction() const;
 
   static std::string toShortKey(const std::string& key);
 };
 
-struct FrameIndexComp {
+struct FrameComp {
   bool operator()(const Frame* lhs, const Frame* rhs) const {
     if (lhs->frameIndex == rhs->frameIndex) {
       return lhs->key < rhs->key;
@@ -187,7 +185,7 @@ struct FrameIndexComp {
   }
 };
 
-using SortedFrames = std::set<Frame*, FrameIndexComp>;
+using SortedFrames = std::set<Frame*, FrameComp>;
 
 std::set<Frame*> filterLastFrames(const std::map<std::string, SortedFrames>& frames);
 
@@ -346,7 +344,11 @@ struct RoI {
   RoI* parentRoI;
 
   float maxEdgeLength;
+
+ private:
   float targetSize;
+
+ public:
   std::pair<float, float> packedLocation;
   static const std::pair<float, float> NOT_PACKED;
 
@@ -389,7 +391,6 @@ struct RoI {
     }
   };
 
-
   static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
     assert(pRoI0->frame == pRoI1->frame);
     float newLeft = std::min(pRoI0->paddedLoc.left, pRoI1->paddedLoc.left);
@@ -412,10 +413,10 @@ struct RoI {
     std::unique_ptr<RoI> mergedRoI(
         new RoI(nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
                 roiType, origin_Null, roiLabel, OFFeatures({}, {}), 0, false));
-    mergedRoI->targetSize = (pRoI0->targetSize * pRoI1->maxEdgeLength >
-                             pRoI1->targetSize * pRoI0->maxEdgeLength) ?
-                            mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :
-                            mergedRoI->maxEdgeLength * pRoI1->targetSize / pRoI1->maxEdgeLength;
+    mergedRoI->setTargetSize(pRoI0->targetSize * pRoI1->maxEdgeLength >
+                             pRoI1->targetSize * pRoI0->maxEdgeLength ?
+                             mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :
+                             mergedRoI->maxEdgeLength * pRoI1->targetSize / pRoI1->maxEdgeLength);
     return std::move(mergedRoI);
   }
 
@@ -454,8 +455,19 @@ struct RoI {
     return resizedWH.first * resizedWH.second;
   }
 
+  float getTargetSize() const {
+    return targetSize;
+  }
+
+  void setTargetSize(float newTargetSize) {
+    float minEdgeLength = std::min(paddedLoc.width(), paddedLoc.height());
+    targetSize = std::max(maxEdgeLength / minEdgeLength,
+                          std::min(maxEdgeLength, newTargetSize));
+  }
+
   std::pair<float, float> getResizedWidthHeight() const {
-    if (maxEdgeLength <= targetSize) {
+    assert(targetSize <= maxEdgeLength);
+    if (targetSize == maxEdgeLength) {
       return std::make_pair(paddedLoc.width(), paddedLoc.height());
     }
     if (paddedLoc.width() > paddedLoc.height()) {
@@ -476,9 +488,10 @@ struct RoI {
   }
 
   cv::Mat getResizedMat() const {
-    std::pair<float, float> wh = getResizedWidthHeight();
+    auto[w, h] = getResizedWidthHeight();
+    assert(w >= 1 && h >= 1);
     cv::Mat resizedMat;
-    cv::resize(getPaddedMat(), resizedMat, cv::Size(wh.first, wh.second));
+    cv::resize(getPaddedMat(), resizedMat, cv::Size(w, h));
     return resizedMat;
   }
 

@@ -16,28 +16,31 @@
 
 namespace rm {
 
+class RoIExtractor;
+
 class PatchMixer {
+  friend RoIExtractor;
  public:
   PatchMixer(const PatchMixerConfig& config);
 
-  std::vector<RoI*> prepareRoIs(std::map<std::string, SortedFrames>& frames,
-                                Frame* fullFrameTarget, RoIResizer* roiResizer, float maxRoISize,
-                                bool probe, int numProbeSteps, float probeStepSize,
-                                bool roiWiseInference) const;
+  std::tuple<std::vector<MixedFrame>, Frame*, std::map<std::string, SortedFrames>, SortedFrames>
+  packRoIs(std::map<std::string, SortedFrames>& frames, int fullFrameStreamIndex,
+           int frameSize, int numFrames, bool allowInterpolation, bool roiWiseInference, bool probe,
+           int numProbeSteps, float probeStepSize);
 
-  std::vector<MixedFrame> packRoIs(std::vector<RoI*>& candidateRoIs, int mixedFrameSize,
-                                   int maxNumMixedFrames) const;
+  static bool tryPackRoI(const std::pair<float, float>& resizedWH,
+                         std::map<int, std::vector<Rect>>& freeRectsMap,
+                         bool firstMatch, RoI* pRoI = nullptr,
+                         std::map<int, std::set<RoI*>>* packedRoIsMap = nullptr,
+                         bool emulatedBatch = false);
 
  private:
-  static void resizeRoIs(std::map <std::string, SortedFrames>& frames, RoIResizer* roiResizer);
+  static Frame* getFullFrameTarget(
+      const std::map<std::string, SortedFrames>& selectedFrames, int fullFrameStreamIndex);
 
-  static void initParentRoIs(std::map<std::string, SortedFrames>& frames);
-
-  static void mergeRoIs(std::map<std::string, SortedFrames>& frames, float maxRoISize,
-                        float mergeThreshold);
-
-  static void addProbeRoIs(std::map<std::string, SortedFrames>& frames,
-                           const Frame* fullFrameTarget, int numProbeSteps, float probeStepSize);
+  static std::vector<Frame*> addProbeRoIs(std::map<std::string, SortedFrames>& frames,
+                                          const Frame* fullFrameTarget, int numProbeSteps,
+                                          float probeStepSize);
 
   static std::vector<RoI*> collectRoIs(std::map<std::string, SortedFrames>& frames,
                                        const Frame* fullFrameTarget);

@@ -10,6 +10,7 @@
 
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
+#include "strm/PatchMixer.hpp"
 #include "strm/RoIResizer.hpp"
 #include "strm/Utils.hpp"
 
@@ -17,7 +18,9 @@ namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, bool run);
+  RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
+               bool roiWiseInference, const PatchMixer* patchMixer, RoIResizer* roiResizer,
+               int frameSize, int numFramesPerInterval);
 
   ~RoIExtractor();
 
@@ -25,7 +28,9 @@ class RoIExtractor {
 
   void notify();
 
-  std::map<std::string, SortedFrames> getExtractedFrames();
+  std::map<std::string, SortedFrames> getExtractedFrames(int numFrames);
+
+  void reEnqueueFrames(const SortedFrames& droppedFrames);
 
   const cv::Size& getTargetSize() const {
     return mTargetSize;
@@ -33,6 +38,10 @@ class RoIExtractor {
 
  private:
   void work();
+
+  void resetPack();
+
+  static void resetOFRoIExtraction(Frame* frame);
 
   void processPD(Frame* currFrame);
 
@@ -56,18 +65,32 @@ class RoIExtractor {
 
   static void cannyEdgeDetection(cv::Mat mat);
 
-  const RoIExtractorConfig mConfig;
   std::vector<std::thread> mThreads;
   bool mbStop;
+
+  const RoIExtractorConfig mConfig;
+  const bool mAllowInterpolation;
+  const bool mRoIWiseInference;
+
+  RoIResizer* mRoIResizer;
+  const PatchMixer* mPatchMixer;
+  const int mFrameSize;
+
+  std::mutex packMtx;
+  std::map<int, std::vector<Rect>> mFreeRectsMap;
+  int mRoICount;
+  int mNumFramesPerInterval;
+  bool isFullyPacked;
 
   static const cv::TermCriteria CRITERIA;
   const cv::Size mTargetSize;
 
   std::mutex mtx;
   std::condition_variable cv;
-  std::list<Frame*> mFramesForPD;
-  std::map<std::string, std::list<Frame*>> mFramesForOF;
-  std::map<std::string, SortedFrames> mOFProcessingStartedFrames;
+  SortedFrames mPDWaiting;
+  SortedFrames mOFWaiting;
+  SortedFrames mOFProcessing;
+  SortedFrames mExtractionFinished;
 };
 
 } // namespace rm

@@ -10,7 +10,7 @@ namespace rm {
 
 struct VideoConfig {
   std::string PATH;
-  int FPS = 5;
+  int FPS = 0;
 };
 
 struct InferenceEngineConfig {
@@ -26,7 +26,7 @@ struct InferenceEngineConfig {
 };
 
 struct IMPLConfig {
-  bool DRAW_OUTPUT = true;
+  bool DRAW_OUTPUT = false;
   bool DRAW_INFERENCE_RESULT = true;
   std::vector<VideoConfig> videoConfigs;
   InferenceEngineConfig inferenceEngineConfig;

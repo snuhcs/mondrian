@@ -2,6 +2,7 @@
 
 #include "strm/Log.hpp"
 #include "strm/Logger.hpp"
+#include "strm/RoIResizer.hpp"
 
 namespace rm {
 
@@ -10,10 +11,23 @@ const idType MERGED_ROI_ID = -2;
 
 const std::pair<float, float> RoI::NOT_PACKED{-1, -1};
 
-void Frame::initParentRoIs() {
+void Frame::resizeRoIs(RoIResizer* roiResizer) {
+  for (auto& cRoI : childRoIs) {
+    if (cRoI->type == RoI::Type::OF) {
+      cRoI->setTargetSize(roiResizer->getTargetSize(cRoI->id, frameIndex, cRoI->features));
+    }
+  }
+  for (auto& cRoI : childRoIs) {
+    if (cRoI->type == RoI::Type::PD && cRoI->nextRoI != nullptr) {
+      cRoI->setTargetSize(cRoI->nextRoI->getTargetSize());
+    }
+  }
+}
+
+void Frame::resetParentRoIs() {
+  parentRoIs.clear();
   assert(parentRoIs.empty());
   for (auto& cRoI : childRoIs) {
-    assert(cRoI->parentRoI == nullptr);
     assert(cRoI->childRoIs.empty());
     assert(cRoI->roisForProbing.empty());
   }
@@ -46,13 +60,14 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
           continue;
         }
         float newArea = (newRight - newLeft) * (newBottom - newLeft);
-        if (roi0->targetSize * roi1->maxEdgeLength > roi1->targetSize * roi0->maxEdgeLength) {
+        if (roi0->getTargetSize() * roi1->maxEdgeLength >
+            roi1->getTargetSize() * roi0->maxEdgeLength) {
           // If roi0 resizes conservatively than roi1
-          newArea = newArea * roi0->targetSize * roi0->targetSize
+          newArea = newArea * roi0->getTargetSize() * roi0->getTargetSize()
                     / roi0->maxEdgeLength / roi0->maxEdgeLength;
         } else {
           // If roi1 resizes conservatively than roi0
-          newArea = newArea * roi1->targetSize * roi1->targetSize
+          newArea = newArea * roi1->getTargetSize() * roi1->getTargetSize()
                     / roi1->maxEdgeLength / roi1->maxEdgeLength;
         }
         float originalArea = roi0->getResizedArea() + roi1->getResizedArea();
@@ -71,7 +86,7 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
     }
     parentRoIs.push_back(std::move(RoI::mergeRoIs(parentRoIs[i].get(), parentRoIs[j].get())));
     // Match child parent
-    RoI* mergedRoI = parentRoIs.rbegin()->get();
+    RoI* mergedRoI = parentRoIs.back().get();
     mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
                                 parentRoIs[i]->childRoIs.begin(), parentRoIs[i]->childRoIs.end());
     mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
@@ -86,17 +101,27 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
 }
 
 void Frame::addProbeRoIs(int numProbeSteps, float probeStepSize) {
+  assert(probingRoIs.empty());
   for (auto& cRoI : childRoIs) {
+    assert(cRoI->frame == this);
+    assert(cRoI->roisForProbing.empty());
     float probe = float(-numProbeSteps) * probeStepSize;
     for (int i = 0; i < 2 * numProbeSteps + 1; i++) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
           cRoI->features.ofFeatures, 0, true);
-      probeRoI->targetSize = std::min(cRoI->maxEdgeLength, cRoI->targetSize + probe);
+      probeRoI->setTargetSize(cRoI->getTargetSize() + probe);
       cRoI->roisForProbing.push_back(probeRoI.get());
-      cRoI->frame->probingRoIs.push_back(std::move(probeRoI));
+      probingRoIs.push_back(std::move(probeRoI));
       probe += probeStepSize;
     }
+  }
+}
+
+void Frame::resetProbeRoIs() {
+  for (auto& cRoI : childRoIs) {
+    cRoI->roisForProbing.clear();
+    probingRoIs.clear();
   }
 }
 
@@ -146,10 +171,6 @@ bool Frame::isReadyToMarry(int mixedFrameIndex) const {
     atLeastOneIndexIsSame |= (pRoI->packedMixedFrameIndex == mixedFrameIndex);
   }
   return atLeastOneIndexIsSame;
-}
-
-bool Frame::readyForPDExtraction() const {
-  return prevFrame->preProcessedMat.channels() == 1;
 }
 
 bool Frame::readyForOFExtraction() const {
@@ -210,7 +231,7 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
   }
   Frame* currFrame = frames[frameIndex % capacity].get();
   lock.unlock();
-  LOGD("%-25s                for video %-5s frame %-4d",
+  LOGD("%-25s                 for video %-5s frame %-4d",
        "FrameBuffer::enqueue", shortKey.c_str(), frameIndex);
   return currFrame;
 }
@@ -232,7 +253,7 @@ FrameBuffer::freeImage(const std::vector<int> &frameIndices, Logger *logger, Log
   }
   lock.unlock();
   cv.notify_all();
-  LOGD("%-25s                for video %-5s frame %-4d ~ %-4d",
+  LOGD("%-25s                 for video %-5s frame %-4d ~ %-4d",
        "FrameBuffer::freeImage", shortKey.c_str(), frameIndices.front(), frameIndices.back());
 }
 

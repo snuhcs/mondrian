@@ -43,18 +43,21 @@ class SpatioTemporalRoIMixer {
 
   void fullFrameInference(Frame* frame);
 
-  void mixedInference(std::vector<RoI*>& candidateRoIs, int frameSize, int numInferences);
+  void mixedInference(std::vector<MixedFrame>& mixedFrames);
 
-  void roiWiseInference(std::vector<RoI*>& candidateRoIs, int frameSize, int numInferences);
+  void roiWiseInference(std::vector<MixedFrame>& mixedFrames);
 
   void releaseFrames(const std::map<std::string, SortedFrames>& frames);
 
-  static Frame* getFullFrameInferenceFrame(const std::map<std::string, SortedFrames>& lastFrames,
-                                           int fullFrameInferenceStreamIndex);
-
   void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
+  static int getNumInferences(time_us remainingTime, time_us inferenceTime);
+
+  static void testNoInterpolationPacking(const std::map<std::string, SortedFrames>& frames,
+                                         const SortedFrames& droppedFrames, Frame* fullFrameTarget);
+
   const STRMConfig mConfig;
+  const time_us mScheduleInterval;
   std::thread mThread;
   bool mbStop;
 
@@ -64,6 +67,7 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<Logger> mRoILogger;
   InferenceEngine* mInferenceEngine;
   const std::vector<int> mInputSizes;
+  const int mInferenceFrameSize;
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;

@@ -13,8 +13,9 @@ time_us NowMicros() {
           .count());
 }
 
+const char* TimeLogger::startName = "start";
+
 time_us TimeLogger::getElapsedTime() const {
-  const char* startName = "start";
   assert(timestamps.find(startName) != timestamps.cend());
   return NowMicros() - timestamps.at("start");
 }
@@ -36,8 +37,10 @@ time_us TimeLogger::getDuration(const char* next, const char* prev) const {
 std::string TimeLogger::getLog() const {
   std::stringstream ss;
   for (const auto& name : names) {
-    assert(timestamps.find(name) != timestamps.end());
-    ss << name << ": " << timestamps.at(name);
+    if (name == names.front()) {
+      continue;
+    }
+    ss << name << ": " << getDuration(name);
     if (name != names.back()) {
       ss << ", ";
     }
@@ -47,7 +50,7 @@ std::string TimeLogger::getLog() const {
 
 void TimeLogger::start() {
   reset();
-  step("start");
+  step(startName);
 }
 
 void TimeLogger::step(const char* name) {
