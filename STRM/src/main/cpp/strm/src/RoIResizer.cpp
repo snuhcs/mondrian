@@ -17,40 +17,42 @@ const std::map<std::string, std::vector<float>> RoIResizer::candidateResizeTarge
 };
 
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
-    : mConfig(config), calibration(0),
+    : mConfig(config),
       mPredictor(candidatePredictors.at(config.TRAIN_DATA)),
       mResizeTargets(candidateResizeTargets.at(config.TRAIN_DATA)) {}
 
-float RoIResizer::getTargetSize(const idType id, const int frameIndex, const RoI::Features& features) {
+float RoIResizer::getTargetSize(const idType id, const RoI::Features& features) {
   assert(features.type == RoI::Type::OF);
   if (mConfig.RESIZE_SMOOTHING_FACTOR == 0) {
     return mConfig.STATIC_RESIZE_TARGET;
   }
-  float targetSize = getSmoothedTargetSize(id, frameIndex, features);
-  prevTargetSizeTable[{id, frameIndex}] = targetSize;
-  auto removeIt = prevTargetSizeTable.find({id, frameIndex - mConfig.MAX_CACHE_SIZE});
-  if (removeIt != prevTargetSizeTable.end()) {
-    prevTargetSizeTable.erase(removeIt);
+  float targetSize = getSmoothedTargetSize(id, features);
+  float calibratedTargetSize = targetSize;
+  auto it = calibrationTable.find(id);
+  if (it != calibrationTable.end()) {
+    float diff = targetSize - calibrationTable[id].first;
+    if (std::abs(diff) < mConfig.PROBE_RESET_THRESHOLD) {
+      // in threshold range
+      calibratedTargetSize += calibrationTable[id].second;
+    } else {
+      // out of threshold range
+      calibrationTable.erase(it);
+    }
   }
-  if (calibrationStartSizeTable.find(id) == calibrationStartSizeTable.end() ||
-      std::abs(targetSize - calibrationStartSizeTable[id]) > mConfig.PROBE_RESET_THRESHOLD) {
-    calibrationStartSizeTable[id] = targetSize;
-    calibration = 0;
-  }
-  float calibratedTargetSize = targetSize + calibration + mConfig.RESIZE_MARGIN;
-  return std::max(calibratedTargetSize, 1.0f);
+  return calibratedTargetSize;
 }
 
-float RoIResizer::getSmoothedTargetSize(const idType id, const int frameIndex,
-                                        const RoI::Features& features) {
+float RoIResizer::getSmoothedTargetSize(const idType id, const RoI::Features& features) {
   float sizeWithFeatures = getSizeWithFeature(features);
-  auto it = prevTargetSizeTable.find({id, frameIndex - 1});
-  if (it == prevTargetSizeTable.end()) {
+  auto record = prevTargetSizeTable.find(id);
+  if (record == prevTargetSizeTable.end()) {
     return sizeWithFeatures;
   }
-  float prevTargetSize = it->second;
-  return mConfig.RESIZE_SMOOTHING_FACTOR * sizeWithFeatures +
-         (1 - mConfig.RESIZE_SMOOTHING_FACTOR) * prevTargetSize;
+  float prevTargetSize = prevTargetSizeTable[id];
+  float smoothedTargetSize = (mConfig.RESIZE_SMOOTHING_FACTOR * sizeWithFeatures +
+                              (1 - mConfig.RESIZE_SMOOTHING_FACTOR) * prevTargetSize);
+  prevTargetSizeTable[id] = smoothedTargetSize;
+  return smoothedTargetSize;
 }
 
 float RoIResizer::getSizeWithFeature(const RoI::Features& features) const {
@@ -67,7 +69,7 @@ float RoIResizer::getSizeWithFeature(const RoI::Features& features) const {
 void RoIResizer::updateTable(RoI* roi) {
   assert(!roi->roisForProbing.empty());
   assert(roi->roisForProbing.back()->getTargetSize() > roi->getTargetSize());
-  assert(prevTargetSizeTable.find({roi->id, roi->frame->frameIndex}) != prevTargetSizeTable.end());
+  assert(prevTargetSizeTable.find(roi->id) != prevTargetSizeTable.end());
 
   // Sort : Largest box first
   std::sort(roi->roisForProbing.begin(), roi->roisForProbing.end(),
@@ -92,7 +94,7 @@ void RoIResizer::updateTable(RoI* roi) {
       }
     }
   }
-  calibration = newResizeTarget - (float) roi->getTargetSize();
+  calibrationTable[roi->id] = {roi->getTargetSize(), newResizeTarget - roi->getTargetSize()};
 }
 
 bool RoIResizer::isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const {
