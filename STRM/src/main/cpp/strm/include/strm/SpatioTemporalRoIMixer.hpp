@@ -53,6 +53,9 @@ class SpatioTemporalRoIMixer {
 
   static int getNumInferences(time_us remainingTime, time_us inferenceTime);
 
+  static void testNoInterpolationPacking(const std::map<std::string, SortedFrames>& frames,
+                                         const SortedFrames& droppedFrames, Frame* fullFrameTarget);
+
   const STRMConfig mConfig;
   const time_us mScheduleInterval;
   std::thread mThread;

@@ -118,25 +118,7 @@ void SpatioTemporalRoIMixer::work() {
         numInferences, mConfig.ALLOW_INTERPOLATION, mConfig.ROI_WISE_INFERENCE,
         mRoIResizer->isProbing(), mRoIResizer->getNumProbeSteps(), mRoIResizer->getProbeStepSize());
     if (!mConfig.ALLOW_INTERPOLATION) {
-      int numWrong = 0;
-      int numCorrect = 0;
-      for (auto&[aStreamKey, aStreamFrames]: frames) {
-        for (Frame* frame : aStreamFrames) {
-          if (!std::all_of(frame->parentRoIs.begin(), frame->parentRoIs.end(),
-                           [](const std::unique_ptr<RoI>& pRoI) { return pRoI->isPacked(); })) {
-            if (droppedFrames.find(frame) == droppedFrames.end() && frame != fullFrameTarget) {
-              numWrong++;
-            }
-          } else {
-            numCorrect++;
-          }
-        }
-      }
-      if (numCorrect > 0) {
-        assert(numWrong == 0);
-      } else {
-        assert(numWrong <= 1);
-      }
+      testNoInterpolationPacking(frames, droppedFrames, fullFrameTarget);
     }
     mRoIExtractor->reEnqueueFrames(droppedFrames);
     logger.step("pack");
@@ -209,6 +191,30 @@ void SpatioTemporalRoIMixer::work() {
     logger.step("post");
 
     LOGD("===== Schedule %d end (%s) =====", scheduleID, logger.getLog().c_str());
+  }
+}
+
+void SpatioTemporalRoIMixer::testNoInterpolationPacking(
+    const std::map<std::string, SortedFrames>& frames, const SortedFrames& droppedFrames,
+    Frame* fullFrameTarget) {
+  int numWrong = 0;
+  int numCorrect = 0;
+  for (auto&[aStreamKey, aStreamFrames]: frames) {
+    for (Frame* frame : aStreamFrames) {
+      if (!std::all_of(frame->parentRoIs.begin(), frame->parentRoIs.end(),
+                       [](const std::unique_ptr<RoI>& pRoI) { return pRoI->isPacked(); })) {
+        if (droppedFrames.find(frame) == droppedFrames.end() && frame != fullFrameTarget) {
+          numWrong++;
+        }
+      } else {
+        numCorrect++;
+      }
+    }
+  }
+  if (numCorrect > 0) {
+    assert(numWrong == 0);
+  } else {
+    assert(numWrong <= 1);
   }
 }
 
