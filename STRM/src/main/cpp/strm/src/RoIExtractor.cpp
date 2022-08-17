@@ -26,8 +26,8 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, bool allo
       resetPack();
     }
     mThreads.reserve(config.NUM_WORKERS);
-    for (int i = 0; i < config.NUM_WORKERS; i++) {
-      mThreads.emplace_back([this]() { work(); });
+    for (int extractorId = 0; extractorId < config.NUM_WORKERS; extractorId++) {
+      mThreads.emplace_back([this, extractorId]() { work(extractorId); });
     }
   }
 }
@@ -113,7 +113,7 @@ void RoIExtractor::resetOFRoIExtraction(Frame* frame) {
   frame->isRoIsReady = false;
 }
 
-void RoIExtractor::work() {
+void RoIExtractor::work(int extractorId) {
   /*
    *    Frame Status           Containing data structure   extractOFAgain
    * 1. Before PD extraction | mPDWaiting                | false
@@ -168,9 +168,11 @@ void RoIExtractor::work() {
     }
 
     if (isOF) {
+      frame->OFExtractorID = extractorId;
       mOFWaiting.erase(mOFWaiting.begin());
       mOFProcessing.insert(frame);
     } else {
+      frame->PDExtractorID = extractorId;
       mPDWaiting.erase(mPDWaiting.begin());
     }
     lock.unlock();

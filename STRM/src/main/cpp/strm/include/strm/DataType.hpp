@@ -111,6 +111,8 @@ struct Frame {
   Frame* prevFrame;
   Frame* nextFrame;
   cv::Mat preProcessedMat;
+  int PDExtractorID;
+  int OFExtractorID;
 
   const float width;
   const float height;
@@ -142,20 +144,17 @@ struct Frame {
   time_us mergeRoIEndTime = 0;
   time_us mixingStartTime = 0;
   time_us mixingEndTime = 0;;
+  time_us inferenceStartTime = 0;
+  time_us inferenceEndTime = 0;
   time_us reconstructStartTime = 0;
   time_us reconstructEndTime = 0;
-  time_us endTime = 0;
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime)
       : key(key), shortKey(toShortKey(key)), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
         extractOFAgain(false), enqueueTime(enqueueTime), isFullFrameTarget(false),
-        isBoxesReady(false), isRoIsReady(false) {}
-
-  ~Frame() {
-    endTime = NowMicros();
-  }
+        isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1) {}
 
   void resizeRoIs(RoIResizer* roiResizer);
 

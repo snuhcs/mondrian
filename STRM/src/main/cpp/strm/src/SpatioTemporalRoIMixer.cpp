@@ -250,6 +250,7 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
 }
 
 void SpatioTemporalRoIMixer::mixedInference(std::vector<MixedFrame>& mixedFrames) {
+  time_us inferenceStartTime = NowMicros();
   // Enqueue Mixed Frames
   std::vector<int> handles;
   std::transform(mixedFrames.begin(), mixedFrames.end(), std::back_inserter(handles),
@@ -291,9 +292,17 @@ void SpatioTemporalRoIMixer::mixedInference(std::vector<MixedFrame>& mixedFrames
       }
     }
   }
+  time_us inferenceEndTime = NowMicros();
+  for (MixedFrame& mixedFrame : mixedFrames) {
+    for (Frame* frame : mixedFrame.getPackedFrames()) {
+      frame->inferenceStartTime = inferenceStartTime;
+      frame->inferenceEndTime = inferenceEndTime;
+    }
+  }
 }
 
 void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFrames) {
+  time_us inferenceStartTime = NowMicros();
   std::vector<int> handles;
   std::transform(mixedFrames.begin(), mixedFrames.end(), std::back_inserter(handles),
                  [this](const MixedFrame& mixedFrame) {
@@ -306,6 +315,8 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
     assert(mixedFrames[i].packedRoIs.size() == 1);
     auto&[x, y] = (*mixedFrames[i].packedRoIs.begin())->packedLocation;
     RoI* pRoI = *mixedFrames[i].packedRoIs.begin();
+    pRoI->frame->inferenceStartTime = inferenceStartTime;
+    pRoI->frame->inferenceEndTime = NowMicros();
     inferenceFrames.insert(pRoI->frame);
     for (BoundingBox& b : boxes) {
       pRoI->frame->boxes.emplace_back(new BoundingBox(
