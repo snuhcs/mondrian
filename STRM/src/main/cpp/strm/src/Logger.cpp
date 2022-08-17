@@ -35,15 +35,18 @@ void Logger::logHeader() {
   std::lock_guard<std::mutex> lock(mtx);
   logFile << "key" << delim
           << "frameIndex" << delim
+          << "PDExtractorID" << delim
+          << "OFExtractorID" << delim
           << "numBoxes" << delim
-          << "numRoIs" << delim
+          << "numChildRoIs" << delim
+          << "numParentRoIs" << delim
           << "enqueueTime" << delim
           << "fullFrameEnqueueTime" << delim
           << "fullFrameGetResultsTime" << delim
-          << "opticalFlowRoIProcessStartTime" << delim
-          << "opticalFlowRoIProcessEndTime" << delim
           << "pixelDiffRoIProcessStartTime" << delim
           << "pixelDiffRoIProcessEndTime" << delim
+          << "opticalFlowRoIProcessStartTime" << delim
+          << "opticalFlowRoIProcessEndTime" << delim
           << "resizeStartTime" << delim
           << "resizeEndTime" << delim
           << "mergeRoIStartTime" << delim
@@ -63,24 +66,27 @@ void Logger::log(Frame* frame) {
   std::lock_guard<std::mutex> lock(mtx);
   logFile << frame->key << delim
           << frame->frameIndex << delim
+          << frame->PDExtractorID << delim
+          << frame->OFExtractorID << delim
           << frame->boxes.size() << delim
+          << frame->childRoIs.size() << delim
           << frame->parentRoIs.size() << delim
           << fromBaseTime(frame->enqueueTime) << delim
           << fromBaseTime(frame->fullFrameEnqueueTime) << delim
           << fromBaseTime(frame->fullFrameGetResultsTime) << delim
-          << fromBaseTime(frame->opticalFlowRoIProcessStartTime) << delim
-          << fromBaseTime(frame->opticalFlowRoIProcessEndTime) << delim
           << fromBaseTime(frame->pixelDiffRoIProcessStartTime) << delim
           << fromBaseTime(frame->pixelDiffRoIProcessEndTime) << delim
-          << fromBaseTime(frame->mergeRoIStartTime) << delim
-          << fromBaseTime(frame->mergeRoIEndTime) << delim
+          << fromBaseTime(frame->opticalFlowRoIProcessStartTime) << delim
+          << fromBaseTime(frame->opticalFlowRoIProcessEndTime) << delim
           << fromBaseTime(frame->resizeStartTime) << delim
           << fromBaseTime(frame->resizeEndTime) << delim
+          << fromBaseTime(frame->mergeRoIStartTime) << delim
+          << fromBaseTime(frame->mergeRoIEndTime) << delim
           << fromBaseTime(frame->mixingStartTime) << delim
           << fromBaseTime(frame->mixingEndTime) << delim
           << fromBaseTime(frame->reconstructStartTime) << delim
           << fromBaseTime(frame->reconstructEndTime) << delim
-          << fromBaseTime(frame->endTime) << '\n';
+          << fromBaseTime(NowMicros()) << '\n';
   logFile.flush();
 }
 

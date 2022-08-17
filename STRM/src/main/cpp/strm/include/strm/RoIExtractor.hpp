@@ -37,7 +37,7 @@ class RoIExtractor {
   }
 
  private:
-  void work();
+  void work(int extractorId);
 
   void resetPack();
 
