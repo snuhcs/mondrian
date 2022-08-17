@@ -2,18 +2,16 @@
 
 namespace rm {
 
-const std::map<std::string, std::function<float(
-    float, float, float, float, float, float,
-    float, float, float, float, float, float)>> RoIResizer::candidatePredictors = {
+const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
     {"VIRAT",   VIRAT},
     {"MTA",     MTA},
     {"YouTube", YouTube}
 };
 
 const std::map<std::string, std::vector<float>> RoIResizer::candidateResizeTargets = {
-    {"VIRAT",   {68.0f, 120.0f, 165.0f}},
-    {"MTA",     {52.0f, 66.0f,  165.0f}},
-    {"YouTube", {68.0f, 105.0f, 165.0f}}
+    {"VIRAT",   {140.0f, 155.0f, 165.0f}},
+    {"MTA",     {100.0f, 140.0f, 165.0f}},
+    {"YouTube", {125.0f, 140.0f, 165.0f}}
 };
 
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
@@ -62,8 +60,9 @@ float RoIResizer::getSizeWithFeature(const RoI::Features& features) const {
   float avg = avgX * avgX + avgY * avgY;
   float std = stdX * stdX + stdY * stdY;
   return mResizeTargets[(int) mPredictor(
-      features.width, features.height, (float) features.label, features.xyRatio,
-      avgX, avgY, avg, stdX, stdY, std, features.ofFeatures.avgErr, features.ofFeatures.ncc)];
+      features.width, features.height, std::max(features.width, features.height), features.type,
+      features.origin, features.xyRatio, avgX, avgY, avg, stdX, stdY, std,
+      features.ofFeatures.avgErr, features.ofFeatures.ncc)];
 }
 
 void RoIResizer::updateTable(RoI* roi) {

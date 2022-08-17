@@ -323,6 +323,7 @@ struct RoI {
     float height;
     int label;
     Type type;
+    Origin origin;
     float xyRatio;
     OFFeatures ofFeatures;
   };
@@ -380,6 +381,7 @@ struct RoI {
           paddedLoc.height(),
           label,
           type,
+          origin,
           (float) origLoc.width() / (float) origLoc.height(),
           ofFeatures
       }, maxEdgeLength(std::max(paddedLoc.width(), paddedLoc.height())),

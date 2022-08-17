@@ -12,6 +12,10 @@
 
 namespace rm {
 
+using Predictor = std::function<float(
+    float, float, float, float, float, float, float,
+    float, float, float, float, float, float, float)>;
+
 class RoIResizer {
  public:
   RoIResizer(const RoIResizerConfig& config);
@@ -41,15 +45,11 @@ class RoIResizer {
 
   static float getOverlap(Rect& targetRect, Rect& baseRect);
 
-  static const std::map<std::string, std::function<float(
-      float, float, float, float, float, float,
-      float, float, float, float, float, float)>> candidatePredictors;
+  static const std::map<std::string, Predictor> candidatePredictors;
   static const std::map<std::string, std::vector<float>> candidateResizeTargets;
 
   const RoIResizerConfig mConfig;
-  const std::function<float(
-      float, float, float, float, float, float,
-      float, float, float, float, float, float)> mPredictor;
+  const Predictor mPredictor;
   const std::vector<float> mResizeTargets;
 
   // Save prev prediction to smooth the predicted size
