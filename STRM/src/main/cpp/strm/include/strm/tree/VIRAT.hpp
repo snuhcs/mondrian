@@ -3,9 +3,9 @@
 
 namespace rm {
 
-float VIRAT(float width, float height, float label, float xyRatio, float avg_shift_x,
-            float avg_shift_y, float avg_shift, float std_shift_x, float std_shift_y,
-            float std_shift, float avg_err, float ncc);
+float VIRAT(float width, float height, float maxEdgeLength, float type, float origin, float xyRatio,
+            float avgShiftX, float avgShiftY, float avgShift, float stdShiftX, float stdShiftY,
+            float stdShift, float avgErr, float ncc);
 
 } // namespace rm
 
