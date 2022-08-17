@@ -144,6 +144,8 @@ struct Frame {
   time_us mergeRoIEndTime = 0;
   time_us mixingStartTime = 0;
   time_us mixingEndTime = 0;;
+  time_us inferenceStartTime = 0;
+  time_us inferenceEndTime = 0;
   time_us reconstructStartTime = 0;
   time_us reconstructEndTime = 0;
 

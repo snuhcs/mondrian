@@ -53,6 +53,8 @@ void Logger::logHeader() {
           << "mergeRoIEndTime" << delim
           << "mixingStartTime" << delim
           << "mixingEndTime" << delim
+          << "inferenceStartTime" << delim
+          << "inferenceEndTime" << delim
           << "reconstructStartTime" << delim
           << "reconstructEndTime" << delim
           << "endTime" << '\n';
@@ -84,6 +86,8 @@ void Logger::log(Frame* frame) {
           << fromBaseTime(frame->mergeRoIEndTime) << delim
           << fromBaseTime(frame->mixingStartTime) << delim
           << fromBaseTime(frame->mixingEndTime) << delim
+          << fromBaseTime(frame->inferenceStartTime) << delim
+          << fromBaseTime(frame->inferenceEndTime) << delim
           << fromBaseTime(frame->reconstructStartTime) << delim
           << fromBaseTime(frame->reconstructEndTime) << delim
           << fromBaseTime(NowMicros()) << '\n';
