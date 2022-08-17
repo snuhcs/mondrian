@@ -155,7 +155,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
                                           pRoI->getResizedWidthHeight();
       tryPackRoI(
           resizedWH, freeRectsMap,
-          pRoI->priority == HIGH_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
+          pRoI->priority == HIGHEST_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
           pRoI, &packedRoIsMap, mConfig.EMULATED_BATCH);
     }
     for (auto&[mixedFrameIndex, aMixedFrameRoIs] : packedRoIsMap) {
@@ -240,7 +240,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
                                             pRoI->getResizedWidthHeight();
         if (!tryPackRoI(
             resizedWH, freeRectsMap,
-            pRoI->priority == HIGH_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
+            pRoI->priority == HIGHEST_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
             pRoI, &packedRoIsMap, mConfig.EMULATED_BATCH)) {
           isAllPacked = false;
           break;
