@@ -32,10 +32,6 @@ class RoIExtractor {
 
   void reEnqueueFrames(const Stream& droppedFrames);
 
-  const cv::Size& getTargetSize() const {
-    return mTargetSize;
-  }
-
  private:
   void work(int extractorId);
 
