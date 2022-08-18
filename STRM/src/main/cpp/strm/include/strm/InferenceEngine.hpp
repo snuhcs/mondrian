@@ -9,11 +9,6 @@
 
 namespace rm {
 
-enum Device {
-  GPU = 1,
-  DSP = 2,
-};
-
 class InferenceEngine {
  public:
   virtual ~InferenceEngine() {}

@@ -17,7 +17,7 @@ class Worker {
     thread.join();
   }
 
-  long long getInferenceTimeMs(int inputSize);
+  std::map<int, time_us> getInferenceTimeUs();
 
  private:
   void Work();

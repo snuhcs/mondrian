@@ -49,6 +49,13 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
     }
     std::sort(config.INPUT_SIZES.begin(), config.INPUT_SIZES.end());
   }
+  if (!json["devices"].isNull()) {
+    const Json::Value devices = json["devices"];
+    config.DEVICES.clear();
+    for (const auto& device : devices) {
+      config.DEVICES.push_back(deviceMap[device.asString()]);
+    }
+  }
   return config;
 }
 

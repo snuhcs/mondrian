@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <json/json.h>
+#include "strm/DataType.hpp"
 
 namespace rm {
 
@@ -22,6 +23,9 @@ struct InferenceEngineConfig {
   int NUM_WORKERS = 1;
   std::vector<int> INPUT_SIZES = {
       800
+  };
+  std::vector<Device> DEVICES = {
+      GPU
   };
 };
 

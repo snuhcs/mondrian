@@ -24,9 +24,13 @@ void Worker::Work() {
   engine->enqueueResults(handle, boxes);
 }
 
-long long Worker::getInferenceTimeMs(int inputSize) {
-  assert(classifierMap.find(inputSize) != classifierMap.end());
-  return classifierMap[inputSize]->getInferenceTimeMs();
+std::map<int, time_us> Worker::getInferenceTimeUs() {
+  std::map<int, time_us> timeTable;
+  for (auto& [inputSize, classifier] : classifierMap) {
+    assert (classifier->getInferenceTimeMs() > 0);
+    timeTable[inputSize] = classifier->getInferenceTimeMs() * 1000;
+  }
+  return timeTable;
 }
 
 } // namespace rm

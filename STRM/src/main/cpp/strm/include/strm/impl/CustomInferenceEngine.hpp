@@ -41,7 +41,7 @@ class CustomInferenceEngine : public InferenceEngine {
 
   const InferenceEngineConfig mConfig;
 
-  std::vector<std::unique_ptr<Worker>> workers;
+  std::map<Device, std::unique_ptr<Worker>> workers;
   std::vector<std::unique_ptr<Classifier>> classifiers;
 
   const bool draw;

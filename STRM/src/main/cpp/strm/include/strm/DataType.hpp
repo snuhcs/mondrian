@@ -24,6 +24,16 @@ extern const idType MERGED_ROI_ID;
 
 struct RoI;
 
+enum Device {
+  GPU,
+  DSP,
+};
+
+std::map<std::string, Device> deviceMap = {
+    {"GPU", GPU},
+    {"DSP", DSP},
+};
+
 struct Rect {
   float left;
   float top;

@@ -43,14 +43,16 @@ CustomInferenceEngine::CustomInferenceEngine(
 template<typename T>
 void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config) {
   std::map<int, Classifier*> classifierMap;
-  for (const auto& inputSize : config.INPUT_SIZES) {
-    std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-        inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
-    classifier->setInferenceTimeMs(classifier->profileInferenceTime());
-    classifierMap[inputSize] = classifier.get();
-    classifiers.push_back(std::move(classifier));
+  for (const auto& device : config.DEVICES) {
+    for (const auto& inputSize : config.INPUT_SIZES) {
+      std::unique_ptr<Classifier> classifier = std::make_unique<T>(
+          inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+      classifier->setInferenceTimeMs(classifier->profileInferenceTime());
+      classifierMap[inputSize] = classifier.get();
+      classifiers.push_back(std::move(classifier));
+    }
+    workers[device] = std::make_unique<Worker>(this, classifierMap);
   }
-  workers.emplace_back(new Worker(this, classifierMap));
 }
 
 int CustomInferenceEngine::enqueue(const cv::Mat mat, const int inputSize) {
@@ -119,18 +121,9 @@ void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
 std::map<Device, std::map<int,time_us>> CustomInferenceEngine::getInferenceTimeUs() const {
   std::map<Device, std::map<int, time_us>> inferenceTimeTable;
   // TODO: fill inferenceTimeTable for each device, each input size (with time unit US)
-  /*
-  long long inferenceTime = 0;
-  int cnt = 0;
-  for (auto& worker : workers) {
-    long long t_inf_worker = worker->getInferenceTimeMs(inputSize);
-    if (t_inf_worker > 0) {
-      cnt++;
-      inferenceTime += t_inf_worker;
-    }
+  for (const auto& [device, worker] : workers) {
+    inferenceTimeTable[device] = worker->getInferenceTimeUs();
   }
-  inferenceTime /= cnt;
-   */
   return inferenceTimeTable;
 }
 
