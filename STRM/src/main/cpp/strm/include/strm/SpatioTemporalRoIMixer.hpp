@@ -35,6 +35,8 @@ class SpatioTemporalRoIMixer {
   int enqueueImage(const std::string& key, const cv::Mat& mat);
 
  private:
+  void waitForStart();
+
   void work();
 
   void outputWork();
@@ -66,6 +68,7 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<Logger> mLogger;
   std::unique_ptr<Logger> mRoILogger;
   InferenceEngine* mInferenceEngine;
+  const cv::Size mTargetSize;
   const std::vector<int> mInputSizes;
   const int mInferenceFrameSize;
 
