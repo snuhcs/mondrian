@@ -25,7 +25,7 @@ class CustomInferenceEngine : public InferenceEngine {
 
   std::vector<BoundingBox> getResults(const int handle) override;
 
-  long long getInferenceTimeMs(int inputSize) const override;
+  std::map<Device, std::map<int, time_us>> getInferenceTimeUs() const override;
 
   std::vector<int> getInputSizes() const override;
 

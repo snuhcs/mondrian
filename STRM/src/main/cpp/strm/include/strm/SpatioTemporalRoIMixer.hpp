@@ -51,7 +51,7 @@ class SpatioTemporalRoIMixer {
 
   void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
-  static int getNumInferences(time_us remainingTime, time_us inferenceTime);
+  static std::map<Device, std::vector<int>> getInferencePlan(time_us remainingTime, std::map<Device, std::map<int, time_us>> inferenceTimes);
 
   static void testNoInterpolationPacking(const MultiStream& frames, const Stream& droppedFrames,
                                          Frame* fullFrameTarget);

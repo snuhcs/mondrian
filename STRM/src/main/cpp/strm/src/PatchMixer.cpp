@@ -108,9 +108,10 @@ void PatchMixer::prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarge
 }
 
 std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::packRoIs(
-    MultiStream& frames, int fullFrameStreamIndex, int frameSize, int numFrames,
+    MultiStream& frames, int fullFrameStreamIndex, std::map<Device, std::vector<int>>& inferencePlan,
     bool allowInterpolation, bool roiWiseInference, bool probe, int numProbeSteps,
     float probeStepSize) {
+  // TODO
   time_us mixingStartTime = NowMicros();
   std::vector<MixedFrame> mixedFrames;
   Frame* fullFrameTarget;
@@ -342,9 +343,11 @@ void PatchMixer::splitFrames(MultiStream& selectedFrames, Stream& droppedFrames,
 }
 
 bool PatchMixer::tryPackRoI(const std::pair<float, float>& resizedWH,
-                            std::map<int, std::vector<Rect>>& freeRectsMap,
-                            bool firstMatch, RoI* pRoI,
-                            std::map<int, std::set<RoI*>>* packedRoIsMap, bool emulatedBatch) {
+                std::vector<std::pair<Device, std::vector<Rect>>>& freeRectsMap,
+                     bool firstMatch, RoI* pRoI = nullptr,
+                     std::map<int, std::set<RoI*>>* packedRoIsMap = nullptr,
+                     bool emulatedBatch = false) {
+  // TODO
   const float roiArea = resizedWH.first * resizedWH.second;
   int minPackedIndex = -1;
   int minFreeRectIndex = -1;

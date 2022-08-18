@@ -35,12 +35,16 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
     }
   }
 
+
+  // TODO: properly set remainingTime
+  time_us remainingTime = -1234;
+  // ex) remainingTime = mScheduleInterval - mInferenceEngine->getInferenceTimeUs()...
   mRoIExtractor = std::make_unique<RoIExtractor>(
       config.roIExtractorConfig, config.FULL_FRAME_INTERVAL > 0, config.ALLOW_INTERPOLATION,
-      config.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(), mInferenceFrameSize,
-      getNumInferences(
-          mScheduleInterval - mInferenceEngine->getInferenceTimeMs(mInputSizes.back()) * 1000,
-          mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize) * 1000));
+      config.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(),
+      getInferencePlan(
+          remainingTime,
+          mInferenceEngine->getInferenceTimeUs()));
 
   if (config.LOG_EXECUTION) {
     mLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");
@@ -98,10 +102,13 @@ void SpatioTemporalRoIMixer::work() {
 
     // Extract RoIs
     logger.start();
-    int numInferences = getNumInferences(
-        mScheduleInterval - mInferenceEngine->getInferenceTimeMs(mInputSizes.back()) * 1000,
-        mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize) * 1000);
-    MultiStream frames = mRoIExtractor->getExtractedFrames(numInferences);
+    // TODO: properly set remainingTime
+    time_us remainingTime = -1234;
+    // ex) remainingTime = mScheduleInterval - mInferenceEngine->getInferenceTimeUs()...
+    std::map<Device, std::vector<int>> inferencePlan = getInferencePlan(
+        remainingTime,
+        mInferenceEngine->getInferenceTimeUs());
+    MultiStream frames = mRoIExtractor->getExtractedFrames(inferencePlan);
     logger.step("roi");
     LOGD("===== Schedule %d start =====", scheduleID);
     LOGD("%-25s took %-7lld us for %s",
@@ -459,11 +466,87 @@ void SpatioTemporalRoIMixer::drawObjectDetectionResult(const cv::Mat& mat,
   jvm->DetachCurrentThread();
 }
 
-int SpatioTemporalRoIMixer::getNumInferences(time_us remainingTime, time_us inferenceTime) {
-  if (remainingTime < inferenceTime) {
-    LOGE("RemainingTime: %7lld < InferenceTime: %7lld", remainingTime, inferenceTime);
+
+double weigh(const std::vector<time_us>& layout, std::map<long long ,double> profile) {
+  double weight = 0;
+  for (auto l : layout) {
+    assert (profile.find(l) != profile.end());
+    weight += double(l) * profile[l];
   }
-  return std::max(1, int(remainingTime / inferenceTime));
+  return weight;
+}
+
+std::vector<time_us> search(const std::vector<long long>& bars, long long total, std::map<long long ,double>& profile) {
+  std::vector<time_us> layout;
+  time_us left = total;
+
+  // greedy initialization
+  for (auto l : bars) {
+    time_us cnt = left/l;
+    for (int i=0; i<cnt; i++) {
+      layout.push_back(l);
+    }
+    left -= l*cnt;
+  }
+
+  // if cannot fill any bar, return empty layout
+  if (layout.empty()) {
+    return layout;
+  }
+
+  // select type of bar to try removing
+  time_us l_a = layout[0];
+  assert (profile.find(l_a) != profile.end());
+  double d_a = profile[l_a];
+  long c_a = std::count(layout.begin(), layout.end(), l_a);
+  double alpha = weigh(layout, profile) - l_a * c_a * d_a;
+  auto l_a_it = std::find(bars.begin(), bars.end(), l_a);
+
+  // if selected bar is the one with the smallest density, removing is no worth
+  if (l_a_it == bars.end()) {
+    return layout;
+  }
+
+  // figure maximum number of removal with potential benefit
+  double d_b = profile[bars[std::distance(bars.begin(), l_a_it) + 1]];
+  long k_max = std::min(c_a, long((left*d_b - alpha) / (l_a * (d_a - d_b))));
+  if (k_max < 0) {
+    return layout;
+  }
+
+  // try all possible number of removals, recursively calling this function for the other area
+  std::vector<std::vector<time_us>> layouts;
+  std::vector<time_us> subBars {bars.begin()+1, bars.end()};
+  for (int k=0; k<=k_max; k++) {
+    std::vector<time_us> layout_left(c_a - k, l_a);
+    std::vector<time_us> layout_right = search(subBars, total - std::accumulate(layout_left.begin(), layout_left.end(), 0l), profile);
+    layout_left.insert(layout_left.end(), layout_right.begin(), layout_right.end());
+    layouts.push_back(layout_left);
+  }
+  std::sort(layouts.begin(), layouts.end(), [profile](auto& l1, auto& l2){return weigh(l1, profile) > weigh(l2, profile);});
+  return layouts[0];
+}
+
+std::map<Device, std::vector<int>> SpatioTemporalRoIMixer::getInferencePlan(time_us remainingTime, std::map<Device, std::map<int, time_us>> inferenceTimes) {
+  std::map<Device, std::vector<int>> inferencePlan;
+  for (const auto& [device, size_latency] : inferenceTimes) {
+    std::map<time_us, double> profile;
+    std::vector<time_us> bars;
+    std::map<time_us, int> latency_size;
+    std::vector<int> plan;
+    for (const auto& [size, latency] : size_latency) {
+      profile[latency] = size*size/latency;
+      bars.push_back(latency);
+      latency_size[latency] = size;
+    }
+    std::sort(bars.begin(), bars.end(), [profile](auto b1, auto b2){return (profile[b1] > profile[b2]);});
+    std::vector<time_us> layout = search(bars, remainingTime, profile);
+    for (auto& l : layout) {
+      plan.push_back(latency_size[l]);
+    }
+    inferencePlan[device] = plan;
+  }
+  return inferencePlan;
 }
 
 } // namespace rm

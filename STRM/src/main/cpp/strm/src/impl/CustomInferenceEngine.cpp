@@ -116,7 +116,10 @@ void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
   jvm->DetachCurrentThread();
 }
 
-long long CustomInferenceEngine::getInferenceTimeMs(int inputSize) const {
+std::map<Device, std::map<int,time_us>> CustomInferenceEngine::getInferenceTimeUs() const {
+  std::map<Device, std::map<int, time_us>> inferenceTimeTable;
+  // TODO: fill inferenceTimeTable for each device, each input size (with time unit US)
+  /*
   long long inferenceTime = 0;
   int cnt = 0;
   for (auto& worker : workers) {
@@ -127,7 +130,8 @@ long long CustomInferenceEngine::getInferenceTimeMs(int inputSize) const {
     }
   }
   inferenceTime /= cnt;
-  return inferenceTime;
+   */
+  return inferenceTimeTable;
 }
 
 std::vector<int> CustomInferenceEngine::getInputSizes() const {

@@ -9,6 +9,11 @@
 
 namespace rm {
 
+enum Device {
+  GPU = 1,
+  DSP = 2,
+};
+
 class InferenceEngine {
  public:
   virtual ~InferenceEngine() {}
@@ -17,7 +22,7 @@ class InferenceEngine {
 
   virtual std::vector<BoundingBox> getResults(const int handle) = 0;
 
-  virtual long long getInferenceTimeMs(int inputSize) const = 0;
+  virtual std::map<Device, std::map<int,time_us>> getInferenceTimeUs() const = 0;
 
   virtual std::vector<int> getInputSizes() const = 0;
 };
