@@ -48,14 +48,6 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(int inputSize, float confid
         delete reinterpret_cast<tflite::StatefulNnApiDelegate*>(tfLiteDelegate);
       }));
 
-//  TfLiteXNNPackDelegateOptions options = TfLiteXNNPackDelegateOptionsDefault();
-//  options.num_threads = 4;
-//  delegate = std::move(tflite::Interpreter::TfLiteDelegatePtr(
-//      TfLiteXNNPackDelegateCreate(&options),
-//      [](TfLiteDelegate* d) {
-//        TfLiteXNNPackDelegateDelete(d);
-//      }));
-
   if (interpreter->ModifyGraphWithDelegate(delegate.get()) != kTfLiteOk) {
     LOGE("YoloV5 delegate application failed");
   } else {
