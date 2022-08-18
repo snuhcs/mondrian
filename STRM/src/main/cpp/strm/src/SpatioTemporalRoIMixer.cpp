@@ -261,6 +261,11 @@ void SpatioTemporalRoIMixer::mixedInference(std::vector<MixedFrame>& mixedFrames
   // Get results of mixed frames sequentially
   for (int i = 0; i < mixedFrames.size(); i++) {
     std::vector<BoundingBox> results = mInferenceEngine->getResults(handles[i]);
+    time_us inferenceEndTime = NowMicros();
+    for (Frame* frame : mixedFrames[i].getPackedFrames()) {
+      frame->inferenceStartTime = inferenceStartTime;
+      frame->inferenceEndTime = inferenceEndTime;
+    }
     mixedFrames[i].packedMat.release();
     mPatchReconstructor->assignBoxesToFrame(mixedFrames[i], results);
 
@@ -290,13 +295,6 @@ void SpatioTemporalRoIMixer::mixedInference(std::vector<MixedFrame>& mixedFrames
         nms(frame->boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold());
         mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, false);
       }
-    }
-  }
-  time_us inferenceEndTime = NowMicros();
-  for (MixedFrame& mixedFrame : mixedFrames) {
-    for (Frame* frame : mixedFrame.getPackedFrames()) {
-      frame->inferenceStartTime = inferenceStartTime;
-      frame->inferenceEndTime = inferenceEndTime;
     }
   }
 }
