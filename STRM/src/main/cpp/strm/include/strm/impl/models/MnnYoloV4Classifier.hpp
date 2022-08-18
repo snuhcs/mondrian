@@ -22,7 +22,7 @@ class MnnYoloV4Classifier : public Classifier {
 
   const float* getBox(const int i) const override;
 
-  const float getObjectConfidence(const int i) const override;
+  float getObjectConfidence(const int i) const override;
 
   const float* getClassConfidences(const int i) const override;
 

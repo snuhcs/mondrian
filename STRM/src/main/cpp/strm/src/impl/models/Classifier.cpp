@@ -12,8 +12,7 @@ Classifier::Classifier(const int numLabels, const int inputSize, const int outpu
     : numLabels(numLabels), inputSize(inputSize, inputSize), outputSize(outputSize),
       confidenceThreshold(confidenceThreshold), iouThreshold(iouThreshold) {}
 
-std::vector<BoundingBox>
-Classifier::recognizeImage(const cv::Mat& mat) {
+std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& mat) {
   cv::Mat preprocessedMat = preprocess(mat);
 
   auto start = std::chrono::system_clock::now();
@@ -58,6 +57,18 @@ long long Classifier::getInferenceTimeMs() const {
 
 void Classifier::setInferenceTimeMs(long long inferenceTime) {
   inferenceTimeMs = inferenceTime;
+}
+
+const float* Classifier::getBox(const int i) const {
+  return nullptr;
+}
+
+float Classifier::getObjectConfidence(const int i) const {
+  return 0.0f;
+}
+
+const float* Classifier::getClassConfidences(const int i) const {
+  return nullptr;
 }
 
 } // namespace rm

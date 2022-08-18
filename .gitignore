@@ -1,4 +1,5 @@
 .vscode/
+*.a
 *.so
 *.tflite
 *.mnn

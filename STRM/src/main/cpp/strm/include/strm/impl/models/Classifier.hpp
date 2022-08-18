@@ -12,7 +12,7 @@ class Classifier {
 
   virtual ~Classifier() {};
 
-  std::vector<BoundingBox> recognizeImage(const cv::Mat& mat);
+  virtual std::vector<BoundingBox> recognizeImage(const cv::Mat& mat);
 
   const cv::Size& getInputSize() const;
 
@@ -27,11 +27,11 @@ class Classifier {
 
   virtual void inference(const cv::Mat& mat) = 0;
 
-  virtual const float* getBox(const int i) const = 0;
+  virtual const float* getBox(const int i) const;
 
-  virtual const float getObjectConfidence(const int i) const = 0;
+  virtual float getObjectConfidence(const int i) const;
 
-  virtual const float* getClassConfidences(const int i) const = 0;
+  virtual const float* getClassConfidences(const int i) const;
 
   virtual Rect reconstructBox(float x, float y, float w, float h,
                               float imageWidth, float imageHeight) = 0;
