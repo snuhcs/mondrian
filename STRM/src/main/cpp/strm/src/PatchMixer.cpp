@@ -296,13 +296,15 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
     LOGE("No case left");
   }
   time_us mixingEndTime = NowMicros();
-  for (auto&[_, aStreamFrames] : selectedFrames) {
-    for (Frame* frame : aStreamFrames) {
+  for (auto& it : selectedFrames) {
+    for (Frame* frame : it.second) {
       frame->mixingStartTime = mixingStartTime;
       frame->mixingEndTime = mixingEndTime;
     }
   }
-  fullFrameTarget->isFullFrameTarget = true;
+  if (fullFrameTarget != nullptr) {
+    fullFrameTarget->isFullFrameTarget = true;
+  }
   return {mixedFrames, fullFrameTarget, selectedFrames, droppedFrames};
 }
 
