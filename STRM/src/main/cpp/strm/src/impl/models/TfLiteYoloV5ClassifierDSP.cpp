@@ -38,6 +38,8 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(int inputSize, float confid
   }
 
   tflite::StatefulNnApiDelegate::Options options = tflite::StatefulNnApiDelegate::Options();
+  options.cache_dir = "/data/data/hcs.offloading.strm/";
+  options.model_token = ss.str().c_str();
   options.max_number_delegated_partitions = 0; // Unlimited partition
   options.accelerator_name = "qti-dsp";
   delegate = std::move(tflite::Interpreter::TfLiteDelegatePtr(
