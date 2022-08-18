@@ -82,10 +82,9 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(int inputSize, float confid
          outputQuantization->zero_point->data[0] == 0);
   inputScale = inputQuantization->scale->data[0];
   outputScale = outputQuantization->scale->data[0];
-  LOGD("YOLOv5 quantization: inputScale == %f, outputScale == %f", inputScale, outputScale);
 
-  input = interpreter->typed_tensor<int>(inputTensorIndices[0]);
-  outputs = interpreter->typed_tensor<int>(outputTensorIndices[0]);
+  input = inputTensor->data.uint8;
+  outputs = outputTensor->data.uint8;
 }
 
 cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& mat) {
@@ -116,7 +115,6 @@ cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& mat) {
 }
 
 void TfLiteYoloV5ClassifierDSP::inference(const cv::Mat& mat) {
-  LOGD("preprocessedMat: (%d, %d, %d, %d) %d", mat.cols, mat.rows, mat.channels(), mat.type(), CV_8UC3);
   assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_8UC3);
   std::memcpy((void*) input, (void*) mat.data, inputSize.area() * mat.elemSize());
   interpreter->Invoke();
@@ -137,8 +135,8 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
-    const int* box = &outputs[i * 85];
-    const int* classConfidences = &outputs[i * 85 + 5];
+    const uint8_t* box = &outputs[i * 85];
+    const uint8_t* classConfidences = &outputs[i * 85 + 5];
     float maxConfidence = 0;
     int maxLabel = -1;
     for (int label = 0; label < numLabels; label++) {
