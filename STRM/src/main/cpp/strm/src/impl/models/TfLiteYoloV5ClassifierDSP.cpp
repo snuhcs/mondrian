@@ -116,8 +116,8 @@ cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& mat) {
 }
 
 void TfLiteYoloV5ClassifierDSP::inference(const cv::Mat& mat) {
-  LOGD("preprocessedMat: (%d, %d, %d, %d) %d", mat.cols, mat.rows, mat.channels(), mat.type(), CV_32FC3);
-  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_32FC3);
+  LOGD("preprocessedMat: (%d, %d, %d, %d) %d", mat.cols, mat.rows, mat.channels(), mat.type(), CV_8UC3);
+  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_8UC3);
   std::memcpy((void*) input, (void*) mat.data, inputSize.area() * mat.elemSize());
   interpreter->Invoke();
 }
