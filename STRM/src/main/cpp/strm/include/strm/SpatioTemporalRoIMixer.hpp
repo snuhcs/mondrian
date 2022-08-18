@@ -81,6 +81,8 @@ class SpatioTemporalRoIMixer {
   int mNumStartedFrameBuffers = 0;
   std::mutex mStartMtx;
   std::condition_variable mStartCv;
+  std::condition_variable mEnqueueCv;
+  bool startEnqueue = false;
 
   std::mutex mFrameBuffersMtx;
   std::map<std::string, std::unique_ptr<FrameBuffer>> mFrameBuffers;

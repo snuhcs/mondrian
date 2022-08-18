@@ -358,8 +358,9 @@ void SpatioTemporalRoIMixer::waitForStart() {
       mConfig.roIExtractorConfig, mConfig.FULL_FRAME_INTERVAL > 0, mConfig.ALLOW_INTERPOLATION,
       mConfig.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(), mInferenceFrameSize,
       getNumInferences(mScheduleInterval, mInferenceEngine->getInferenceTimeMs(mInferenceFrameSize) * 1000));
+  startEnqueue = true;
   startLock.unlock();
-  mStartCv.notify_all();
+  mEnqueueCv.notify_all();
 }
 
 int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& mat) {
@@ -388,9 +389,9 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
     if (frame->frameIndex == 1) {
       std::unique_lock<std::mutex> startLock(mStartMtx);
       mNumStartedFrameBuffers++;
-      mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
+      mStartCv.notify_one();
+      mEnqueueCv.wait(startLock, [this]() { return startEnqueue; });
       startLock.unlock();
-      mStartCv.notify_all();
       LOGD("Start %s video at %lld us", key.c_str(), NowMicros());
     }
     mRoIExtractor->enqueue(frame);
