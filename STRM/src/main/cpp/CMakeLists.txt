@@ -49,6 +49,7 @@ add_library(
         strm/src/impl/models/MnnYoloV4Classifier.cpp
         strm/src/impl/models/TfLiteYoloV4Classifier.cpp
         strm/src/impl/models/TfLiteYoloV5Classifier.cpp
+        strm/src/impl/models/TfLiteYoloV5ClassifierDSP.cpp
         jni/SpatioTemporalRoIMixer_jni.cpp
 )
 
@@ -64,6 +65,9 @@ target_link_libraries(
         opencv_imgproc
         tensorflowlite
         tensorflowlite_gpu_delegate
+        nnapi_delegate_no_nnapi_implementation
+        nnapi_implementation
+        nnapi_util
         MNN
         MNN_CL
         MNN_Express

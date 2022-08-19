@@ -112,7 +112,7 @@ const float* TfLiteYoloV5Classifier::getBox(const int i) const {
   return &outputs[i * 85];
 }
 
-const float TfLiteYoloV5Classifier::getObjectConfidence(const int i) const {
+float TfLiteYoloV5Classifier::getObjectConfidence(const int i) const {
   return outputs[i * 85 + 4];
 }
 

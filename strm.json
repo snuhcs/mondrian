@@ -8,17 +8,18 @@
         }
     ],
     "inference_engine": {
-        "model": "YOLO_V4",
+        "model": "YOLO_V5",
         "runtime": "TFLITE",
         "use_tiny": false,
         "conf_threshold": 0.1,
         "iou_threshold": 0.5,
         "num_workers": 1,
         "input_sizes": [
-            800
+            896
         ],
         "devices" : [
-            "GPU"
+            "GPU",
+            "DSP"
         ]
     },
     "log_internal": true,
@@ -28,7 +29,7 @@
     "roi_wise_inference": false,
     "full_frame_interval": 1,
     "buffer_size": 500,
-    "latency_slo_ms": 6000,
+    "latency_slo_ms": 10000,
     "roi_extractor": {
         "max_queue_size": 200,
         "num_workers": 2,

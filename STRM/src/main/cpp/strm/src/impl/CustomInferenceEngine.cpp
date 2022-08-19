@@ -5,6 +5,7 @@
 #include "strm/impl/models/MnnYoloV4Classifier.hpp"
 #include "strm/impl/models/TfLiteYoloV4Classifier.hpp"
 #include "strm/impl/models/TfLiteYoloV5Classifier.hpp"
+#include "strm/impl/models/TfLiteYoloV5ClassifierDSP.hpp"
 
 #include <cmath>
 
@@ -32,7 +33,8 @@ CustomInferenceEngine::CustomInferenceEngine(
     } else if (config.MODEL == "YOLO_V4" && config.RUNTIME == "TFLITE") {
       initClassifiers<TfLiteYoloV4Classifier>(config);
     } else if (config.MODEL == "YOLO_V5" && config.RUNTIME == "TFLITE") {
-      initClassifiers<TfLiteYoloV5Classifier>(config);
+//      initClassifiers<TfLiteYoloV5Classifier>(config);
+      initClassifiers<TfLiteYoloV5ClassifierDSP>(config);
     } else {
       LOGE("Running %s model with %s runtime is not supported yet",
            config.MODEL.c_str(), config.RUNTIME.c_str());

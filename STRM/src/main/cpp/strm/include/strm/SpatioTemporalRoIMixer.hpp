@@ -35,6 +35,8 @@ class SpatioTemporalRoIMixer {
   int enqueueImage(const std::string& key, const cv::Mat& mat);
 
  private:
+  void waitForStart();
+
   void work();
 
   void outputWork();
@@ -66,6 +68,7 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<Logger> mLogger;
   std::unique_ptr<Logger> mRoILogger;
   InferenceEngine* mInferenceEngine;
+  const cv::Size mTargetSize;
   const std::vector<int> mInputSizes;
   const int mInferenceFrameSize;
 
@@ -78,6 +81,8 @@ class SpatioTemporalRoIMixer {
   int mNumStartedFrameBuffers = 0;
   std::mutex mStartMtx;
   std::condition_variable mStartCv;
+  std::condition_variable mEnqueueCv;
+  bool startEnqueue = false;
 
   std::mutex mFrameBuffersMtx;
   std::map<std::string, std::unique_ptr<FrameBuffer>> mFrameBuffers;

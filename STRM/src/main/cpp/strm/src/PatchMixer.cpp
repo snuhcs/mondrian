@@ -156,7 +156,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
                                           pRoI->getResizedWidthHeight();
       tryPackRoI(
           resizedWH, freeRectsMap,
-          pRoI->priority == HIGH_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
+          pRoI->priority == HIGHEST_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
           pRoI, &packedRoIsMap, mConfig.EMULATED_BATCH);
     }
     for (auto&[mixedFrameIndex, aMixedFrameRoIs] : packedRoIsMap) {
@@ -241,7 +241,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
                                             pRoI->getResizedWidthHeight();
         if (!tryPackRoI(
             resizedWH, freeRectsMap,
-            pRoI->priority == HIGH_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
+            pRoI->priority == HIGHEST_PRIORITY || mConfig.EMULATED_BATCH || !mConfig.N_WAY_MIXING,
             pRoI, &packedRoIsMap, mConfig.EMULATED_BATCH)) {
           isAllPacked = false;
           break;
@@ -297,13 +297,15 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
     LOGE("No case left");
   }
   time_us mixingEndTime = NowMicros();
-  for (auto&[_, aStreamFrames] : selectedFrames) {
-    for (Frame* frame : aStreamFrames) {
+  for (auto& it : selectedFrames) {
+    for (Frame* frame : it.second) {
       frame->mixingStartTime = mixingStartTime;
       frame->mixingEndTime = mixingEndTime;
     }
   }
-  fullFrameTarget->isFullFrameTarget = true;
+  if (fullFrameTarget != nullptr) {
+    fullFrameTarget->isFullFrameTarget = true;
+  }
   return {mixedFrames, fullFrameTarget, selectedFrames, droppedFrames};
 }
 

@@ -103,7 +103,7 @@ const float* MnnYoloV4Classifier::getBox(const int i) const {
   return &boxes[i * 4];
 }
 
-const float MnnYoloV4Classifier::getObjectConfidence(const int i) const {
+float MnnYoloV4Classifier::getObjectConfidence(const int i) const {
   return 1.0;
 }
 
