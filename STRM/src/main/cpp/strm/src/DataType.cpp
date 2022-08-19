@@ -216,17 +216,16 @@ std::string toString(const MultiStream& frames) {
   return ss.str();
 }
 
-std::string toString(const std::vector<InferenceInfo>& std::vector<InferenceInfo>) {
+std::string toString(const std::vector<InferenceInfo>& inferencePlan) {
   std::stringstream ss;
-  for (auto&[device, size_latencies] : std::vector<InferenceInfo>) {
+  for (int i = 0; i < inferencePlan.size(); i++) {
+    const InferenceInfo& info = inferencePlan[i];
     // TODO: support other processors
-    ss << (device == GPU ? "GPU" : "DSP") << ": ";
-    for (int i = 0; i < size_latencies.size(); i++) {
-      auto&[size, latency] = size_latencies[i];
-      ss << "(" << size << ", " << latency << ")";
-      if (i != size_latencies.size() - 1) {
-        ss << ", ";
-      }
+    ss << "(" << (info.device == GPU ? "GPU" : "DSP") << ", "
+       << info.size << ", "
+       << info.latency << ")";
+    if (i != inferencePlan.size() - 1) {
+      ss << ", ";
     }
   }
   return ss.str();
