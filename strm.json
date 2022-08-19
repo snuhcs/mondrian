@@ -50,7 +50,6 @@
         "use_tiny": false,
         "conf_threshold": 0.1,
         "iou_threshold": 0.5,
-        "num_workers": 1,
         "input_sizes": [
             896
         ],

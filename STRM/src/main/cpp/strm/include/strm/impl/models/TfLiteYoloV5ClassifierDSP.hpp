@@ -14,7 +14,7 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
 
   std::vector<BoundingBox> recognizeImage(const cv::Mat& mat) override;
 
-  long long int profileInferenceTime() override;
+  time_us profileInferenceTime() override;
 
  private:
   cv::Mat preprocess(const cv::Mat& mat) override;

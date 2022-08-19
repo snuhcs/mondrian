@@ -27,7 +27,7 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(int inputSize, float confid
   if (model == nullptr) {
     LOGE("YoloV5 model load failed");
   } else {
-    LOGD("YoloV5 model loaded: %s", ss.str().c_str());
+    LOGD("YoloV5 model loaded");
   }
 
   tflite::ops::builtin::BuiltinOpResolver resolver;
@@ -123,15 +123,12 @@ void TfLiteYoloV5ClassifierDSP::inference(const cv::Mat& mat) {
 std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& mat) {
   cv::Mat preprocessedMat = preprocess(mat);
 
-  auto start = std::chrono::system_clock::now();
+  time_us start = NowMicros();
   inference(preprocessedMat);
-  auto end = std::chrono::system_clock::now();
-  long long currentInferenceTimeMs =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  time_us end = NowMicros();
 
-  float weight = 0.1;
-  inferenceTimeMs = weight * currentInferenceTimeMs + (1 - weight) * inferenceTimeMs;
-  LOGV("Inference time: %lld ms", inferenceTimeMs);
+  inferenceTime = (1 * (end - start) + 9 * inferenceTime) / 10;
+  LOGV("Inference time: %lld ms", inferenceTime);
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
@@ -178,7 +175,7 @@ Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float 
       std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
 }
 
-long long int TfLiteYoloV5ClassifierDSP::profileInferenceTime() {
+time_us TfLiteYoloV5ClassifierDSP::profileInferenceTime() {
   // Warmup
   interpreter->Invoke();
   interpreter->Invoke();

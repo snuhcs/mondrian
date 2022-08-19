@@ -16,11 +16,11 @@ class Classifier {
 
   const cv::Size& getInputSize() const;
 
-  long long getInferenceTimeMs() const;
+  time_us getInferenceTime() const;
 
-  virtual long long int profileInferenceTime() = 0;
+  void setInferenceTime(time_us currInferenceTime);
 
-  void setInferenceTimeMs(long long inferenceTime);
+  virtual time_us profileInferenceTime() = 0;
 
  protected:
   virtual cv::Mat preprocess(const cv::Mat& mat) = 0;
@@ -41,7 +41,7 @@ class Classifier {
   const int outputSize;
   const float confidenceThreshold;
   const float iouThreshold;
-  long long inferenceTimeMs = 0;
+  time_us inferenceTime = 0;
 };
 
 } // namespace rm

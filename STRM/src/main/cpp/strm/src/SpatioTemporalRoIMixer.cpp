@@ -15,7 +15,6 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int num
                                                JavaVM* vm, JNIEnv* env, jobject strm)
     : mConfig(config), mbStop(false),
       mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
-      mInferenceEngine(new InferenceEngine(config.inferenceEngineConfig, vm, env, strm)),
       mNumSourceVideos(numSourceVideo),
       mTargetSize(int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
@@ -24,28 +23,11 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int num
       mScheduleInterval(mConfig.LATENCY_SLO_MS * 1000 / 2),
       mRoIResizer(new RoIResizer(config.roiResizerConfig)),
       mPatchMixer(new PatchMixer(config.patchMixerConfig)),
+      mInferenceEngine(new InferenceEngine(config.inferenceEngineConfig, vm, env, strm)),
       mPatchReconstructor(
           new PatchReconstructor(config.patchReconstructorConfig, mRoIResizer.get())),
       jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))) {
   assert(!config.ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
-  for (int inputSize : mInputSizes) {
-    if (inputSize != mInputSizes.back()) {
-      int profileKeys = -10;
-      for (int i = 0; i < 3; i++) {
-        int key = profileKeys++;
-        mInferenceEngine->enqueue(
-            cv::Mat::zeros(inputSize, inputSize, CV_8UC4), GPU, inputSize, key);
-        mInferenceEngine->getResults(key);
-      }
-      for (int i = 0; i < 3; i++) {
-        int key = profileKeys++;
-        mInferenceEngine->enqueue(
-            cv::Mat::zeros(inputSize, inputSize, CV_8UC4), DSP, inputSize, key);
-        mInferenceEngine->getResults(key);
-      }
-    }
-  }
-
   if (config.LOG_EXECUTION) {
     mLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");
     mLogger->logHeader();
@@ -102,9 +84,9 @@ void SpatioTemporalRoIMixer::work() {
     logger.start();
     // TODO: properly set remainingTime
     time_us remainingTime = -1234;
-    // ex) remainingTime = mScheduleInterval - mInferenceEngine->getInferenceTimeUs()...
+    // ex) remainingTime = mScheduleInterval - mInferenceEngine->getInferenceTimes()...
     std::vector<InferenceInfo> inferencePlan = getInferencePlan(
-        remainingTime, mInferenceEngine->getInferenceTimeUs());
+        remainingTime, mInferenceEngine->getInferenceTimeTable());
     MultiStream frames = mRoIExtractor->getExtractedFrames(inferencePlan);
     logger.step("roi");
     LOGD("===== Schedule %d start =====", scheduleID);
@@ -368,11 +350,11 @@ void SpatioTemporalRoIMixer::waitForStart() {
   mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
   // TODO: properly set remainingTime
   time_us remainingTime = -1234;
-  // ex) remainingTime = mScheduleInterval - mInferenceEngine->getInferenceTimeUs()...
+  // ex) remainingTime = mScheduleInterval - mInferenceEngine->getInferenceTimes()...
   mRoIExtractor = std::make_unique<RoIExtractor>(
       mConfig.roIExtractorConfig, mConfig.FULL_FRAME_INTERVAL > 0, mConfig.ALLOW_INTERPOLATION,
       mConfig.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(),
-      getInferencePlan(remainingTime, mInferenceEngine->getInferenceTimeUs()));
+      getInferencePlan(remainingTime, mInferenceEngine->getInferenceTimeTable()));
   mbStartEnqueue = true;
   startLock.unlock();
   mEnqueueCv.notify_all();

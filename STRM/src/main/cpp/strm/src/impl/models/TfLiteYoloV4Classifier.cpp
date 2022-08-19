@@ -37,13 +37,6 @@ TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceTh
     LOGD("YoloV4 interpreter created");
   }
 
-//  // For CPU (XNNPack)
-//  if (interpreter->AllocateTensors() != kTfLiteOk) {
-//    LOGE("YoloV4 tensor allocation failed");
-//  } else {
-//    LOGD("YoloV4 tensor allocated");
-//  }
-
   auto options = TfLiteGpuDelegateOptionsV2Default();
   delegate = TfLiteGpuDelegateV2Create(&options);
   if (delegate == nullptr) {
@@ -129,7 +122,7 @@ Rect TfLiteYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
       std::min(imageHeight,((y + h / 2) * heightRatio)));
 }
 
-long long int TfLiteYoloV4Classifier::profileInferenceTime() {
+time_us TfLiteYoloV4Classifier::profileInferenceTime() {
   // Warmup
   interpreter->Invoke();
   interpreter->Invoke();

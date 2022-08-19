@@ -14,9 +14,6 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["max_queue_size"].isNull()) {
     config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
   }
-  if (!json["num_workers"].isNull()) {
-    config.NUM_WORKERS = json["num_workers"].asInt();
-  }
   if (!json["extraction_resize_width"].isNull()) {
     config.EXTRACTION_RESIZE_WIDTH = json["extraction_resize_width"].asFloat();
   }
@@ -114,9 +111,6 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   }
   if (!json["iou_threshold"].isNull()) {
     config.IOU_THRESHOLD = json["iou_threshold"].asFloat();
-  }
-  if (!json["num_workers"].isNull()) {
-    config.NUM_WORKERS = json["num_workers"].asInt();
   }
   if (!json["input_sizes"].isNull()) {
     const Json::Value inputSizes = json["input_sizes"];

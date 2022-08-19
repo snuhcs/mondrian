@@ -14,7 +14,7 @@ class TfLiteYoloV4Classifier : public Classifier {
 
   ~TfLiteYoloV4Classifier();
 
-  long long int profileInferenceTime() override;
+  time_us profileInferenceTime() override;
 
  private:
   cv::Mat preprocess(const cv::Mat& mat) override;

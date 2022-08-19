@@ -15,15 +15,13 @@ Classifier::Classifier(const int numLabels, const int inputSize, const int outpu
 std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& mat) {
   cv::Mat preprocessedMat = preprocess(mat);
 
-  auto start = std::chrono::system_clock::now();
+  time_us start = NowMicros();
   inference(preprocessedMat);
-  auto end = std::chrono::system_clock::now();
-  long long currentInferenceTimeMs =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  time_us end = NowMicros();
 
-  float weight = 0.1;
-  inferenceTimeMs = weight * currentInferenceTimeMs + (1 - weight) * inferenceTimeMs;
-  LOGV("Inference time: %lld ms", inferenceTimeMs);
+  // Exponential smoothing
+  inferenceTime = (1 * (end - start) + 9 * inferenceTime) / 10;
+  LOGV("Inference time: %lld ms", inferenceTime);
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
@@ -39,9 +37,14 @@ std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& mat) {
     }
     maxConfidence *= getObjectConfidence(i);
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
-      detections.emplace_back(UNASSIGNED_ID,
-                              reconstructBox(box[0], box[1], box[2], box[3], mat.cols, mat.rows),
-                              maxConfidence, maxLabel, origin_Null);
+      detections.emplace_back(
+          UNASSIGNED_ID,
+          reconstructBox(float(box[0]),
+                         float(box[1]),
+                         float(box[2]),
+                         float(box[3]),
+                         mat.cols, mat.rows),
+          maxConfidence, maxLabel, origin_Null);
     }
   }
   return nms(detections, numLabels, iouThreshold);
@@ -51,12 +54,12 @@ const cv::Size& Classifier::getInputSize() const {
   return inputSize;
 }
 
-long long Classifier::getInferenceTimeMs() const {
-  return inferenceTimeMs;
+time_us Classifier::getInferenceTime() const {
+  return inferenceTime;
 }
 
-void Classifier::setInferenceTimeMs(long long inferenceTime) {
-  inferenceTimeMs = inferenceTime;
+void Classifier::setInferenceTime(time_us currInferenceTime) {
+  inferenceTime = currInferenceTime;
 }
 
 const float* Classifier::getBox(const int i) const {

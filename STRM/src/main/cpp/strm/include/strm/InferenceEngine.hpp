@@ -23,24 +23,26 @@ class InferenceEngine {
 
   std::vector<BoundingBox> getResults(int key);
 
-  std::map<Device, std::map<int, time_us>> getInferenceTimeUs() const;
+  std::map<Device, std::map<int, time_us>> getInferenceTimeTable() const;
 
   std::vector<int> getInputSizes() const;
 
  private:
-  std::tuple<int, const cv::Mat, const int> getInput();
-
   void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
 
   void drawInferenceResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
-  template <typename T>
+  template<typename T>
   void initClassifiers(const InferenceEngineConfig& config);
 
   const InferenceEngineConfig mConfig;
 
   std::map<Device, std::unique_ptr<Worker>> workers;
   std::vector<std::unique_ptr<Classifier>> classifiers;
+
+  std::mutex resultMtx;
+  std::condition_variable resultCv;
+  std::map<int, std::vector<BoundingBox>> results;
 
   JavaVM* jvm;
   JNIEnv* env;
@@ -52,14 +54,6 @@ class InferenceEngine {
   jmethodID ArrayList_add;
   jclass class_BoundingBox;
   jmethodID BoundingBox_init;
-
-  int mHandle;
-  std::queue<std::tuple<int, const cv::Mat, const int>> inputs;
-  std::mutex inputMtx;
-  std::condition_variable inputCv;
-  std::map<int, std::vector<BoundingBox>> results;
-  std::mutex resultMtx;
-  std::condition_variable resultCv;
 };
 
 } // namespace rm

@@ -5,31 +5,45 @@
 
 namespace rm {
 
-Worker::Worker(InferenceEngine* engine, std::map<int, Classifier*> classifierMap)
-    : engine(engine), classifierMap(std::move(classifierMap)), isClosed(false) {
-  thread = std::thread([this]() {
-    while (!isClosed.load()) {
-      Work();
-    }
-  });
+Worker::Worker(InferenceEngine* engine, Device device, std::map<int, Classifier*> classifierMap)
+    : engine(engine), device(device), classifierMap(std::move(classifierMap)), isClosed(false) {
+  thread = std::thread([this]() { work(); });
 }
 
-void Worker::Work() {
-  auto input = engine->getInput();
-  int handle = std::get<0>(input);
-  const cv::Mat mat = std::get<1>(input);
-  const int resizeTarget = std::get<2>(input);
-  assert(classifierMap.find(resizeTarget) != classifierMap.end());
-  std::vector<BoundingBox> boxes = classifierMap[resizeTarget]->recognizeImage(mat);
-  engine->drawInferenceResult(mat, boxes);
-  engine->enqueueResults(handle, boxes);
+Worker::~Worker() {
+  isClosed.store(true);
+  thread.join();
 }
 
-std::map<int, time_us> Worker::getInferenceTimeUs() {
+void Worker::work() {
+  while (!isClosed.load()) {
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [this](){ return !inputs.empty(); });
+    auto[mat, size, key] = std::move(inputs.front());
+    inputs.pop();
+    lock.unlock();
+    LOGD("Work %s %d, %d", device == GPU ? "GPU" : "DSP", key, size);
+
+    assert(classifierMap.find(size) != classifierMap.end());
+    std::vector<BoundingBox> boxes = classifierMap[size]->recognizeImage(mat);
+    engine->drawInferenceResult(mat, boxes);
+    engine->enqueueResults(key, boxes);
+  }
+}
+
+void Worker::enqueue(const cv::Mat& mat, int inputSize, int key) {
+  std::unique_lock<std::mutex> lock(mtx);
+  inputs.push({mat, inputSize, key});
+  lock.unlock();
+  cv.notify_one();
+  LOGD("Enqueue %s %d, %d", device == GPU ? "GPU" : "DSP", key, inputSize);
+}
+
+std::map<int, time_us> Worker::getInferenceTimes() {
   std::map<int, time_us> timeTable;
   for (auto& [inputSize, classifier] : classifierMap) {
-    assert (classifier->getInferenceTimeMs() > 0);
-    timeTable[inputSize] = classifier->getInferenceTimeMs() * 1000;
+    assert (classifier->getInferenceTime() > 0);
+    timeTable[inputSize] = classifier->getInferenceTime();
   }
   return timeTable;
 }

@@ -59,7 +59,6 @@ struct InferenceEngineConfig {
   bool USE_TINY = false;
   float CONF_THRESHOLD = 0.1;
   float IOU_THRESHOLD = 0.5;
-  int NUM_WORKERS = 1;
   std::vector<int> INPUT_SIZES = {
       800
   };
