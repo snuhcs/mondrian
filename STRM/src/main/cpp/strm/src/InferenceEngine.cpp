@@ -57,23 +57,22 @@ void InferenceEngine::initClassifiers(const InferenceEngineConfig& config) {
   }
 }
 
-int InferenceEngine::enqueue(const cv::Mat mat, Device device, int inputSize, int key) {
+void InferenceEngine::enqueue(const cv::Mat mat, Device device, int inputSize, int key) {
   std::unique_lock<std::mutex> inputLock(inputMtx);
   int handle = mHandle++;
   inputs.push(std::make_tuple(handle, mat, inputSize));
   inputLock.unlock();
   inputCv.notify_all();
-  return handle;
 }
 
-std::pair<int, std::vector<BoundingBox>> InferenceEngine::getResults(const int handle) {
+std::vector<BoundingBox> InferenceEngine::getResults(int key) {
   std::unique_lock<std::mutex> resultLock(resultMtx);
-  resultCv.wait(resultLock, [this, handle]() {
-    return results.find(handle) != results.end();
+  resultCv.wait(resultLock, [this, key]() {
+    return results.find(key) != results.end();
   });
-  std::vector<BoundingBox> boxes = results.at(handle);
-  results.erase(results.find(handle));
-  return {0, boxes};
+  std::vector<BoundingBox> boxes = results.at(key);
+  results.erase(results.find(key));
+  return boxes;
 }
 
 std::tuple<int, const cv::Mat, const int> InferenceEngine::getInput() {

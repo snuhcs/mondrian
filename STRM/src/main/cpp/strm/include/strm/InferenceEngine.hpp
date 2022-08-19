@@ -19,9 +19,9 @@ class InferenceEngine {
   InferenceEngine(const InferenceEngineConfig& config,
                   JavaVM* vm, JNIEnv* env, jobject strm);
 
-  int enqueue(const cv::Mat mat, Device device, int inputSize, int key);
+  void enqueue(const cv::Mat mat, Device device, int inputSize, int key);
 
-  std::pair<int, std::vector<BoundingBox>> getResults(const int handle);
+  std::vector<BoundingBox> getResults(int key);
 
   std::map<Device, std::map<int, time_us>> getInferenceTimeUs() const;
 

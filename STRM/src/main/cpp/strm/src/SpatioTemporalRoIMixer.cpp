@@ -9,6 +9,8 @@
 
 namespace rm {
 
+const int SpatioTemporalRoIMixer::FULL_KEY_OFFSET = 1000000;
+
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int numSourceVideo,
                                                JavaVM* vm, JNIEnv* env, jobject strm)
     : mConfig(config), mbStop(false),
@@ -28,13 +30,18 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int num
   assert(!config.ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
   for (int inputSize : mInputSizes) {
     if (inputSize != mInputSizes.back()) {
+      int profileKeys = -10;
       for (int i = 0; i < 3; i++) {
-        mInferenceEngine->getResults(mInferenceEngine->enqueue(
-            cv::Mat::zeros(inputSize, inputSize, CV_8UC4), GPU, inputSize, 0));
+        int key = profileKeys++;
+        mInferenceEngine->enqueue(
+            cv::Mat::zeros(inputSize, inputSize, CV_8UC4), GPU, inputSize, key);
+        mInferenceEngine->getResults(key);
       }
       for (int i = 0; i < 3; i++) {
-        mInferenceEngine->getResults(mInferenceEngine->enqueue(
-            cv::Mat::zeros(inputSize, inputSize, CV_8UC4), DSP, inputSize, 0));
+        int key = profileKeys++;
+        mInferenceEngine->enqueue(
+            cv::Mat::zeros(inputSize, inputSize, CV_8UC4), DSP, inputSize, key);
+        mInferenceEngine->getResults(key);
       }
     }
   }
@@ -219,8 +226,9 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   std::vector<RoI> emptyRoIs;
   assert(frame->isFullFrameTarget);
   frame->fullFrameEnqueueTime = NowMicros();
-  auto[key, results] = mInferenceEngine->getResults(
-      mInferenceEngine->enqueue(frame->mat, GPU, mInputSizes.back(), 0));
+  int key = frame->frameIndex + FULL_KEY_OFFSET;
+  mInferenceEngine->enqueue(frame->mat, GPU, mInputSizes.back(), key);
+  auto results = mInferenceEngine->getResults(key);
   frame->fullFrameGetResultsTime = NowMicros();
   for (const BoundingBox& box : results) {
     frame->boxes.emplace_back(
@@ -252,16 +260,14 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
 void SpatioTemporalRoIMixer::mixedInference(std::vector<MixedFrame>& mixedFrames) {
   time_us inferenceStartTime = NowMicros();
   // Enqueue Mixed Frames
-  std::vector<int> handles;
-  std::transform(mixedFrames.begin(), mixedFrames.end(), std::back_inserter(handles),
-                 [this](const MixedFrame& mixedFrame) {
-                   return mInferenceEngine->enqueue(mixedFrame.packedMat, mixedFrame.device,
-                                                    mInferenceFrameSize, 0);
-                 });
+  for (const auto& mixedFrame : mixedFrames) {
+    mInferenceEngine->enqueue(mixedFrame.packedMat, mixedFrame.device,
+                              mInferenceFrameSize, mixedFrame.mixedFrameIndex);
+  }
 
   // Get results of mixed frames sequentially
   for (int i = 0; i < mixedFrames.size(); i++) {
-    auto[key, results] = mInferenceEngine->getResults(handles[i]);
+    auto results = mInferenceEngine->getResults(mixedFrames[i].mixedFrameIndex);
     time_us inferenceEndTime = NowMicros();
     for (Frame* frame : mixedFrames[i].getPackedFrames()) {
       frame->inferenceStartTime = inferenceStartTime;
@@ -302,16 +308,14 @@ void SpatioTemporalRoIMixer::mixedInference(std::vector<MixedFrame>& mixedFrames
 
 void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFrames) {
   time_us inferenceStartTime = NowMicros();
-  std::vector<int> handles;
-  std::transform(mixedFrames.begin(), mixedFrames.end(), std::back_inserter(handles),
-                 [this](const MixedFrame& mixedFrame) {
-                   return mInferenceEngine->enqueue(mixedFrame.packedMat, mixedFrame.device,
-                                                    mInferenceFrameSize, 0);
-                 });
+  for (const auto& mixedFrame : mixedFrames) {
+    mInferenceEngine->enqueue(mixedFrame.packedMat, mixedFrame.device, mInferenceFrameSize,
+                              mixedFrame.mixedFrameIndex);
+  }
 
   Stream inferenceFrames;
-  for (int i = 0; i < handles.size(); i++) {
-    auto[key, boxes] = mInferenceEngine->getResults(handles[i]);
+  for (int i = 0; i < mixedFrames.size(); i++) {
+    auto boxes = mInferenceEngine->getResults(mixedFrames[i].mixedFrameIndex);
     assert(mixedFrames[i].packedRoIs.size() == 1);
     auto&[x, y] = (*mixedFrames[i].packedRoIs.begin())->packedLocation;
     RoI* pRoI = *mixedFrames[i].packedRoIs.begin();
@@ -487,7 +491,7 @@ void SpatioTemporalRoIMixer::drawObjectDetectionResult(const cv::Mat& mat,
   jvm->DetachCurrentThread();
 }
 
-double weigh(const std::vector<time_us>& layout, std::map<long long, double> profile) {
+double SpatioTemporalRoIMixer::weigh(const std::vector<time_us>& layout, std::map<long long, double> profile) {
   double weight = 0;
   for (auto l : layout) {
     assert (profile.find(l) != profile.end());
@@ -496,7 +500,7 @@ double weigh(const std::vector<time_us>& layout, std::map<long long, double> pro
   return weight;
 }
 
-std::vector<time_us> search(const std::vector<long long>& bars, long long total,
+std::vector<time_us> SpatioTemporalRoIMixer::search(const std::vector<long long>& bars, long long total,
                             std::map<long long, double>& profile) {
   std::vector<time_us> layout;
   time_us left = total;
