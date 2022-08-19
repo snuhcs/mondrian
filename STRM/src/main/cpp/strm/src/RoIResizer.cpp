@@ -1,4 +1,5 @@
 #include "strm/RoIResizer.hpp"
+#include "strm/DataType.hpp"
 
 namespace rm {
 
@@ -8,92 +9,104 @@ const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
     {"YouTube", YouTube}
 };
 
-const std::map<std::string, std::vector<float>> RoIResizer::candidateResizeTargets = {
-    {"VIRAT",   {140.0f, 155.0f, 165.0f}},
-    {"MTA",     {100.0f, 140.0f, 165.0f}},
-    {"YouTube", {125.0f, 140.0f, 165.0f}}
+const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
+    {"VIRAT",   {0.3f, 0.6f, 0.9f}},
+    {"MTA",     {0.3f, 0.6f, 0.9f}},
+    {"Youtube", {0.3f, 0.6f, 0.9f}}
 };
 
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
     : mConfig(config),
+      mScaleGranularity(2),
       mPredictor(candidatePredictors.at(config.TRAIN_DATA)),
-      mResizeTargets(candidateResizeTargets.at(config.TRAIN_DATA)) {}
+      mTargetSize(scalesForLevels.at(config.TRAIN_DATA)) {}
 
-float RoIResizer::getTargetSize(const idType id, const RoI::Features& features) {
+std::pair<float, RoI::ScaleLevel> RoIResizer::getTargetScale(const idType id,
+                                                             const RoI::Features& features) {
   assert(features.type == RoI::Type::OF);
   if (mConfig.RESIZE_SMOOTHING_FACTOR == 0) {
-    return mConfig.STATIC_RESIZE_TARGET;
+    return {mConfig.STATIC_TARGET_SCALE, RoI::scale_NULL};
   }
-  float targetSize = getSmoothedTargetSize(id, features);
-  float calibratedTargetSize = targetSize;
+  auto targetLevel = static_cast<RoI::ScaleLevel>(getMaxVotedLevel(id, features));
+  float targetScale = mTargetSize[targetLevel * mScaleGranularity + 1];
+
   auto it = calibrationTable.find(id);
   if (it != calibrationTable.end()) {
-    float diff = targetSize - calibrationTable[id].first;
-    if (std::abs(diff) < mConfig.PROBE_RESET_THRESHOLD) {
-      // in threshold range
-      calibratedTargetSize += calibrationTable[id].second;
+    if (targetLevel == calibrationTable[id].first) {
+      // in same Level
+      targetScale = calibrationTable[id].second;
     } else {
       // out of threshold range
       calibrationTable.erase(it);
     }
   }
-  return calibratedTargetSize;
+  return {targetScale, targetLevel};
 }
 
-float RoIResizer::getSmoothedTargetSize(const idType id, const RoI::Features& features) {
-  float sizeWithFeatures = getSizeWithFeature(features);
-  auto record = prevTargetSizeTable.find(id);
-  if (record == prevTargetSizeTable.end()) {
-    return sizeWithFeatures;
+int RoIResizer::getMaxVotedLevel(const idType id, const RoI::Features& features) {
+  auto record = prevPredictionBuffer.find(id);
+  if (record == prevPredictionBuffer.end()) {
+    prevPredictionBuffer[id] = CircularBuffer();
   }
-  float prevTargetSize = prevTargetSizeTable[id];
-  float smoothedTargetSize = (mConfig.RESIZE_SMOOTHING_FACTOR * sizeWithFeatures +
-                              (1 - mConfig.RESIZE_SMOOTHING_FACTOR) * prevTargetSize);
-  prevTargetSizeTable[id] = smoothedTargetSize;
-  return smoothedTargetSize;
+  prevPredictionBuffer[id].push(predictLevelWithFeatures(features));
+  return prevPredictionBuffer[id].maxVote();
 }
 
-float RoIResizer::getSizeWithFeature(const RoI::Features& features) const {
+int RoIResizer::predictLevelWithFeatures(const RoI::Features& features) const {
   assert(features.type == RoI::OF);
   auto&[avgX, avgY] = features.ofFeatures.avgShift;
   auto&[stdX, stdY] = features.ofFeatures.stdShift;
   float avg = avgX * avgX + avgY * avgY;
   float std = stdX * stdX + stdY * stdY;
-  return mResizeTargets[(int) mPredictor(
+  return int(mPredictor(
       features.width, features.height, std::max(features.width, features.height), features.type,
       features.origin, features.xyRatio, avgX, avgY, avg, stdX, stdY, std,
-      features.ofFeatures.avgErr, features.ofFeatures.ncc)];
+      features.ofFeatures.avgErr, features.ofFeatures.ncc));
 }
 
 void RoIResizer::updateTable(RoI* roi) {
   assert(!roi->roisForProbing.empty());
-  assert(roi->roisForProbing.back()->getTargetSize() > roi->getTargetSize());
-  assert(prevTargetSizeTable.find(roi->id) != prevTargetSizeTable.end());
+  assert(roi->roisForProbing.back()->getTargetScale() > roi->getTargetScale());
+  assert(prevPredictionBuffer.find(roi->id) != prevPredictionBuffer.end());
 
   // Sort : Largest box first
   std::sort(roi->roisForProbing.begin(), roi->roisForProbing.end(),
-            [](const auto& r, const auto& l) { return r->getTargetSize() > l->getTargetSize(); });
+            [](const auto& r, const auto& l) { return r->getTargetScale() > l->getTargetScale(); });
 
   // find box from largest RoI
   RoI* largestRoI = roi->roisForProbing.front();
+  BoundingBox* box = roi->box;
 
-  float newResizeTarget;
-  if (largestRoI->probingBox == nullptr) {
-    // if box is found nowhere, record to use even bigger size than biggest size
-    newResizeTarget = roi->roisForProbing.front()->getTargetSize() + mConfig.PROBE_STEP_SIZE;
+  float newScale;
+  if (box == nullptr) {
+    // if box is found nowhere, just return
+    return;
   } else {
     // if box is found for the largest probe, find the smallest target size with a usable box
-    newResizeTarget = (float) largestRoI->getTargetSize();
+    newScale = roi->getTargetScale();
     for (auto& probeRoI : roi->roisForProbing) {
-      if (probeRoI->probingBox != nullptr &&
-          isUsable(probeRoI->probingBox, largestRoI->probingBox)) {
-        newResizeTarget = (float) probeRoI->getTargetSize();
+      if (probeRoI->probingBox != nullptr && isUsable(probeRoI->probingBox, box)) {
+        newScale = probeRoI->getTargetScale();
       } else {
         break;
       }
     }
   }
-  calibrationTable[roi->id] = {roi->getTargetSize(), newResizeTarget - roi->getTargetSize()};
+  calibrationTable[roi->id] = {roi->getScaleLevel(), newScale};
+}
+
+std::vector<float> RoIResizer::getProbingCandidates(float scale, RoI::ScaleLevel level) {
+  std::vector<float> candidates;
+
+  auto const it = std::lower_bound(mTargetSize.begin(), mTargetSize.end(), scale);
+  int index = int(std::distance(mTargetSize.begin(), it)) - 1;
+  int lowerLevelIndex = (level - 1) * mScaleGranularity + 1;
+  int margin = std::max(-1, lowerLevelIndex);
+
+  while (index > margin) {
+    candidates.push_back(mTargetSize[index--]);
+  }
+  return candidates;
 }
 
 bool RoIResizer::isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const {
@@ -106,6 +119,28 @@ float RoIResizer::getOverlap(Rect& targetRect, Rect& baseRect) {
   float intersection = targetRect.intersection(baseRect);
   float overlapRatio = intersection / (baseRect.area());
   return overlapRatio;
+}
+
+RoIResizer::CircularBuffer::CircularBuffer()
+    : capacity_(5), oldest_index(0), size_(0) {
+  // NOTE that capacity should be even number to avoid tie
+  data_.resize(capacity_);
+}
+
+void RoIResizer::CircularBuffer::push(int data) {
+  data_[oldest_index] = data;
+  oldest_index = (oldest_index + 1) % capacity_;
+  if (size_ < capacity_) {
+    ++size_;
+  }
+}
+
+int RoIResizer::CircularBuffer::maxVote() {
+  std::vector<size_t> count(3, 0);
+  for (int i = 0; i < size_; i++) {
+    ++count[data_[i]];
+  }
+  return int(std::max_element(count.begin(), count.end()) - count.begin());
 }
 
 } // namespace rm

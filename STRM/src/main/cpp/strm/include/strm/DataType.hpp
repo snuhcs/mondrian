@@ -170,7 +170,7 @@ struct Frame {
 
   void mergeRoIs(float mergeThreshold, float maxSize);
 
-  void addProbeRoIs(int numProbeSteps, float probeStepSize);
+  void addProbeRoIs(RoIResizer* mRoIResizer);
 
   void resetProbeRoIs();
 
@@ -239,6 +239,13 @@ struct RoI {
   enum Type {
     OF = 1,
     PD = 2,
+  };
+
+  enum ScaleLevel {
+    scale_NULL = -1,
+    scale_LOW = 0,
+    scale_MID = 1,
+    scale_HIGH = 2,
   };
 
   struct OFFeatures {
@@ -370,7 +377,8 @@ struct RoI {
   float maxEdgeLength;
 
  private:
-  float targetSize;
+  float targetScale;
+  ScaleLevel scaleLevel;
 
  public:
   std::pair<float, float> packedLocation;
@@ -407,7 +415,7 @@ struct RoI {
           (float) origLoc.width() / (float) origLoc.height(),
           ofFeatures
       }, maxEdgeLength(std::max(paddedLoc.width(), paddedLoc.height())),
-        targetSize(maxEdgeLength), packedLocation(NOT_PACKED), isMatchTried(false),
+        targetScale(1.0f), scaleLevel(scale_NULL), packedLocation(NOT_PACKED), isMatchTried(false),
         nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
         packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1),
         isProbingRoI(isProbingRoI), priority(-1) {
@@ -438,10 +446,8 @@ struct RoI {
     std::unique_ptr<RoI> mergedRoI(
         new RoI(nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
                 roiType, origin_Null, roiLabel, OFFeatures({}, {}), 0, false));
-    mergedRoI->setTargetSize(pRoI0->targetSize * pRoI1->maxEdgeLength >
-                             pRoI1->targetSize * pRoI0->maxEdgeLength ?
-                             mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :
-                             mergedRoI->maxEdgeLength * pRoI1->targetSize / pRoI1->maxEdgeLength);
+    mergedRoI->setTargetScale(pRoI0->targetScale > pRoI1->targetScale ?
+                              pRoI0->targetScale : pRoI1->targetScale, scale_NULL);
     return std::move(mergedRoI);
   }
 
@@ -480,28 +486,24 @@ struct RoI {
     return resizedWH.first * resizedWH.second;
   }
 
-  float getTargetSize() const {
-    return targetSize;
+  float getTargetScale() const {
+    return targetScale;
   }
 
-  void setTargetSize(float newTargetSize) {
+  ScaleLevel getScaleLevel() const {
+    return scaleLevel;
+  }
+
+  void setTargetScale(float newTargetScale, ScaleLevel newScaleLevel) {
+    // assert(newTargetScale <= 1); // TODO
     float minEdgeLength = std::min(paddedLoc.width(), paddedLoc.height());
-    targetSize = std::max(maxEdgeLength / minEdgeLength,
-                          std::min(maxEdgeLength, newTargetSize));
+    // compare with 1/minEdgeLength to prevent shorter edge being even shorter than 1 after downscaling
+    targetScale = std::max(1 / minEdgeLength, newTargetScale);
+    scaleLevel = newScaleLevel;
   }
 
   std::pair<float, float> getResizedWidthHeight() const {
-    assert(targetSize <= maxEdgeLength);
-    std::pair<float, float> wh;
-    if (targetSize == maxEdgeLength) {
-      wh = {paddedLoc.width(), paddedLoc.height()};
-    }
-    if (paddedLoc.width() > paddedLoc.height()) {
-      wh = {targetSize, paddedLoc.height() * targetSize / paddedLoc.width()};
-    } else {
-      wh = {paddedLoc.width() * targetSize / paddedLoc.height(), targetSize};
-    }
-    return {std::max(1.0f, wh.first), std::max(1.0f, wh.second)};
+    return {paddedLoc.width() * targetScale, paddedLoc.height() * targetScale};
   }
 
   cv::Mat getOrigMat() const {
@@ -516,14 +518,9 @@ struct RoI {
 
   cv::Mat getResizedMat() const {
     auto[w, h] = getResizedWidthHeight();
-    assert(w >= 1 && h >= 1);
     cv::Mat resizedMat;
-    cv::resize(getPaddedMat(), resizedMat, cv::Size(w, h));
+    cv::resize(getPaddedMat(), resizedMat, cv::Size(std::round(w), std::round(h)));
     return resizedMat;
-  }
-
-  bool operator<(const RoI& roi) const {
-    return targetSize < roi.targetSize;
   }
 };
 
@@ -541,10 +538,10 @@ struct MixedFrame {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
     for (RoI* roi : packedRoIs) {
       assert(roi->isPacked());
-      std::pair<float, float> wh = roi->getResizedWidthHeight();
-      roi->getResizedMat().copyTo(
+      cv::Mat resizedMat = roi->getResizedMat();
+      resizedMat.copyTo(
           packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
-                             wh.first, wh.second)));
+                             resizedMat.cols, resizedMat.rows)));
       roi->packedAbsMixedFrameIndex = mixedFrameIndex;
     }
   }

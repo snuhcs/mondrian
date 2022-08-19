@@ -180,7 +180,7 @@ void Logger::logRoIHeader() {
       << "packedAbsMixedFrameIndex" << delim
 
       << "maxEdgeLength" << delim
-      << "targetSize" << '\n';
+      << "targetScale" << '\n';
   logFile.flush();
 }
 
@@ -232,7 +232,7 @@ void Logger::logRoI(RoI* roi) {
       << roi->parentRoI->packedAbsMixedFrameIndex << delim
 
       << roi->maxEdgeLength << delim
-      << roi->getTargetSize() << '\n';
+      << roi->getTargetScale() << '\n';
   logFile.flush();
 }
 

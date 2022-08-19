@@ -13,13 +13,12 @@ const float PatchMixer::HIGH_PRIORITY = 101;
 PatchMixer::PatchMixer(const PatchMixerConfig& config)
     : mConfig(config) {}
 
-std::vector<Frame*> PatchMixer::addProbeRoIs(MultiStream& frames, const Frame* fullFrameTarget,
-                                             int numProbeSteps, float probeStepSize) {
+std::vector<Frame*> PatchMixer::addProbeRoIs(MultiStream& frames, const Frame* fullFrameTarget, RoIResizer* mRoIResizer) {
   std::vector<Frame*> probeFrames;
   std::set<Frame*> lastFrames = filterLastFrames(frames);
   for (Frame* lastFrame : lastFrames) {
     if (lastFrame != fullFrameTarget) {
-      lastFrame->addProbeRoIs(numProbeSteps, probeStepSize);
+      lastFrame->addProbeRoIs(mRoIResizer);
       probeFrames.push_back(lastFrame);
     }
   }
@@ -109,9 +108,7 @@ void PatchMixer::prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarge
 
 std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::packRoIs(
     MultiStream& frames, int fullFrameStreamIndex, const std::vector<InferenceInfo>& inferencePlan,
-    bool allowInterpolation, bool roiWiseInference, bool probe, int numProbeSteps,
-    float probeStepSize) {
-  // TODO
+    bool allowInterpolation, bool roiWiseInference, RoIResizer *roiResizer) {
   time_us mixingStartTime = NowMicros();
   std::vector<MixedFrame> mixedFrames;
   Frame* fullFrameTarget;
@@ -121,8 +118,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
   if (allowInterpolation && roiWiseInference) {
     // Preprocess: getFullFrameTarget & addProbeRoIs & collectRoIs & prioritizeRoIs
     int numFrames = int(inferencePlan.size());
-    auto ret = preparePack(selectedFrames, fullFrameStreamIndex, probe, numProbeSteps,
-                           probeStepSize);
+    auto ret = preparePack(selectedFrames, fullFrameStreamIndex, roiResizer);
     fullFrameTarget = std::get<0>(ret);
     std::vector<Frame*>& probeFrames = std::get<1>(ret);
     std::vector<RoI*>& candidateRoIs = std::get<2>(ret);
@@ -131,10 +127,10 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
       const InferenceInfo& info = inferencePlan[i];
       auto frameSize = float(info.size);
       RoI* pRoI = candidateRoIs[i];
-      pRoI->setTargetSize(frameSize);
+      pRoI->setTargetScale(std::min(float(frameSize)/pRoI->maxEdgeLength, 1.0f), RoI::scale_NULL);
       auto[resizedWidth, resizedHeight] = pRoI->getResizedWidthHeight();
-      float x = frameSize - resizedWidth / 2;
-      float y = frameSize - resizedHeight / 2;
+      float x = (float(frameSize) - resizedWidth) / 2;
+      float y = (float(frameSize) - resizedHeight) / 2;
       pRoI->packedLocation = {x, y};
       mixedFrames.push_back(MixedFrame(info.device, {pRoI}, int(frameSize)));
     }
@@ -142,8 +138,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
     while (true) {
       // Preprocess: getFullFrameTarget & addProbeRoIs & collectRoIs & prioritizeRoIs
       int numFrames = int(inferencePlan.size());
-      auto ret = preparePack(selectedFrames, fullFrameStreamIndex, probe, numProbeSteps,
-                             probeStepSize);
+      auto ret = preparePack(selectedFrames, fullFrameStreamIndex, roiResizer);
       fullFrameTarget = std::get<0>(ret);
       std::vector<Frame*>& probeFrames = std::get<1>(ret);
       std::vector<RoI*>& candidateRoIs = std::get<2>(ret);
@@ -174,10 +169,10 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
           const InferenceInfo& info = inferencePlan[i];
           auto frameSize = float(info.size);
           RoI* pRoI = candidateRoIs[i];
-          pRoI->setTargetSize(float(frameSize));
+          pRoI->setTargetScale(std::min(float(frameSize)/pRoI->maxEdgeLength, 1.0f), RoI::scale_NULL);
           auto[resizedWidth, resizedHeight] = pRoI->getResizedWidthHeight();
-          float x = float(frameSize - resizedWidth) / 2;
-          float y = float(frameSize - resizedHeight) / 2;
+          float x = (float(frameSize) - resizedWidth) / 2;
+          float y = (float(frameSize) - resizedHeight) / 2;
           pRoI->packedLocation = {x, y};
           mixedFrames.push_back(MixedFrame(info.device, {pRoI}, int(frameSize)));
         }
@@ -187,8 +182,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
   } else if (allowInterpolation && !roiWiseInference) {
     // Preprocess: getFullFrameTarget & addProbeRoIs & collectRoIs & prioritizeRoIs
     int numFrames = int(inferencePlan.size());
-    auto ret = preparePack(selectedFrames, fullFrameStreamIndex, probe, numProbeSteps,
-                           probeStepSize);
+    auto ret = preparePack(selectedFrames, fullFrameStreamIndex, roiResizer);
     fullFrameTarget = std::get<0>(ret);
     std::vector<Frame*>& probeFrames = std::get<1>(ret);
     std::vector<RoI*>& candidateRoIs = std::get<2>(ret);
@@ -221,8 +215,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
   } else if (!allowInterpolation && !roiWiseInference) {
     while (true) {
       // Preprocess: getFullFrameTarget & addProbeRoIs & collectRoIs & prioritizeRoIs
-      auto ret = preparePack(selectedFrames, fullFrameStreamIndex, probe, numProbeSteps,
-                             probeStepSize);
+      auto ret = preparePack(selectedFrames, fullFrameStreamIndex, roiResizer);
       fullFrameTarget = std::get<0>(ret);
       std::vector<Frame*>& probeFrames = std::get<1>(ret);
       std::vector<RoI*>& candidateRoIs = std::get<2>(ret);
@@ -309,12 +302,11 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
 }
 
 std::tuple<Frame*, std::vector<Frame*>, std::vector<RoI*>> PatchMixer::preparePack(
-    MultiStream& selectedFrames, int fullFrameStreamIndex, bool probe, int numProbeSteps,
-    float probeStepSize) const {
+    MultiStream& selectedFrames, int fullFrameStreamIndex, RoIResizer* mRoIResizer) const {
   Frame* fullFrameTarget = getFullFrameTarget(selectedFrames, fullFrameStreamIndex);
   std::vector<Frame*> probeFrames;
-  if (probe && !mConfig.EMULATED_BATCH) {
-    probeFrames = addProbeRoIs(selectedFrames, fullFrameTarget, numProbeSteps, probeStepSize);
+  if (mRoIResizer->isProbing() && !mConfig.EMULATED_BATCH) {
+    probeFrames = addProbeRoIs(selectedFrames, fullFrameTarget, mRoIResizer);
   }
   std::vector<RoI*> candidateRoIs = collectRoIs(selectedFrames, fullFrameTarget);
   prioritizeRoIs(selectedFrames, fullFrameTarget);
@@ -417,12 +409,12 @@ bool PatchMixer::tryPackRoI(const std::pair<float, float>& resizedWH,
         if (pRoI->maxEdgeLength > batchedRoISize) {
           float resizedWidth = width > height ? batchedRoISize : width * batchedRoISize / height;
           float resizedHeight = width > height ? height * batchedRoISize / width : batchedRoISize;
-          pRoI->setTargetSize(batchedRoISize);
+          pRoI->setTargetScale(batchedRoISize/pRoI->maxEdgeLength, RoI::scale_NULL);
           pRoI->packedLocation = std::make_pair(
               freeRect.left + (batchedRoISize - resizedWidth) / 2,
               freeRect.top + (batchedRoISize - resizedHeight) / 2);
         } else {
-          pRoI->setTargetSize(pRoI->maxEdgeLength);
+          pRoI->setTargetScale(1.0f, RoI::scale_NULL);
           pRoI->packedLocation = std::make_pair(
               freeRect.left + (batchedRoISize - width) / 2,
               freeRect.top + (batchedRoISize - height) / 2);

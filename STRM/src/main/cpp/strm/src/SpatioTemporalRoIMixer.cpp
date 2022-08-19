@@ -102,8 +102,7 @@ void SpatioTemporalRoIMixer::work() {
     auto[mixedFrames, fullFrameTarget, selectedFrames, droppedFrames] = mPatchMixer->packRoIs(
         frames, (runFull ? fullFrameStreamIndex++ : -1),
         getInferencePlan(startEndTime, latencyTable),
-        mConfig.ALLOW_INTERPOLATION, mConfig.ROI_WISE_INFERENCE, mRoIResizer->isProbing(),
-        mRoIResizer->getNumProbeSteps(), mRoIResizer->getProbeStepSize());
+        mConfig.ALLOW_INTERPOLATION, mConfig.ROI_WISE_INFERENCE, mRoIResizer.get());
     assert(runFull == (fullFrameTarget != nullptr));
     if (!mConfig.ALLOW_INTERPOLATION) {
       testNoInterpolationPacking(frames, droppedFrames, fullFrameTarget);
@@ -309,10 +308,10 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
     for (BoundingBox& b : boxes) {
       pRoI->frame->boxes.emplace_back(new BoundingBox(
           UNASSIGNED_ID,Rect(
-              (b.location.left - x) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.left,
-              (b.location.top - y) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.top,
-              (b.location.right - x) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.left,
-              (b.location.bottom - y) * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->origLoc.top),
+              (b.location.left - x) / pRoI->getTargetScale() + pRoI->origLoc.left,
+              (b.location.top - y) / pRoI->getTargetScale() + pRoI->origLoc.top,
+              (b.location.right - x) / pRoI->getTargetScale() + pRoI->origLoc.left,
+              (b.location.bottom - y) / pRoI->getTargetScale() + pRoI->origLoc.top),
           b.confidence, b.label, pRoI->origin));
     }
   }

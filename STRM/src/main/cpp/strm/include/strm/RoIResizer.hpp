@@ -20,7 +20,7 @@ class RoIResizer {
  public:
   RoIResizer(const RoIResizerConfig& config);
 
-  float getTargetSize(const idType id, const RoI::Features& features);
+  std::pair<float, RoI::ScaleLevel> getTargetScale(const idType id, const RoI::Features& features);
 
   void updateTable(RoI* roi);
 
@@ -36,27 +36,43 @@ class RoIResizer {
     return mConfig.PROBE_STEP_SIZE != 0;
   }
 
- private:
-  float getSmoothedTargetSize(const idType id, const RoI::Features& features);
+  std::vector<float> getProbingCandidates(float scale, RoI::ScaleLevel level);
 
-  float getSizeWithFeature(const RoI::Features& features) const;
+ private:
+  class CircularBuffer {
+   public:
+    CircularBuffer();
+
+    void push(int data);
+
+    int maxVote();
+
+   private:
+    size_t capacity_, oldest_index, size_;
+    std::vector<int> data_;
+  };
+
+  int getMaxVotedLevel(const idType id, const RoI::Features& features);
+
+  int predictLevelWithFeatures(const RoI::Features& features) const;
 
   bool isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const;
 
   static float getOverlap(Rect& targetRect, Rect& baseRect);
 
   static const std::map<std::string, Predictor> candidatePredictors;
-  static const std::map<std::string, std::vector<float>> candidateResizeTargets;
+  static const std::map<std::string, std::vector<float>> scalesForLevels;
 
   const RoIResizerConfig mConfig;
+  const int mScaleGranularity;
   const Predictor mPredictor;
-  const std::vector<float> mResizeTargets;
+  const std::vector<float> mTargetSize;
 
   // Save prev prediction to smooth the predicted size
-  std::map<idType, float> prevTargetSizeTable;
+  std::map<idType, CircularBuffer> prevPredictionBuffer;
 
-  // Save <targetSize of RoI, calibration for that targetSize>
-  std::map<idType, std::pair<float, float>> calibrationTable;
+  // Save <targetScale of RoI, calibration for that targetScale>
+  std::map<idType, std::pair<RoI::ScaleLevel, float>> calibrationTable;
 };
 
 } // namespace rm

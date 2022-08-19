@@ -29,7 +29,7 @@
     "roi_resizer": {
         "train_data": "MTA",
         "resize_smoothing_factor": 0.1,
-        "static_resize_target": 100,
+        "static_target_scale": 1.0,
         "probe_step_size": 5,
         "num_probe_steps": 1,
         "probe_reset_threshold": 10,
@@ -54,8 +54,7 @@
             896
         ],
         "devices" : [
-            "GPU",
-            "DSP"
+            "GPU"
         ]
     },
     "patch_reconstructor": {

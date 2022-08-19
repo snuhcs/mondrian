@@ -51,8 +51,8 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   if (!json["resize_smoothing_factor"].isNull()) {
     config.RESIZE_SMOOTHING_FACTOR = json["resize_smoothing_factor"].asFloat();
   }
-  if (!json["static_resize_target"].isNull()) {
-    config.STATIC_RESIZE_TARGET = json["static_resize_target"].asFloat();
+  if (!json["static_target_scale"].isNull()) {
+    config.STATIC_TARGET_SCALE = json["static_target_scale"].asFloat();
   }
   if (!json["probe_step_size"].isNull()) {
     config.PROBE_STEP_SIZE = json["probe_step_size"].asFloat();

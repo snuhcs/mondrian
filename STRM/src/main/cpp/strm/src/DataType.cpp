@@ -16,12 +16,13 @@ const std::pair<float, float> RoI::NOT_PACKED{-1, -1};
 void Frame::resizeRoIs(RoIResizer* roiResizer) {
   for (auto& cRoI : childRoIs) {
     if (cRoI->type == RoI::Type::OF) {
-      cRoI->setTargetSize(roiResizer->getTargetSize(cRoI->id, cRoI->features));
+      auto [scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features);
+      cRoI->setTargetScale(scale, level);
     }
   }
   for (auto& cRoI : childRoIs) {
     if (cRoI->type == RoI::Type::PD && cRoI->nextRoI != nullptr) {
-      cRoI->setTargetSize(cRoI->nextRoI->getTargetSize());
+      cRoI->setTargetScale(cRoI->nextRoI->getTargetScale(), cRoI->nextRoI->getScaleLevel());
     }
   }
 }
@@ -62,15 +63,12 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
           continue;
         }
         float newArea = (newRight - newLeft) * (newBottom - newLeft);
-        if (roi0->getTargetSize() * roi1->maxEdgeLength >
-            roi1->getTargetSize() * roi0->maxEdgeLength) {
+        if (roi0->getTargetScale() > roi1->getTargetScale()) {
           // If roi0 resizes conservatively than roi1
-          newArea = newArea * roi0->getTargetSize() * roi0->getTargetSize()
-                    / roi0->maxEdgeLength / roi0->maxEdgeLength;
+          newArea = newArea * roi0->getTargetScale() * roi0->getTargetScale();
         } else {
           // If roi1 resizes conservatively than roi0
-          newArea = newArea * roi1->getTargetSize() * roi1->getTargetSize()
-                    / roi1->maxEdgeLength / roi1->maxEdgeLength;
+          newArea = newArea * roi1->getTargetScale() * roi1->getTargetScale();
         }
         float originalArea = roi0->getResizedArea() + roi1->getResizedArea();
         if (newArea >= originalArea) {
@@ -102,20 +100,19 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
   }
 }
 
-void Frame::addProbeRoIs(int numProbeSteps, float probeStepSize) {
+void Frame::addProbeRoIs(RoIResizer* mRoIResizer) {
   assert(probingRoIs.empty());
   for (auto& cRoI : childRoIs) {
     assert(cRoI->frame == this);
     assert(cRoI->roisForProbing.empty());
-    float probe = float(-numProbeSteps) * probeStepSize;
-    for (int i = 0; i < 2 * numProbeSteps + 1; i++) {
+    std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(cRoI->getTargetScale(), cRoI->getScaleLevel());
+    for (auto scale : probingCandidates) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
           cRoI->features.ofFeatures, 0, true);
-      probeRoI->setTargetSize(cRoI->getTargetSize() + probe);
+      probeRoI->setTargetScale(scale, cRoI->getScaleLevel());
       cRoI->roisForProbing.push_back(probeRoI.get());
       probingRoIs.push_back(std::move(probeRoI));
-      probe += probeStepSize;
     }
   }
 }
