@@ -22,7 +22,6 @@ void Worker::work() {
     auto[mat, size, key] = std::move(inputs.front());
     inputs.pop();
     lock.unlock();
-    LOGD("Work %s %d, %d", device == GPU ? "GPU" : "DSP", key, size);
 
     assert(classifierMap.find(size) != classifierMap.end());
     std::vector<BoundingBox> boxes = classifierMap[size]->recognizeImage(mat);
@@ -36,7 +35,6 @@ void Worker::enqueue(const cv::Mat& mat, int inputSize, int key) {
   inputs.push({mat, inputSize, key});
   lock.unlock();
   cv.notify_one();
-  LOGD("Enqueue %s %d, %d", device == GPU ? "GPU" : "DSP", key, inputSize);
 }
 
 std::map<int, time_us> Worker::getInferenceTimes() {

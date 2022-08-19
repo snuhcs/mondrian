@@ -33,7 +33,7 @@ class InferenceEngine {
   void drawInferenceResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
   template<typename T>
-  void initClassifiers(const InferenceEngineConfig& config);
+  void addClassifiers(Device device, const InferenceEngineConfig& config);
 
   const InferenceEngineConfig mConfig;
 

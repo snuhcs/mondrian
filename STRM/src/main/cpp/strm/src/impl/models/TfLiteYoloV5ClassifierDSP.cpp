@@ -1,6 +1,5 @@
 #include "strm/impl/models/TfLiteYoloV5ClassifierDSP.hpp"
 
-#include <chrono>
 #include <map>
 #include <set>
 
@@ -127,7 +126,8 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat
   inference(preprocessedMat);
   time_us end = NowMicros();
 
-  inferenceTime = (1 * (end - start) + 9 * inferenceTime) / 10;
+  // Exponential smoothing
+  inferenceTime = (3 * (end - start) + 7 * inferenceTime) / 10;
   LOGV("Inference time: %lld ms", inferenceTime);
 
   std::vector<BoundingBox> detections;
@@ -180,10 +180,10 @@ time_us TfLiteYoloV5ClassifierDSP::profileInferenceTime() {
   interpreter->Invoke();
   interpreter->Invoke();
 
-  auto start = std::chrono::system_clock::now();
+  time_us start = NowMicros();
   interpreter->Invoke();
-  auto end = std::chrono::system_clock::now();
-  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  time_us end = NowMicros();
+  return end - start;
 }
 
 } // namespace rm

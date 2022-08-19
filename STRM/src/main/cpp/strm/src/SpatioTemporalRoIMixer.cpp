@@ -61,7 +61,8 @@ SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
 }
 
 void SpatioTemporalRoIMixer::work() {
-  int scheduleID = -1;
+  LOGD("SpatioTemporalRoIMixer::work()");
+  int scheduleID = 0;
   int fullFrameStreamIndex = 0;
 
   // Wait sources for synced start
@@ -80,16 +81,20 @@ void SpatioTemporalRoIMixer::work() {
       std::this_thread::sleep_for(std::chrono::microseconds(mScheduleInterval - elapsedTime));
     }
 
+    LOGD("===== Schedule %d start =====", scheduleID);
     // Extract RoIs
     logger.start();
-    // TODO: properly set remainingTime
-    time_us remainingTime = -1234;
-    // ex) remainingTime = mScheduleInterval - mInferenceEngine->getInferenceTimes()...
-    std::vector<InferenceInfo> inferencePlan = getInferencePlan(
-        remainingTime, mInferenceEngine->getInferenceTimeTable());
+    auto latencyTable = mInferenceEngine->getInferenceTimeTable();
+    bool runFull = scheduleID % mConfig.FULL_FRAME_INTERVAL == 0;
+    time_us remainingTime = runFull ?
+                            mScheduleInterval - latencyTable[GPU][mInputSizes.back()] :
+                            mScheduleInterval;
+    std::vector<InferenceInfo> inferencePlan = getInferencePlan(remainingTime, latencyTable);
+    logger.step("plan");
+    LOGD("%-25s took %-7lld us                            // Plan: %s",
+         "STRM::getInferencePlan", logger.getDuration("plan"), toString(inferencePlan).c_str());
     MultiStream frames = mRoIExtractor->getExtractedFrames(inferencePlan);
     logger.step("roi");
-    LOGD("===== Schedule %d start =====", scheduleID);
     LOGD("%-25s took %-7lld us for %s",
          "RE::getExtractedFrames", logger.getDuration("roi"), toString(frames).c_str());
     if (std::all_of(frames.begin(), frames.end(), [](auto& it) { return it.second.empty(); })) {
@@ -98,7 +103,6 @@ void SpatioTemporalRoIMixer::work() {
     }
 
     // Schedule
-    bool runFull = scheduleID % mConfig.FULL_FRAME_INTERVAL == 0;
     auto[mixedFrames, fullFrameTarget, selectedFrames, droppedFrames] = mPatchMixer->packRoIs(
         frames, (runFull ? fullFrameStreamIndex++ : -1), inferencePlan, mConfig.ALLOW_INTERPOLATION,
         mConfig.ROI_WISE_INFERENCE, mRoIResizer->isProbing(), mRoIResizer->getNumProbeSteps(),
@@ -129,7 +133,7 @@ void SpatioTemporalRoIMixer::work() {
       mixedInference(mixedFrames);
     }
     logger.step("inf");
-    LOGD("%-25s took %-7lld us                            // %s",
+    LOGD("%-25s took %-7lld us                            // Plan: %s",
          mConfig.ROI_WISE_INFERENCE ? "STRM::roiWiseInference" : "STRM:mixedFrameInference",
          logger.getDuration("inf"), toString(inferencePlan).c_str());
 
@@ -348,13 +352,10 @@ void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
 void SpatioTemporalRoIMixer::waitForStart() {
   std::unique_lock<std::mutex> startLock(mStartMtx);
   mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
-  // TODO: properly set remainingTime
-  time_us remainingTime = -1234;
-  // ex) remainingTime = mScheduleInterval - mInferenceEngine->getInferenceTimes()...
   mRoIExtractor = std::make_unique<RoIExtractor>(
       mConfig.roIExtractorConfig, mConfig.FULL_FRAME_INTERVAL > 0, mConfig.ALLOW_INTERPOLATION,
       mConfig.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(),
-      getInferencePlan(remainingTime, mInferenceEngine->getInferenceTimeTable()));
+      getInferencePlan(mScheduleInterval, mInferenceEngine->getInferenceTimeTable()));
   mbStartEnqueue = true;
   startLock.unlock();
   mEnqueueCv.notify_all();
@@ -545,8 +546,7 @@ std::vector<InferenceInfo> SpatioTemporalRoIMixer::getInferencePlan(
     std::vector<time_us> bars;
     std::map<time_us, int> latency_size;
     for (const auto&[size, latency] : size_latency) {
-      // TODO: check profile[latency] = double(size * size) / double(latency)
-      profile[latency] = double(size * size / latency);
+      profile[latency] = double(size * size) / double(latency);
       bars.push_back(latency);
       latency_size[latency] = size;
     }

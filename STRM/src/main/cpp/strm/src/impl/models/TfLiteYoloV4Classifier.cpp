@@ -1,6 +1,5 @@
 #include "strm/impl/models/TfLiteYoloV4Classifier.hpp"
 
-#include <chrono>
 #include <map>
 #include <set>
 
@@ -127,10 +126,10 @@ time_us TfLiteYoloV4Classifier::profileInferenceTime() {
   interpreter->Invoke();
   interpreter->Invoke();
 
-  auto start = std::chrono::system_clock::now();
+  time_us start = NowMicros();
   interpreter->Invoke();
-  auto end = std::chrono::system_clock::now();
-  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  time_us end = NowMicros();
+  return end - start;
 }
 
 } // namespace rm

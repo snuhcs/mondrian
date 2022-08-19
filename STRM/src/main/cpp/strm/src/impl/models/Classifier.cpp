@@ -20,7 +20,7 @@ std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& mat) {
   time_us end = NowMicros();
 
   // Exponential smoothing
-  inferenceTime = (1 * (end - start) + 9 * inferenceTime) / 10;
+  inferenceTime = (3 * (end - start) + 7 * inferenceTime) / 10;
   LOGV("Inference time: %lld ms", inferenceTime);
 
   std::vector<BoundingBox> detections;
