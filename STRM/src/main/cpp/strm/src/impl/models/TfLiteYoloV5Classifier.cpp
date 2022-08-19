@@ -16,7 +16,7 @@ namespace rm {
 TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(int inputSize, float confidenceThreshold,
                                                float iouThreshold, bool isTiny)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
-                 confidenceThreshold, iouThreshold) {
+                 confidenceThreshold, iouThreshold, GPU) {
   std::stringstream ss;
   ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "x-") << inputSize << "-fp16.tflite";
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());

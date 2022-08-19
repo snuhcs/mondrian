@@ -108,7 +108,7 @@ void PatchMixer::prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarge
 }
 
 std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::packRoIs(
-    MultiStream& frames, int fullFrameStreamIndex, std::vector<InferenceInfo>& inferencePlan,
+    MultiStream& frames, int fullFrameStreamIndex, const std::vector<InferenceInfo>& inferencePlan,
     bool allowInterpolation, bool roiWiseInference, bool probe, int numProbeSteps,
     float probeStepSize) {
   // TODO

@@ -12,21 +12,27 @@ Worker::Worker(InferenceEngine* engine, Device device, std::map<int, Classifier*
 
 Worker::~Worker() {
   isClosed.store(true);
+  cv.notify_all();
   thread.join();
 }
 
 void Worker::work() {
   while (!isClosed.load()) {
+
     std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [this](){ return !inputs.empty(); });
+    cv.wait(lock, [this](){ return isClosed.load() || !inputs.empty(); });
+    if (isClosed.load()) {
+      lock.unlock();
+      break;
+    }
     auto[mat, size, key] = std::move(inputs.front());
     inputs.pop();
     lock.unlock();
 
     assert(classifierMap.find(size) != classifierMap.end());
-    std::vector<BoundingBox> boxes = classifierMap[size]->recognizeImage(mat);
-    engine->drawInferenceResult(mat, boxes);
-    engine->enqueueResults(key, boxes);
+    Result boxTimeDevice = classifierMap[size]->recognizeImage(mat);
+    engine->drawInferenceResult(mat, std::get<0>(boxTimeDevice));
+    engine->enqueueResults(key, boxTimeDevice);
   }
 }
 

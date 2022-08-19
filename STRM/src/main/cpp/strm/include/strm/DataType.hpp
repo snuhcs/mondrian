@@ -135,10 +135,12 @@ struct Frame {
   std::vector<std::unique_ptr<RoI>> parentRoIs;
 
   bool isFullFrameTarget;
+  int inferenceFrameSize;
+  Device inferenceDevice;
 
   const time_us enqueueTime;
-  time_us fullFrameEnqueueTime = 0;
-  time_us fullFrameGetResultsTime = 0;
+  time_us fullInferenceStartTime = 0;
+  time_us fullInferenceEndTime = 0;
   time_us opticalFlowRoIProcessStartTime = 0;
   time_us opticalFlowRoIProcessEndTime = 0;
   time_us pixelDiffRoIProcessStartTime = 0;
@@ -149,8 +151,8 @@ struct Frame {
   time_us mergeRoIEndTime = 0;
   time_us mixingStartTime = 0;
   time_us mixingEndTime = 0;;
-  time_us inferenceStartTime = 0;
-  time_us inferenceEndTime = 0;
+  time_us mixedInferenceStartTime = 0;
+  time_us mixedInferenceEndTime = 0;
   time_us reconstructStartTime = 0;
   time_us reconstructEndTime = 0;
 
@@ -159,7 +161,8 @@ struct Frame {
       : key(key), shortKey(toShortKey(key)), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
         extractOFAgain(false), enqueueTime(enqueueTime), isFullFrameTarget(false),
-        isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1) {}
+        isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
+        inferenceFrameSize(0) {}
 
   void resizeRoIs(RoIResizer* roiResizer);
 
@@ -528,11 +531,13 @@ struct MixedFrame {
   static int numMixedFrames;
   const Device device;
   const int mixedFrameIndex;
+  const int mixedFrameSize;
   cv::Mat packedMat;
   std::set<RoI*> packedRoIs;
 
   MixedFrame(Device device, std::set<RoI*> packedRoIs, int mixedFrameSize)
-      : device(device), packedRoIs(packedRoIs), mixedFrameIndex(numMixedFrames++) {
+      : device(device), packedRoIs(packedRoIs), mixedFrameIndex(numMixedFrames++),
+        mixedFrameSize(mixedFrameSize) {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
     for (RoI* roi : packedRoIs) {
       assert(roi->isPacked());

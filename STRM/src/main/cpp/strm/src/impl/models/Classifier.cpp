@@ -8,11 +8,11 @@
 namespace rm {
 
 Classifier::Classifier(const int numLabels, const int inputSize, const int outputSize,
-                       const float confidenceThreshold, const float iouThreshold)
+                       const float confidenceThreshold, const float iouThreshold, Device device)
     : numLabels(numLabels), inputSize(inputSize, inputSize), outputSize(outputSize),
-      confidenceThreshold(confidenceThreshold), iouThreshold(iouThreshold) {}
+      confidenceThreshold(confidenceThreshold), iouThreshold(iouThreshold), device(device) {}
 
-std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& mat) {
+Result Classifier::recognizeImage(const cv::Mat& mat) {
   cv::Mat preprocessedMat = preprocess(mat);
 
   time_us start = NowMicros();
@@ -47,7 +47,7 @@ std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& mat) {
           maxConfidence, maxLabel, origin_Null);
     }
   }
-  return nms(detections, numLabels, iouThreshold);
+  return {nms(detections, numLabels, iouThreshold), {start, end}, device};
 }
 
 const cv::Size& Classifier::getInputSize() const {

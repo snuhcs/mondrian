@@ -21,14 +21,14 @@ class InferenceEngine {
 
   void enqueue(const cv::Mat mat, Device device, int inputSize, int key);
 
-  std::vector<BoundingBox> getResults(int key);
+  Result getResults(int key);
 
   std::map<Device, std::map<int, time_us>> getInferenceTimeTable() const;
 
   std::vector<int> getInputSizes() const;
 
  private:
-  void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
+  void enqueueResults(const int handle, const Result& boxes);
 
   void drawInferenceResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
@@ -42,7 +42,7 @@ class InferenceEngine {
 
   std::mutex resultMtx;
   std::condition_variable resultCv;
-  std::map<int, std::vector<BoundingBox>> results;
+  std::map<int, Result> results;
 
   JavaVM* jvm;
   JNIEnv* env;

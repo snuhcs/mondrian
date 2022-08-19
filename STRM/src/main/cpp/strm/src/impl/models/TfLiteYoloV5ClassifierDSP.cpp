@@ -19,7 +19,8 @@ namespace rm {
 TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(int inputSize, float confidenceThreshold,
                                                      float iouThreshold, bool isTiny)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
-                 confidenceThreshold, iouThreshold), delegate(nullptr, [](TfLiteDelegate* d) {}) {
+                 confidenceThreshold, iouThreshold, DSP),
+      delegate(nullptr, [](TfLiteDelegate* d) {}) {
   std::stringstream ss;
   ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "x-") << inputSize << "-int8.tflite";
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
@@ -73,17 +74,17 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(int inputSize, float confid
   auto* outputQuantization = (TfLiteAffineQuantization*) outputTensor->quantization.params;
   assert(inputQuantization->scale->size == 1 &&
          inputQuantization->zero_point->size == 1 &&
-         inputQuantization->quantized_dimension == 0 &&
-         inputQuantization->zero_point->data[0] == 0);
+         inputQuantization->quantized_dimension == 0);
   assert(outputQuantization->scale->size == 1 &&
          outputQuantization->zero_point->size == 1 &&
-         outputQuantization->quantized_dimension == 0 &&
-         outputQuantization->zero_point->data[0] == 0);
+         outputQuantization->quantized_dimension == 0);
+  inputBias = inputQuantization->zero_point->data[0];
+  outputBias = outputQuantization->zero_point->data[0];
   inputScale = inputQuantization->scale->data[0];
   outputScale = outputQuantization->scale->data[0];
 
-  input = inputTensor->data.uint8;
-  outputs = outputTensor->data.uint8;
+  input = inputTensor->data.int8;
+  outputs = outputTensor->data.int8;
 }
 
 cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& mat) {
@@ -109,17 +110,23 @@ cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& mat) {
   cv::copyMakeBorder(preprocessedMat, preprocessedMat, top, bottom, left, right,
                      cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
   cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
-//  preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
+  preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
   return preprocessedMat;
 }
 
 void TfLiteYoloV5ClassifierDSP::inference(const cv::Mat& mat) {
-  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_8UC3);
-  std::memcpy((void*) input, (void*) mat.data, inputSize.area() * mat.elemSize());
+  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_32FC3);
+  mat /= inputScale;
+  cv::Mat newMat;
+  mat.convertTo(newMat, CV_8SC3);
+  newMat += inputBias;
+  assert(newMat.cols == inputSize.width && newMat.rows == inputSize.height &&
+         newMat.type() == CV_8SC3);
+  std::memcpy((void*) input, (void*) newMat.data, inputSize.area() * newMat.elemSize());
   interpreter->Invoke();
 }
 
-std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& mat) {
+Result TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& mat) {
   cv::Mat preprocessedMat = preprocess(mat);
 
   time_us start = NowMicros();
@@ -132,12 +139,12 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
-    const uint8_t* box = &outputs[i * 85];
-    const uint8_t* classConfidences = &outputs[i * 85 + 5];
+    const int8_t* box = &outputs[i * 85];
+    const int8_t* classConfidences = &outputs[i * 85 + 5];
     float maxConfidence = 0;
     int maxLabel = -1;
     for (int label = 0; label < numLabels; label++) {
-      float confidence = float(classConfidences[label]) * outputScale;
+      float confidence = float(classConfidences[label] - outputBias) * outputScale;
       if (maxConfidence < confidence) {
         maxLabel = label;
         maxConfidence = confidence;
@@ -147,15 +154,15 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
       detections.emplace_back(
           UNASSIGNED_ID,
-          reconstructBox(float(box[0]) * outputScale,
-                         float(box[1]) * outputScale,
-                         float(box[2]) * outputScale,
-                         float(box[3]) * outputScale,
+          reconstructBox(float(box[0] - outputBias) * outputScale,
+                         float(box[1] - outputBias) * outputScale,
+                         float(box[2] - outputBias) * outputScale,
+                         float(box[3] - outputBias) * outputScale,
                          mat.cols, mat.rows),
           maxConfidence, maxLabel, origin_Null);
     }
   }
-  return nms(detections, numLabels, iouThreshold);
+  return {nms(detections, numLabels, iouThreshold), {start, end}, device};
 }
 
 Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float h,

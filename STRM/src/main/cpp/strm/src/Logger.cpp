@@ -40,9 +40,11 @@ void Logger::logHeader() {
           << "numBoxes" << delim
           << "numChildRoIs" << delim
           << "numParentRoIs" << delim
+          << "inferenceFrameSize" << delim
+          << "inferenceDevice" << delim
           << "enqueueTime" << delim
-          << "fullFrameEnqueueTime" << delim
-          << "fullFrameGetResultsTime" << delim
+          << "fullInferenceStartTime" << delim
+          << "fullInferenceEndTime" << delim
           << "pixelDiffRoIProcessStartTime" << delim
           << "pixelDiffRoIProcessEndTime" << delim
           << "opticalFlowRoIProcessStartTime" << delim
@@ -53,8 +55,8 @@ void Logger::logHeader() {
           << "mergeRoIEndTime" << delim
           << "mixingStartTime" << delim
           << "mixingEndTime" << delim
-          << "inferenceStartTime" << delim
-          << "inferenceEndTime" << delim
+          << "mixedInferenceStartTime" << delim
+          << "mixedInferenceEndTime" << delim
           << "reconstructStartTime" << delim
           << "reconstructEndTime" << delim
           << "endTime" << '\n';
@@ -73,9 +75,11 @@ void Logger::log(Frame* frame) {
           << frame->boxes.size() << delim
           << frame->childRoIs.size() << delim
           << frame->parentRoIs.size() << delim
+          << frame->inferenceFrameSize << delim
+          << frame->inferenceDevice << delim
           << fromBaseTime(frame->enqueueTime) << delim
-          << fromBaseTime(frame->fullFrameEnqueueTime) << delim
-          << fromBaseTime(frame->fullFrameGetResultsTime) << delim
+          << fromBaseTime(frame->fullInferenceStartTime) << delim
+          << fromBaseTime(frame->fullInferenceEndTime) << delim
           << fromBaseTime(frame->pixelDiffRoIProcessStartTime) << delim
           << fromBaseTime(frame->pixelDiffRoIProcessEndTime) << delim
           << fromBaseTime(frame->opticalFlowRoIProcessStartTime) << delim
@@ -86,8 +90,8 @@ void Logger::log(Frame* frame) {
           << fromBaseTime(frame->mergeRoIEndTime) << delim
           << fromBaseTime(frame->mixingStartTime) << delim
           << fromBaseTime(frame->mixingEndTime) << delim
-          << fromBaseTime(frame->inferenceStartTime) << delim
-          << fromBaseTime(frame->inferenceEndTime) << delim
+          << fromBaseTime(frame->mixedInferenceStartTime) << delim
+          << fromBaseTime(frame->mixedInferenceEndTime) << delim
           << fromBaseTime(frame->reconstructStartTime) << delim
           << fromBaseTime(frame->reconstructEndTime) << delim
           << fromBaseTime(NowMicros()) << '\n';

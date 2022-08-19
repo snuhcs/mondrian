@@ -5,14 +5,16 @@
 
 namespace rm {
 
+using Result = std::tuple<std::vector<BoundingBox>, std::pair<time_us, time_us>, Device>;
+
 class Classifier {
  public:
   Classifier(const int numLabels, const int inputSize, const int outputSize,
-             const float confidenceThreshold, const float iouThreshold);
+             const float confidenceThreshold, const float iouThreshold, Device device);
 
   virtual ~Classifier() {};
 
-  virtual std::vector<BoundingBox> recognizeImage(const cv::Mat& mat);
+  virtual Result recognizeImage(const cv::Mat& mat);
 
   const cv::Size& getInputSize() const;
 
@@ -36,6 +38,7 @@ class Classifier {
   virtual Rect reconstructBox(float x, float y, float w, float h,
                               float imageWidth, float imageHeight) = 0;
 
+  const Device device;
   const int numLabels;
   const cv::Size inputSize; // width, height
   const int outputSize;

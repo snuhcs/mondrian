@@ -19,7 +19,6 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int num
       mTargetSize(int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
       mInputSizes(mConfig.inferenceEngineConfig.INPUT_SIZES),
-      mInferenceFrameSize(mConfig.ROI_WISE_INFERENCE ? mInputSizes.front() : mInputSizes.back()),
       mScheduleInterval(mConfig.LATENCY_SLO_MS * 1000 / 2),
       mRoIResizer(new RoIResizer(config.roiResizerConfig)),
       mPatchMixer(new PatchMixer(config.patchMixerConfig)),
@@ -86,10 +85,13 @@ void SpatioTemporalRoIMixer::work() {
     logger.start();
     auto latencyTable = mInferenceEngine->getInferenceTimeTable();
     bool runFull = scheduleID % mConfig.FULL_FRAME_INTERVAL == 0;
-    time_us remainingTime = runFull ?
-                            mScheduleInterval - latencyTable[GPU][mInputSizes.back()] :
-                            mScheduleInterval;
-    std::vector<InferenceInfo> inferencePlan = getInferencePlan(remainingTime, latencyTable);
+    std::map<Device, std::pair<time_us, time_us>> startEndTime;
+    for (Device device : mConfig.inferenceEngineConfig.DEVICES) {
+      startEndTime[device] = {
+          (runFull && device == GPU) ? latencyTable[GPU][mInputSizes.back()] : 0,
+          mScheduleInterval};
+    }
+    std::vector<InferenceInfo> inferencePlan = getInferencePlan(startEndTime, latencyTable);
     logger.step("plan");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
          "STRM::getInferencePlan", logger.getDuration("plan"), toString(inferencePlan).c_str());
@@ -103,10 +105,17 @@ void SpatioTemporalRoIMixer::work() {
     }
 
     // Schedule
+    elapsedTime = logger.getElapsedTime();
+    for (Device device : mConfig.inferenceEngineConfig.DEVICES) {
+      startEndTime[device] = {
+          elapsedTime + ((runFull && device == GPU) ? latencyTable[GPU][mInputSizes.back()] : 0),
+          mScheduleInterval};
+    }
     auto[mixedFrames, fullFrameTarget, selectedFrames, droppedFrames] = mPatchMixer->packRoIs(
-        frames, (runFull ? fullFrameStreamIndex++ : -1), inferencePlan, mConfig.ALLOW_INTERPOLATION,
-        mConfig.ROI_WISE_INFERENCE, mRoIResizer->isProbing(), mRoIResizer->getNumProbeSteps(),
-        mRoIResizer->getProbeStepSize());
+        frames, (runFull ? fullFrameStreamIndex++ : -1),
+        getInferencePlan(startEndTime, latencyTable),
+        mConfig.ALLOW_INTERPOLATION, mConfig.ROI_WISE_INFERENCE, mRoIResizer->isProbing(),
+        mRoIResizer->getNumProbeSteps(), mRoIResizer->getProbeStepSize());
     assert(runFull == (fullFrameTarget != nullptr));
     if (!mConfig.ALLOW_INTERPOLATION) {
       testNoInterpolationPacking(frames, droppedFrames, fullFrameTarget);
@@ -115,7 +124,6 @@ void SpatioTemporalRoIMixer::work() {
     logger.step("pack");
     LOGD("%-25s took %-7lld us                            // %4lu MixedFrames",
          "PatchMixer::packRoIs", logger.getDuration("pack"), mixedFrames.size());
-
     // Full Frame Inference Target Stream
     if (runFull) {
       fullFrameInference(fullFrameTarget);
@@ -209,14 +217,16 @@ void SpatioTemporalRoIMixer::testNoInterpolationPacking(
 }
 
 void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
-  std::vector<RoI> emptyRoIs;
   assert(frame->isFullFrameTarget);
-  frame->fullFrameEnqueueTime = NowMicros();
   int key = frame->frameIndex + FULL_KEY_OFFSET;
-  mInferenceEngine->enqueue(frame->mat, GPU, mInputSizes.back(), key);
-  auto results = mInferenceEngine->getResults(key);
-  frame->fullFrameGetResultsTime = NowMicros();
-  for (const BoundingBox& box : results) {
+  int fullFrameSize = mInputSizes.back();
+  mInferenceEngine->enqueue(frame->mat, GPU, fullFrameSize, key);
+  auto[boxes, times, device] = mInferenceEngine->getResults(key);
+  frame->inferenceFrameSize = fullFrameSize;
+  frame->inferenceDevice = device;
+  frame->fullInferenceStartTime = times.first;
+  frame->fullInferenceEndTime = times.second;
+  for (const BoundingBox& box : boxes) {
     frame->boxes.emplace_back(
         new BoundingBox(UNASSIGNED_ID, box.location, box.confidence, box.label, origin_FF));
   }
@@ -234,33 +244,33 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
                      [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
 
   std::unique_lock<std::mutex> resultLock(mResultsMtx);
-  std::vector<BoundingBox> boxes;
-  std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
+  std::vector<BoundingBox> resultBoxes;
+  std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(resultBoxes),
                  [](const std::unique_ptr<BoundingBox>& box) { return *box; });
   mResults[frame->key][frame->frameIndex] = std::make_tuple(
-      NowMicros(), (mConfig.DRAW_OUTPUT ? frame->mat : cv::Mat()), std::move(boxes));
+      NowMicros(), (mConfig.DRAW_OUTPUT ? frame->mat : cv::Mat()), std::move(resultBoxes));
   resultLock.unlock();
   mResultsCv.notify_all();
 }
 
 void SpatioTemporalRoIMixer::mixedInference(std::vector<MixedFrame>& mixedFrames) {
-  time_us inferenceStartTime = NowMicros();
   // Enqueue Mixed Frames
   for (const auto& mixedFrame : mixedFrames) {
     mInferenceEngine->enqueue(mixedFrame.packedMat, mixedFrame.device,
-                              mInferenceFrameSize, mixedFrame.mixedFrameIndex);
+                              mixedFrame.mixedFrameSize, mixedFrame.mixedFrameIndex);
   }
 
   // Get results of mixed frames sequentially
   for (int i = 0; i < mixedFrames.size(); i++) {
-    auto results = mInferenceEngine->getResults(mixedFrames[i].mixedFrameIndex);
-    time_us inferenceEndTime = NowMicros();
+    auto[boxes, times, device] = mInferenceEngine->getResults(mixedFrames[i].mixedFrameIndex);
     for (Frame* frame : mixedFrames[i].getPackedFrames()) {
-      frame->inferenceStartTime = inferenceStartTime;
-      frame->inferenceEndTime = inferenceEndTime;
+      frame->inferenceFrameSize = mixedFrames[i].mixedFrameSize;
+      frame->inferenceDevice = device;
+      frame->mixedInferenceStartTime = times.first;
+      frame->mixedInferenceEndTime = times.second;
     }
     mixedFrames[i].packedMat.release();
-    mPatchReconstructor->assignBoxesToFrame(mixedFrames[i], results);
+    mPatchReconstructor->assignBoxesToFrame(mixedFrames[i], boxes);
 
     // Notify results of processed frames
     for (Frame* frame : mixedFrames[i].getPackedFrames()) {
@@ -293,20 +303,21 @@ void SpatioTemporalRoIMixer::mixedInference(std::vector<MixedFrame>& mixedFrames
 }
 
 void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFrames) {
-  time_us inferenceStartTime = NowMicros();
   for (const auto& mixedFrame : mixedFrames) {
-    mInferenceEngine->enqueue(mixedFrame.packedMat, mixedFrame.device, mInferenceFrameSize,
+    mInferenceEngine->enqueue(mixedFrame.packedMat, mixedFrame.device, mixedFrame.mixedFrameSize,
                               mixedFrame.mixedFrameIndex);
   }
 
   Stream inferenceFrames;
   for (int i = 0; i < mixedFrames.size(); i++) {
-    auto boxes = mInferenceEngine->getResults(mixedFrames[i].mixedFrameIndex);
+    auto[boxes, times, device] = mInferenceEngine->getResults(mixedFrames[i].mixedFrameIndex);
     assert(mixedFrames[i].packedRoIs.size() == 1);
     auto&[x, y] = (*mixedFrames[i].packedRoIs.begin())->packedLocation;
     RoI* pRoI = *mixedFrames[i].packedRoIs.begin();
-    pRoI->frame->inferenceStartTime = inferenceStartTime;
-    pRoI->frame->inferenceEndTime = NowMicros();
+    pRoI->frame->inferenceFrameSize = mixedFrames[i].mixedFrameSize;
+    pRoI->frame->inferenceDevice = device;
+    pRoI->frame->mixedInferenceStartTime = times.first;
+    pRoI->frame->mixedInferenceEndTime = times.second;
     inferenceFrames.insert(pRoI->frame);
     for (BoundingBox& b : boxes) {
       pRoI->frame->boxes.emplace_back(new BoundingBox(
@@ -352,10 +363,14 @@ void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
 void SpatioTemporalRoIMixer::waitForStart() {
   std::unique_lock<std::mutex> startLock(mStartMtx);
   mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
+  std::map<Device, std::pair<time_us, time_us>> startEndTime;
+  for (Device device : mConfig.inferenceEngineConfig.DEVICES) {
+    startEndTime[device] = {0, mScheduleInterval};
+  }
   mRoIExtractor = std::make_unique<RoIExtractor>(
       mConfig.roIExtractorConfig, mConfig.FULL_FRAME_INTERVAL > 0, mConfig.ALLOW_INTERPOLATION,
       mConfig.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(),
-      getInferencePlan(mScheduleInterval, mInferenceEngine->getInferenceTimeTable()));
+      getInferencePlan(startEndTime, mInferenceEngine->getInferenceTimeTable()));
   mbStartEnqueue = true;
   startLock.unlock();
   mEnqueueCv.notify_all();
@@ -539,7 +554,8 @@ std::vector<time_us> SpatioTemporalRoIMixer::search(const std::vector<long long>
 }
 
 std::vector<InferenceInfo> SpatioTemporalRoIMixer::getInferencePlan(
-    time_us remainingTime, const std::map<Device, std::map<int, time_us>>& inferenceTimes) {
+    const std::map<Device, std::pair<time_us, time_us>>& startEndTime,
+    const std::map<Device, std::map<int, time_us>>& inferenceTimes) {
   std::vector<InferenceInfo> inferencePlan;
   for (const auto&[device, size_latency] : inferenceTimes) {
     std::map<time_us, double> profile;
@@ -552,24 +568,21 @@ std::vector<InferenceInfo> SpatioTemporalRoIMixer::getInferencePlan(
     }
     std::sort(bars.begin(), bars.end(),
               [&profile](time_us b1, time_us b2) { return (profile[b1] > profile[b2]); });
-    std::vector<time_us> layout = search(bars, remainingTime, profile);
+    auto&[startTime, endTime] = startEndTime.at(device);
+    std::vector<time_us> layout = search(bars, endTime - startTime, profile);
     inferencePlan.reserve(layout.size());
     for (auto& l : layout) {
       inferencePlan.push_back({device, latency_size[l], l, 0});
     }
   }
-  std::set<Device> devices;
-  for (InferenceInfo info : inferencePlan) {
-    devices.insert(info.device);
-  }
-  for (Device device : devices) {
+  for (Device device : mConfig.inferenceEngineConfig.DEVICES) {
     std::vector<InferenceInfo*> devicePlan;
     for (auto& info : inferencePlan) {
       if (info.device == device) {
         devicePlan.push_back(&info);
       }
     }
-    time_us accumulatedLatency = 0;
+    time_us accumulatedLatency = startEndTime.at(device).first;
     for (auto* info : devicePlan) {
       accumulatedLatency += info->latency;
       info->accumulatedLatency = accumulatedLatency;

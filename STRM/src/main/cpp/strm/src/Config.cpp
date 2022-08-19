@@ -133,6 +133,7 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
         LOGD("%s device is not supported", deviceStr.c_str());
       }
     }
+    assert(std::find(config.DEVICES.begin(), config.DEVICES.end(), GPU) != config.DEVICES.end());
   }
   return config;
 }

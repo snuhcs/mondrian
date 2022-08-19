@@ -12,7 +12,7 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
  public:
   TfLiteYoloV5ClassifierDSP(int inputSize, float confidenceThreshold, float iouThreshold, bool isTiny);
 
-  std::vector<BoundingBox> recognizeImage(const cv::Mat& mat) override;
+  Result recognizeImage(const cv::Mat& mat) override;
 
   time_us profileInferenceTime() override;
 
@@ -33,10 +33,12 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
   int right;
   int bottom;
 
+  int inputBias;
+  int outputBias;
   float inputScale;
   float outputScale;
-  uint8_t* input; // 1 x inputSize.height x inputSize.width x 3
-  uint8_t* outputs; // 1 x outputSize x 85 (boxes, maxConf, confidences)
+  int8_t* input; // 1 x inputSize.height x inputSize.width x 3
+  int8_t* outputs; // 1 x outputSize x 85 (boxes, maxConf, confidences)
 };
 
 } // namespace rm

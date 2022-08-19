@@ -54,8 +54,9 @@ class SpatioTemporalRoIMixer {
 
   void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
-  static std::vector<InferenceInfo> getInferencePlan(
-      time_us remainingTime, const std::map<Device, std::map<int, time_us>>& inferenceTimes);
+  std::vector<InferenceInfo> getInferencePlan(
+      const std::map<Device, std::pair<time_us, time_us>>& startEndTime,
+      const std::map<Device, std::map<int, time_us>>& inferenceTimes);
 
   static double weigh(const std::vector<time_us>& layout, std::map<long long, double> profile);
 
@@ -75,7 +76,6 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<Logger> mRoILogger;
   const cv::Size mTargetSize;
   const std::vector<int> mInputSizes;
-  const int mInferenceFrameSize;
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;

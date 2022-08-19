@@ -73,19 +73,19 @@ void InferenceEngine::enqueue(const cv::Mat mat, Device device, int inputSize, i
   workers[device]->enqueue(mat, inputSize, key);
 }
 
-std::vector<BoundingBox> InferenceEngine::getResults(int key) {
+Result InferenceEngine::getResults(int key) {
   std::unique_lock<std::mutex> resultLock(resultMtx);
   resultCv.wait(resultLock, [this, key]() {
     return results.find(key) != results.end();
   });
-  std::vector<BoundingBox> boxes = results.at(key);
+  auto boxTimeDevice = results.at(key);
   results.erase(key);
-  return boxes;
+  return boxTimeDevice;
 }
 
-void InferenceEngine::enqueueResults(int key, const std::vector<BoundingBox>& boxes) {
+void InferenceEngine::enqueueResults(int key, const Result& boxTimes) {
   std::unique_lock<std::mutex> resultLock(resultMtx);
-  results.emplace(key, boxes);
+  results.emplace(key, boxTimes);
   resultLock.unlock();
   resultCv.notify_all();
 }
