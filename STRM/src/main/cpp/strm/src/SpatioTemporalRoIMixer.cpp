@@ -12,7 +12,7 @@ namespace rm {
 const int SpatioTemporalRoIMixer::FULL_KEY_OFFSET = 1000000;
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int numSourceVideo,
-                                               JavaVM* vm, JNIEnv* env, jobject strm)
+                                               JavaVM* vm, JNIEnv* env, jobject emulator)
     : mConfig(config), mbStop(false),
       mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
       mNumSourceVideos(numSourceVideo),
@@ -22,10 +22,9 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int num
       mScheduleInterval(mConfig.LATENCY_SLO_MS * 1000 / 2),
       mRoIResizer(new RoIResizer(config.roiResizerConfig)),
       mPatchMixer(new PatchMixer(config.patchMixerConfig)),
-      mInferenceEngine(new InferenceEngine(config.inferenceEngineConfig, vm, env, strm)),
-      mPatchReconstructor(
-          new PatchReconstructor(config.patchReconstructorConfig, mRoIResizer.get())),
-      jvm(vm), env(nullptr), strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))) {
+      mInferenceEngine(new InferenceEngine(config.inferenceEngineConfig, vm, env, emulator)),
+      mPatchReconstructor(new PatchReconstructor(
+          config.patchReconstructorConfig, mRoIResizer.get())) {
   assert(!config.ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
   if (config.LOG_EXECUTION) {
     mLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");
@@ -38,18 +37,6 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int num
 
   mThread = std::thread([this]() { work(); });
   mResultThread = std::thread([this]() { outputWork(); });
-
-  class_SpatioTemporalRoIMixer = reinterpret_cast<jclass>(env->NewGlobalRef(
-      env->FindClass("hcs/offloading/strm/Emulator")));
-  SpatioTemporalRoIMixer_drawObjectDetectionResult = env->GetMethodID(
-      class_SpatioTemporalRoIMixer, "drawObjectDetectionResult", "(JLjava/util/List;)V");
-  class_ArrayList = reinterpret_cast<jclass>(env->NewGlobalRef(
-      env->FindClass("java/util/ArrayList")));
-  ArrayList_init = env->GetMethodID(class_ArrayList, "<init>", "()V");
-  ArrayList_add = env->GetMethodID(class_ArrayList, "add", "(ILjava/lang/Object;)V");
-  class_BoundingBox = reinterpret_cast<jclass>(env->NewGlobalRef(
-      env->FindClass("hcs/offloading/strm/BoundingBox")));
-  BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIIFIIZ)V");
 }
 
 SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
@@ -92,6 +79,7 @@ void SpatioTemporalRoIMixer::work() {
           mScheduleInterval};
     }
     std::vector<InferenceInfo> inferencePlan = getInferencePlan(startEndTime, latencyTable);
+    assert(!inferencePlan.empty());
     logger.step("plan");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
          "STRM::getInferencePlan", logger.getDuration("plan"), toString(inferencePlan).c_str());
@@ -176,9 +164,9 @@ void SpatioTemporalRoIMixer::work() {
           std::vector<BoundingBox> boxes;
           std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
                          [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-          mResults[frame->key][frame->frameIndex] = std::make_tuple(
-              NowMicros(), (mConfig.DRAW_OUTPUT ? frame->mat : cv::Mat()),
-              nms(boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold()));
+          mResults[frame->key][frame->frameIndex] = {
+              NowMicros(),
+              nms(boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold())};
         }
       }
     }
@@ -247,8 +235,7 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   std::vector<BoundingBox> resultBoxes;
   std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(resultBoxes),
                  [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-  mResults[frame->key][frame->frameIndex] = std::make_tuple(
-      NowMicros(), (mConfig.DRAW_OUTPUT ? frame->mat : cv::Mat()), std::move(resultBoxes));
+  mResults[frame->key][frame->frameIndex] = {NowMicros(), std::move(resultBoxes)};
   resultLock.unlock();
   mResultsCv.notify_all();
 }
@@ -309,12 +296,12 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
   }
 
   Stream inferenceFrames;
-  for (int i = 0; i < mixedFrames.size(); i++) {
-    auto[boxes, times, device] = mInferenceEngine->getResults(mixedFrames[i].mixedFrameIndex);
-    assert(mixedFrames[i].packedRoIs.size() == 1);
-    auto&[x, y] = (*mixedFrames[i].packedRoIs.begin())->packedLocation;
-    RoI* pRoI = *mixedFrames[i].packedRoIs.begin();
-    pRoI->frame->inferenceFrameSize = mixedFrames[i].mixedFrameSize;
+  for (auto& mixedFrame : mixedFrames) {
+    auto[boxes, times, device] = mInferenceEngine->getResults(mixedFrame.mixedFrameIndex);
+    assert(mixedFrame.packedRoIs.size() == 1);
+    auto&[x, y] = (*mixedFrame.packedRoIs.begin())->packedLocation;
+    RoI* pRoI = *mixedFrame.packedRoIs.begin();
+    pRoI->frame->inferenceFrameSize = mixedFrame.mixedFrameSize;
     pRoI->frame->inferenceDevice = device;
     pRoI->frame->mixedInferenceStartTime = times.first;
     pRoI->frame->mixedInferenceEndTime = times.second;
@@ -453,40 +440,11 @@ void SpatioTemporalRoIMixer::outputWork() {
     resultLock.unlock();
     mResultsCv.notify_all();
 
-    const time_us& time = std::get<0>(result);
-    cv::Mat mat = std::get<1>(result);
-    const std::vector<BoundingBox>& boxes = std::get<2>(result);
+    auto&[time, boxes] = result;
     LOGD("Logger::logResult                         for video %-5s frame %-4d // %4lu boxes",
          Frame::toShortKey(key).c_str(), frameIndex, boxes.size());
     mResultLogger->logResult(key, frameIndex, time, boxes);
-    if (mConfig.DRAW_OUTPUT) {
-      drawObjectDetectionResult(mat, boxes);
-    }
   }
-}
-
-void SpatioTemporalRoIMixer::drawObjectDetectionResult(const cv::Mat& mat,
-                                                       const std::vector<BoundingBox>& boxes) {
-  if (jvm->AttachCurrentThread(&env, nullptr) != 0) {
-    return;
-  }
-
-  jobject jBoxes = env->NewObject(class_ArrayList, ArrayList_init);
-  for (int i = 0; i < boxes.size(); i++) {
-    const rm::BoundingBox& b = boxes.at(i);
-    jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
-                                 b.id,
-                                 int(std::round(b.location.left)), int(std::round(b.location.top)),
-                                 int(std::round(b.location.right)),
-                                 int(std::round(b.location.bottom)),
-                                 b.confidence, b.label, int(b.origin), (b.srcRoI == nullptr));
-    env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
-  }
-  auto* jMat = new cv::Mat();
-  mat.copyTo(*jMat);
-  env->CallVoidMethod(strm, SpatioTemporalRoIMixer_drawObjectDetectionResult, (long) jMat, jBoxes);
-
-  jvm->DetachCurrentThread();
 }
 
 double SpatioTemporalRoIMixer::weigh(const std::vector<time_us>& layout, std::map<long long, double> profile) {

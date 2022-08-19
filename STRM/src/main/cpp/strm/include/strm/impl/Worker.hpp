@@ -1,6 +1,8 @@
 #ifndef IMPL_WORKER_HPP_
 #define IMPL_WORKER_HPP_
 
+#include <jni.h>
+
 #include <queue>
 #include <thread>
 
@@ -12,7 +14,8 @@ class InferenceEngine;
 
 class Worker {
  public:
-  Worker(InferenceEngine* engine, Device device, std::map<int, Classifier*> classifierMap);
+  Worker(InferenceEngine* engine, Device device, std::map<int, Classifier*> classifierMap,
+         bool draw, JavaVM* vm, JNIEnv* env, jobject emulator);
 
   ~Worker();
 
@@ -23,7 +26,10 @@ class Worker {
  private:
   void work();
 
+  void drawInferenceResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
+
   const Device device;
+  const bool draw;
 
   std::mutex mtx;
   std::condition_variable cv;
@@ -34,6 +40,17 @@ class Worker {
 
   std::atomic_bool isClosed;
   std::thread thread;
+
+  JavaVM* jvm;
+  JNIEnv* env;
+  jobject emulator;
+  jclass class_Emulator;
+  jmethodID Emulator_drawOutput;
+  jclass class_ArrayList;
+  jmethodID ArrayList_init;
+  jmethodID ArrayList_add;
+  jclass class_BoundingBox;
+  jmethodID BoundingBox_init;
 };
 
 } // namespace rm

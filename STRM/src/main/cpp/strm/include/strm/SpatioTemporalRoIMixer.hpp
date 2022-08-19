@@ -21,12 +21,12 @@
 
 namespace rm {
 
-using FrameResult = std::tuple<time_us, cv::Mat, std::vector<BoundingBox>>;
+using FrameResult = std::pair<time_us, std::vector<BoundingBox>>;
 
 class SpatioTemporalRoIMixer {
  public:
-  SpatioTemporalRoIMixer(const STRMConfig& config, int numSourceVideos, JavaVM* vm, JNIEnv* env,
-                         jobject strm);
+  SpatioTemporalRoIMixer(const STRMConfig& config, int numSourceVideos,
+                         JavaVM* vm, JNIEnv* env, jobject strm);
 
   ~SpatioTemporalRoIMixer();
 
@@ -51,8 +51,6 @@ class SpatioTemporalRoIMixer {
                                          Frame* fullFrameTarget);
 
   void releaseFrames(const MultiStream& frames);
-
-  void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
   std::vector<InferenceInfo> getInferencePlan(
       const std::map<Device, std::pair<time_us, time_us>>& startEndTime,
@@ -97,17 +95,6 @@ class SpatioTemporalRoIMixer {
   std::condition_variable mResultsCv;
   std::map<std::string, std::map<int, FrameResult>> mResults;
   std::map<std::string, int> mResultIndices;
-
-  JavaVM* jvm;
-  JNIEnv* env;
-  jobject strm;
-  jclass class_SpatioTemporalRoIMixer;
-  jmethodID SpatioTemporalRoIMixer_drawObjectDetectionResult;
-  jclass class_ArrayList;
-  jmethodID ArrayList_init;
-  jmethodID ArrayList_add;
-  jclass class_BoundingBox;
-  jmethodID BoundingBox_init;
 };
 
 } // namespace rm

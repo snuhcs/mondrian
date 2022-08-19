@@ -17,9 +17,9 @@ class InferenceEngine {
 
  public:
   InferenceEngine(const InferenceEngineConfig& config,
-                  JavaVM* vm, JNIEnv* env, jobject strm);
+                  JavaVM* vm, JNIEnv* env, jobject emulator);
 
-  void enqueue(const cv::Mat mat, Device device, int inputSize, int key);
+  void enqueue(const cv::Mat& mat, Device device, int inputSize, int key);
 
   Result getResults(int key);
 
@@ -30,10 +30,9 @@ class InferenceEngine {
  private:
   void enqueueResults(const int handle, const Result& boxes);
 
-  void drawInferenceResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
-
   template<typename T>
-  void addClassifiers(Device device, const InferenceEngineConfig& config);
+  void addClassifiers(Device device, const InferenceEngineConfig& config,
+                      JavaVM* vm, JNIEnv* env, jobject emulator);
 
   const InferenceEngineConfig mConfig;
 
@@ -43,17 +42,6 @@ class InferenceEngine {
   std::mutex resultMtx;
   std::condition_variable resultCv;
   std::map<int, Result> results;
-
-  JavaVM* jvm;
-  JNIEnv* env;
-  jobject strm;
-  jclass class_SpatioTemporalRoIMixer;
-  jmethodID SpatioTemporalRoIMixer_drawInferenceResult;
-  jclass class_ArrayList;
-  jmethodID ArrayList_init;
-  jmethodID ArrayList_add;
-  jclass class_BoundingBox;
-  jmethodID BoundingBox_init;
 };
 
 } // namespace rm

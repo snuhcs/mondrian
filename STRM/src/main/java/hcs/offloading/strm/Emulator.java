@@ -140,12 +140,12 @@ public class Emulator {
         return sb.toString();
     }
 
-    public void drawInferenceResult(long addr, List<BoundingBox> results) {
-        inferenceViewCallback.drawInferenceResult(addr, results);
+    public void drawOutput0(long addr, List<BoundingBox> results) {
+        inferenceViewCallback.drawOutput0(addr, results);
     }
 
-    public void drawObjectDetectionResult(long addr, List<BoundingBox> results) {
-        inferenceViewCallback.drawObjectDetectionResult(addr, results);
+    public void drawOutput1(long addr, List<BoundingBox> results) {
+        inferenceViewCallback.drawOutput1(addr, results);
     }
 
     private native long createSpatioTemporalRoIMixer();

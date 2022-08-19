@@ -3,7 +3,7 @@ package hcs.offloading.strm;
 import java.util.List;
 
 public interface InferenceViewCallback {
-    void drawInferenceResult(long addr, List<BoundingBox> results);
+    void drawOutput0(long addr, List<BoundingBox> results);
 
-    void drawObjectDetectionResult(long addr, List<BoundingBox> results);
+    void drawOutput1(long addr, List<BoundingBox> results);
 }

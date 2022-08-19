@@ -76,7 +76,6 @@ struct PatchReconstructorConfig {
 struct STRMConfig {
   bool LOG_EXECUTION = false;
   bool LOG_ROI = false;
-  bool DRAW_OUTPUT = false;
   bool ALLOW_INTERPOLATION = false;
   bool ROI_WISE_INFERENCE = false;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference

@@ -175,9 +175,6 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["log_roi"].isNull()) {
     config.LOG_ROI = json["log_roi"].asBool();
   }
-  if (!json["draw_output"].isNull()) {
-    config.DRAW_OUTPUT = json["draw_output"].asBool();
-  }
   if (!json["allow_interpolation"].isNull()) {
     config.ALLOW_INTERPOLATION = json["allow_interpolation"].asBool();
   }

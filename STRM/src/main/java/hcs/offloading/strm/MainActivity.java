@@ -15,8 +15,8 @@ import java.util.List;
 import hcs.offloading.strm.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity implements InferenceViewCallback {
-    private ImageView mOutputView;
-    private ImageView mInferenceOutputView;
+    private ImageView mOutputView0;
+    private ImageView mOutputView1;
 
     private Emulator mEmulator;
 
@@ -26,8 +26,8 @@ public class MainActivity extends AppCompatActivity implements InferenceViewCall
 
         setContentView(ActivityMainBinding.inflate(getLayoutInflater()).getRoot());
 
-        mOutputView = findViewById(hcs.offloading.strm.R.id.outputView);
-        mInferenceOutputView = findViewById(hcs.offloading.strm.R.id.inferenceOutputView);
+        mOutputView0 = findViewById(R.id.outputView0);
+        mOutputView1 = findViewById(R.id.outputView1);
 
         try {
             mEmulator = new Emulator(this);
@@ -43,18 +43,18 @@ public class MainActivity extends AppCompatActivity implements InferenceViewCall
     }
 
     @Override
-    public void drawInferenceResult(long addr, List<BoundingBox> results) {
+    public void drawOutput0(long addr, List<BoundingBox> results) {
         Mat mat = new Mat(addr);
         Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bitmap);
-        mInferenceOutputView.post(() -> mInferenceOutputView.setImageBitmap(DrawUtil.drawBoxes(bitmap, results, false /* must be always false */)));
+        mOutputView0.post(() -> mOutputView0.setImageBitmap(DrawUtil.drawBoxes(bitmap, results, false)));
     }
 
     @Override
-    public void drawObjectDetectionResult(long addr, List<BoundingBox> results) {
+    public void drawOutput1(long addr, List<BoundingBox> results) {
         Mat mat = new Mat(addr);
         Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bitmap);
-        mOutputView.post(() -> mOutputView.setImageBitmap(DrawUtil.drawBoxes(bitmap, results, true)));
+        mOutputView1.post(() -> mOutputView1.setImageBitmap(DrawUtil.drawBoxes(bitmap, results, false)));
     }
 }

@@ -147,7 +147,6 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
       fullFrameTarget = std::get<0>(ret);
       std::vector<Frame*>& probeFrames = std::get<1>(ret);
       std::vector<RoI*>& candidateRoIs = std::get<2>(ret);
-      int minFrames = fullFrameTarget == nullptr ? 1 : 2;
       int numSelectedFrames = std::accumulate(
           selectedFrames.begin(), selectedFrames.end(), 0,
           [](int cnt, auto& it) {
@@ -156,7 +155,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
       LOGD("PatchMixer::packRoIs: Try pack %-4d Frames => %-4lu / %-4d RoIs can be inference",
            numSelectedFrames, candidateRoIs.size(), numFrames);
       // If packing failed
-      if (candidateRoIs.size() > numFrames && numSelectedFrames > minFrames) {
+      if (candidateRoIs.size() > numFrames) {
         int numSelectedRoIs = std::accumulate(
             selectedFrames.begin(), selectedFrames.end(), 0,
             [](int cnt, auto& it) {
@@ -165,14 +164,13 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
                   [](int cnt, Frame* frame) { return cnt + frame->parentRoIs.size(); });
             });
         int avgRoIsPerFrame = numSelectedRoIs / numSelectedFrames;
-        int numPackableFrames = std::min(numSelectedFrames - 1,
-                                         std::max(minFrames, numFrames / avgRoIsPerFrame));
+        int numPackableFrames = std::min(numSelectedFrames - 1, numFrames / avgRoIsPerFrame);
         splitFrames(selectedFrames, droppedFrames, numPackableFrames);
         for (Frame* frame : probeFrames) {
           frame->resetProbeRoIs();
         }
       } else { // If packing success
-        for (int i = 0; i < std::min(numFrames, (int) candidateRoIs.size()); i++) {
+        for (int i = 0; i < std::min(numFrames, int(candidateRoIs.size())); i++) {
           const InferenceInfo& info = inferencePlan[i];
           auto frameSize = float(info.size);
           RoI* pRoI = candidateRoIs[i];
@@ -223,13 +221,11 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
   } else if (!allowInterpolation && !roiWiseInference) {
     while (true) {
       // Preprocess: getFullFrameTarget & addProbeRoIs & collectRoIs & prioritizeRoIs
-      int numFrames = int(inferencePlan.size());
       auto ret = preparePack(selectedFrames, fullFrameStreamIndex, probe, numProbeSteps,
                              probeStepSize);
       fullFrameTarget = std::get<0>(ret);
       std::vector<Frame*>& probeFrames = std::get<1>(ret);
       std::vector<RoI*>& candidateRoIs = std::get<2>(ret);
-      int minFrames = fullFrameTarget == nullptr ? 1 : 2;
       // Init data structures
       std::map<int, std::set<RoI*>> packedRoIsMap;
       std::vector<FreeRects> freeRectsList;
@@ -265,7 +261,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
            " Try pack %-4d Frames => %-4d childRoIs + %-4d ProbeRoIs packed among %-4lu RoIs",
            numSelectedFrames, numPackedChildRoIs, numPackedProbeRoIs, candidateRoIs.size());
       // If packing failed
-      if (!isAllPacked && numSelectedFrames > minFrames) {
+      if (!isAllPacked) {
         int numPackedRoIs = numPackedChildRoIs + numPackedProbeRoIs;
         int numSelectedRoIs = std::accumulate(
             selectedFrames.begin(), selectedFrames.end(), 0,
@@ -275,8 +271,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
                   [](int cnt, Frame* frame) { return cnt + frame->parentRoIs.size(); });
             });
         int avgRoIsPerFrame = numSelectedRoIs / numSelectedFrames;
-        int numPackableFrames = std::min(numSelectedFrames - 1,
-                                         std::max(minFrames, numPackedRoIs / avgRoIsPerFrame));
+        int numPackableFrames = std::min(numSelectedFrames - 1, numPackedRoIs / avgRoIsPerFrame);
         splitFrames(selectedFrames, droppedFrames, numPackableFrames);
         for (Frame* frame : probeFrames) {
           frame->resetProbeRoIs();
