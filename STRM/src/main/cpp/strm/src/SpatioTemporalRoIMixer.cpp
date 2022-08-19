@@ -17,8 +17,8 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
       mInferenceEngine(inferenceEngine),
       mNumSourceVideos(numSourceVideo),
-      mTargetSize(config.roIExtractorConfig.EXTRACTION_RESIZE_WIDTH,
-                  config.roIExtractorConfig.EXTRACTION_RESIZE_HEIGHT),
+      mTargetSize(int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_WIDTH),
+                  int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
       mInputSizes(inferenceEngine->getInputSizes()),
       mInferenceFrameSize(mConfig.ROI_WISE_INFERENCE ? mInputSizes.front() : mInputSizes.back()),
       mScheduleInterval(mConfig.LATENCY_SLO_MS * 1000 / 2),
@@ -94,9 +94,8 @@ void SpatioTemporalRoIMixer::work() {
     // TODO: properly set remainingTime
     time_us remainingTime = -1234;
     // ex) remainingTime = mScheduleInterval - mInferenceEngine->getInferenceTimeUs()...
-    std::map<Device, std::vector<int>> inferencePlan = getInferencePlan(
-        remainingTime,
-        mInferenceEngine->getInferenceTimeUs());
+    std::vector<InferenceInfo> inferencePlan = getInferencePlan(
+        remainingTime, mInferenceEngine->getInferenceTimeUs());
     MultiStream frames = mRoIExtractor->getExtractedFrames(inferencePlan);
     logger.step("roi");
     LOGD("===== Schedule %d start =====", scheduleID);
@@ -110,9 +109,9 @@ void SpatioTemporalRoIMixer::work() {
     // Schedule
     bool runFull = scheduleID % mConfig.FULL_FRAME_INTERVAL == 0;
     auto[mixedFrames, fullFrameTarget, selectedFrames, droppedFrames] = mPatchMixer->packRoIs(
-        frames, (runFull ? fullFrameStreamIndex++ : -1), mInferenceFrameSize,
-        numInferences, mConfig.ALLOW_INTERPOLATION, mConfig.ROI_WISE_INFERENCE,
-        mRoIResizer->isProbing(), mRoIResizer->getNumProbeSteps(), mRoIResizer->getProbeStepSize());
+        frames, (runFull ? fullFrameStreamIndex++ : -1), inferencePlan, mConfig.ALLOW_INTERPOLATION,
+        mConfig.ROI_WISE_INFERENCE, mRoIResizer->isProbing(), mRoIResizer->getNumProbeSteps(),
+        mRoIResizer->getProbeStepSize());
     assert(runFull == (fullFrameTarget != nullptr));
     if (!mConfig.ALLOW_INTERPOLATION) {
       testNoInterpolationPacking(frames, droppedFrames, fullFrameTarget);
@@ -139,9 +138,9 @@ void SpatioTemporalRoIMixer::work() {
       mixedInference(mixedFrames);
     }
     logger.step("inf");
-    LOGD("%-25s took %-7lld us                            // %4d inferences",
+    LOGD("%-25s took %-7lld us                            // %s",
          mConfig.ROI_WISE_INFERENCE ? "STRM::roiWiseInference" : "STRM:mixedFrameInference",
-         logger.getDuration("inf"), numInferences);
+         logger.getDuration("inf"), toString(inferencePlan).c_str());
 
     // Interpolate results
     std::set<idType> droppedIDs = Interpolator::interpolate(selectedFrames);
@@ -195,8 +194,8 @@ void SpatioTemporalRoIMixer::testNoInterpolationPacking(
     const MultiStream& frames, const Stream& droppedFrames, Frame* fullFrameTarget) {
   int numWrong = 0;
   int numCorrect = 0;
-  for (auto&[aStreamKey, aStreamFrames]: frames) {
-    for (Frame* frame : aStreamFrames) {
+  for (const auto& it: frames) {
+    for (Frame* frame : it.second) {
       if (!std::all_of(frame->parentRoIs.begin(), frame->parentRoIs.end(),
                        [](const std::unique_ptr<RoI>& pRoI) { return pRoI->isPacked(); })) {
         if (droppedFrames.find(frame) == droppedFrames.end() && frame != fullFrameTarget) {
@@ -286,8 +285,8 @@ void SpatioTemporalRoIMixer::mixedInference(std::vector<MixedFrame>& mixedFrames
     }
     mRoIExtractor->notify();
   }
-  for (int i = 0; i < mixedFrames.size(); i++) {
-    for (Frame* frame : mixedFrames[i].getPackedFrames()) {
+  for (auto& mixedFrame : mixedFrames) {
+    for (Frame* frame : mixedFrame.getPackedFrames()) {
       if (std::any_of(frame->boxes.begin(), frame->boxes.end(),
                       [](auto& box) { return box->id == UNASSIGNED_ID; })) {
         // Match boxes with RoIs (per frame)
@@ -309,11 +308,11 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
   Stream inferenceFrames;
   for (int i = 0; i < handles.size(); i++) {
     std::vector<BoundingBox> boxes = mInferenceEngine->getResults(handles[i]);
-    pRoI->frame->inferenceStartTime = inferenceStartTime;
-    pRoI->frame->inferenceEndTime = NowMicros();
     assert(mixedFrames[i].packedRoIs.size() == 1);
     auto&[x, y] = (*mixedFrames[i].packedRoIs.begin())->packedLocation;
     RoI* pRoI = *mixedFrames[i].packedRoIs.begin();
+    pRoI->frame->inferenceStartTime = inferenceStartTime;
+    pRoI->frame->inferenceEndTime = NowMicros();
     inferenceFrames.insert(pRoI->frame);
     for (BoundingBox& b : boxes) {
       pRoI->frame->boxes.emplace_back(new BoundingBox(
@@ -334,7 +333,9 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
 
 void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
   std::unique_lock<std::mutex> framesLock(mFrameBuffersMtx);
-  for (auto&[aStreamKey, aStreamFrames] : frames) {
+  for (const auto& it : frames) {
+    const std::string& aStreamKey = it.first;
+    const Stream& aStreamFrames = it.second;
     if (aStreamFrames.empty()) {
       continue;
     }
@@ -356,6 +357,7 @@ void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
 
 void SpatioTemporalRoIMixer::waitForStart() {
   std::unique_lock<std::mutex> startLock(mStartMtx);
+  mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
   // TODO: properly set remainingTime
   time_us remainingTime = -1234;
   // ex) remainingTime = mScheduleInterval - mInferenceEngine->getInferenceTimeUs()...
@@ -363,7 +365,7 @@ void SpatioTemporalRoIMixer::waitForStart() {
       mConfig.roIExtractorConfig, mConfig.FULL_FRAME_INTERVAL > 0, mConfig.ALLOW_INTERPOLATION,
       mConfig.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(),
       getInferencePlan(remainingTime, mInferenceEngine->getInferenceTimeUs()));
-  startEnqueue = true;
+  mbStartEnqueue = true;
   startLock.unlock();
   mEnqueueCv.notify_all();
 }
@@ -395,7 +397,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
       std::unique_lock<std::mutex> startLock(mStartMtx);
       mNumStartedFrameBuffers++;
       mStartCv.notify_one();
-      mEnqueueCv.wait(startLock, [this]() { return startEnqueue; });
+      mEnqueueCv.wait(startLock, [this]() { return mbStartEnqueue; });
       startLock.unlock();
       LOGD("Start %s video at %lld us", key.c_str(), NowMicros());
     }
@@ -481,8 +483,7 @@ void SpatioTemporalRoIMixer::drawObjectDetectionResult(const cv::Mat& mat,
   jvm->DetachCurrentThread();
 }
 
-
-double weigh(const std::vector<time_us>& layout, std::map<long long ,double> profile) {
+double weigh(const std::vector<time_us>& layout, std::map<long long, double> profile) {
   double weight = 0;
   for (auto l : layout) {
     assert (profile.find(l) != profile.end());
@@ -491,17 +492,18 @@ double weigh(const std::vector<time_us>& layout, std::map<long long ,double> pro
   return weight;
 }
 
-std::vector<time_us> search(const std::vector<long long>& bars, long long total, std::map<long long ,double>& profile) {
+std::vector<time_us> search(const std::vector<long long>& bars, long long total,
+                            std::map<long long, double>& profile) {
   std::vector<time_us> layout;
   time_us left = total;
 
   // greedy initialization
   for (auto l : bars) {
-    time_us cnt = left/l;
-    for (int i=0; i<cnt; i++) {
+    time_us cnt = left / l;
+    for (int i = 0; i < cnt; i++) {
       layout.push_back(l);
     }
-    left -= l*cnt;
+    left -= l * cnt;
   }
 
   // if cannot fill any bar, return empty layout
@@ -514,7 +516,7 @@ std::vector<time_us> search(const std::vector<long long>& bars, long long total,
   assert (profile.find(l_a) != profile.end());
   double d_a = profile[l_a];
   long c_a = std::count(layout.begin(), layout.end(), l_a);
-  double alpha = weigh(layout, profile) - l_a * c_a * d_a;
+  double alpha = weigh(layout, profile) - double(l_a) * double(c_a) * d_a;
   auto l_a_it = std::find(bars.begin(), bars.end(), l_a);
 
   // if selected bar is the one with the smallest density, removing is no worth
@@ -524,43 +526,69 @@ std::vector<time_us> search(const std::vector<long long>& bars, long long total,
 
   // figure maximum number of removal with potential benefit
   double d_b = profile[bars[std::distance(bars.begin(), l_a_it) + 1]];
-  long k_max = std::min(c_a, long((left*d_b - alpha) / (l_a * (d_a - d_b))));
+  long k_max = std::min(c_a, long((double(left) * d_b - alpha) / (double(l_a) * (d_a - d_b))));
   if (k_max < 0) {
     return layout;
   }
 
   // try all possible number of removals, recursively calling this function for the other area
   std::vector<std::vector<time_us>> layouts;
-  std::vector<time_us> subBars {bars.begin()+1, bars.end()};
-  for (int k=0; k<=k_max; k++) {
+  std::vector<time_us> subBars{bars.begin() + 1, bars.end()};
+  for (int k = 0; k <= k_max; k++) {
     std::vector<time_us> layout_left(c_a - k, l_a);
-    std::vector<time_us> layout_right = search(subBars, total - std::accumulate(layout_left.begin(), layout_left.end(), 0l), profile);
+    std::vector<time_us> layout_right = search(subBars, total - std::accumulate(layout_left.begin(),
+                                                                                layout_left.end(),
+                                                                                0l), profile);
     layout_left.insert(layout_left.end(), layout_right.begin(), layout_right.end());
     layouts.push_back(layout_left);
   }
-  std::sort(layouts.begin(), layouts.end(), [profile](auto& l1, auto& l2){return weigh(l1, profile) > weigh(l2, profile);});
+  std::sort(layouts.begin(), layouts.end(),
+            [profile](auto& l1, auto& l2) { return weigh(l1, profile) > weigh(l2, profile); });
   return layouts[0];
 }
 
-std::map<Device, std::vector<int>> SpatioTemporalRoIMixer::getInferencePlan(time_us remainingTime, std::map<Device, std::map<int, time_us>> inferenceTimes) {
-  std::map<Device, std::vector<int>> inferencePlan;
-  for (const auto& [device, size_latency] : inferenceTimes) {
+std::vector<InferenceInfo> SpatioTemporalRoIMixer::getInferencePlan(
+    time_us remainingTime, const std::map<Device, std::map<int, time_us>>& inferenceTimes) {
+  std::vector<InferenceInfo> inferencePlan;
+  for (const auto&[device, size_latency] : inferenceTimes) {
     std::map<time_us, double> profile;
     std::vector<time_us> bars;
     std::map<time_us, int> latency_size;
-    std::vector<int> plan;
-    for (const auto& [size, latency] : size_latency) {
-      profile[latency] = size*size/latency;
+    for (const auto&[size, latency] : size_latency) {
+      // TODO: check profile[latency] = double(size * size) / double(latency)
+      profile[latency] = double(size * size / latency);
       bars.push_back(latency);
       latency_size[latency] = size;
     }
-    std::sort(bars.begin(), bars.end(), [profile](auto b1, auto b2){return (profile[b1] > profile[b2]);});
+    std::sort(bars.begin(), bars.end(),
+              [profile](auto b1, auto b2) { return (profile[b1] > profile[b2]); });
     std::vector<time_us> layout = search(bars, remainingTime, profile);
+    inferencePlan.reserve(layout.size());
     for (auto& l : layout) {
-      plan.push_back(latency_size[l]);
+      inferencePlan.push_back({device, latency_size[l], l, 0});
     }
-    inferencePlan[device] = plan;
   }
+  std::set<Device> devices;
+  for (InferenceInfo info : inferencePlan) {
+    devices.insert(info.device);
+  }
+  for (Device device : devices) {
+    std::vector<InferenceInfo*> devicePlan;
+    for (auto& info : inferencePlan) {
+      if (info.device == device) {
+        devicePlan.push_back(&info);
+      }
+    }
+    time_us accumulatedLatency = 0;
+    for (auto* info : devicePlan) {
+      accumulatedLatency += info->latency;
+      info->accumulatedLatency = accumulatedLatency;
+    }
+  }
+  std::sort(inferencePlan.begin(), inferencePlan.end(),
+            [](const InferenceInfo& l, const InferenceInfo& r) {
+              return l.accumulatedLatency < r.accumulatedLatency;
+            });
   return inferencePlan;
 }
 

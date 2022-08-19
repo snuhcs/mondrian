@@ -2,6 +2,7 @@
 
 #include <numeric>
 #include <set>
+#include <utility>
 
 #include "opencv2/video/tracking.hpp"
 
@@ -15,10 +16,13 @@ const cv::TermCriteria RoIExtractor::CRITERIA = cv::TermCriteria(
 
 RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
                            bool roiWiseInference, const PatchMixer* patchMixer,
-                           RoIResizer* roiResizer, std::map<Device, std::vector<int>>& inferencePlan)
-    : mConfig(config), mPatchMixer(patchMixer), mRoIResizer(roiResizer), mInferencePlan(inferencePlan),
+                           RoIResizer* roiResizer,
+                           std::vector<InferenceInfo> inferencePlan)
+    : mConfig(config), mPatchMixer(patchMixer), mRoIResizer(roiResizer),
+      mInferencePlan(std::move(inferencePlan)),
+      mRoICount(mRoIWiseInference ? getNumInferences(inferencePlan) : 0),
       mRoIWiseInference(roiWiseInference), mTargetSize(
-        cv::Size(mConfig.EXTRACTION_RESIZE_WIDTH, mConfig.EXTRACTION_RESIZE_HEIGHT)),
+        cv::Size(int(mConfig.EXTRACTION_RESIZE_WIDTH), int(mConfig.EXTRACTION_RESIZE_HEIGHT))),
       mAllowInterpolation(allowInterpolation), mbStop(false), isFullyPacked(false) {
   if (run) {
     if (!mAllowInterpolation) {
@@ -55,12 +59,9 @@ void RoIExtractor::notify() {
   cv.notify_all();
 }
 
-MultiStream RoIExtractor::getExtractedFrames(std::map<Device, std::vector<int>>& inferencePlan) {
+MultiStream RoIExtractor::getExtractedFrames(std::vector<InferenceInfo>& inferencePlan) {
   mInferencePlan = inferencePlan;
   MultiStream extractedFrames;
-  // TODO
-  /*
-  mNumFramesPerInterval = numFrames;
   std::unique_lock<std::mutex> queueLock(mtx);
   cv.wait(queueLock, [this]() { return mAllowInterpolation || isFullyPacked; });
   std::for_each(mExtractionFinished.begin(), mExtractionFinished.end(),
@@ -74,7 +75,6 @@ MultiStream RoIExtractor::getExtractedFrames(std::map<Device, std::vector<int>>&
   resetPack();
   queueLock.unlock();
   cv.notify_all();
-   */
   return extractedFrames;
 }
 
@@ -96,11 +96,11 @@ void RoIExtractor::resetPack() {
   isFullyPacked = false;
   std::lock_guard<std::mutex> packLock(packMtx);
   if (mRoIWiseInference) {
-    mRoICount = mNumFramesPerInterval;
+    mRoICount = int(mInferencePlan.size());
   } else {
-    for (int i = 0; i < mNumFramesPerInterval; i++) {
-      // TODO
-      // mFreeRectsMap[i] = {Rect(0, 0, mFrameSize, mFrameSize)};
+    for (auto& info : mInferencePlan) {
+      mFreeRectsList.push_back(
+          {info.device, info.size, {Rect(0, 0, float(info.size), float(info.size))}});
     }
   }
 }
@@ -213,19 +213,13 @@ void RoIExtractor::work(int extractorId) {
           isAllPacked = mRoICount <= 0;
         } else {
           auto& config = mPatchMixer->mConfig;
-          // TODO
-          /*
-          float batchedRoISize = float(mFrameSize) / std::ceil(std::sqrt(config.BATCH_SIZE));
           for (auto& pRoI : frame->parentRoIs) {
-            std::pair<float, float> resizedWH = config.EMULATED_BATCH ?
-                                                std::make_pair(batchedRoISize, batchedRoISize) :
-                                                pRoI->getResizedWidthHeight();
-            isAllPacked = PatchMixer::tryPackRoI(resizedWH, mFreeRectsMap, config.EMULATED_BATCH);
+            isAllPacked = mPatchMixer->tryPackRoI(pRoI->getResizedWidthHeight(), mFreeRectsList,
+                                                  config.EMULATED_BATCH);
             if (!isAllPacked) {
               break;
             }
           }
-           */
         }
       }
       lock.lock();
@@ -306,8 +300,8 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
                                       const std::vector<BoundingBox>& boundingBoxes,
                                       const cv::Size& targetSize,
                                       std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
-  float width = float(currFrame->mat.cols);
-  float height = float(currFrame->mat.rows);
+  auto width = float(currFrame->mat.cols);
+  auto height = float(currFrame->mat.rows);
 
   std::vector<Rect> boundingRects;
   boundingRects.reserve(boundingBoxes.size());
@@ -363,7 +357,7 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
     h = std::min(std::max(0.0f, h), float(prevImage.rows) - y);
 
     std::vector<cv::Point2f> points;
-    cv::Rect roiBbx = cv::Rect(x, y, w, h);
+    cv::Rect roiBbx = cv::Rect(int(x), int(y), int(w), int(h));
     cv::goodFeaturesToTrack(prevImage(roiBbx), points, 50, 0.01, 5, cv::Mat(), 3, false, 0.03);
     for (cv::Point2f& p : points) {
       p.x += x;

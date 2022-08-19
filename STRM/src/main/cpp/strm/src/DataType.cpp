@@ -1,5 +1,7 @@
 #include "strm/DataType.hpp"
 
+#include <numeric>
+
 #include "strm/Log.hpp"
 #include "strm/Logger.hpp"
 #include "strm/RoIResizer.hpp"
@@ -214,6 +216,22 @@ std::string toString(const MultiStream& frames) {
   return ss.str();
 }
 
+std::string toString(const std::vector<InferenceInfo>& std::vector<InferenceInfo>) {
+  std::stringstream ss;
+  for (auto&[device, size_latencies] : std::vector<InferenceInfo>) {
+    // TODO: support other processors
+    ss << (device == GPU ? "GPU" : "DSP") << ": ";
+    for (int i = 0; i < size_latencies.size(); i++) {
+      auto&[size, latency] = size_latencies[i];
+      ss << "(" << size << ", " << latency << ")";
+      if (i != size_latencies.size() - 1) {
+        ss << ", ";
+      }
+    }
+  }
+  return ss.str();
+}
+
 FrameBuffer::FrameBuffer(const std::string& key, int capacity)
     : key(key), shortKey(Frame::toShortKey(key)), capacity(capacity), count(0) {
   frames.resize(capacity);
@@ -236,8 +254,8 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
   return currFrame;
 }
 
-void
-FrameBuffer::freeImage(const std::vector<int>& frameIndices, Logger* logger, Logger* roiLogger) {
+void FrameBuffer::freeImage(const std::vector<int>& frameIndices,
+                            Logger* logger, Logger* roiLogger) {
   std::unique_lock<std::mutex> lock(mtx);
   for (int frameIndex : frameIndices) {
     Frame* frame = frames[frameIndex % capacity].get();

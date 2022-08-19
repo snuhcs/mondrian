@@ -53,7 +53,8 @@ class SpatioTemporalRoIMixer {
 
   void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
 
-  static std::map<Device, std::vector<int>> getInferencePlan(time_us remainingTime, std::map<Device, std::map<int, time_us>> inferenceTimes);
+  static std::vector<InferenceInfo> getInferencePlan(
+      time_us remainingTime, const std::map<Device, std::map<int, time_us>>& inferenceTimes);
 
   static void testNoInterpolationPacking(const MultiStream& frames, const Stream& droppedFrames,
                                          Frame* fullFrameTarget);
@@ -82,7 +83,7 @@ class SpatioTemporalRoIMixer {
   std::mutex mStartMtx;
   std::condition_variable mStartCv;
   std::condition_variable mEnqueueCv;
-  bool startEnqueue = false;
+  bool mbStartEnqueue = false;
 
   std::mutex mFrameBuffersMtx;
   std::map<std::string, std::unique_ptr<FrameBuffer>> mFrameBuffers;

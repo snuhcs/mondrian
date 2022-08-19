@@ -194,12 +194,29 @@ struct FrameComp {
   }
 };
 
+struct InferenceInfo {
+  Device device;
+  int size;
+  time_us latency;
+  time_us accumulatedLatency = -1;
+};
+
+int getNumInferences(const std::vector<InferenceInfo>& inferencePlan);
+
+struct FreeRects {
+  Device device;
+  int frameSize;
+  std::vector<Rect> rects;
+};
+
 using Stream = std::set<Frame*, FrameComp>;
 using MultiStream = std::map<std::string, Stream>;
 
 std::set<Frame*> filterLastFrames(const MultiStream& frames);
 
 std::string toString(const MultiStream& frames);
+
+std::string toString(const std::vector<InferenceInfo>& inferencePlan);
 
 class Logger;
 
@@ -516,12 +533,13 @@ struct RoI {
 
 struct MixedFrame {
   static int numMixedFrames;
+  const Device device;
   const int mixedFrameIndex;
   cv::Mat packedMat;
   std::set<RoI*> packedRoIs;
 
-  MixedFrame(std::set<RoI*> packedRoIs, int mixedFrameSize)
-      : packedRoIs(packedRoIs), mixedFrameIndex(numMixedFrames++) {
+  MixedFrame(Device device, std::set<RoI*> packedRoIs, int mixedFrameSize)
+      : device(device), packedRoIs(packedRoIs), mixedFrameIndex(numMixedFrames++) {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
     for (RoI* roi : packedRoIs) {
       assert(roi->isPacked());

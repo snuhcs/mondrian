@@ -24,15 +24,14 @@ class PatchMixer {
   PatchMixer(const PatchMixerConfig& config);
 
   std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> packRoIs(
-      MultiStream& frames, int fullFrameStreamIndex, std::map<Device, std::vector<int>>& inferencePlan,
+      MultiStream& frames, int fullFrameStreamIndex, std::vector<InferenceInfo>& std::vector<InferenceInfo>,
       bool allowInterpolation, bool roiWiseInference, bool probe, int numProbeSteps,
       float probeStepSize);
 
-  static bool tryPackRoI(const std::pair<float, float>& resizedWH,
-                         std::vector<std::pair<Device, std::vector<Rect>>>& freeRectsMap,
-                         bool firstMatch, RoI* pRoI = nullptr,
-                         std::map<int, std::set<RoI*>>* packedRoIsMap = nullptr,
-                         bool emulatedBatch = false);
+  bool tryPackRoI(const std::pair<float, float>& resizedWH,
+                  std::vector<FreeRects>& freeRectsList,
+                  bool firstMatch, RoI* pRoI = nullptr,
+                  std::map<int, std::set<RoI*>>* packedRoIsMap = nullptr) const;
 
  private:
   std::tuple<Frame*, std::vector<Frame*>, std::vector<RoI*>> preparePack(
