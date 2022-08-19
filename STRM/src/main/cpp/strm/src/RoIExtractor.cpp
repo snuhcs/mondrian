@@ -20,7 +20,7 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, bool allo
                            std::vector<InferenceInfo> inferencePlan)
     : mConfig(config), mPatchMixer(patchMixer), mRoIResizer(roiResizer),
       mInferencePlan(std::move(inferencePlan)),
-      mRoICount(mRoIWiseInference ? getNumInferences(inferencePlan) : 0),
+      mRoICount(mRoIWiseInference ? int(inferencePlan.size()) : 0),
       mRoIWiseInference(roiWiseInference), mTargetSize(
         cv::Size(int(mConfig.EXTRACTION_RESIZE_WIDTH), int(mConfig.EXTRACTION_RESIZE_HEIGHT))),
       mAllowInterpolation(allowInterpolation), mbStop(false), isFullyPacked(false) {

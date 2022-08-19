@@ -24,7 +24,7 @@ class PatchMixer {
   PatchMixer(const PatchMixerConfig& config);
 
   std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> packRoIs(
-      MultiStream& frames, int fullFrameStreamIndex, std::vector<InferenceInfo>& std::vector<InferenceInfo>,
+      MultiStream& frames, int fullFrameStreamIndex, std::vector<InferenceInfo>& inferencePlan,
       bool allowInterpolation, bool roiWiseInference, bool probe, int numProbeSteps,
       float probeStepSize);
 

@@ -1,27 +1,67 @@
-#ifndef INFERENCE_ENGINE_HPP_
-#define INFERENCE_ENGINE_HPP_
+#ifndef INFERENCE_ENGINE_H
+#define INFERENCE_ENGINE_H
 
-#include <vector>
+#include <jni.h>
 
-#include "opencv2/core/mat.hpp"
+#include <map>
+#include <queue>
 
-#include "strm/DataType.hpp"
+#include "strm/Config.hpp"
+#include "strm/impl/Worker.hpp"
+#include "strm/impl/models/Classifier.hpp"
 
 namespace rm {
 
 class InferenceEngine {
+  friend Worker;
+
  public:
-  virtual ~InferenceEngine() {}
+  InferenceEngine(const InferenceEngineConfig& config,
+                  JavaVM* vm, JNIEnv* env, jobject strm);
 
-  virtual int enqueue(const cv::Mat mat, const int inputSize) = 0;
+  int enqueue(const cv::Mat mat, Device device, int inputSize, int key);
 
-  virtual std::vector<BoundingBox> getResults(const int handle) = 0;
+  std::pair<int, std::vector<BoundingBox>> getResults(const int handle);
 
-  virtual std::map<Device, std::map<int,time_us>> getInferenceTimeUs() const = 0;
+  std::map<Device, std::map<int, time_us>> getInferenceTimeUs() const;
 
-  virtual std::vector<int> getInputSizes() const = 0;
+  std::vector<int> getInputSizes() const;
+
+ private:
+  std::tuple<int, const cv::Mat, const int> getInput();
+
+  void enqueueResults(const int handle, const std::vector<BoundingBox>& boxes);
+
+  void drawInferenceResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
+
+  template <typename T>
+  void initClassifiers(const InferenceEngineConfig& config);
+
+  const InferenceEngineConfig mConfig;
+
+  std::map<Device, std::unique_ptr<Worker>> workers;
+  std::vector<std::unique_ptr<Classifier>> classifiers;
+
+  JavaVM* jvm;
+  JNIEnv* env;
+  jobject strm;
+  jclass class_SpatioTemporalRoIMixer;
+  jmethodID SpatioTemporalRoIMixer_drawInferenceResult;
+  jclass class_ArrayList;
+  jmethodID ArrayList_init;
+  jmethodID ArrayList_add;
+  jclass class_BoundingBox;
+  jmethodID BoundingBox_init;
+
+  int mHandle;
+  std::queue<std::tuple<int, const cv::Mat, const int>> inputs;
+  std::mutex inputMtx;
+  std::condition_variable inputCv;
+  std::map<int, std::vector<BoundingBox>> results;
+  std::mutex resultMtx;
+  std::condition_variable resultCv;
 };
 
-}
+} // namespace rm
 
-#endif // INFERENCE_ENGINE_HPP_
+#endif // INFERENCE_ENGINE_H

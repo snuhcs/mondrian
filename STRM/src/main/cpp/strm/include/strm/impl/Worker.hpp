@@ -3,14 +3,15 @@
 
 #include <thread>
 
-#include "strm/impl/CustomInferenceEngine.hpp"
 #include "strm/impl/models/Classifier.hpp"
 
 namespace rm {
 
+class InferenceEngine;
+
 class Worker {
  public:
-  Worker(CustomInferenceEngine* engine, std::map<int, Classifier*> classifierMap);
+  Worker(InferenceEngine* engine, std::map<int, Classifier*> classifierMap);
 
   ~Worker() {
     isClosed.store(true);
@@ -22,7 +23,7 @@ class Worker {
  private:
   void Work();
 
-  CustomInferenceEngine* engine;
+  InferenceEngine* engine;
   std::map<int, Classifier*> classifierMap;
 
   std::atomic_bool isClosed;

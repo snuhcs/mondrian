@@ -29,11 +29,6 @@ enum Device {
   DSP,
 };
 
-std::map<std::string, Device> deviceMap = {
-    {"GPU", GPU},
-    {"DSP", DSP},
-};
-
 struct Rect {
   float left;
   float top;
@@ -200,8 +195,6 @@ struct InferenceInfo {
   time_us latency;
   time_us accumulatedLatency = -1;
 };
-
-int getNumInferences(const std::vector<InferenceInfo>& inferencePlan);
 
 struct FreeRects {
   Device device;

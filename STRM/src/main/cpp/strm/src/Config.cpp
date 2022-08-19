@@ -95,6 +95,54 @@ PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   return config;
 }
 
+InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
+  InferenceEngineConfig config;
+  if (!json["draw_inference_result"].isNull()) {
+    config.DRAW_INFERENCE_RESULT = json["draw_inference_result"].asBool();
+  }
+  if (!json["model"].isNull()) {
+    config.MODEL = json["model"].asString();
+  }
+  if (!json["runtime"].isNull()) {
+    config.RUNTIME = json["runtime"].asString();
+  }
+  if (!json["use_tiny"].isNull()) {
+    config.USE_TINY = json["use_tiny"].asBool();
+  }
+  if (!json["conf_threshold"].isNull()) {
+    config.CONF_THRESHOLD = json["conf_threshold"].asFloat();
+  }
+  if (!json["iou_threshold"].isNull()) {
+    config.IOU_THRESHOLD = json["iou_threshold"].asFloat();
+  }
+  if (!json["num_workers"].isNull()) {
+    config.NUM_WORKERS = json["num_workers"].asInt();
+  }
+  if (!json["input_sizes"].isNull()) {
+    const Json::Value inputSizes = json["input_sizes"];
+    config.INPUT_SIZES.clear();
+    for (const auto& size : inputSizes) {
+      config.INPUT_SIZES.push_back(size.asInt());
+    }
+    std::sort(config.INPUT_SIZES.begin(), config.INPUT_SIZES.end());
+  }
+  if (!json["devices"].isNull()) {
+    const Json::Value devices = json["devices"];
+    config.DEVICES.clear();
+    for (const auto& device : devices) {
+      std::string deviceStr = device.asString();
+      if (deviceStr == "GPU") {
+        config.DEVICES.push_back(GPU);
+      } else if (deviceStr == "DSP") {
+        config.DEVICES.push_back(DSP);
+      } else {
+        LOGD("%s device is not supported", deviceStr.c_str());
+      }
+    }
+  }
+  return config;
+}
+
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) {
   PatchReconstructorConfig config;
   if (!json["frame_boxes_iou_threshold"].isNull()) {
@@ -132,6 +180,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["log_roi"].isNull()) {
     config.LOG_ROI = json["log_roi"].asBool();
   }
+  if (!json["draw_output"].isNull()) {
+    config.DRAW_OUTPUT = json["draw_output"].asBool();
+  }
   if (!json["allow_interpolation"].isNull()) {
     config.ALLOW_INTERPOLATION = json["allow_interpolation"].asBool();
   }
@@ -156,6 +207,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   }
   if (!json["patch_mixer"].isNull()) {
     config.patchMixerConfig = parsePatchMixerConfig(json["patch_mixer"]);
+  }
+  if (!json["inference_engine"].isNull()) {
+    config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
   }
   if (!json["patch_reconstructor"].isNull()) {
     config.patchReconstructorConfig = parsePatchReconstructorConfig(

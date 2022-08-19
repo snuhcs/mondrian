@@ -25,10 +25,8 @@ using FrameResult = std::tuple<time_us, cv::Mat, std::vector<BoundingBox>>;
 
 class SpatioTemporalRoIMixer {
  public:
-  SpatioTemporalRoIMixer(const STRMConfig& config,
-                         InferenceEngine* inferenceEngine,
-                         int numSourceVideos,
-                         JavaVM* vm, JNIEnv* env, jobject strm, bool draw);
+  SpatioTemporalRoIMixer(const STRMConfig& config, int numSourceVideos, JavaVM* vm, JNIEnv* env,
+                         jobject strm);
 
   ~SpatioTemporalRoIMixer();
 
@@ -68,7 +66,6 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<Logger> mResultLogger;
   std::unique_ptr<Logger> mLogger;
   std::unique_ptr<Logger> mRoILogger;
-  InferenceEngine* mInferenceEngine;
   const cv::Size mTargetSize;
   const std::vector<int> mInputSizes;
   const int mInferenceFrameSize;
@@ -76,6 +73,7 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;
   std::unique_ptr<PatchMixer> mPatchMixer;
+  std::unique_ptr<InferenceEngine> mInferenceEngine;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 
   int mNumSourceVideos;
@@ -93,7 +91,6 @@ class SpatioTemporalRoIMixer {
   std::map<std::string, std::map<int, FrameResult>> mResults;
   std::map<std::string, int> mResultIndices;
 
-  const bool draw;
   JavaVM* jvm;
   JNIEnv* env;
   jobject strm;

@@ -1,4 +1,4 @@
-#include "strm/impl/CustomInferenceEngine.hpp"
+#include "strm/InferenceEngine.hpp"
 
 #include "strm/Log.hpp"
 #include "strm/impl/Worker.hpp"
@@ -11,10 +11,10 @@
 
 namespace rm {
 
-CustomInferenceEngine::CustomInferenceEngine(
-    const InferenceEngineConfig& config, JavaVM* vm, JNIEnv* env, jobject strm, bool draw)
-    : mConfig(config), mHandle(0), jvm(vm),
-      strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))), draw(draw) {
+InferenceEngine::InferenceEngine(
+    const InferenceEngineConfig& config, JavaVM* vm, JNIEnv* env, jobject strm)
+    : mConfig(config), mHandle(0), jvm(vm), env(env),
+      strm(reinterpret_cast<jobject>(env->NewGlobalRef(strm))) {
   class_SpatioTemporalRoIMixer = reinterpret_cast<jclass>(env->NewGlobalRef(
       env->FindClass("hcs/offloading/strm/Emulator")));
   SpatioTemporalRoIMixer_drawInferenceResult = env->GetMethodID(
@@ -43,7 +43,7 @@ CustomInferenceEngine::CustomInferenceEngine(
 }
 
 template<typename T>
-void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config) {
+void InferenceEngine::initClassifiers(const InferenceEngineConfig& config) {
   std::map<int, Classifier*> classifierMap;
   for (const auto& device : config.DEVICES) {
     for (const auto& inputSize : config.INPUT_SIZES) {
@@ -57,7 +57,7 @@ void CustomInferenceEngine::initClassifiers(const InferenceEngineConfig& config)
   }
 }
 
-int CustomInferenceEngine::enqueue(const cv::Mat mat, const int inputSize) {
+int InferenceEngine::enqueue(const cv::Mat mat, Device device, int inputSize, int key) {
   std::unique_lock<std::mutex> inputLock(inputMtx);
   int handle = mHandle++;
   inputs.push(std::make_tuple(handle, mat, inputSize));
@@ -66,17 +66,17 @@ int CustomInferenceEngine::enqueue(const cv::Mat mat, const int inputSize) {
   return handle;
 }
 
-std::vector<BoundingBox> CustomInferenceEngine::getResults(const int handle) {
+std::pair<int, std::vector<BoundingBox>> InferenceEngine::getResults(const int handle) {
   std::unique_lock<std::mutex> resultLock(resultMtx);
   resultCv.wait(resultLock, [this, handle]() {
     return results.find(handle) != results.end();
   });
   std::vector<BoundingBox> boxes = results.at(handle);
   results.erase(results.find(handle));
-  return boxes;
+  return {0, boxes};
 }
 
-std::tuple<int, const cv::Mat, const int> CustomInferenceEngine::getInput() {
+std::tuple<int, const cv::Mat, const int> InferenceEngine::getInput() {
   std::unique_lock<std::mutex> inputLock(inputMtx);
   inputCv.wait(inputLock, [this]() {
     return !inputs.empty();
@@ -87,16 +87,16 @@ std::tuple<int, const cv::Mat, const int> CustomInferenceEngine::getInput() {
 }
 
 void
-CustomInferenceEngine::enqueueResults(const int handle, const std::vector<BoundingBox>& boxes) {
+InferenceEngine::enqueueResults(const int handle, const std::vector<BoundingBox>& boxes) {
   std::unique_lock<std::mutex> resultLock(resultMtx);
   results.emplace(handle, boxes);
   resultLock.unlock();
   resultCv.notify_all();
 }
 
-void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
-                                                const std::vector<BoundingBox>& boxes) {
-  if (!draw) {
+void InferenceEngine::drawInferenceResult(const cv::Mat& mat,
+                                          const std::vector<BoundingBox>& boxes) {
+  if (!mConfig.DRAW_INFERENCE_RESULT) {
     return;
   }
   if (jvm->AttachCurrentThread(&env, nullptr) != 0) {
@@ -120,7 +120,7 @@ void CustomInferenceEngine::drawInferenceResult(const cv::Mat& mat,
   jvm->DetachCurrentThread();
 }
 
-std::map<Device, std::map<int,time_us>> CustomInferenceEngine::getInferenceTimeUs() const {
+std::map<Device, std::map<int,time_us>> InferenceEngine::getInferenceTimeUs() const {
   std::map<Device, std::map<int, time_us>> inferenceTimeTable;
   // TODO: fill inferenceTimeTable for each device, each input size (with time unit US)
   for (const auto& [device, worker] : workers) {
@@ -129,7 +129,7 @@ std::map<Device, std::map<int,time_us>> CustomInferenceEngine::getInferenceTimeU
   return inferenceTimeTable;
 }
 
-std::vector<int> CustomInferenceEngine::getInputSizes() const {
+std::vector<int> InferenceEngine::getInputSizes() const {
   return mConfig.INPUT_SIZES;
 }
 

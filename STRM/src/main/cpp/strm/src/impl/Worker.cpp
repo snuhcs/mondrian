@@ -1,10 +1,11 @@
 #include "strm/impl/Worker.hpp"
 
 #include "strm/Log.hpp"
+#include "strm/InferenceEngine.hpp"
 
 namespace rm {
 
-Worker::Worker(CustomInferenceEngine* engine, std::map<int, Classifier*> classifierMap)
+Worker::Worker(InferenceEngine* engine, std::map<int, Classifier*> classifierMap)
     : engine(engine), classifierMap(std::move(classifierMap)), isClosed(false) {
   thread = std::thread([this]() {
     while (!isClosed.load()) {

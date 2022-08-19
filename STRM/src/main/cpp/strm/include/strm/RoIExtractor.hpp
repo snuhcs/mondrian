@@ -20,7 +20,7 @@ class RoIExtractor {
  public:
   RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
                bool roiWiseInference, const PatchMixer* patchMixer, RoIResizer* roiResizer,
-               std::vector<InferenceInfo> std::vector<InferenceInfo>);
+               std::vector<InferenceInfo> inferencePlan);
 
   ~RoIExtractor();
 
@@ -28,7 +28,7 @@ class RoIExtractor {
 
   void notify();
 
-  MultiStream getExtractedFrames(std::vector<InferenceInfo>& std::vector<InferenceInfo>);
+  MultiStream getExtractedFrames(std::vector<InferenceInfo>& inferencePlan);
 
   void reEnqueueFrames(const Stream& droppedFrames);
 

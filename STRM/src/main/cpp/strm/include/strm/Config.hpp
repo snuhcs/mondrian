@@ -6,6 +6,8 @@
 
 #include <json/json.h>
 
+#include "strm/DataType.hpp"
+
 namespace rm {
 
 constexpr int NUM_LABELS = 80;
@@ -50,6 +52,22 @@ struct PatchMixerConfig {
   int BATCH_SIZE = 64;
 };
 
+struct InferenceEngineConfig {
+  bool DRAW_INFERENCE_RESULT = true;
+  std::string MODEL = "YOLO_V4";
+  std::string RUNTIME = "TFLITE";
+  bool USE_TINY = false;
+  float CONF_THRESHOLD = 0.1;
+  float IOU_THRESHOLD = 0.5;
+  int NUM_WORKERS = 1;
+  std::vector<int> INPUT_SIZES = {
+      800
+  };
+  std::vector<Device> DEVICES = {
+      GPU
+  };
+};
+
 struct PatchReconstructorConfig {
   float FRAME_BOXES_IOU_THRESHOLD = 0.5;
   float BOX_FILTER_OVERLAP_THRESHOLD = 0.8;
@@ -59,6 +77,7 @@ struct PatchReconstructorConfig {
 struct STRMConfig {
   bool LOG_EXECUTION = false;
   bool LOG_ROI = false;
+  bool DRAW_OUTPUT = false;
   bool ALLOW_INTERPOLATION = false;
   bool ROI_WISE_INFERENCE = false;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
@@ -67,12 +86,14 @@ struct STRMConfig {
   RoIExtractorConfig roIExtractorConfig;
   RoIResizerConfig roiResizerConfig;
   PatchMixerConfig patchMixerConfig;
+  InferenceEngineConfig inferenceEngineConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 };
 
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
 RoIResizerConfig parseRoIResizerConfig(const Json::Value& json);
 PatchMixerConfig parsePatchMixerConfig(const Json::Value& json);
+InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
 STRMConfig parseSTRMConfig(const std::string& jsonPath);
 
