@@ -96,7 +96,7 @@ void RoIResizer::updateTable(RoI* roi) {
 }
 
 std::vector<float> RoIResizer::getProbingCandidates(float scale, RoI::ScaleLevel level,
-                                                    int probeStep) {
+                                                    int numProbeSteps) {
   std::vector<float> candidates;
 
   auto const it = std::lower_bound(mTargetSize.begin(), mTargetSize.end(), scale);
@@ -104,7 +104,7 @@ std::vector<float> RoIResizer::getProbingCandidates(float scale, RoI::ScaleLevel
   int lowerLevelIndex = level * mScaleGranularity - 1;
   int margin = std::max(-1, lowerLevelIndex);
 
-  while (index > margin && candidates.size() < probeStep) {
+  while (index > margin && candidates.size() < numProbeSteps) {
     candidates.push_back(mTargetSize[index--]);
   }
   return candidates;

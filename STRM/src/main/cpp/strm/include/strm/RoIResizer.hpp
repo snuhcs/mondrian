@@ -37,7 +37,7 @@ class RoIResizer {
   }
 
   std::vector<float> getProbingCandidates(float scale, RoI::ScaleLevel level,
-                                          int probeStep);
+                                          int numProbeSteps);
 
  private:
   class CircularBuffer {

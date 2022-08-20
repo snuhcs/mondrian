@@ -105,7 +105,8 @@ void Frame::addProbeRoIs(RoIResizer* mRoIResizer) {
   for (auto& cRoI : childRoIs) {
     assert(cRoI->frame == this);
     assert(cRoI->roisForProbing.empty());
-    std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(cRoI->getTargetScale(), cRoI->getScaleLevel());
+    std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
+        cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
     for (auto scale : probingCandidates) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
