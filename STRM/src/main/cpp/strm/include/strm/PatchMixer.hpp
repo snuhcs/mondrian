@@ -28,7 +28,7 @@ class PatchMixer {
       const std::vector<InferenceInfo>& inferencePlan,
       bool allowInterpolation, bool roiWiseInference, RoIResizer* roiResizer);
 
-  bool tryPackRoI(const std::pair<float, float>& resizedWH,
+  bool tryPackRoI(std::pair<float, float> resizedWH,
                   std::vector<FreeRects>& freeRectsList,
                   bool firstMatch, RoI* pRoI = nullptr,
                   std::map<int, std::set<RoI*>>* packedRoIsMap = nullptr) const;

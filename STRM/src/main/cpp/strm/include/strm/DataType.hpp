@@ -504,17 +504,24 @@ struct RoI {
   }
 
   std::pair<float, float> getResizedWidthHeight() const {
-    return {paddedLoc.width() * targetScale, paddedLoc.height() * targetScale};
+    return {paddedLoc.width() * targetScale,
+            paddedLoc.height() * targetScale};
   }
 
   cv::Mat getOrigMat() const {
-    return frame->mat.operator()(
-        cv::Rect(origLoc.left, origLoc.top, origLoc.width(), origLoc.height()));
+    int left = std::max(0, std::min(frame->mat.cols, int(origLoc.left)));
+    int top = std::max(0, std::min(frame->mat.rows, int(origLoc.top)));
+    int width = std::max(0, std::min(frame->mat.cols - left, int(origLoc.width())));
+    int height = std::max(0, std::min(frame->mat.rows - top, int(origLoc.height())));
+    return frame->mat.operator()(cv::Rect(left, top, width, height));
   }
 
   cv::Mat getPaddedMat() const {
-    return frame->mat.operator()(
-        cv::Rect(paddedLoc.left, paddedLoc.top, paddedLoc.width(), paddedLoc.height()));
+    int left = std::max(0, std::min(frame->mat.cols, int(paddedLoc.left)));
+    int top = std::max(0, std::min(frame->mat.rows, int(paddedLoc.top)));
+    int width = std::max(0, std::min(frame->mat.cols - left, int(paddedLoc.width())));
+    int height = std::max(0, std::min(frame->mat.rows - top, int(paddedLoc.height())));
+    return frame->mat.operator()(cv::Rect(left, top, width, height));
   }
 
   cv::Mat getResizedMat() const {
