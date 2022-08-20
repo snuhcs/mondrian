@@ -10,14 +10,14 @@ const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
 };
 
 const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
-    {"VIRAT",   {0.3f, 0.6f, 0.9f}},
-    {"MTA",     {0.3f, 0.6f, 0.9f}},
-    {"Youtube", {0.3f, 0.6f, 0.9f}}
+    {"VIRAT",   {0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.75f, 0.8f, 0.9f, 1.0f}},
+    {"MTA",     {0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.75f, 0.8f, 0.9f, 1.0f}},
+    {"Youtube", {0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.75f, 0.8f, 0.9f, 1.0f}}
 };
 
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
     : mConfig(config),
-      mScaleGranularity(2),
+      mScaleGranularity(3),
       mPredictor(candidatePredictors.at(config.TRAIN_DATA)),
       mTargetSize(scalesForLevels.at(config.TRAIN_DATA)) {}
 
@@ -28,7 +28,7 @@ std::pair<float, RoI::ScaleLevel> RoIResizer::getTargetScale(const idType id,
     return {mConfig.STATIC_TARGET_SCALE, RoI::scale_NULL};
   }
   auto targetLevel = static_cast<RoI::ScaleLevel>(getMaxVotedLevel(id, features));
-  float targetScale = mTargetSize[targetLevel * mScaleGranularity + 1];
+  float targetScale = mTargetSize[(targetLevel + 1) * mScaleGranularity - 1];
 
   auto it = calibrationTable.find(id);
   if (it != calibrationTable.end()) {
@@ -95,15 +95,16 @@ void RoIResizer::updateTable(RoI* roi) {
   calibrationTable[roi->id] = {roi->getScaleLevel(), newScale};
 }
 
-std::vector<float> RoIResizer::getProbingCandidates(float scale, RoI::ScaleLevel level) {
+std::vector<float> RoIResizer::getProbingCandidates(float scale, RoI::ScaleLevel level,
+                                                    int probeStep) {
   std::vector<float> candidates;
 
   auto const it = std::lower_bound(mTargetSize.begin(), mTargetSize.end(), scale);
   int index = int(std::distance(mTargetSize.begin(), it)) - 1;
-  int lowerLevelIndex = (level - 1) * mScaleGranularity + 1;
+  int lowerLevelIndex = level * mScaleGranularity - 1;
   int margin = std::max(-1, lowerLevelIndex);
 
-  while (index > margin) {
+  while (index > margin && candidates.size() < probeStep) {
     candidates.push_back(mTargetSize[index--]);
   }
   return candidates;

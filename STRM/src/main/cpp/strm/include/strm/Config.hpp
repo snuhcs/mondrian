@@ -12,8 +12,6 @@ namespace rm {
 
 constexpr int NUM_LABELS = 80;
 
-extern bool LOG_INTERNAL;
-
 struct RoIExtractorConfig {
   int MAX_QUEUE_SIZE = 200;
   int NUM_WORKERS = 2;
@@ -54,13 +52,13 @@ struct PatchMixerConfig {
 
 struct InferenceEngineConfig {
   bool DRAW_INFERENCE_RESULT = true;
-  std::string MODEL = "YOLO_V4";
+  std::string MODEL = "YOLO_V5";
   std::string RUNTIME = "TFLITE";
   bool USE_TINY = false;
   float CONF_THRESHOLD = 0.1;
   float IOU_THRESHOLD = 0.5;
   std::vector<int> INPUT_SIZES = {
-      800
+      832
   };
   std::vector<Device> DEVICES = {
       GPU
@@ -73,14 +71,16 @@ struct PatchReconstructorConfig {
   float ID_MAPPING_IOU_THRESHOLD = 0.1;
 };
 
+extern bool LOG_INTERNAL;
+
 struct STRMConfig {
-  bool LOG_EXECUTION = false;
-  bool LOG_ROI = false;
+  bool LOG_EXECUTION = true;
+  bool LOG_ROI = true;
   bool ALLOW_INTERPOLATION = false;
   bool ROI_WISE_INFERENCE = false;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int BUFFER_SIZE = 1000;
-  int LATENCY_SLO_MS = 6000;
+  int LATENCY_SLO_MS = 10000;
   RoIExtractorConfig roIExtractorConfig;
   RoIResizerConfig roiResizerConfig;
   PatchMixerConfig patchMixerConfig;

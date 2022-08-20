@@ -51,7 +51,7 @@
         "conf_threshold": 0.1,
         "iou_threshold": 0.5,
         "input_sizes": [
-            896
+            832
         ],
         "devices" : [
             "GPU"

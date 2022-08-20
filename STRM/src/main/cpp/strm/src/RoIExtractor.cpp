@@ -197,8 +197,11 @@ void RoIExtractor::work(int extractorId) {
       frame->mergeRoIStartTime = NowMicros();
       if (mConfig.MERGE) {
         frame->resetParentRoIs();
-        // TODO
-        //frame->mergeRoIs(mConfig.MERGE_THRESHOLD, (float) mFrameSize);
+        frame->mergeRoIs(mConfig.MERGE_THRESHOLD, float(std::min_element(
+            mInferencePlan.begin(), mInferencePlan.end(),
+            [](const InferenceInfo& l, const InferenceInfo& r) {
+              return l.size < r.size;
+            })->size));
         testAssignedUniqueRoIID(frame->childRoIs);
         testParentChildrenIDsAndChildIDsSame(frame->childRoIs, frame->parentRoIs);
         testChildRoIsFrameRelation(frame->childRoIs);
