@@ -12,7 +12,6 @@ Logger::Logger(const char* logPath) : baseTime(NowMicros()) {
     LOGD("Logger %s remove success", logPath);
   } else {
     LOGE("Logger %s remove failed", logPath);
-    assert(false);
   }
 
   logFile = std::ofstream(logPath, std::ofstream::app);
