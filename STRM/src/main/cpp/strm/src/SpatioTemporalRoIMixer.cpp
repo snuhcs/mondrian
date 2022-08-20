@@ -14,7 +14,7 @@ const int SpatioTemporalRoIMixer::FULL_KEY_OFFSET = 1000000;
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int numSourceVideo,
                                                JavaVM* vm, JNIEnv* env, jobject emulator)
     : mConfig(config), mbStop(false),
-      mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.logExecution")),
+      mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
       mNumSourceVideos(numSourceVideo),
       mTargetSize(int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
