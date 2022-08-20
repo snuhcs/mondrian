@@ -6,9 +6,9 @@
 
 namespace rm {
 
-const float PatchMixer::HIGHEST_PRIORITY = 103;
-const float PatchMixer::HIGHER_PRIORITY = 102;
-const float PatchMixer::HIGH_PRIORITY = 101;
+const float PatchMixer::HIGHEST_PRIORITY = 1300000000;
+const float PatchMixer::HIGHER_PRIORITY  = 1200000000;
+const float PatchMixer::HIGH_PRIORITY    = 1100000000;
 
 PatchMixer::PatchMixer(const PatchMixerConfig& config)
     : mConfig(config) {}
@@ -75,7 +75,9 @@ void PatchMixer::prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarge
           }
           diffNorm /= float(pRoI->childRoIs.size());
 
-          pRoI->priority = pRoI->features.ofFeatures.avgErr * diffNorm;
+          pRoI->priority = pRoI->features.ofFeatures.avgErr
+                           * diffNorm
+                           * pRoI->origLoc.area() / 10000;
         } else {
           pRoI->priority = HIGHER_PRIORITY;
         }
