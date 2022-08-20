@@ -78,7 +78,8 @@ void SpatioTemporalRoIMixer::work() {
           (runFull && device == GPU) ? latencyTable[GPU][mInputSizes.back()] : 0,
           mScheduleInterval};
     }
-    std::vector<InferenceInfo> inferencePlan = getInferencePlan(startEndTime, latencyTable);
+    std::vector<InferenceInfo> inferencePlan = getInferencePlan(
+        startEndTime, latencyTable, mConfig.ROI_WISE_INFERENCE);
     assert(!inferencePlan.empty());
     logger.step("plan");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
@@ -101,7 +102,7 @@ void SpatioTemporalRoIMixer::work() {
     }
     auto[mixedFrames, fullFrameTarget, selectedFrames, droppedFrames] = mPatchMixer->packRoIs(
         frames, (runFull ? fullFrameStreamIndex++ : -1),
-        getInferencePlan(startEndTime, latencyTable),
+        getInferencePlan(startEndTime, latencyTable, mConfig.ROI_WISE_INFERENCE),
         mConfig.ALLOW_INTERPOLATION, mConfig.ROI_WISE_INFERENCE, mRoIResizer.get());
     assert(runFull == (fullFrameTarget != nullptr));
     if (!mConfig.ALLOW_INTERPOLATION) {
@@ -370,7 +371,8 @@ void SpatioTemporalRoIMixer::waitForStart() {
   mRoIExtractor = std::make_unique<RoIExtractor>(
       mConfig.roIExtractorConfig, mConfig.FULL_FRAME_INTERVAL > 0, mConfig.ALLOW_INTERPOLATION,
       mConfig.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(),
-      getInferencePlan(startEndTime, mInferenceEngine->getInferenceTimeTable()));
+      getInferencePlan(startEndTime, mInferenceEngine->getInferenceTimeTable(),
+                       mConfig.ROI_WISE_INFERENCE));
   mbStartEnqueue = true;
   startLock.unlock();
   mEnqueueCv.notify_all();
@@ -527,13 +529,21 @@ std::vector<time_us> SpatioTemporalRoIMixer::search(const std::vector<long long>
 
 std::vector<InferenceInfo> SpatioTemporalRoIMixer::getInferencePlan(
     const std::map<Device, std::pair<time_us, time_us>>& startEndTime,
-    const std::map<Device, std::map<int, time_us>>& inferenceTimes) {
+    const std::map<Device, std::map<int, time_us>>& inferenceTimes, bool roiWiseInference) {
   std::vector<InferenceInfo> inferencePlan;
   for (const auto&[device, size_latency] : inferenceTimes) {
     std::map<time_us, double> profile;
     std::vector<time_us> bars;
     std::map<time_us, int> latency_size;
+    int min_size = std::min_element(
+        size_latency.begin(), size_latency.end(),
+        [](const auto& it0, const auto& it1) {
+          return it0.first < it1.first;
+        })->first;
     for (const auto&[size, latency] : size_latency) {
+      if (roiWiseInference && size != min_size) {
+        continue;
+      }
       profile[latency] = double(size * size) / double(latency);
       bars.push_back(latency);
       latency_size[latency] = size;

@@ -149,10 +149,10 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
           [](int cnt, auto& it) {
             return cnt + it.second.size();
           });
-      LOGD("PatchMixer::packRoIs: Try pack %-4d Frames => %-4lu / %-4d RoIs can be inference",
-           numSelectedFrames, candidateRoIs.size(), numFrames);
+      LOGD("PatchMixer::packRoIs: Try pack %-4d Frames => %-4d / %-4lu RoIs can be inference",
+           numSelectedFrames, numFrames, candidateRoIs.size());
       // If packing failed
-      if (candidateRoIs.size() > numFrames) {
+      if (candidateRoIs.size() > numFrames && numSelectedFrames > 1) {
         int numSelectedRoIs = std::accumulate(
             selectedFrames.begin(), selectedFrames.end(), 0,
             [](int cnt, auto& it) {
@@ -161,7 +161,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
                   [](int cnt, Frame* frame) { return cnt + frame->parentRoIs.size(); });
             });
         int avgRoIsPerFrame = numSelectedRoIs / numSelectedFrames;
-        int numPackableFrames = std::min(numSelectedFrames - 1, numFrames / avgRoIsPerFrame);
+        int numPackableFrames = std::max(1, std::min(numSelectedFrames - 1, numFrames / avgRoIsPerFrame));
         splitFrames(selectedFrames, droppedFrames, numPackableFrames);
         for (Frame* frame : probeFrames) {
           frame->resetProbeRoIs();
