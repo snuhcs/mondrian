@@ -251,19 +251,9 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
   return currFrame;
 }
 
-void FrameBuffer::freeImage(const std::vector<int>& frameIndices,
-                            Logger* logger, Logger* roiLogger) {
+void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
   std::unique_lock<std::mutex> lock(mtx);
   for (int frameIndex : frameIndices) {
-    Frame* frame = frames[frameIndex % capacity].get();
-    if (logger != nullptr) {
-      logger->log(frame);
-    }
-    if (roiLogger != nullptr) {
-      for (auto& cRoI : frame->childRoIs) {
-        roiLogger->logRoI(cRoI.get());
-      }
-    }
     frames[frameIndex % capacity].reset();
   }
   lock.unlock();

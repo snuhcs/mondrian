@@ -14,7 +14,7 @@ const int SpatioTemporalRoIMixer::FULL_KEY_OFFSET = 1000000;
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int numSourceVideo,
                                                JavaVM* vm, JNIEnv* env, jobject emulator)
     : mConfig(config), mbStop(false),
-      mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
+      mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.logExecution")),
       mNumSourceVideos(numSourceVideo),
       mTargetSize(int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
@@ -27,8 +27,8 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int num
           config.patchReconstructorConfig, mRoIResizer.get())) {
   assert(!config.ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
   if (config.LOG_EXECUTION) {
-    mLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");
-    mLogger->logHeader();
+    mExecutionLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");
+    mExecutionLogger->logExecutionHeader();
   }
   if (config.LOG_ROI) {
     mRoILogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/roi_log.csv");
@@ -151,6 +151,7 @@ void SpatioTemporalRoIMixer::work() {
           assert(cRoI->box->label == cRoI->label);
         }
         frame->isBoxesReady = true;
+        frame->endTime = NowMicros();
       }
     }
     mRoIExtractor->notify();
@@ -164,8 +165,7 @@ void SpatioTemporalRoIMixer::work() {
           std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
                          [](const std::unique_ptr<BoundingBox>& box) { return *box; });
           mResults[frame->key][frame->frameIndex] = {
-              NowMicros(),
-              nms(boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold())};
+              frame->endTime, nms(boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold())};
         }
       }
     }
@@ -330,6 +330,9 @@ void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
     if (aStreamFrames.empty()) {
       continue;
     }
+    for (Frame* frame : aStreamFrames) {
+      log(frame);
+    }
     Frame* firstFrame = *aStreamFrames.begin();
     Frame* lastFrame = *aStreamFrames.rbegin();
     std::vector<int> frameIndices;
@@ -341,9 +344,20 @@ void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
         frameIndices.push_back(frame->frameIndex);
       }
     }
-    mFrameBuffers.at(aStreamKey)->freeImage(frameIndices, mLogger.get(), mRoILogger.get());
+    mFrameBuffers.at(aStreamKey)->freeImage(frameIndices);
   }
   framesLock.unlock();
+}
+
+void SpatioTemporalRoIMixer::log(const Frame* frame) {
+  if (mExecutionLogger) {
+    mExecutionLogger->logExecution(frame);
+  }
+  if (mRoILogger) {
+    for (auto& cRoI : frame->childRoIs) {
+      mRoILogger->logRoI(cRoI.get());
+    }
+  }
 }
 
 void SpatioTemporalRoIMixer::waitForStart() {
@@ -382,7 +396,8 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
     fullFrameInference(frame);
     if (mConfig.FULL_FRAME_INTERVAL == 0) {
       std::lock_guard<std::mutex> framesLock(mFrameBuffersMtx);
-      mFrameBuffers.at(frame->key)->freeImage({frame->frameIndex}, mLogger.get(), mRoILogger.get());
+      log(frame);
+      mFrameBuffers.at(frame->key)->freeImage({frame->frameIndex});
     }
   } else {
     if (frame->frameIndex == 1) {

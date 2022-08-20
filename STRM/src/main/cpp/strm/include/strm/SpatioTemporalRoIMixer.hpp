@@ -52,6 +52,8 @@ class SpatioTemporalRoIMixer {
 
   void releaseFrames(const MultiStream& frames);
 
+  void log(const Frame* frame);
+
   std::vector<InferenceInfo> getInferencePlan(
       const std::map<Device, std::pair<time_us, time_us>>& startEndTime,
       const std::map<Device, std::map<int, time_us>>& inferenceTimes);
@@ -70,7 +72,7 @@ class SpatioTemporalRoIMixer {
 
   std::thread mResultThread;
   std::unique_ptr<Logger> mResultLogger;
-  std::unique_ptr<Logger> mLogger;
+  std::unique_ptr<Logger> mExecutionLogger;
   std::unique_ptr<Logger> mRoILogger;
   const cv::Size mTargetSize;
   const std::vector<int> mInputSizes;

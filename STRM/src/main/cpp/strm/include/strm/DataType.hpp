@@ -155,6 +155,7 @@ struct Frame {
   time_us mixedInferenceEndTime = 0;
   time_us reconstructStartTime = 0;
   time_us reconstructEndTime = 0;
+  time_us endTime = 0;
 
   Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime)
@@ -222,7 +223,7 @@ class FrameBuffer {
 
   Frame* enqueue(const cv::Mat& mat);
 
-  void freeImage(const std::vector<int>& frameIndices, Logger* logger, Logger* roiLogger);
+  void freeImage(const std::vector<int>& frameIndices);
 
  private:
   const std::string key;

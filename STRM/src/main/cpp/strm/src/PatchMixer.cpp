@@ -341,7 +341,6 @@ bool PatchMixer::tryPackRoI(const std::pair<float, float>& resizedWH,
                             std::vector<FreeRects>& freeRectsList,
                             bool firstMatch, RoI* pRoI,
                             std::map<int, std::set<RoI*>>* packedRoIsMap) const {
-  // TODO
   const float roiArea = resizedWH.first * resizedWH.second;
   std::pair<int, int> minIndices = {-1, -1};
   float minDiffArea = 1e10;
@@ -404,8 +403,8 @@ bool PatchMixer::tryPackRoI(const std::pair<float, float>& resizedWH,
       if (!mConfig.EMULATED_BATCH) {
         pRoI->packedLocation = std::make_pair(freeRect.left, freeRect.top);
       } else {
-        assert(resizedWH.first == resizedWH.second);
-        const float& batchedRoISize = resizedWH.first;
+        assert(batchedRoISizes[i].first == batchedRoISizes[i].second);
+        const float& batchedRoISize = batchedRoISizes[i].first;
         float width = pRoI->paddedLoc.width();
         float height = pRoI->paddedLoc.height();
         if (pRoI->maxEdgeLength > batchedRoISize) {

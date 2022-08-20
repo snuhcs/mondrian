@@ -28,7 +28,7 @@ Logger::~Logger() {
   }
 }
 
-void Logger::logHeader() {
+void Logger::logExecutionHeader() {
   if (!logFile.is_open()) {
     return;
   }
@@ -63,7 +63,7 @@ void Logger::logHeader() {
   logFile.flush();
 }
 
-void Logger::log(Frame* frame) {
+void Logger::logExecution(const Frame* frame) {
   if (!logFile.is_open() || frame == nullptr) {
     return;
   }
@@ -94,7 +94,7 @@ void Logger::log(Frame* frame) {
           << fromBaseTime(frame->mixedInferenceEndTime) << delim
           << fromBaseTime(frame->reconstructStartTime) << delim
           << fromBaseTime(frame->reconstructEndTime) << delim
-          << fromBaseTime(NowMicros()) << '\n';
+          << fromBaseTime(frame->endTime) << '\n';
   logFile.flush();
 }
 
@@ -182,7 +182,7 @@ void Logger::logRoIHeader() {
   logFile.flush();
 }
 
-void Logger::logRoI(RoI* roi) {
+void Logger::logRoI(const RoI* roi) {
   if (!logFile.is_open() || roi == nullptr) {
     return;
   }
