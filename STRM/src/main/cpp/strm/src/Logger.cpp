@@ -19,7 +19,6 @@ Logger::Logger(const char* logPath) : baseTime(NowMicros()) {
     LOGD("Logger %s create success", logPath);
   } else {
     LOGE("Logger %s create failed", logPath);
-    assert(false);
   }
 }
 
