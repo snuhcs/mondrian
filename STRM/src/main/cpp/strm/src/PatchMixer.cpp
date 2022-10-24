@@ -67,15 +67,15 @@ void PatchMixer::prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarge
 
           float diffNorm = 0;
           for (auto& cRoI : pRoI->childRoIs) {
-            const auto&[px, py] = cRoI->prevRoI->features.ofFeatures.avgShift;
-            const auto&[cx, cy] = cRoI->features.ofFeatures.avgShift;
+            const auto&[px, py] = cRoI->prevRoI->features.ofFeatures.shiftAvg;
+            const auto&[cx, cy] = cRoI->features.ofFeatures.shiftAvg;
             float diffX = cx - px;
             float diffY = cy - py;
             diffNorm += (diffX * diffX + diffY * diffY);
           }
           diffNorm /= float(pRoI->childRoIs.size());
 
-          pRoI->priority = pRoI->features.ofFeatures.avgErr
+          pRoI->priority = pRoI->features.ofFeatures.errAvg
                            * diffNorm
                            * pRoI->origLoc.area() / 10000;
         } else {

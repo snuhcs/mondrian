@@ -320,8 +320,8 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       const BoundingBox& box = boundingBoxes[boxIndex];
       const Rect& loc = box.location;
       const RoI::OFFeatures& of = ofFeatures[boxIndex];
-      float x = of.avgShift.first;
-      float y = of.avgShift.second;
+      float x = of.shiftAvg.first;
+      float y = of.shiftAvg.second;
       float newLeft = std::max(0.0f, loc.left + x);
       float newTop = std::max(0.0f, loc.top + y);
       float newRight = std::min(float(width), loc.right + x);
@@ -401,13 +401,13 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
             y * (float) currFrame->height / (float) targetSize.height);
         boxErrs.push_back(errs[i]);
       } else {
-        boxShifts.emplace_back(0, 0);
-        boxErrs.push_back(0);
+        assert(false);
       }
     }
     ofFeatures.emplace_back(boxShifts, boxErrs);
     startIndex = endIndex;
   }
+  assert(startIndex == endIndex && endIndex == outputPoints.size());
   return ofFeatures;
 }
 

@@ -54,14 +54,14 @@ int RoIResizer::getMaxVotedLevel(const idType id, const RoI::Features& features)
 
 int RoIResizer::predictLevelWithFeatures(const RoI::Features& features) const {
   assert(features.type == RoI::OF);
-  auto&[avgX, avgY] = features.ofFeatures.avgShift;
-  auto&[stdX, stdY] = features.ofFeatures.stdShift;
+  auto&[avgX, avgY] = features.ofFeatures.shiftAvg;
+  auto&[stdX, stdY] = features.ofFeatures.shiftStd;
   float avg = avgX * avgX + avgY * avgY;
   float std = stdX * stdX + stdY * stdY;
   return int(mPredictor(
       features.width, features.height, std::max(features.width, features.height), features.type,
       features.origin, features.xyRatio, avgX, avgY, avg, stdX, stdY, std,
-      features.ofFeatures.avgErr, features.ofFeatures.ncc));
+      features.ofFeatures.errAvg, features.ofFeatures.shiftNcc));
 }
 
 void RoIResizer::updateTable(RoI* roi) {

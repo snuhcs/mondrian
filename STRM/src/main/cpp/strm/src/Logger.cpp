@@ -162,12 +162,12 @@ void Logger::logRoIHeader() {
       << "xyRatio" << delim
 
       // OF features
-      << "avgShiftX" << delim
-      << "avgShiftY" << delim
-      << "stdShiftX" << delim
-      << "stdShiftY" << delim
-      << "avgErr" << delim
-      << "ncc" << delim
+      << "shiftAvgX" << delim
+      << "shiftAvgY" << delim
+      << "shiftStdX" << delim
+      << "shiftStdY" << delim
+      << "shiftNcc" << delim
+      << "errAvg" << delim
 
       << "numProbingRoIs" << delim
       << "priority" << delim
@@ -214,12 +214,12 @@ void Logger::logRoI(const RoI* roi) {
       << roi->features.xyRatio << delim
 
       // OF features
-      << roi->features.ofFeatures.avgShift.first << delim
-      << roi->features.ofFeatures.avgShift.second << delim
-      << roi->features.ofFeatures.stdShift.first << delim
-      << roi->features.ofFeatures.stdShift.second << delim
-      << roi->features.ofFeatures.avgErr << delim
-      << roi->features.ofFeatures.ncc << delim
+      << roi->features.ofFeatures.shiftAvg.first << delim
+      << roi->features.ofFeatures.shiftAvg.second << delim
+      << roi->features.ofFeatures.shiftStd.first << delim
+      << roi->features.ofFeatures.shiftStd.second << delim
+      << roi->features.ofFeatures.shiftNcc << delim
+      << roi->features.ofFeatures.errAvg << delim
 
       << roi->roisForProbing.size() << delim
       << roi->parentRoI->priority << delim

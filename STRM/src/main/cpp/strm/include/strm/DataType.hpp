@@ -246,41 +246,43 @@ struct RoI {
   };
 
   struct OFFeatures {
-    const std::vector<std::pair<float, float>> shifts;
-    const std::vector<float> errs;
+//    const std::vector<std::pair<float, float>> shifts;
+//    const std::vector<float> errs;
 
-    std::pair<float, float> avgShift;
-    std::pair<float, float> stdShift;
-    float avgErr;
-    float ncc;
+    std::pair<float, float> shiftAvg;
+    std::pair<float, float> shiftStd;
+    float shiftNcc;
+    float errAvg;
 
-    OFFeatures(const std::vector<std::pair<float, float>>& shifts, const std::vector<float>& errs)
-        : shifts(shifts), errs(errs), avgShift(getShiftAvg(shifts)), stdShift(getShiftStd(shifts)),
-          avgErr(getAvgErr(errs)), ncc(getNCC(shifts)) {
-      if (!shifts.empty()) {
-        std::vector<std::pair<float, float>> filtered = filterShifts(shifts);
-        avgShift = getShiftAvg(filtered);
-        stdShift = getShiftStd(filtered);
-        ncc = getNCC(filtered);
-      }
+    OFFeatures(const std::vector<std::pair<float, float>>& shifts, const std::vector<float>& errs) {
+      assert(!shifts.empty());
+      auto[filteredShifts, filteredErrs] = filterShifts(shifts, errs);
+      assert(!filteredShifts.empty());
+      shiftAvg = getShiftAvg(filteredShifts);
+      shiftStd = getShiftStd(filteredShifts);
+      shiftNcc = getNCC(filteredShifts);
+      errAvg = getAvgErr(filteredErrs);
     }
 
-    static std::vector<std::pair<float, float>> filterShifts(
-        const std::vector<std::pair<float, float>>& shifts) {
+    static std::pair<std::vector<std::pair<float, float>>, std::vector<float>> filterShifts(
+        const std::vector<std::pair<float, float>>& shifts, const std::vector<float>& errs) {
       std::vector<float> distances;
-      for (const auto&[x, y] : shifts) {
+      for (const auto&[x, y]: shifts) {
         distances.push_back(x * x + y * y);
       }
       auto const q1_index = int(float(distances.size()) * 0.25);
       std::nth_element(distances.begin(), distances.begin() + q1_index, distances.end());
       float q1 = distances[q1_index];
       std::vector<std::pair<float, float>> filteredShifts;
-      for (auto&[x, y] : shifts) {
+      std::vector<float> filteredErrs;
+      for (int i = 0; i < shifts.size(); i++) {
+        auto&[x, y] = shifts[i];
         if (x * x + y * y > q1) {
           filteredShifts.emplace_back(x, y);
+          filteredErrs.push_back(errs[i]);
         }
       }
-      return filteredShifts;
+      return {filteredShifts, filteredErrs};
     }
 
     static std::pair<float, float> getShiftAvg(const std::vector<std::pair<float, float>>& shifts) {
