@@ -181,10 +181,6 @@ bool Frame::readyForOFExtraction() const {
   }
 }
 
-std::string Frame::toShortKey(const std::string& key) {
-  return key.substr(key.size() - 1, 1);
-}
-
 std::set<Frame*> filterLastFrames(const MultiStream& frames) {
   std::set<Frame*> lastFrames;
   for (auto it : frames) {
@@ -198,9 +194,8 @@ std::set<Frame*> filterLastFrames(const MultiStream& frames) {
 std::string toString(const MultiStream& frames) {
   std::stringstream ss;
   for (auto it = frames.begin(); it != frames.end(); it++) {
-    std::string shortKey = Frame::toShortKey(it->first);
-    ss << "video " << shortKey << ": ";
-    if (it->first.empty()) {
+    ss << "video " << it->first << ": ";
+    if (it->second.empty()) {
       ss << "EMPTY";
     } else {
       Frame* firstFrame = *(it->second.begin());
@@ -216,7 +211,7 @@ std::string toString(const MultiStream& frames) {
 
 std::string toString(const std::vector<InferenceInfo>& inferencePlan) {
   std::stringstream ss;
-  for (int i = inferencePlan.size() - 1; i >= 0; i--) {
+  for (int i = int(inferencePlan.size()) - 1; i >= 0; i--) {
     const InferenceInfo& info = inferencePlan[i];
     // TODO: support other processors
     ss << "(" << (info.device == GPU ? "GPU" : "DSP") << ", "
@@ -229,8 +224,8 @@ std::string toString(const std::vector<InferenceInfo>& inferencePlan) {
   return ss.str();
 }
 
-FrameBuffer::FrameBuffer(const std::string& key, int capacity)
-    : key(key), shortKey(Frame::toShortKey(key)), capacity(capacity), count(0) {
+FrameBuffer::FrameBuffer(int vid, int capacity, int startIndex)
+    : vid(vid), capacity(capacity), count(startIndex) {
   frames.resize(capacity);
 }
 
@@ -239,15 +234,15 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
   int frameIndex = count++;
   cv.wait(lock, [this, frameIndex]() { return frames[frameIndex % capacity].get() == nullptr; });
   Frame* prevFrame = frameIndex == 0 ? nullptr : frames[(frameIndex - 1) % capacity].get();
-  frames[frameIndex % capacity] = std::make_unique<Frame>(key, frameIndex, mat, prevFrame,
+  frames[frameIndex % capacity] = std::make_unique<Frame>(vid, frameIndex, mat, prevFrame,
                                                           NowMicros());
   if (prevFrame != nullptr) {
     prevFrame->nextFrame = frames[frameIndex % capacity].get();
   }
   Frame* currFrame = frames[frameIndex % capacity].get();
   lock.unlock();
-  LOGD("%-25s                 for video %-5s frame %-4d",
-       "FrameBuffer::enqueue", shortKey.c_str(), frameIndex);
+  LOGD("%-25s                 for video %-5d frame %-4d",
+       "FrameBuffer::enqueue", vid, frameIndex);
   return currFrame;
 }
 
@@ -258,8 +253,8 @@ void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
   }
   lock.unlock();
   cv.notify_all();
-  LOGD("%-25s                 for video %-5s frame %-4d ~ %-4d",
-       "FrameBuffer::freeImage", shortKey.c_str(), frameIndices.front(), frameIndices.back());
+  LOGD("%-25s                 for video %-5d frame %-4d ~ %-4d",
+       "FrameBuffer::freeImage", vid, frameIndices.front(), frameIndices.back());
 }
 
 int MixedFrame::numMixedFrames = 0;

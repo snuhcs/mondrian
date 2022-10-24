@@ -95,11 +95,11 @@ void PatchMixer::prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarge
   }
 
   // Set high priority for lastFrames except a full frame inference target frame
-  for (auto&[aStreamKey, aStreamFrames] : frames) {
+  for (auto&[vid, aStreamFrames] : frames) {
     if (aStreamFrames.empty()) {
       continue;
     }
-    if (fullFrameTarget == nullptr || fullFrameTarget->key != aStreamKey) {
+    if (fullFrameTarget == nullptr || fullFrameTarget->vid != vid) {
       Frame* lastFrame = *aStreamFrames.rbegin();
       for (auto& pRoI : lastFrame->parentRoIs) {
         pRoI->priority = HIGHEST_PRIORITY;
@@ -332,7 +332,7 @@ void PatchMixer::splitFrames(MultiStream& selectedFrames, Stream& droppedFrames,
     if (numPackableFrames <= i) {
       Frame* frameToDrop = *it;
       droppedFrames.insert(frameToDrop);
-      selectedFrames[frameToDrop->key].erase(frameToDrop);
+      selectedFrames[frameToDrop->vid].erase(frameToDrop);
     }
     it++;
   }
@@ -440,15 +440,15 @@ Frame* PatchMixer::getFullFrameTarget(const MultiStream& selectedFrames, int ful
   if (fullFrameStreamIndex == -1) {
     return nullptr;
   }
-  std::vector<std::string> nonEmptyStreamKeys;
-  for (const auto&[aStreamKey, aStreamFrames] : selectedFrames) {
+  std::vector<int> nonEmptyVideos;
+  for (const auto&[vid, aStreamFrames] : selectedFrames) {
     if (!aStreamFrames.empty()) {
-      nonEmptyStreamKeys.push_back(aStreamKey);
+      nonEmptyVideos.push_back(vid);
     }
   }
-  assert(!nonEmptyStreamKeys.empty());
-  fullFrameStreamIndex %= (int) nonEmptyStreamKeys.size();
-  Frame* fullFrameTarget = *selectedFrames.at(nonEmptyStreamKeys[fullFrameStreamIndex]).rbegin();
+  assert(!nonEmptyVideos.empty());
+  fullFrameStreamIndex %= (int) nonEmptyVideos.size();
+  Frame* fullFrameTarget = *selectedFrames.at(nonEmptyVideos[fullFrameStreamIndex]).rbegin();
   return fullFrameTarget;
 }
 

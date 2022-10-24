@@ -22,7 +22,7 @@ class Logger {
 
   void logRoI(const RoI* roi);
 
-  void logResult(const std::string& key, int frameIndex, time_us time,
+  void logResult(int vid, int frameIndex, time_us time,
                  const std::vector<BoundingBox>& boxes);
 
  private:

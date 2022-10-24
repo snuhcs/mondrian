@@ -11,6 +11,7 @@ namespace rm {
 
 struct VideoConfig {
   std::string PATH;
+  std::pair<int, int> FRAME_RANGE;
   int FPS = 0;
 };
 

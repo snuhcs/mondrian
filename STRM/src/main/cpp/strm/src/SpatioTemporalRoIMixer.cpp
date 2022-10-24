@@ -11,11 +11,12 @@ namespace rm {
 
 const int SpatioTemporalRoIMixer::FULL_KEY_OFFSET = 1000000;
 
-SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config, int numSourceVideo,
+SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
+                                               int numSourceVideo, std::map<int, int> startIndices,
                                                JavaVM* vm, JNIEnv* env, jobject emulator)
     : mConfig(config), mbStop(false),
       mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
-      mNumSourceVideos(numSourceVideo),
+      mNumSourceVideos(numSourceVideo), mStartIndices(startIndices),
       mTargetSize(int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
       mInputSizes(mConfig.inferenceEngineConfig.INPUT_SIZES),
@@ -117,9 +118,9 @@ void SpatioTemporalRoIMixer::work() {
       fullFrameInference(fullFrameTarget);
     }
     logger.step("full");
-    LOGD("%-25s took %-7lld us for video %-5s frame %-4d",
+    LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
          "STRM::fullFrameInference", logger.getDuration("full"),
-         fullFrameTarget != nullptr ? fullFrameTarget->shortKey.c_str() : "-1",
+         fullFrameTarget != nullptr ? fullFrameTarget->vid : -1,
          fullFrameTarget != nullptr ? fullFrameTarget->frameIndex : -1);
 
     // Inference
@@ -165,7 +166,7 @@ void SpatioTemporalRoIMixer::work() {
           std::vector<BoundingBox> boxes;
           std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
                          [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-          mResults[frame->key][frame->frameIndex] = {
+          mResults[frame->vid][frame->frameIndex] = {
               frame->endTime, nms(boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold())};
         }
       }
@@ -235,7 +236,7 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   std::vector<BoundingBox> resultBoxes;
   std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(resultBoxes),
                  [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-  mResults[frame->key][frame->frameIndex] = {NowMicros(), std::move(resultBoxes)};
+  mResults[frame->vid][frame->frameIndex] = {NowMicros(), std::move(resultBoxes)};
   resultLock.unlock();
   mResultsCv.notify_all();
 }
@@ -326,7 +327,7 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
 void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
   std::unique_lock<std::mutex> framesLock(mFrameBuffersMtx);
   for (const auto& it : frames) {
-    const std::string& aStreamKey = it.first;
+    const int vid = it.first;
     const Stream& aStreamFrames = it.second;
     if (aStreamFrames.empty()) {
       continue;
@@ -345,7 +346,7 @@ void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
         frameIndices.push_back(frame->frameIndex);
       }
     }
-    mFrameBuffers.at(aStreamKey)->freeImage(frameIndices);
+    mFrameBuffers.at(vid)->freeImage(frameIndices);
   }
   framesLock.unlock();
 }
@@ -378,20 +379,21 @@ void SpatioTemporalRoIMixer::waitForStart() {
   mEnqueueCv.notify_all();
 }
 
-int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& mat) {
+int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& mat) {
   assert(!mat.empty());
   std::unique_lock<std::mutex> lock(mFrameBuffersMtx);
-  if (mFrameBuffers.find(key) == mFrameBuffers.end()) {
-    mFrameBuffers[key] = std::make_unique<FrameBuffer>(key, mConfig.BUFFER_SIZE);
+  if (mFrameBuffers.find(vid) == mFrameBuffers.end()) {
+    mFrameBuffers[vid] = std::make_unique<FrameBuffer>(
+        vid, mConfig.BUFFER_SIZE, mStartIndices[vid]);
   }
-  FrameBuffer* frameBuffer = mFrameBuffers.at(key).get();
+  FrameBuffer* frameBuffer = mFrameBuffers.at(vid).get();
   lock.unlock();
 
   Frame* frame = frameBuffer->enqueue(mat);
   time_us startTime = NowMicros();
   preprocess(frame);
-  LOGD("%-25s took %-7lld us for video %-5s frame %-4d",
-       "STRM::preprocess", NowMicros() - startTime, frame->shortKey.c_str(), frame->frameIndex);
+  LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
+       "STRM::preprocess", NowMicros() - startTime, frame->vid, frame->frameIndex);
   if (mConfig.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == 0) {
     frame->useInferenceResultForOF = true;
     frame->isFullFrameTarget = true;
@@ -399,7 +401,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
     if (mConfig.FULL_FRAME_INTERVAL == 0) {
       std::lock_guard<std::mutex> framesLock(mFrameBuffersMtx);
       log(frame);
-      mFrameBuffers.at(frame->key)->freeImage({frame->frameIndex});
+      mFrameBuffers.at(frame->vid)->freeImage({frame->frameIndex});
     }
   } else {
     if (frame->frameIndex == 1) {
@@ -408,7 +410,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const std::string& key, const cv::Mat& 
       mStartCv.notify_one();
       mEnqueueCv.wait(startLock, [this]() { return mbStartEnqueue; });
       startLock.unlock();
-      LOGD("Start %s video at %lld us", key.c_str(), NowMicros());
+      LOGD("Start %d video at %lld us", vid, NowMicros());
     }
     mRoIExtractor->enqueue(frame);
   }
@@ -428,26 +430,26 @@ void SpatioTemporalRoIMixer::outputWork() {
         return true;
       }
       for (auto& streamIt : mResults) {
-        std::string key = streamIt.first;
-        if (mResultIndices.find(key) == mResultIndices.end()) {
-          mResultIndices[key] = 0;
+        int vid = streamIt.first;
+        if (mResultIndices.find(vid) == mResultIndices.end()) {
+          mResultIndices[vid] = 0;
         }
-        int frameIndex = mResultIndices[key];
+        int frameIndex = mResultIndices[vid];
         if (streamIt.second.find(frameIndex) != streamIt.second.end()) {
           return true;
         }
       }
       return false;
     });
-    std::string key;
+    int vid;
     int frameIndex;
     FrameResult result;
     for (auto& streamIt : mResults) {
-      key = streamIt.first;
-      frameIndex = mResultIndices[key];
+      vid = streamIt.first;
+      frameIndex = mResultIndices[vid];
       auto frameIt = streamIt.second.find(frameIndex);
       if (frameIt != streamIt.second.end()) {
-        mResultIndices[key]++;
+        mResultIndices[vid]++;
         result = frameIt->second;
         streamIt.second.erase(frameIt);
         break;
@@ -457,9 +459,9 @@ void SpatioTemporalRoIMixer::outputWork() {
     mResultsCv.notify_all();
 
     auto&[time, boxes] = result;
-    LOGD("Logger::logResult                         for video %-5s frame %-4d // %4lu boxes",
-         Frame::toShortKey(key).c_str(), frameIndex, boxes.size());
-    mResultLogger->logResult(key, frameIndex, time, boxes);
+    LOGD("Logger::logResult                         for video %-5d frame %-4d // %4lu boxes",
+         vid, frameIndex, boxes.size());
+    mResultLogger->logResult(vid, frameIndex, time, boxes);
   }
 }
 

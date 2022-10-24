@@ -25,12 +25,13 @@ using FrameResult = std::pair<time_us, std::vector<BoundingBox>>;
 
 class SpatioTemporalRoIMixer {
  public:
-  SpatioTemporalRoIMixer(const STRMConfig& config, int numSourceVideos,
+  SpatioTemporalRoIMixer(const STRMConfig& config,
+                         int numSourceVideos, std::map<int, int> startIndices,
                          JavaVM* vm, JNIEnv* env, jobject strm);
 
   ~SpatioTemporalRoIMixer();
 
-  int enqueueImage(const std::string& key, const cv::Mat& mat);
+  int enqueueImage(const int vid, const cv::Mat& mat);
 
  private:
   void waitForStart();
@@ -91,12 +92,13 @@ class SpatioTemporalRoIMixer {
   bool mbStartEnqueue = false;
 
   std::mutex mFrameBuffersMtx;
-  std::map<std::string, std::unique_ptr<FrameBuffer>> mFrameBuffers;
+  std::map<int, std::unique_ptr<FrameBuffer>> mFrameBuffers;
+  std::map<int, int> mStartIndices;
 
   std::mutex mResultsMtx;
   std::condition_variable mResultsCv;
-  std::map<std::string, std::map<int, FrameResult>> mResults;
-  std::map<std::string, int> mResultIndices;
+  std::map<int, std::map<int, FrameResult>> mResults;
+  std::map<int, int> mResultIndices;
 };
 
 } // namespace rm

@@ -21,18 +21,21 @@ Java_hcs_offloading_strm_Emulator_createSpatioTemporalRoIMixer(JNIEnv* env, jobj
   rm::IMPLConfig implConfig = rm::parseIMPLConfig("/data/local/tmp/strm.json");
   env->GetJavaVM(&vm);
   rm::STRMConfig config = rm::parseSTRMConfig("/data/local/tmp/strm.json");
+  std::map<int, int> startIndices;
+  for (int vid = 0; vid < implConfig.videoConfigs.size(); vid++) {
+    startIndices[vid] = implConfig.videoConfigs[vid].FRAME_RANGE.first;
+  }
   return reinterpret_cast<long>(new rm::SpatioTemporalRoIMixer(
-      config, (int) implConfig.videoConfigs.size(), vm, env, thiz));
+      config, (int) implConfig.videoConfigs.size(), startIndices, vm, env, thiz));
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_hcs_offloading_strm_Emulator_enqueueImage(JNIEnv* env, jobject thiz, jlong handle, jstring key,
-                                               jlong matAddr) {
+Java_hcs_offloading_strm_Emulator_enqueueImage(JNIEnv* env, jobject thiz,
+                                               jlong handle, jint vid, jlong matAddr) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
   auto* image = (cv::Mat*) matAddr;
-  const char* k = env->GetStringUTFChars(key, &isCopy);
-  strm->enqueueImage(std::string(k), *image);
+  strm->enqueueImage(vid, *image);
 }
 
 extern "C"

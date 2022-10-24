@@ -13,6 +13,10 @@ std::vector<VideoConfig> parseVideoConfigs(const Json::Value& json) {
     if (!j["path"].isNull()) {
       config.PATH = j["path"].asString();
     }
+    if (!j["frame_range"].isNull()) {
+      config.FRAME_RANGE.first = j["frame_range"][0].asInt();
+      config.FRAME_RANGE.second = j["frame_range"][1].asInt();
+    }
     if (!j["fps"].isNull()) {
       config.FPS = j["fps"].asInt();
     }

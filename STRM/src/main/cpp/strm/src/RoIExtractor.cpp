@@ -48,8 +48,8 @@ void RoIExtractor::enqueue(Frame* frame) {
   std::unique_lock<std::mutex> queueLock(mtx);
   cv.wait(queueLock, [this]() { return mPDWaiting.size() < mConfig.MAX_QUEUE_SIZE; });
   mPDWaiting.insert(frame);
-  LOGD("%-25s                 for video %-5s frame %-4d // %4lu PD | %4lu OF | %4lu Processed",
-       "RoIExtractor::enqueue", frame->shortKey.c_str(), frame->frameIndex,
+  LOGD("%-25s                 for video %-5d frame %-4d // %4lu PD | %4lu OF | %4lu Processed",
+       "RoIExtractor::enqueue", frame->vid, frame->frameIndex,
        mPDWaiting.size(), mOFWaiting.size(), mExtractionFinished.size());
   queueLock.unlock();
   cv.notify_all();
@@ -69,7 +69,7 @@ MultiStream RoIExtractor::getExtractedFrames(std::vector<InferenceInfo>& inferen
   std::for_each(mOFProcessing.begin(), mOFProcessing.end(),
                 [](Frame* frame) { frame->extractOFAgain = true; });
   for (Frame* frame : mExtractionFinished) {
-    extractedFrames[frame->key].insert(frame);
+    extractedFrames[frame->vid].insert(frame);
   }
   mExtractionFinished.clear();
   resetPack();
@@ -258,10 +258,10 @@ void RoIExtractor::processPD(Frame* currFrame) {
   currFrame->pixelDiffRoIProcessStartTime = NowMicros();
   getPixelDiffRoIs(prevFrame, currFrame, mTargetSize, mConfig.MIN_ROI_AREA, currFrame->childRoIs);
   currFrame->pixelDiffRoIProcessEndTime = NowMicros();
-  LOGD("%-25s took %-7lld us for video %-5s frame %-4d // %4lu PD RoIs",
+  LOGD("%-25s took %-7lld us for video %-5d frame %-4d // %4lu PD RoIs",
        "RoIExtractor::processPD",
        currFrame->pixelDiffRoIProcessEndTime - currFrame->pixelDiffRoIProcessStartTime,
-       currFrame->shortKey.c_str(), currFrame->frameIndex, currFrame->childRoIs.size());
+       currFrame->vid, currFrame->frameIndex, currFrame->childRoIs.size());
 }
 
 void RoIExtractor::processOF(Frame* currFrame) {
@@ -292,9 +292,9 @@ void RoIExtractor::processOF(Frame* currFrame) {
   currFrame->opticalFlowRoIProcessStartTime = NowMicros();
   getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes, mTargetSize, currFrame->childRoIs);
   currFrame->opticalFlowRoIProcessEndTime = NowMicros();
-  LOGD("%-25s took %-7lld us for video %-5s frame %-4d // %4lu OF RoIs", "RoIExtractor::processOF",
+  LOGD("%-25s took %-7lld us for video %-5d frame %-4d // %4lu OF RoIs", "RoIExtractor::processOF",
        currFrame->opticalFlowRoIProcessEndTime - currFrame->opticalFlowRoIProcessStartTime,
-       currFrame->shortKey.c_str(), currFrame->frameIndex,
+       currFrame->vid, currFrame->frameIndex,
        std::count_if(currFrame->childRoIs.begin(), currFrame->childRoIs.end(),
                      [](auto& cRoI) { return cRoI->type == RoI::Type::OF; }));
 }

@@ -109,8 +109,7 @@ struct BoundingBox {
 class RoIResizer;
 
 struct Frame {
-  const std::string key;
-  const std::string shortKey;
+  const int vid;
   const int frameIndex;
   cv::Mat mat;
   Frame* prevFrame;
@@ -157,9 +156,9 @@ struct Frame {
   time_us reconstructEndTime = 0;
   time_us endTime = 0;
 
-  Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
+  Frame(const int vid, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime)
-      : key(key), shortKey(toShortKey(key)), frameIndex(frameIndex), mat(mat),
+      : vid(vid), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
         extractOFAgain(false), enqueueTime(enqueueTime), isFullFrameTarget(false),
         isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
@@ -180,14 +179,12 @@ struct Frame {
   bool isReadyToMarry(int mixedFrameIndex) const;
 
   bool readyForOFExtraction() const;
-
-  static std::string toShortKey(const std::string& key);
 };
 
 struct FrameComp {
   bool operator()(const Frame* lhs, const Frame* rhs) const {
     if (lhs->frameIndex == rhs->frameIndex) {
-      return lhs->key < rhs->key;
+      return lhs->vid < rhs->vid;
     }
     return lhs->frameIndex < rhs->frameIndex;
   }
@@ -207,7 +204,7 @@ struct FreeRects {
 };
 
 using Stream = std::set<Frame*, FrameComp>;
-using MultiStream = std::map<std::string, Stream>;
+using MultiStream = std::map<int, Stream>;
 
 std::set<Frame*> filterLastFrames(const MultiStream& frames);
 
@@ -219,15 +216,14 @@ class Logger;
 
 class FrameBuffer {
  public:
-  FrameBuffer(const std::string& key, int capacity);
+  FrameBuffer(int vid, int capacity, int startIndex);
 
   Frame* enqueue(const cv::Mat& mat);
 
   void freeImage(const std::vector<int>& frameIndices);
 
  private:
-  const std::string key;
-  const std::string shortKey;
+  const int vid;
   const int capacity;
 
   int count;

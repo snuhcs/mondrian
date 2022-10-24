@@ -33,7 +33,7 @@ void Logger::logExecutionHeader() {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << "key" << delim
+  logFile << "videoId" << delim
           << "frameIndex" << delim
           << "PDExtractorID" << delim
           << "OFExtractorID" << delim
@@ -68,7 +68,7 @@ void Logger::logExecution(const Frame* frame) {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << frame->key << delim
+  logFile << frame->vid << delim
           << frame->frameIndex << delim
           << frame->PDExtractorID << delim
           << frame->OFExtractorID << delim
@@ -102,13 +102,13 @@ time_us Logger::fromBaseTime(const time_us& time) const {
   return time != 0 ? time - baseTime : 0;
 }
 
-void Logger::logResult(const std::string& key, int frameIndex, time_us time,
+void Logger::logResult(int vid, int frameIndex, time_us time,
                        const std::vector<BoundingBox>& boxes) {
   if (!logFile.is_open()) {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << key << ','
+  logFile << vid << ','
           << frameIndex << ','
           << fromBaseTime(time) * 1000 << ',';
   for (int i = 0; i < boxes.size(); i++) {
@@ -137,7 +137,7 @@ void Logger::logRoIHeader() {
   std::lock_guard<std::mutex> lock(mtx);
   logFile
       // frame
-      << "key" << delim
+      << "videoId" << delim
       << "frameIndex" << delim
 
       // origLoc
@@ -189,7 +189,7 @@ void Logger::logRoI(const RoI* roi) {
   std::lock_guard<std::mutex> lock(mtx);
   logFile
       // frame
-      << roi->frame->key << delim
+      << roi->frame->vid << delim
       << roi->frame->frameIndex << delim
 
       // origLoc
