@@ -429,10 +429,10 @@ void SpatioTemporalRoIMixer::outputWork() {
       if (mbStop) {
         return true;
       }
-      for (auto& streamIt : mResults) {
+      for (auto& streamIt: mResults) {
         int vid = streamIt.first;
         if (mResultIndices.find(vid) == mResultIndices.end()) {
-          mResultIndices[vid] = 0;
+          mResultIndices[vid] = mStartIndices[vid];
         }
         int frameIndex = mResultIndices[vid];
         if (streamIt.second.find(frameIndex) != streamIt.second.end()) {
