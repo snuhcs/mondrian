@@ -26,7 +26,7 @@ Java_hcs_offloading_strm_Emulator_createSpatioTemporalRoIMixer(JNIEnv* env, jobj
     startIndices[vid] = implConfig.videoConfigs[vid].FRAME_RANGE.first;
   }
   return reinterpret_cast<long>(new rm::SpatioTemporalRoIMixer(
-      config, (int) implConfig.videoConfigs.size(), startIndices, vm, env, thiz));
+      config, startIndices, vm, env, thiz));
 }
 
 extern "C"

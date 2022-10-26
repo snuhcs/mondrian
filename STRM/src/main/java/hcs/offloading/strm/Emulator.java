@@ -19,9 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Emulator {
     static {
@@ -87,13 +85,16 @@ public class Emulator {
                     Mat mat = new Mat();
                     Utils.bitmapToMat(bitmap, mat);
                     enqueueImage(handle, vid, mat.getNativeObjAddr());
-                    long endTimeNs = System.nanoTime();
-                    long nextStartTimeNs = startTimeNs + (long) (frameIndex + 1) * (long) (1e9 / config.FPS);
-                    if (config.FPS != 0 && nextStartTimeNs > endTimeNs) {
-                        try {
-                            Thread.sleep((nextStartTimeNs - endTimeNs) / 1000000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
+                    if (config.FPS != 0) {
+                        long endTimeNs = System.nanoTime();
+                        long nextStartTimeNs = startTimeNs +
+                                (long) (frameIndex - startIndex + 1) * (long) (1e9 / config.FPS);
+                        if (nextStartTimeNs > endTimeNs) {
+                            try {
+                                Thread.sleep((nextStartTimeNs - endTimeNs) / 1000000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 }

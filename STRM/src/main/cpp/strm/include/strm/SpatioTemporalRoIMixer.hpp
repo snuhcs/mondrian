@@ -26,7 +26,7 @@ using FrameResult = std::pair<time_us, std::vector<BoundingBox>>;
 class SpatioTemporalRoIMixer {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
-                         int numSourceVideos, std::map<int, int> startIndices,
+                         std::map<int, int> startIndices,
                          JavaVM* vm, JNIEnv* env, jobject strm);
 
   ~SpatioTemporalRoIMixer();
@@ -84,7 +84,6 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<InferenceEngine> mInferenceEngine;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 
-  int mNumSourceVideos;
   int mNumStartedFrameBuffers = 0;
   std::mutex mStartMtx;
   std::condition_variable mStartCv;

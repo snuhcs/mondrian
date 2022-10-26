@@ -12,11 +12,11 @@ namespace rm {
 const int SpatioTemporalRoIMixer::FULL_KEY_OFFSET = 1000000;
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
-                                               int numSourceVideo, std::map<int, int> startIndices,
+                                               std::map<int, int> startIndices,
                                                JavaVM* vm, JNIEnv* env, jobject emulator)
     : mConfig(config), mbStop(false),
-      mResultLogger(new Logger("/data/data/hcs.offloading.strm/test.log")),
-      mNumSourceVideos(numSourceVideo), mStartIndices(startIndices),
+      mResultLogger(new Logger("/data/data/hcs.offloading.strm/boxes.txt")),
+      mStartIndices(std::move(startIndices)),
       mTargetSize(int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(mConfig.roIExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
       mInputSizes(mConfig.inferenceEngineConfig.INPUT_SIZES),
@@ -28,11 +28,11 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
           config.patchReconstructorConfig, mRoIResizer.get())) {
   assert(!config.ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
   if (config.LOG_EXECUTION) {
-    mExecutionLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/execution_log.csv");
+    mExecutionLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/exec.csv");
     mExecutionLogger->logExecutionHeader();
   }
   if (config.LOG_ROI) {
-    mRoILogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/roi_log.csv");
+    mRoILogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/roi.csv");
     mRoILogger->logRoIHeader();
   }
 
@@ -48,7 +48,7 @@ SpatioTemporalRoIMixer::~SpatioTemporalRoIMixer() {
 }
 
 void SpatioTemporalRoIMixer::work() {
-  LOGD("SpatioTemporalRoIMixer::work()");
+  LOGD("STRM::work()");
   int scheduleID = 0;
   int fullFrameStreamIndex = 0;
 
@@ -364,7 +364,7 @@ void SpatioTemporalRoIMixer::log(const Frame* frame) {
 
 void SpatioTemporalRoIMixer::waitForStart() {
   std::unique_lock<std::mutex> startLock(mStartMtx);
-  mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mNumSourceVideos; });
+  mStartCv.wait(startLock, [this]() { return mNumStartedFrameBuffers == mStartIndices.size(); });
   std::map<Device, std::pair<time_us, time_us>> startEndTime;
   for (Device device : mConfig.inferenceEngineConfig.DEVICES) {
     startEndTime[device] = {0, mScheduleInterval};
@@ -394,7 +394,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& mat) {
   preprocess(frame);
   LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
        "STRM::preprocess", NowMicros() - startTime, frame->vid, frame->frameIndex);
-  if (mConfig.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == 0) {
+  if (mConfig.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == mStartIndices[vid]) {
     frame->useInferenceResultForOF = true;
     frame->isFullFrameTarget = true;
     fullFrameInference(frame);
@@ -404,7 +404,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& mat) {
       mFrameBuffers.at(frame->vid)->freeImage({frame->frameIndex});
     }
   } else {
-    if (frame->frameIndex == 1) {
+    if (frame->frameIndex == mStartIndices[vid] + 1) {
       std::unique_lock<std::mutex> startLock(mStartMtx);
       mNumStartedFrameBuffers++;
       mStartCv.notify_one();

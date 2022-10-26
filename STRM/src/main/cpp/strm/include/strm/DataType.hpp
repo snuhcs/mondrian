@@ -254,9 +254,21 @@ struct RoI {
     float shiftNcc;
     float errAvg;
 
-    OFFeatures(const std::vector<std::pair<float, float>>& shifts, const std::vector<float>& errs) {
-      assert(!shifts.empty());
-      auto[filteredShifts, filteredErrs] = filterShifts(shifts, errs);
+    OFFeatures(const std::vector<std::pair<float, float>>& shifts,
+               const std::vector<float>& errs,
+               const std::vector<uchar>& statusVec) {
+      assert(shifts.size() == errs.size() && errs.size() == statusVec.size());
+      if (std::all_of(statusVec.begin(), statusVec.end(),
+                      [](const uchar& status) { return status == 0; })) {
+        shiftAvg = {0, 0};
+        shiftStd = {0, 0};
+        shiftNcc = 100;
+        errAvg = 100;
+        return;
+      }
+      auto[validShifts, validErrs] = filterShiftsWithStatus(
+          shifts, errs, statusVec);
+      auto[filteredShifts, filteredErrs] = filterOutlierShifts(validShifts, validErrs);
       assert(!filteredShifts.empty());
       shiftAvg = getShiftAvg(filteredShifts);
       shiftStd = getShiftStd(filteredShifts);
@@ -264,20 +276,37 @@ struct RoI {
       errAvg = getAvgErr(filteredErrs);
     }
 
-    static std::pair<std::vector<std::pair<float, float>>, std::vector<float>> filterShifts(
-        const std::vector<std::pair<float, float>>& shifts, const std::vector<float>& errs) {
+    static std::pair<std::vector<std::pair<float, float>>, std::vector<float>>
+    filterShiftsWithStatus(const std::vector<std::pair<float, float>>& shifts,
+                           const std::vector<float>& errs,
+                           const std::vector<uchar>& statusVec) {
+      std::vector<std::pair<float, float>> filteredShifts;
+      std::vector<float> filteredErrs;
+      for (int i = 0; i < shifts.size(); i++) {
+        assert(statusVec[i] == 0 || statusVec[i] == 1);
+        if (statusVec[i] == 1) {
+          filteredShifts.push_back(shifts[i]);
+          filteredErrs.push_back(errs[i]);
+        }
+      }
+      return {filteredShifts, filteredErrs};
+    }
+
+    static std::pair<std::vector<std::pair<float, float>>, std::vector<float>>
+    filterOutlierShifts(const std::vector<std::pair<float, float>>& shifts,
+                        const std::vector<float>& errs) {
+      assert(!shifts.empty());
       std::vector<float> distances;
       for (const auto&[x, y]: shifts) {
         distances.push_back(x * x + y * y);
       }
-      auto const q1_index = int(float(distances.size()) * 0.25);
-      std::nth_element(distances.begin(), distances.begin() + q1_index, distances.end());
-      float q1 = distances[q1_index];
+      std::sort(distances.begin(), distances.end());
+      int q1_distance = distances[distances.size() / 4];
       std::vector<std::pair<float, float>> filteredShifts;
       std::vector<float> filteredErrs;
       for (int i = 0; i < shifts.size(); i++) {
         auto&[x, y] = shifts[i];
-        if (x * x + y * y > q1) {
+        if (x * x + y * y >= q1_distance) {
           filteredShifts.emplace_back(x, y);
           filteredErrs.push_back(errs[i]);
         }
@@ -444,7 +473,7 @@ struct RoI {
     }
     std::unique_ptr<RoI> mergedRoI(
         new RoI(nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-                roiType, origin_Null, roiLabel, OFFeatures({}, {}), 0, false));
+                roiType, origin_Null, roiLabel, OFFeatures({}, {}, {}), 0, false));
     mergedRoI->setTargetScale(pRoI0->targetScale > pRoI1->targetScale ?
                               pRoI0->targetScale : pRoI1->targetScale, scale_NULL);
     return std::move(mergedRoI);

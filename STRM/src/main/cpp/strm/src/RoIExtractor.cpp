@@ -345,9 +345,9 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
   const cv::Mat& prevImage = prevFrame->preProcessedMat;
   const cv::Mat& currImage = currFrame->preProcessedMat;
 
-  std::vector<int> numPoints;
+  std::vector<int> startEndIndices = {0};
   std::vector<cv::Point2f> inputPoints;
-  for (const Rect& bbx : boundingBoxes) {
+  for (const Rect& bbx: boundingBoxes) {
     float xRatio = (float) targetSize.width / (float) prevFrame->width;
     float yRatio = (float) targetSize.height / (float) prevFrame->height;
     float x = std::min(bbx.left, bbx.right) * xRatio;
@@ -362,19 +362,20 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
     std::vector<cv::Point2f> points;
     cv::Rect roiBbx = cv::Rect(int(x), int(y), int(w), int(h));
     cv::goodFeaturesToTrack(prevImage(roiBbx), points, 50, 0.01, 5, cv::Mat(), 3, false, 0.03);
-    for (cv::Point2f& p : points) {
+    for (cv::Point2f& p: points) {
       p.x += x;
       p.y += y;
     }
     if (points.empty()) {
+      startEndIndices.push_back(startEndIndices.back() + 1);
       inputPoints.emplace_back(((float) bbx.left + (float) bbx.width() / 2) * xRatio,
                                ((float) bbx.top + (float) bbx.height() / 2) * yRatio);
-      numPoints.push_back(1);
     } else {
+      startEndIndices.push_back(startEndIndices.back() + int(points.size()));
       inputPoints.insert(inputPoints.end(), points.begin(), points.end());
-      numPoints.push_back((int) points.size());
     }
   }
+  assert(startEndIndices.back() == inputPoints.size());
 
   std::vector<uchar> status;
   std::vector<float> errs;
@@ -386,28 +387,23 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
   assert(inputPoints.size() == errs.size());
 
   std::vector<RoI::OFFeatures> ofFeatures;
-  int startIndex = 0;
-  int endIndex;
-  for (int numPoint : numPoints) {
-    endIndex = startIndex + numPoint;
+  for (int i = 0; i < startEndIndices.size() - 1; i++) {
+    int startIndex = startEndIndices[i];
+    int endIndex = startEndIndices[i + 1];
     std::vector<std::pair<float, float>> boxShifts;
     std::vector<float> boxErrs;
-    for (int i = startIndex; i < endIndex; i++) {
-      if (status[i] == 1) {
-        float x = outputPoints[i].x - inputPoints[i].x;
-        float y = outputPoints[i].y - inputPoints[i].y;
-        boxShifts.emplace_back(
-            x * (float) currFrame->width / (float) targetSize.width,
-            y * (float) currFrame->height / (float) targetSize.height);
-        boxErrs.push_back(errs[i]);
-      } else {
-        assert(false);
-      }
+    std::vector<uchar> boxStatusVec;
+    for (int j = startIndex; j < endIndex; j++) {
+      float x = outputPoints[j].x - inputPoints[j].x;
+      float y = outputPoints[j].y - inputPoints[j].y;
+      boxShifts.emplace_back(
+          x * (float) currFrame->width / (float) targetSize.width,
+          y * (float) currFrame->height / (float) targetSize.height);
+      boxErrs.push_back(errs[j]);
+      boxStatusVec.push_back(status[j]);
     }
-    ofFeatures.emplace_back(boxShifts, boxErrs);
-    startIndex = endIndex;
+    ofFeatures.emplace_back(boxShifts, boxErrs, boxStatusVec);
   }
-  assert(startIndex == endIndex && endIndex == outputPoints.size());
   return ofFeatures;
 }
 
@@ -450,7 +446,7 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
         RoI::PD,
         origin_PD,
         -1,
-        RoI::OFFeatures({}, {}),
+        RoI::OFFeatures({}, {}, {}),
         mConfig.ROI_PADDING,
         false));
   }
