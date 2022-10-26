@@ -238,13 +238,6 @@ struct RoI {
     PD = 2,
   };
 
-  enum ScaleLevel {
-    scale_NULL = -1,
-    scale_LOW = 0,
-    scale_MID = 1,
-    scale_HIGH = 2,
-  };
-
   static const int INVALID_CONF;
 
   struct OFFeatures {
@@ -409,7 +402,7 @@ struct RoI {
 
  private:
   float targetScale;
-  ScaleLevel scaleLevel;
+  int scaleLevel;
 
  public:
   std::pair<float, float> packedLocation;
@@ -475,17 +468,11 @@ struct RoI {
     return targetScale;
   }
 
-  ScaleLevel getScaleLevel() const {
+  int getScaleLevel() const {
     return scaleLevel;
   }
 
-  void setTargetScale(float newTargetScale, ScaleLevel newScaleLevel) {
-    // assert(newTargetScale <= 1); // TODO
-    float minEdgeLength = std::min(paddedLoc.width(), paddedLoc.height());
-    // compare with 1/minEdgeLength to prevent shorter edge being even shorter than 1 after downscaling
-    targetScale = std::max(1 / minEdgeLength, newTargetScale);
-    scaleLevel = newScaleLevel;
-  }
+  void setTargetScale(float newTargetScale, int newScaleLevel);
 
   std::pair<float, float> getResizedWidthHeight() const {
     return {paddedLoc.width() * targetScale,

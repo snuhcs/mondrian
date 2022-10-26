@@ -17,9 +17,11 @@ using Predictor = std::function<int(
 
 class RoIResizer {
  public:
+  static const int INVALID_LEVEL;
+
   RoIResizer(const RoIResizerConfig& config);
 
-  std::pair<float, RoI::ScaleLevel> getTargetScale(const idType id, const RoI::Features& features);
+  std::pair<float, int> getTargetScale(const idType id, const RoI::Features& features);
 
   void updateTable(RoI* roi);
 
@@ -35,8 +37,8 @@ class RoIResizer {
     return mConfig.PROBE_STEP_SIZE != 0;
   }
 
-  std::vector<float> getProbingCandidates(float scale, RoI::ScaleLevel level,
-                                          int numProbeSteps);
+  std::vector<float> getProbingCandidates(
+      float scale, int level, int numProbeSteps);
 
  private:
   class CircularBuffer {
@@ -62,9 +64,9 @@ class RoIResizer {
 
   static const std::map<std::string, Predictor> candidatePredictors;
   static const std::map<std::string, std::vector<float>> scalesForLevels;
+  static const float mProbingStep;
 
   const RoIResizerConfig mConfig;
-  const int mScaleGranularity;
   const Predictor mPredictor;
   const std::vector<float> mTargetSize;
 
@@ -72,7 +74,7 @@ class RoIResizer {
   std::map<idType, CircularBuffer> prevPredictionBuffer;
 
   // Save <targetScale of RoI, calibration for that targetScale>
-  std::map<idType, std::pair<RoI::ScaleLevel, float>> calibrationTable;
+  std::map<idType, std::pair<int, float>> calibrationTable;
 };
 
 } // namespace rm

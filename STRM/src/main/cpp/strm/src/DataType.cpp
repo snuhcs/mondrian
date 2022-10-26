@@ -14,13 +14,13 @@ const idType MERGED_ROI_ID = -2;
 const std::pair<float, float> RoI::NOT_PACKED{-1, -1};
 
 void Frame::resizeRoIs(RoIResizer* roiResizer) {
-  for (auto& cRoI : childRoIs) {
+  for (auto& cRoI: childRoIs) {
     if (cRoI->type == RoI::Type::OF) {
-      auto [scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features);
+      auto[scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features);
       cRoI->setTargetScale(scale, level);
     }
   }
-  for (auto& cRoI : childRoIs) {
+  for (auto& cRoI: childRoIs) {
     if (cRoI->type == RoI::Type::PD && cRoI->nextRoI != nullptr) {
       cRoI->setTargetScale(cRoI->nextRoI->getTargetScale(), cRoI->nextRoI->getScaleLevel());
     }
@@ -30,11 +30,11 @@ void Frame::resizeRoIs(RoIResizer* roiResizer) {
 void Frame::resetParentRoIs() {
   parentRoIs.clear();
   assert(parentRoIs.empty());
-  for (auto& cRoI : childRoIs) {
+  for (auto& cRoI: childRoIs) {
     assert(cRoI->childRoIs.empty());
     assert(cRoI->roisForProbing.empty());
   }
-  for (auto& cRoI : childRoIs) {
+  for (auto& cRoI: childRoIs) {
     std::unique_ptr<RoI> pRoI = std::make_unique<RoI>(*cRoI);
     cRoI->parentRoI = pRoI.get();
     pRoI->childRoIs.push_back(cRoI.get());
@@ -91,7 +91,7 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
                                 parentRoIs[i]->childRoIs.begin(), parentRoIs[i]->childRoIs.end());
     mergedRoI->childRoIs.insert(mergedRoI->childRoIs.end(),
                                 parentRoIs[j]->childRoIs.begin(), parentRoIs[j]->childRoIs.end());
-    for (RoI* cRoI : mergedRoI->childRoIs) {
+    for (RoI* cRoI: mergedRoI->childRoIs) {
       cRoI->parentRoI = mergedRoI;
     }
     assert(j > i);
@@ -102,12 +102,12 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
 
 void Frame::addProbeRoIs(RoIResizer* mRoIResizer) {
   assert(probingRoIs.empty());
-  for (auto& cRoI : childRoIs) {
+  for (auto& cRoI: childRoIs) {
     assert(cRoI->frame == this);
     assert(cRoI->roisForProbing.empty());
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
         cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
-    for (auto scale : probingCandidates) {
+    for (auto scale: probingCandidates) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
           cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, true);
@@ -119,7 +119,7 @@ void Frame::addProbeRoIs(RoIResizer* mRoIResizer) {
 }
 
 void Frame::resetProbeRoIs() {
-  for (auto& cRoI : childRoIs) {
+  for (auto& cRoI: childRoIs) {
     cRoI->roisForProbing.clear();
     probingRoIs.clear();
   }
@@ -127,7 +127,7 @@ void Frame::resetProbeRoIs() {
 
 void Frame::filterPDRoIs(float threshold) {
   std::vector<RoI*> OFRoIs;
-  for (auto& cRoI : childRoIs) {
+  for (auto& cRoI: childRoIs) {
     if (cRoI->type == RoI::Type::OF) {
       OFRoIs.push_back(cRoI.get());
     }
@@ -137,7 +137,7 @@ void Frame::filterPDRoIs(float threshold) {
     auto& cRoI = *it;
     if (cRoI->type == RoI::Type::PD) {
       float totalOFCoverage = 0;
-      for (RoI* OFRoI : OFRoIs) {
+      for (RoI* OFRoI: OFRoIs) {
         float intersection = cRoI->paddedLoc.intersection(OFRoI->paddedLoc);
         totalOFCoverage += intersection;
       }
@@ -161,7 +161,7 @@ void Frame::filterPDRoIs(float threshold) {
 
 bool Frame::isReadyToMarry(int mixedFrameIndex) const {
   bool atLeastOneIndexIsSame = false;
-  for (const auto& pRoI : parentRoIs) {
+  for (const auto& pRoI: parentRoIs) {
     if (!pRoI->isPacked()) {
       continue;
     }
@@ -183,7 +183,7 @@ bool Frame::readyForOFExtraction() const {
 
 std::set<Frame*> filterLastFrames(const MultiStream& frames) {
   std::set<Frame*> lastFrames;
-  for (auto it : frames) {
+  for (auto it: frames) {
     if (!it.second.empty()) {
       lastFrames.insert(*it.second.rbegin());
     }
@@ -234,8 +234,8 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
   int frameIndex = count++;
   cv.wait(lock, [this, frameIndex]() { return frames[frameIndex % capacity].get() == nullptr; });
   Frame* prevFrame = frameIndex == 0 ? nullptr : frames[(frameIndex - 1) % capacity].get();
-  frames[frameIndex % capacity] = std::make_unique<Frame>(vid, frameIndex, mat, prevFrame,
-                                                          NowMicros());
+  frames[frameIndex % capacity] = std::make_unique<Frame>(
+      vid, frameIndex, mat, prevFrame, NowMicros());
   if (prevFrame != nullptr) {
     prevFrame->nextFrame = frames[frameIndex % capacity].get();
   }
@@ -248,7 +248,7 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
 
 void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
   std::unique_lock<std::mutex> lock(mtx);
-  for (int frameIndex : frameIndices) {
+  for (int frameIndex: frameIndices) {
     frames[frameIndex % capacity].reset();
   }
   lock.unlock();
@@ -285,8 +285,8 @@ RoI::RoI(RoI* prevRoI,
         ofFeatures,
         confidence
     }, maxEdgeLength(std::max(paddedLoc.width(), paddedLoc.height())),
-      targetScale(1.0f), scaleLevel(scale_NULL), packedLocation(NOT_PACKED), isMatchTried(false),
-      nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
+      targetScale(1.0f), scaleLevel(RoIResizer::INVALID_LEVEL), packedLocation(NOT_PACKED),
+      isMatchTried(false), nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
       packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1),
       isProbingRoI(isProbingRoI), priority(-1) {
   if (prevRoI != nullptr) {
@@ -317,8 +317,17 @@ std::unique_ptr<RoI> RoI::mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
       nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
       roiType, origin_Null, roiLabel, OFFeatures({}, {}, {}), RoI::INVALID_CONF, 0, false);
   mergedRoI->setTargetScale(pRoI0->targetScale > pRoI1->targetScale ?
-                            pRoI0->targetScale : pRoI1->targetScale, scale_NULL);
+                            pRoI0->targetScale : pRoI1->targetScale, RoIResizer::INVALID_LEVEL);
   return std::move(mergedRoI);
+}
+
+void RoI::setTargetScale(float newTargetScale, int newScaleLevel) {
+  assert(0 <= newTargetScale);
+  assert(newTargetScale <= 1);
+  float minEdgeLength = std::min(paddedLoc.width(), paddedLoc.height());
+  // compare with 1/minEdgeLength to prevent shorter edge being even shorter than 1 after downscaling
+  targetScale = std::max(1 / minEdgeLength, newTargetScale);
+  scaleLevel = newScaleLevel;
 }
 
 int MixedFrame::numMixedFrames = 0;

@@ -3,6 +3,10 @@
 
 namespace rm {
 
+const float RoIResizer::mProbingStep = 0.05f;
+
+const int RoIResizer::INVALID_LEVEL = -1;
+
 const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
 //    {"VIRAT",   VIRAT},
 //    {"YouTube", YouTube},
@@ -17,18 +21,18 @@ const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
 
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
     : mConfig(config),
-      mScaleGranularity(5),
       mPredictor(candidatePredictors.at(config.TRAIN_DATA)),
       mTargetSize(scalesForLevels.at(config.TRAIN_DATA)) {}
 
-std::pair<float, RoI::ScaleLevel> RoIResizer::getTargetScale(const idType id,
-                                                             const RoI::Features& features) {
+std::pair<float, int> RoIResizer::getTargetScale(const idType id,
+                                                 const RoI::Features& features) {
   assert(features.type == RoI::Type::OF);
   if (mConfig.RESIZE_SMOOTHING_FACTOR == 0) {
-    return {mConfig.STATIC_TARGET_SCALE, RoI::scale_NULL};
+    return {mConfig.STATIC_TARGET_SCALE, 0};
   }
-  auto targetLevel = static_cast<RoI::ScaleLevel>(getMaxVotedLevel(id, features));
-  float targetScale = mTargetSize[(targetLevel + 1) * mScaleGranularity - 1];
+  int targetLevel = getMaxVotedLevel(id, features);
+  assert(0 <= targetLevel && targetLevel < mTargetSize.size());
+  float targetScale = mTargetSize[targetLevel];
 
   auto it = calibrationTable.find(id);
   if (it != calibrationTable.end()) {
@@ -75,41 +79,40 @@ void RoIResizer::updateTable(RoI* roi) {
 
   // Sort : Largest box first
   std::sort(roi->roisForProbing.begin(), roi->roisForProbing.end(),
-            [](const auto& r, const auto& l) { return r->getTargetScale() > l->getTargetScale(); });
+            [](const auto& l, const auto& r) { return l->getTargetScale() > r->getTargetScale(); });
 
   // find box from largest RoI
-  RoI* largestRoI = roi->roisForProbing.front();
-  BoundingBox* box = roi->box;
+  RoI* largestProbingRoI = roi->roisForProbing.front();
+  BoundingBox* box = largestProbingRoI->box;
 
-  float newScale;
   if (box == nullptr) {
     // if box is found nowhere, just return
     return;
-  } else {
-    // if box is found for the largest probe, find the smallest target size with a usable box
-    newScale = roi->getTargetScale();
-    for (auto& probeRoI : roi->roisForProbing) {
-      if (probeRoI->probingBox != nullptr && isUsable(probeRoI->probingBox, box)) {
-        newScale = probeRoI->getTargetScale();
-      } else {
-        break;
-      }
+  }
+
+  // if box is found for the largest probe, find the smallest target size with a usable box
+  float newScale = largestProbingRoI->getTargetScale();
+  for (auto& probeRoI: roi->roisForProbing) {
+    if (probeRoI->probingBox != nullptr && isUsable(probeRoI->probingBox, box)) {
+      newScale = probeRoI->getTargetScale();
+    } else {
+      break;
     }
   }
   calibrationTable[roi->id] = {roi->getScaleLevel(), newScale};
 }
 
-std::vector<float> RoIResizer::getProbingCandidates(float scale, RoI::ScaleLevel level,
-                                                    int numProbeSteps) {
+std::vector<float> RoIResizer::getProbingCandidates(
+    float scale, int level, int numProbeSteps) {
+  float lowerLevelScale = level == 0 ? 0.0f : mTargetSize[level - 1];
   std::vector<float> candidates;
-
-  auto const it = std::lower_bound(mTargetSize.begin(), mTargetSize.end(), scale);
-  int index = int(std::distance(mTargetSize.begin(), it)) - 1;
-  int lowerLevelIndex = level * mScaleGranularity - 1;
-  int margin = std::max(-1, lowerLevelIndex);
-
-  while (index > margin && candidates.size() < numProbeSteps) {
-    candidates.push_back(mTargetSize[index--]);
+  for (int i = 0; i < numProbeSteps; i++) {
+    float candidate = scale - mProbingStep;
+    if (candidate > lowerLevelScale) {
+      candidates.push_back(candidate);
+    } else {
+      break;
+    }
   }
   return candidates;
 }
