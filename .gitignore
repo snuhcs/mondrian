@@ -9,6 +9,7 @@ desktop.ini
 .DS_STORE
 
 *.csv
+*.txt
 csvs/
 
 # Created by https://www.toptal.com/developers/gitignore/api/androidstudio,visualstudiocode
