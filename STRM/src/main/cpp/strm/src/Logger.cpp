@@ -160,6 +160,7 @@ void Logger::logRoIHeader() {
       << "width" << delim
       << "height" << delim
       << "xyRatio" << delim
+      << "confidence" << delim
 
       // OF features
       << "shiftAvgX" << delim
@@ -212,6 +213,7 @@ void Logger::logRoI(const RoI* roi) {
       << roi->features.width << delim
       << roi->features.height << delim
       << roi->features.xyRatio << delim
+      << roi->features.confidence << delim
 
       // OF features
       << roi->features.ofFeatures.shiftAvg.first << delim

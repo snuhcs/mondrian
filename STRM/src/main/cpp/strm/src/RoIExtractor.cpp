@@ -329,7 +329,7 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       if (newLeft < newRight && newTop < newBottom) {
         outChildRoIs.push_back(std::make_unique<RoI>(
             box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-            RoI::Type::OF, box.origin, box.label, of, mConfig.ROI_PADDING, false, box.confidence));
+            RoI::Type::OF, box.origin, box.label, of, box.confidence, mConfig.ROI_PADDING, false));
       }
     }
   }
@@ -447,9 +447,9 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
         origin_PD,
         -1,
         RoI::OFFeatures({}, {}, {}),
+        RoI::INVALID_CONF,
         mConfig.ROI_PADDING,
-        false,
-        RoI::INVALID_CONF));
+        false));
   }
 }
 

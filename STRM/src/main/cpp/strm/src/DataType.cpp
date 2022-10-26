@@ -110,7 +110,7 @@ void Frame::addProbeRoIs(RoIResizer* mRoIResizer) {
     for (auto scale : probingCandidates) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
-          cRoI->features.ofFeatures, 0, true, RoI::INVALID_CONF);
+          cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, true);
       probeRoI->setTargetScale(scale, cRoI->getScaleLevel());
       cRoI->roisForProbing.push_back(probeRoI.get());
       probingRoIs.push_back(std::move(probeRoI));
@@ -315,7 +315,7 @@ std::unique_ptr<RoI> RoI::mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
   }
   std::unique_ptr<RoI> mergedRoI = std::make_unique<RoI>(
       nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-      roiType, origin_Null, roiLabel, OFFeatures({}, {}, {}), 0, false, RoI::INVALID_CONF);
+      roiType, origin_Null, roiLabel, OFFeatures({}, {}, {}), RoI::INVALID_CONF, 0, false);
   mergedRoI->setTargetScale(pRoI0->targetScale > pRoI1->targetScale ?
                             pRoI0->targetScale : pRoI1->targetScale, scale_NULL);
   return std::move(mergedRoI);
