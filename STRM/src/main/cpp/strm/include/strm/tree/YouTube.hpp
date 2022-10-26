@@ -3,10 +3,10 @@
 
 namespace rm {
 
-float
-YouTube(float width, float height, float maxEdgeLength, float type, float origin, float xyRatio,
-        float avgShiftX, float avgShiftY, float avgShift, float stdShiftX, float stdShiftY,
-        float stdShift, float avgErr, float ncc);
+//float
+//YouTube(float width, float height, float maxEdgeLength, float type, float origin, float xyRatio,
+//        float avgShiftX, float avgShiftY, float avgShift, float stdShiftX, float stdShiftY,
+//        float stdShift, float avgErr, float ncc);
 
 } // namespace rm
 

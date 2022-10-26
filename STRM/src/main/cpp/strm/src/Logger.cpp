@@ -167,7 +167,7 @@ void Logger::logRoIHeader() {
       << "shiftStdX" << delim
       << "shiftStdY" << delim
       << "shiftNcc" << delim
-      << "errAvg" << delim
+      << "avgErr" << delim
 
       << "numProbingRoIs" << delim
       << "priority" << delim
@@ -219,7 +219,7 @@ void Logger::logRoI(const RoI* roi) {
       << roi->features.ofFeatures.shiftStd.first << delim
       << roi->features.ofFeatures.shiftStd.second << delim
       << roi->features.ofFeatures.shiftNcc << delim
-      << roi->features.ofFeatures.errAvg << delim
+      << roi->features.ofFeatures.avgErr << delim
 
       << roi->roisForProbing.size() << delim
       << roi->parentRoI->priority << delim

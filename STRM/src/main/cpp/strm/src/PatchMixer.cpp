@@ -75,7 +75,7 @@ void PatchMixer::prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarge
           }
           diffNorm /= float(pRoI->childRoIs.size());
 
-          pRoI->priority = pRoI->features.ofFeatures.errAvg
+          pRoI->priority = pRoI->features.ofFeatures.avgErr
                            * diffNorm
                            * pRoI->origLoc.area() / 10000;
         } else {
@@ -212,7 +212,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
     for (auto&[i, aMixedFrameRoIs] : packedRoIsMap) {
       if (!aMixedFrameRoIs.empty()) {
         const InferenceInfo& info = inferencePlan[i];
-        mixedFrames.emplace_back(info.device, aMixedFrameRoIs, info.size);
+        mixedFrames.push_back(MixedFrame(info.device, aMixedFrameRoIs, info.size));
       }
     }
   } else if (!allowInterpolation && !roiWiseInference) {
@@ -282,7 +282,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
         for (auto&[i, aMixedFrameRoIs] : packedRoIsMap) {
           if (!aMixedFrameRoIs.empty()) {
             const InferenceInfo& info = inferencePlan[i];
-            mixedFrames.emplace_back(info.device, aMixedFrameRoIs, info.size);
+            mixedFrames.push_back(MixedFrame(info.device, aMixedFrameRoIs, info.size));
           }
         }
         break;

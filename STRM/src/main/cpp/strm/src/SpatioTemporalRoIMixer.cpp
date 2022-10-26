@@ -216,8 +216,8 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   frame->fullInferenceStartTime = times.first;
   frame->fullInferenceEndTime = times.second;
   for (const BoundingBox& box : boxes) {
-    frame->boxes.emplace_back(
-        new BoundingBox(UNASSIGNED_ID, box.location, box.confidence, box.label, origin_FF));
+    frame->boxes.push_back(std::make_unique<BoundingBox>(
+        UNASSIGNED_ID, box.location, box.confidence, box.label, origin_FF));
   }
   mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, true);
 
@@ -308,7 +308,7 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
     pRoI->frame->mixedInferenceEndTime = times.second;
     inferenceFrames.insert(pRoI->frame);
     for (BoundingBox& b : boxes) {
-      pRoI->frame->boxes.emplace_back(new BoundingBox(
+      pRoI->frame->boxes.push_back(std::make_unique<BoundingBox>(
           UNASSIGNED_ID,Rect(
               (b.location.left - x) / pRoI->getTargetScale() + pRoI->origLoc.left,
               (b.location.top - y) / pRoI->getTargetScale() + pRoI->origLoc.top,

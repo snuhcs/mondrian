@@ -12,9 +12,8 @@
 
 namespace rm {
 
-using Predictor = std::function<float(
-    float, float, float, float, float, float, float,
-    float, float, float, float, float, float, float)>;
+using Predictor = std::function<int(
+    float, float, float, float, float, float, float, float)>;
 
 class RoIResizer {
  public:

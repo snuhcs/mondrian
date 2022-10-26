@@ -152,14 +152,14 @@ Result TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& mat) {
     }
     maxConfidence *= float(outputs[i * 85 + 4]) * outputScale;
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
-      detections.emplace_back(
+      detections.push_back(BoundingBox(
           UNASSIGNED_ID,
           reconstructBox(float(box[0] - outputBias) * outputScale,
                          float(box[1] - outputBias) * outputScale,
                          float(box[2] - outputBias) * outputScale,
                          float(box[3] - outputBias) * outputScale,
                          mat.cols, mat.rows),
-          maxConfidence, maxLabel, origin_Null);
+          maxConfidence, maxLabel, origin_Null));
     }
   }
   return {nms(detections, numLabels, iouThreshold), {start, end}, device};

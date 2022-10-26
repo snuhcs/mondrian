@@ -4,15 +4,15 @@
 namespace rm {
 
 const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
-    {"VIRAT",   VIRAT},
-    {"MTA",     MTA},
-    {"YouTube", YouTube}
+//    {"VIRAT",   VIRAT},
+//    {"YouTube", YouTube},
+    {"MTA", MTA}
 };
 
 const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
-    {"VIRAT",   {0.3f, 0.35f, 0.4f, 0.45f, 0.5f, 0.55f, 0.6f, 0.65f, 0.7f, 0.75f, 0.8f, 0.85f, 0.9f, 0.95f, 1.0f}},
-    {"MTA",     {0.3f, 0.35f, 0.4f, 0.45f, 0.5f, 0.55f, 0.6f, 0.65f, 0.7f, 0.75f, 0.8f, 0.85f, 0.9f, 0.95f, 1.0f}},
-    {"YouTube", {0.3f, 0.35f, 0.4f, 0.45f, 0.5f, 0.55f, 0.6f, 0.65f, 0.7f, 0.75f, 0.8f, 0.85f, 0.9f, 0.95f, 1.0f}}
+//    {"VIRAT",   {0.3f, 0.35f, 0.4f, 0.45f, 0.5f, 0.55f, 0.6f, 0.65f, 0.7f, 0.75f, 0.8f, 0.85f, 0.9f, 0.95f, 1.0f}},
+//    {"YouTube", {0.3f, 0.35f, 0.4f, 0.45f, 0.5f, 0.55f, 0.6f, 0.65f, 0.7f, 0.75f, 0.8f, 0.85f, 0.9f, 0.95f, 1.0f}},
+    {"MTA", {0.25f, 0.35f, 0.45f, 0.75f, 1.0f}}
 };
 
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
@@ -54,14 +54,18 @@ int RoIResizer::getMaxVotedLevel(const idType id, const RoI::Features& features)
 
 int RoIResizer::predictLevelWithFeatures(const RoI::Features& features) const {
   assert(features.type == RoI::OF);
-  auto&[avgX, avgY] = features.ofFeatures.shiftAvg;
-  auto&[stdX, stdY] = features.ofFeatures.shiftStd;
-  float avg = avgX * avgX + avgY * avgY;
-  float std = stdX * stdX + stdY * stdY;
-  return int(mPredictor(
-      features.width, features.height, std::max(features.width, features.height), features.type,
-      features.origin, features.xyRatio, avgX, avgY, avg, stdX, stdY, std,
-      features.ofFeatures.errAvg, features.ofFeatures.shiftNcc));
+  auto&[shiftAvgX, shiftAvgY] = features.ofFeatures.shiftAvg;
+  auto&[shiftStdX, shiftStdY] = features.ofFeatures.shiftStd;
+  float shiftAvg = shiftAvgX * shiftAvgX + shiftAvgY * shiftAvgY;
+  float shiftStd = shiftStdX * shiftStdX + shiftStdY * shiftStdY;
+  return mPredictor(
+      std::max(features.width, features.height),
+      features.width * features.height,
+      features.xyRatio,
+      shiftAvg, shiftStd,
+      features.ofFeatures.shiftNcc,
+      features.ofFeatures.avgErr,
+      features.confidence);
 }
 
 void RoIResizer::updateTable(RoI* roi) {

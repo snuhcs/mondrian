@@ -37,14 +37,14 @@ Result Classifier::recognizeImage(const cv::Mat& mat) {
     }
     maxConfidence *= getObjectConfidence(i);
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
-      detections.emplace_back(
+      detections.push_back(BoundingBox(
           UNASSIGNED_ID,
           reconstructBox(float(box[0]),
                          float(box[1]),
                          float(box[2]),
                          float(box[3]),
                          mat.cols, mat.rows),
-          maxConfidence, maxLabel, origin_Null);
+          maxConfidence, maxLabel, origin_Null));
     }
   }
   return {nms(detections, numLabels, iouThreshold), {start, end}, device};
