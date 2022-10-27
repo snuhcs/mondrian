@@ -3,8 +3,6 @@
 
 namespace rm {
 
-const float RoIResizer::mProbingStep = 0.05f;
-
 const int RoIResizer::INVALID_LEVEL = -1;
 
 const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
@@ -107,7 +105,7 @@ std::vector<float> RoIResizer::getProbingCandidates(
   float lowerLevelScale = level == 0 ? 0.0f : mTargetSize[level - 1];
   std::vector<float> candidates;
   for (int i = 0; i < numProbeSteps; i++) {
-    float candidate = scale - mProbingStep;
+    float candidate = scale - mConfig.PROBE_STEP_SIZE;
     if (candidate > lowerLevelScale) {
       candidates.push_back(candidate);
     } else {

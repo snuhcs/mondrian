@@ -32,9 +32,8 @@ struct RoIResizerConfig {
   float STATIC_TARGET_SCALE = 1.0;
 
   // Reactive probing configs
-  float PROBE_STEP_SIZE = 5; // No probing when PROBE_STEP_SIZE == 0
-  int NUM_PROBE_STEPS = 1; // Num probes == 2 * NUM_PROBE_STEPS + 1
-  float PROBE_RESET_THRESHOLD = 10.0;
+  float PROBE_STEP_SIZE = 0.05; // No probing when PROBE_STEP_SIZE == 0
+  int NUM_PROBE_STEPS = 1;
   float OVERLAP_THRESHOLD = 0.8;
   float ABSOLUTE_CONFIDENCE_THRESHOLD = 0.3;
   float RELATIVE_CONFIDENCE_THRESHOLD = 0.1;

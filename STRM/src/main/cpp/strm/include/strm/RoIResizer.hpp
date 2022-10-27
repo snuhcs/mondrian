@@ -29,10 +29,6 @@ class RoIResizer {
     return mConfig.NUM_PROBE_STEPS;
   }
 
-  float getProbeStepSize() const {
-    return mConfig.PROBE_STEP_SIZE;
-  }
-
   int isProbing() const {
     return mConfig.PROBE_STEP_SIZE != 0;
   }
@@ -64,7 +60,6 @@ class RoIResizer {
 
   static const std::map<std::string, Predictor> candidatePredictors;
   static const std::map<std::string, std::vector<float>> scalesForLevels;
-  static const float mProbingStep;
 
   const RoIResizerConfig mConfig;
   const Predictor mPredictor;

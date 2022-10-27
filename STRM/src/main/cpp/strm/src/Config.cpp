@@ -60,9 +60,6 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   if (!json["num_probe_steps"].isNull()) {
     config.NUM_PROBE_STEPS = json["num_probe_steps"].asInt();
   }
-  if (!json["probe_reset_threshold"].isNull()) {
-    config.PROBE_RESET_THRESHOLD = json["probe_reset_threshold"].asFloat();
-  }
   if (!json["overlap_threshold"].isNull()) {
     config.OVERLAP_THRESHOLD = json["overlap_threshold"].asFloat();
   }
