@@ -52,11 +52,9 @@
         "conf_threshold": 0.1,
         "iou_threshold": 0.5,
         "input_sizes": [
-            320,
             832
         ],
         "devices" : [
-            "DSP",
             "GPU"
         ]
     },

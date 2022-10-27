@@ -28,7 +28,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
           config.patchReconstructorConfig, mRoIResizer.get())) {
   assert(!config.ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
   if (config.LOG_EXECUTION) {
-    mExecutionLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/exec.csv");
+    mExecutionLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/timeline.csv");
     mExecutionLogger->logExecutionHeader();
   }
   if (config.LOG_ROI) {
