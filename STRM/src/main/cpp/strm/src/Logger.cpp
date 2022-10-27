@@ -179,7 +179,8 @@ void Logger::logRoIHeader() {
       << "packedAbsMixedFrameIndex" << delim
 
       << "maxEdgeLength" << delim
-      << "targetScale" << '\n';
+      << "targetScale" << delim
+      << "scaleLevel" << '\n';
   logFile.flush();
 }
 
@@ -232,7 +233,8 @@ void Logger::logRoI(const RoI* roi) {
       << roi->parentRoI->packedAbsMixedFrameIndex << delim
 
       << roi->maxEdgeLength << delim
-      << roi->getTargetScale() << '\n';
+      << roi->getTargetScale() << delim
+      << roi->getScaleLevel() << '\n';
   logFile.flush();
 }
 
