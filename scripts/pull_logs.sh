@@ -4,7 +4,7 @@ dir="$(date '+%Y-%m-%d_%H-%M-%S')_h$(openssl rand -hex 2)"
 
 adb shell run-as hcs.offloading.strm cat /data/data/hcs.offloading.strm/roi.csv > $base/roi.csv
 r1=$?
-adb shell run-as hcs.offloading.strm cat /data/data/hcs.offloading.strm/exec.csv > $base/exec.csv
+adb shell run-as hcs.offloading.strm cat /data/data/hcs.offloading.strm/timeline.csv > $base/timeline.csv
 r2=$?
 adb shell run-as hcs.offloading.strm cat /data/data/hcs.offloading.strm/boxes.txt > $base/boxes.txt
 r3=$?
@@ -18,7 +18,7 @@ fi
 if [ $r2 -eq 0 ]
 then
     mkdir -p $base/$dir
-    mv $base/exec.csv $base/$dir/exec.csv
+    mv $base/timeline.csv $base/$dir/timeline.csv
 fi
 
 if [ $r3 -eq 0 ]
