@@ -413,10 +413,11 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
   // Find {PD_INTERVAL}th previous frame. If not available, use farthest frame.
   Frame *prevFrame = currFrame;
   for (int i=0; i<mConfig.PD_INTERVAL; ++i) {
-    prevFrame = prevFrame->prevFrame;
+    assert(prevFrame!= nullptr);
     if (prevFrame->prevFrame == nullptr) {
       break;
     }
+    prevFrame = prevFrame->prevFrame;
   }
 
   assert(!prevFrame->preProcessedMat.empty());
