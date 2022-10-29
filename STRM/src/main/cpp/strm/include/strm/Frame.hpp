@@ -81,6 +81,8 @@ class Frame {
   bool isReadyToMarry(int mixedFrameIndex) const;
 
   bool readyForOFExtraction() const;
+
+  void resetOFRoIExtraction();
 };
 
 struct FrameComp {

@@ -324,13 +324,13 @@ void SpatioTemporalRoIMixer::roiWiseInference(std::vector<MixedFrame>& mixedFram
 
 void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
   std::unique_lock<std::mutex> framesLock(mFrameBuffersMtx);
-  for (const auto& it : frames) {
+  for (const auto& it: frames) {
     const int vid = it.first;
     const Stream& aStreamFrames = it.second;
     if (aStreamFrames.empty()) {
       continue;
     }
-    for (Frame* frame : aStreamFrames) {
+    for (Frame* frame: aStreamFrames) {
       log(frame);
     }
     Frame* firstFrame = *aStreamFrames.begin();
@@ -339,7 +339,7 @@ void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
 
     Frame* handle = lastFrame;
     // Skip {pdInterval} frames
-    for (int i=0; i<mConfig.roIExtractorConfig.PD_INTERVAL; ++i) {
+    for (int i = 0; i < mConfig.roIExtractorConfig.PD_INTERVAL - 1; i++) {
       assert(handle != nullptr);
       handle = handle->prevFrame;
       if (handle == nullptr) {

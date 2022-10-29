@@ -83,7 +83,7 @@ void RoIExtractor::reEnqueueFrames(const Stream& droppedFrames) {
   std::unique_lock<std::mutex> queueLock(mtx);
   size_t prevNumOFJobs = mOFWaiting.size();
   std::for_each(droppedFrames.begin(), droppedFrames.end(),
-                [](Frame* frame) { resetOFRoIExtraction(frame); });
+                [](Frame* frame) { frame->resetOFRoIExtraction(); });
   mOFWaiting.insert(droppedFrames.begin(), droppedFrames.end());
   LOGD("%-25s                                        // %4lu PD | %4lu => %4lu OF | %4lu Processed",
        "RoIExtractor::reEnqueueFrames", mPDWaiting.size(), prevNumOFJobs, mOFWaiting.size(),
@@ -103,18 +103,6 @@ void RoIExtractor::resetPack() {
           {info.device, info.size, {Rect(0, 0, float(info.size), float(info.size))}});
     }
   }
-}
-
-void RoIExtractor::resetOFRoIExtraction(Frame* frame) {
-  frame->childRoIs.erase(std::remove_if(
-      frame->childRoIs.begin(), frame->childRoIs.end(),
-      [](const auto& cRoI) { return cRoI->type == OF; }), frame->childRoIs.end());
-  std::for_each(frame->childRoIs.begin(), frame->childRoIs.end(), [](auto& cRoI) {
-    if (cRoI->type == PD) { cRoI->id = UNASSIGNED_ID; }
-  });
-  frame->useInferenceResultForOF = false;
-  frame->extractOFAgain = false;
-  frame->isRoIsReady = false;
 }
 
 void RoIExtractor::work(int extractorId) {
@@ -228,7 +216,7 @@ void RoIExtractor::work(int extractorId) {
       lock.lock();
       mOFProcessing.erase(frame);
       if (frame->extractOFAgain) {
-        resetOFRoIExtraction(frame);
+        frame->resetOFRoIExtraction();
         mOFWaiting.insert(frame);
       } else {
         frame->isRoIsReady = true;
@@ -411,9 +399,9 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
                                     std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
 
   // Find {PD_INTERVAL}th previous frame. If not available, use farthest frame.
-  Frame *prevFrame = currFrame;
-  for (int i=0; i<mConfig.PD_INTERVAL; ++i) {
-    assert(prevFrame!= nullptr);
+  Frame* prevFrame = currFrame;
+  for (int i = 0; i < mConfig.PD_INTERVAL; ++i) {
+    assert(prevFrame != nullptr);
     if (prevFrame->prevFrame == nullptr) {
       break;
     }

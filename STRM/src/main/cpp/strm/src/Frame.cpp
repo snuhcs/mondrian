@@ -17,12 +17,8 @@ void Frame::resizeRoIs(RoIResizer* roiResizer) {
   for (auto& cRoI: childRoIs) {
     if (cRoI->type == OF) {
       auto[scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features);
+      assert(0.0f < scale && scale <= 1.0f);
       cRoI->setTargetScale(scale, level);
-    }
-  }
-  for (auto& cRoI: childRoIs) {
-    if (cRoI->type == PD && cRoI->nextRoI != nullptr) {
-      cRoI->setTargetScale(cRoI->nextRoI->getTargetScale(), cRoI->nextRoI->getScaleLevel());
     }
   }
 }
@@ -111,6 +107,7 @@ void Frame::addProbeRoIs(RoIResizer* mRoIResizer) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
           cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, true);
+      assert(0.0f < scale && scale <= 1.0f);
       probeRoI->setTargetScale(scale, cRoI->getScaleLevel());
       cRoI->roisForProbing.push_back(probeRoI.get());
       probingRoIs.push_back(std::move(probeRoI));
@@ -179,6 +176,18 @@ bool Frame::readyForOFExtraction() const {
   } else {
     return prevFrame->isRoIsReady;
   }
+}
+
+void Frame::resetOFRoIExtraction() {
+  childRoIs.erase(std::remove_if(childRoIs.begin(), childRoIs.end(),
+                                 [](const auto& cRoI) { return cRoI->type == OF; }),
+                  childRoIs.end());
+  std::for_each(childRoIs.begin(), childRoIs.end(), [](auto& cRoI) {
+    if (cRoI->type == PD) { cRoI->id = UNASSIGNED_ID; }
+  });
+  useInferenceResultForOF = false;
+  extractOFAgain = false;
+  isRoIsReady = false;
 }
 
 std::set<Frame*> filterLastFrames(const MultiStream& frames) {

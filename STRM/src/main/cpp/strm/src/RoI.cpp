@@ -65,17 +65,18 @@ std::unique_ptr<RoI> RoI::mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
   std::unique_ptr<RoI> mergedRoI = std::make_unique<RoI>(
       nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
       roiType, origin_Null, roiLabel, OFFeatures({}, {}, {}), RoI::INVALID_CONF, 0, false);
-  mergedRoI->setTargetScale(pRoI0->targetScale > pRoI1->targetScale ?
-                            pRoI0->targetScale : pRoI1->targetScale, RoIResizer::INVALID_LEVEL);
+  float scale = std::max(pRoI0->targetScale, pRoI1->targetScale);
+  assert(0.0f < scale && scale <= 1.0f);
+  mergedRoI->setTargetScale(scale, RoIResizer::INVALID_LEVEL);
   return std::move(mergedRoI);
 }
 
 void RoI::setTargetScale(float newTargetScale, int newScaleLevel) {
-  assert(0 <= newTargetScale);
-  assert(newTargetScale <= 1);
+  assert(0.0f < newTargetScale);
+  assert(newTargetScale <= 1.0f);
   float minEdgeLength = std::min(paddedLoc.width(), paddedLoc.height());
   // compare with 1/minEdgeLength to prevent shorter edge being even shorter than 1 after downscaling
-  targetScale = std::max(1 / minEdgeLength, newTargetScale);
+  targetScale = std::max(1.0f / minEdgeLength, newTargetScale);
   scaleLevel = newScaleLevel;
 }
 

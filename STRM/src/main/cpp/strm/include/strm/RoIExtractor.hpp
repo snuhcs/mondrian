@@ -37,8 +37,6 @@ class RoIExtractor {
 
   void resetPack();
 
-  static void resetOFRoIExtraction(Frame* frame);
-
   void processPD(Frame* currFrame);
 
   void processOF(Frame* currFrame);

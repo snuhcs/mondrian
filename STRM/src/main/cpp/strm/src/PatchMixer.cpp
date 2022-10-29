@@ -132,7 +132,9 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
       const InferenceInfo& info = inferencePlan[i];
       auto frameSize = float(info.size);
       RoI* pRoI = candidateRoIs[i];
-      pRoI->setTargetScale(std::min(float(frameSize) / pRoI->maxEdgeLength, 1.0f), RoIResizer::INVALID_LEVEL);
+      float scale = std::min(float(frameSize) / pRoI->maxEdgeLength, 1.0f);
+      assert(0.0f < scale && scale <= 1.0f);
+      pRoI->setTargetScale(scale, RoIResizer::INVALID_LEVEL);
       auto[resizedWidth, resizedHeight] = pRoI->getResizedWidthHeight();
       float x = (float(frameSize) - resizedWidth) / 2;
       float y = (float(frameSize) - resizedHeight) / 2;
@@ -174,7 +176,9 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> PatchMixer::pac
           const InferenceInfo& info = inferencePlan[i];
           auto frameSize = float(info.size);
           RoI* pRoI = candidateRoIs[i];
-          pRoI->setTargetScale(std::min(float(frameSize)/pRoI->maxEdgeLength, 1.0f), RoIResizer::INVALID_LEVEL);
+          float scale = std::min(float(frameSize)/pRoI->maxEdgeLength, 1.0f);
+          assert(0.0f < scale && scale <= 1.0f);
+          pRoI->setTargetScale(scale, RoIResizer::INVALID_LEVEL);
           auto[resizedWidth, resizedHeight] = pRoI->getResizedWidthHeight();
           float x = (float(frameSize) - resizedWidth) / 2;
           float y = (float(frameSize) - resizedHeight) / 2;
@@ -420,7 +424,9 @@ bool PatchMixer::tryPackRoI(std::pair<float, float> resizedWH,
         if (pRoI->maxEdgeLength > batchedRoISize) {
           float resizedWidth = width > height ? batchedRoISize : width * batchedRoISize / height;
           float resizedHeight = width > height ? height * batchedRoISize / width : batchedRoISize;
-          pRoI->setTargetScale(batchedRoISize/pRoI->maxEdgeLength, RoIResizer::INVALID_LEVEL);
+          float scale = batchedRoISize/pRoI->maxEdgeLength;
+          assert(0.0f < scale && scale <= 1.0f);
+          pRoI->setTargetScale(scale, RoIResizer::INVALID_LEVEL);
           pRoI->packedLocation = std::make_pair(
               freeRect.left + (batchedRoISize - resizedWidth) / 2,
               freeRect.top + (batchedRoISize - resizedHeight) / 2);
