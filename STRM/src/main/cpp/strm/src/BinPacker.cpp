@@ -8,25 +8,23 @@ BinPacker::BinPacker(const std::vector<std::pair<int, int>>& WHs) {
   }
 }
 
-bool BinPacker::pack(const std::vector<std::pair<int, int>>& boxWHs, bool reverse) {
-  std::lock_guard<std::mutex> lock(mtx);
+std::vector<std::pair<int, int>> BinPacker::pack(const std::vector<std::pair<int, int>>& boxWHs,
+                                                 bool reverse) {
   auto copiedFreeRectsVec = freeRectsVec;
-  for (const auto& wh: boxWHs) {
-    const int w = wh.first;
-    const int h = wh.second;
+  std::vector<std::pair<int, int>> packIndices;
+  for (const auto&[w, h]: boxWHs) {
     int minRemainingArea = INT_MAX / 2;
     int pack_i = -1;
     int pack_j = -1;
-    for (int _i = 0; _i < freeRectsVec.size(); _i++) {
+    for (int _i = 0; _i < copiedFreeRectsVec.size(); _i++) {
       int i = reverse
-              ? int(freeRectsVec.size()) - 1 - _i
+              ? int(copiedFreeRectsVec.size()) - 1 - _i
               : _i;
-      const auto& freeRects = freeRectsVec[i];
-      for (int j = 0; j < freeRects.size(); j++) {
-        const IntRect& freeRect = freeRects[j];
+      for (int j = 0; j < copiedFreeRectsVec[i].size(); j++) {
+        const IntRect& freeRect = copiedFreeRectsVec[i][j];
         if (canFit(w, h, freeRect)) {
-          int remainingArea = w * h - freeRect.area();
-          if (remainingArea < minRemainingArea) {
+          int remainingArea = freeRect.area() - w * h;
+          if (minRemainingArea > remainingArea) {
             minRemainingArea = remainingArea;
             pack_j = j;
           }
@@ -39,16 +37,33 @@ bool BinPacker::pack(const std::vector<std::pair<int, int>>& boxWHs, bool revers
     }
     if (pack_i == -1) {
       assert(pack_j == -1);
-      return false;
+      return packIndices;
+    } else {
+      packIndices.emplace_back(pack_i, pack_j);
     }
-    IntRect freeRectToPack = copiedFreeRectsVec[pack_i][pack_j];
-    copiedFreeRectsVec[pack_i].erase(copiedFreeRectsVec[pack_i].begin() + pack_j);
-    auto[rect1, rect2] = splitFreeRect(w, h, freeRectToPack);
-    copiedFreeRectsVec[pack_i].push_back(rect1);
-    copiedFreeRectsVec[pack_i].push_back(rect2);
+    packBox(copiedFreeRectsVec, w, h, pack_i, pack_j);
   }
-  freeRectsVec = copiedFreeRectsVec;
-  return true;
+  return packIndices;
+}
+
+void BinPacker::apply(const std::vector<std::pair<int, int>>& boxes,
+                      const std::vector<std::pair<int, int>>& packIndices) {
+  assert(boxes.size() == packIndices.size());
+  for (int i = 0; i < boxes.size(); i++) {
+    auto[w, h] = boxes[i];
+    auto[pack_i, pack_j] = packIndices[i];
+    packBox(freeRectsVec, w, h, pack_i, pack_j);
+  }
+}
+
+void BinPacker::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
+                        int w, int h, int pack_i, int pack_j) {
+  assert(pack_i < freeRectsVec.size() && pack_j < freeRectsVec[pack_i].size());
+  IntRect freeRectToPack = freeRectsVec[pack_i][pack_j];
+  freeRectsVec[pack_i].erase(freeRectsVec[pack_i].begin() + pack_j);
+  auto[rect1, rect2] = splitFreeRect(w, h, freeRectToPack);
+  freeRectsVec[pack_i].push_back(rect1);
+  freeRectsVec[pack_i].push_back(rect2);
 }
 
 bool BinPacker::canFit(int w, int h, const IntRect& freeRect) {

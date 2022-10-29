@@ -1,7 +1,6 @@
 #ifndef BIN_PACKER_HPP_
 #define BIN_PACKER_HPP_
 
-#include <mutex>
 #include <vector>
 
 namespace rm {
@@ -10,7 +9,19 @@ class BinPacker {
  public:
   BinPacker(const std::vector<std::pair<int, int>>& WHs);
 
-  bool pack(const std::vector<std::pair<int, int>>& boxes, bool reverse);
+  /*
+   * 1. Simulate packing with BinPacker::pack(boxes, reverse=false)
+   *   * auto packIndices = pack(...);
+   *   * You can check that the all boxes are packed.
+   *     * The number of not packed boxes: boxes.size() - packIndices.size()
+   * 2. Apply simulated indices with BinPacker::apply(packIndices)
+   *   * apply(packIndices);
+   */
+  std::vector<std::pair<int, int>> pack(const std::vector<std::pair<int, int>>& boxes,
+                                        bool reverse);
+
+  void apply(const std::vector<std::pair<int, int>>& boxes,
+             const std::vector<std::pair<int, int>>& packIndices);
 
  private:
   struct IntRect {
@@ -35,12 +46,14 @@ class BinPacker {
     }
   };
 
+  static void packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
+                      int w, int h, int pack_i, int pack_j);
+
   static bool canFit(int w, int h, const IntRect& freeRect);
 
   static std::pair<IntRect, IntRect> splitFreeRect(int w, int h, const IntRect& freeRect);
 
   std::vector<std::vector<IntRect>> freeRectsVec;
-  std::mutex mtx;
 };
 
 } // namespace rm
