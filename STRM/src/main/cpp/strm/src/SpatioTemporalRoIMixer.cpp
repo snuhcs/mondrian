@@ -7,6 +7,7 @@
 
 #include "strm/FrameBuffer.hpp"
 #include "strm/InferenceEngine.hpp"
+#include "strm/InferencePlanner.hpp"
 #include "strm/Interpolator.hpp"
 #include "strm/Logger.hpp"
 #include "strm/MixedFrame.hpp"
@@ -81,14 +82,8 @@ void SpatioTemporalRoIMixer::work() {
     logger.start();
     auto latencyTable = mInferenceEngine->getInferenceTimeTable();
     bool runFull = scheduleID % mConfig.FULL_FRAME_INTERVAL == 0;
-    std::map<Device, std::pair<time_us, time_us>> startEndTime;
-    for (Device device : mConfig.inferenceEngineConfig.DEVICES) {
-      startEndTime[device] = {
-          (runFull && device == GPU) ? latencyTable[GPU][mInputSizes.back()] : 0,
-          mScheduleInterval};
-    }
-    std::vector<InferenceInfo> inferencePlan = getInferencePlan(
-        startEndTime, latencyTable, mConfig.ROI_WISE_INFERENCE);
+    std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
+        latencyTable, mScheduleInterval, mConfig.ROI_WISE_INFERENCE);
     assert(!inferencePlan.empty());
     logger.step("plan");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
@@ -104,14 +99,9 @@ void SpatioTemporalRoIMixer::work() {
 
     // Schedule
     elapsedTime = logger.getElapsedTime();
-    for (Device device : mConfig.inferenceEngineConfig.DEVICES) {
-      startEndTime[device] = {
-          elapsedTime + ((runFull && device == GPU) ? latencyTable[GPU][mInputSizes.back()] : 0),
-          mScheduleInterval};
-    }
     auto[mixedFrames, fullFrameTarget, selectedFrames, droppedFrames] = mPatchMixer->packRoIs(
-        frames, (runFull ? fullFrameStreamIndex++ : -1),
-        getInferencePlan(startEndTime, latencyTable, mConfig.ROI_WISE_INFERENCE),
+        frames, (runFull ? fullFrameStreamIndex++ : -1), InferencePlanner::getInferencePlan(
+            latencyTable, mScheduleInterval, mConfig.ROI_WISE_INFERENCE),
         mConfig.ALLOW_INTERPOLATION, mConfig.ROI_WISE_INFERENCE, mRoIResizer.get());
     assert(runFull == (fullFrameTarget != nullptr));
     if (!mConfig.ALLOW_INTERPOLATION) {
@@ -389,8 +379,8 @@ void SpatioTemporalRoIMixer::waitForStart() {
   mRoIExtractor = std::make_unique<RoIExtractor>(
       mConfig.roIExtractorConfig, mConfig.FULL_FRAME_INTERVAL > 0, mConfig.ALLOW_INTERPOLATION,
       mConfig.ROI_WISE_INFERENCE, mPatchMixer.get(), mRoIResizer.get(),
-      getInferencePlan(startEndTime, mInferenceEngine->getInferenceTimeTable(),
-                       mConfig.ROI_WISE_INFERENCE));
+      InferencePlanner::getInferencePlan(mInferenceEngine->getInferenceTimeTable(),
+                                         mScheduleInterval, mConfig.ROI_WISE_INFERENCE));
   mbStartEnqueue = true;
   startLock.unlock();
   mEnqueueCv.notify_all();
@@ -480,120 +470,6 @@ void SpatioTemporalRoIMixer::outputWork() {
          vid, frameIndex, boxes.size());
     mResultLogger->logResult(vid, frameIndex, time, boxes);
   }
-}
-
-double SpatioTemporalRoIMixer::weigh(const std::vector<time_us>& layout, std::map<long long, double> profile) {
-  double weight = 0;
-  for (auto l : layout) {
-    assert (profile.find(l) != profile.end());
-    weight += double(l) * profile[l];
-  }
-  return weight;
-}
-
-std::vector<time_us> SpatioTemporalRoIMixer::search(const std::vector<long long>& bars, long long total,
-                            std::map<long long, double>& profile) {
-  std::vector<time_us> layout;
-  time_us left = total;
-
-  // greedy initialization
-  for (auto l : bars) {
-    time_us cnt = left / l;
-    for (int i = 0; i < cnt; i++) {
-      layout.push_back(l);
-    }
-    left -= l * cnt;
-  }
-
-  // if cannot fill any bar, return empty layout
-  if (layout.empty()) {
-    return layout;
-  }
-
-  // select type of bar to try removing
-  time_us l_a = layout[0];
-  assert (profile.find(l_a) != profile.end());
-  double d_a = profile[l_a];
-  long c_a = std::count(layout.begin(), layout.end(), l_a);
-  double alpha = weigh(layout, profile) - double(l_a) * double(c_a) * d_a;
-  auto l_a_it = std::find(bars.begin(), bars.end(), l_a);
-
-  // if selected bar is the one with the smallest density, removing is no worth
-  if (l_a_it == bars.end()) {
-    return layout;
-  }
-
-  // figure maximum number of removal with potential benefit
-  double d_b = profile[bars[std::distance(bars.begin(), l_a_it) + 1]];
-  long k_max = std::min(c_a, long((double(left) * d_b - alpha) / (double(l_a) * (d_a - d_b))));
-  if (k_max < 0) {
-    return layout;
-  }
-
-  // try all possible number of removals, recursively calling this function for the other area
-  std::vector<std::vector<time_us>> layouts;
-  std::vector<time_us> subBars{bars.begin() + 1, bars.end()};
-  for (int k = 0; k <= k_max; k++) {
-    std::vector<time_us> layout_left(c_a - k, l_a);
-    std::vector<time_us> layout_right = search(subBars, total - std::accumulate(layout_left.begin(),
-                                                                                layout_left.end(),
-                                                                                0l), profile);
-    layout_left.insert(layout_left.end(), layout_right.begin(), layout_right.end());
-    layouts.push_back(layout_left);
-  }
-  std::sort(layouts.begin(), layouts.end(),
-            [profile](auto& l1, auto& l2) { return weigh(l1, profile) > weigh(l2, profile); });
-  return layouts[0];
-}
-
-std::vector<InferenceInfo> SpatioTemporalRoIMixer::getInferencePlan(
-    const std::map<Device, std::pair<time_us, time_us>>& startEndTime,
-    const std::map<Device, std::map<int, time_us>>& inferenceTimes, bool roiWiseInference) {
-  std::vector<InferenceInfo> inferencePlan;
-  for (const auto&[device, size_latency] : inferenceTimes) {
-    std::map<time_us, double> profile;
-    std::vector<time_us> bars;
-    std::map<time_us, int> latency_size;
-    int min_size = std::min_element(
-        size_latency.begin(), size_latency.end(),
-        [](const auto& it0, const auto& it1) {
-          return it0.first < it1.first;
-        })->first;
-    for (const auto&[size, latency] : size_latency) {
-      if (roiWiseInference && size != min_size) {
-        continue;
-      }
-      profile[latency] = double(size * size) / double(latency);
-      bars.push_back(latency);
-      latency_size[latency] = size;
-    }
-    std::sort(bars.begin(), bars.end(),
-              [&profile](time_us b1, time_us b2) { return (profile[b1] > profile[b2]); });
-    auto&[startTime, endTime] = startEndTime.at(device);
-    std::vector<time_us> layout = search(bars, endTime - startTime, profile);
-    inferencePlan.reserve(layout.size());
-    for (auto& l : layout) {
-      inferencePlan.push_back({device, latency_size[l], l, 0});
-    }
-  }
-  for (Device device : mConfig.inferenceEngineConfig.DEVICES) {
-    std::vector<InferenceInfo*> devicePlan;
-    for (auto& info : inferencePlan) {
-      if (info.device == device) {
-        devicePlan.push_back(&info);
-      }
-    }
-    time_us accumulatedLatency = startEndTime.at(device).first;
-    for (auto* info : devicePlan) {
-      accumulatedLatency += info->latency;
-      info->accumulatedLatency = accumulatedLatency;
-    }
-  }
-  std::sort(inferencePlan.begin(), inferencePlan.end(),
-            [](const InferenceInfo& l, const InferenceInfo& r) {
-              return l.accumulatedLatency < r.accumulatedLatency;
-            });
-  return inferencePlan;
 }
 
 } // namespace rm

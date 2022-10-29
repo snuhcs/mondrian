@@ -31,6 +31,7 @@ add_library(
         strm/src/DataType.cpp
         strm/src/Frame.cpp
         strm/src/FrameBuffer.cpp
+        strm/src/InferencePlanner.cpp
         strm/src/Interpolator.cpp
         strm/src/Logger.cpp
         strm/src/MixedFrame.cpp

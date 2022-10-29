@@ -55,15 +55,6 @@ class SpatioTemporalRoIMixer {
 
   void log(const Frame* frame);
 
-  std::vector<InferenceInfo> getInferencePlan(
-      const std::map<Device, std::pair<time_us, time_us>>& startEndTime,
-      const std::map<Device, std::map<int, time_us>>& inferenceTimes, bool roiWiseInference);
-
-  static double weigh(const std::vector<time_us>& layout, std::map<long long, double> profile);
-
-  static std::vector<time_us> search(const std::vector<long long>& bars, long long total,
-                                     std::map<long long, double>& profile);
-
   static const int FULL_KEY_OFFSET;
 
   const STRMConfig mConfig;
