@@ -337,16 +337,19 @@ void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
     }
     Frame* firstFrame = *aStreamFrames.begin();
     Frame* lastFrame = *aStreamFrames.rbegin();
-    std::vector<int> frameIndices;
-    if (firstFrame->prevFrame != nullptr) {
-      frameIndices.push_back(firstFrame->prevFrame->frameIndex);
+    std::vector<int> freeFrameIndices;
+
+    Frame* handle = lastFrame;
+    // Skip {pdInterval} frames
+    for (int i=0; i<mConfig.roIExtractorConfig.PD_INTERVAL; ++i) {
+      handle = handle->prevFrame;
     }
-    for (Frame* frame : aStreamFrames) {
-      if (frame != lastFrame) {
-        frameIndices.push_back(frame->frameIndex);
-      }
+    while (handle != nullptr) {
+      freeFrameIndices.push_back(handle->frameIndex);
+      handle = handle->prevFrame;
     }
-    mFrameBuffers.at(vid)->freeImage(frameIndices);
+
+    mFrameBuffers.at(vid)->freeImage(freeFrameIndices);
   }
   framesLock.unlock();
 }

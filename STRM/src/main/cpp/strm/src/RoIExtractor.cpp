@@ -254,9 +254,8 @@ void RoIExtractor::work(int extractorId) {
 }
 
 void RoIExtractor::processPD(Frame* currFrame) {
-  Frame* prevFrame = currFrame->prevFrame;
   currFrame->pixelDiffRoIProcessStartTime = NowMicros();
-  getPixelDiffRoIs(prevFrame, currFrame, mTargetSize, mConfig.MIN_ROI_AREA, currFrame->childRoIs);
+  getPixelDiffRoIs(currFrame, mTargetSize, mConfig.MIN_ROI_AREA, currFrame->childRoIs);
   currFrame->pixelDiffRoIProcessEndTime = NowMicros();
   LOGD("%-25s took %-7lld us for video %-5d frame %-4d // %4lu PD RoIs",
        "RoIExtractor::processPD",
@@ -407,9 +406,19 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
   return ofFeatures;
 }
 
-void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
-                                    const cv::Size& targetSize, const float minRoIArea,
+void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize,
+                                    const float minRoIArea,
                                     std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
+
+  // Find {PD_INTERVAL}th previous frame. If not available, use farthest frame.
+  Frame *prevFrame = currFrame;
+  for (int i=0; i<mConfig.PD_INTERVAL; ++i) {
+    prevFrame = prevFrame->prevFrame;
+    if (prevFrame->prevFrame == nullptr) {
+      break;
+    }
+  }
+
   assert(!prevFrame->preProcessedMat.empty());
   assert(!currFrame->preProcessedMat.empty());
   assert(prevFrame->preProcessedMat.channels() == currFrame->preProcessedMat.channels());

@@ -21,6 +21,7 @@ struct RoIExtractorConfig {
   float ROI_PADDING = 10;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
   float PD_FILTER_THRESHOLD = 0.5;
+  int PD_INTERVAL = 5;
   bool MERGE = true;
   float MERGE_THRESHOLD = 0.5;
 };

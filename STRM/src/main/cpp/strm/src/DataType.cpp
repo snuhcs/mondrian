@@ -248,6 +248,11 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
 
 void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
   std::unique_lock<std::mutex> lock(mtx);
+  // Hide them from any other frame's eyesight
+  for (int frameIndex: frameIndices) {
+    frames[frameIndex % capacity]->nextFrame->prevFrame = nullptr;
+  }
+  // Reset smart pointers
   for (int frameIndex: frameIndices) {
     frames[frameIndex % capacity].reset();
   }

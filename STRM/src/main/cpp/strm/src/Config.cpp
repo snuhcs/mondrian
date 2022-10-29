@@ -32,6 +32,9 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["pd_filter_threshold"].isNull()) {
     config.PD_FILTER_THRESHOLD = json["pd_filter_threshold"].asFloat();
   }
+  if (!json["pd_interval"].isNull()) {
+    config.PD_INTERVAL = json["pd_interval"].asInt();
+  }
   if (!json["merge"].isNull()) {
     config.MERGE = json["merge"].asBool();
   }

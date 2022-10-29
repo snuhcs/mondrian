@@ -24,6 +24,7 @@
         "roi_padding": 10,
         "optical_flow_roi_confidence_threshold": 0.1,
         "pd_filter_threshold": 0.5,
+        "pd_interval": 5,
         "merge": true,
         "merge_threshold": 0.5
     },
