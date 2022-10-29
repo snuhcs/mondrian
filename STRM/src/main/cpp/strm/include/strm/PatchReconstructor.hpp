@@ -5,11 +5,11 @@
 #include <thread>
 
 #include "strm/Config.hpp"
-#include "strm/DataType.hpp"
-#include "strm/InferenceEngine.hpp"
-#include "strm/RoIResizer.hpp"
 
 namespace rm {
+
+class MixedFrame;
+class RoIResizer;
 
 class PatchReconstructor {
  public:

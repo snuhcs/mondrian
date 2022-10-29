@@ -1,10 +1,8 @@
 #ifndef TIME_HPP_
 #define TIME_HPP_
 
-#include <cstdint>
-#include <string>
-#include <vector>
 #include <map>
+#include <vector>
 
 namespace rm {
 

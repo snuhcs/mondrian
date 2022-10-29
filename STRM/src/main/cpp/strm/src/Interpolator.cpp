@@ -1,5 +1,7 @@
 #include "strm/Interpolator.hpp"
 
+#include "strm/RoI.hpp"
+
 namespace rm {
 
 std::set<idType> Interpolator::interpolate(MultiStream& frames) {

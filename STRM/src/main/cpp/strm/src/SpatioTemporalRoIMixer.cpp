@@ -5,7 +5,15 @@
 #include <numeric>
 #include <utility>
 
+#include "strm/FrameBuffer.hpp"
+#include "strm/InferenceEngine.hpp"
 #include "strm/Interpolator.hpp"
+#include "strm/Logger.hpp"
+#include "strm/MixedFrame.hpp"
+#include "strm/RoIExtractor.hpp"
+#include "strm/RoIResizer.hpp"
+#include "strm/PatchMixer.hpp"
+#include "strm/PatchReconstructor.hpp"
 
 namespace rm {
 

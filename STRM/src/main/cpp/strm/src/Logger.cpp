@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "strm/Frame.hpp"
 #include "strm/Log.hpp"
 #include "strm/Utils.hpp"
 

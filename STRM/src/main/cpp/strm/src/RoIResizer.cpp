@@ -24,8 +24,8 @@ RoIResizer::RoIResizer(const RoIResizerConfig& config)
       mTargetSize(scalesForLevels.at(config.TRAIN_DATA)) {}
 
 std::pair<float, int> RoIResizer::getTargetScale(const idType id,
-                                                 const RoI::Features& features) {
-  assert(features.type == RoI::Type::OF);
+                                                 const Features& features) {
+  assert(features.type == OF);
   if (mConfig.RESIZE_SMOOTHING_FACTOR == 0) {
     return {mConfig.STATIC_TARGET_SCALE, 0};
   }
@@ -46,7 +46,7 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
   return {targetScale, targetLevel};
 }
 
-int RoIResizer::getMaxVotedLevel(const idType id, const RoI::Features& features) {
+int RoIResizer::getMaxVotedLevel(const idType id, const Features& features) {
   auto record = prevPredictionBuffer.find(id);
   if (record == prevPredictionBuffer.end()) {
     prevPredictionBuffer[id] = CircularBuffer(mTargetSize.size());
@@ -55,8 +55,8 @@ int RoIResizer::getMaxVotedLevel(const idType id, const RoI::Features& features)
   return prevPredictionBuffer[id].maxVote();
 }
 
-int RoIResizer::predictLevelWithFeatures(const RoI::Features& features) const {
-  assert(features.type == RoI::OF);
+int RoIResizer::predictLevelWithFeatures(const Features& features) const {
+  assert(features.type == OF);
   auto&[shiftAvgX, shiftAvgY] = features.ofFeatures.shiftAvg;
   auto&[shiftStdX, shiftStdY] = features.ofFeatures.shiftStd;
   float shiftAvg = shiftAvgX * shiftAvgX + shiftAvgY * shiftAvgY;

@@ -3,6 +3,8 @@
 #include <map>
 #include <set>
 
+#include "strm/DataType.hpp"
+
 namespace rm {
 
 std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,

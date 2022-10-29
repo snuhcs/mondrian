@@ -108,9 +108,9 @@ void RoIExtractor::resetPack() {
 void RoIExtractor::resetOFRoIExtraction(Frame* frame) {
   frame->childRoIs.erase(std::remove_if(
       frame->childRoIs.begin(), frame->childRoIs.end(),
-      [](const auto& cRoI) { return cRoI->type == RoI::OF; }), frame->childRoIs.end());
+      [](const auto& cRoI) { return cRoI->type == OF; }), frame->childRoIs.end());
   std::for_each(frame->childRoIs.begin(), frame->childRoIs.end(), [](auto& cRoI) {
-    if (cRoI->type == RoI::PD) { cRoI->id = UNASSIGNED_ID; }
+    if (cRoI->type == PD) { cRoI->id = UNASSIGNED_ID; }
   });
   frame->useInferenceResultForOF = false;
   frame->extractOFAgain = false;
@@ -295,7 +295,7 @@ void RoIExtractor::processOF(Frame* currFrame) {
        currFrame->opticalFlowRoIProcessEndTime - currFrame->opticalFlowRoIProcessStartTime,
        currFrame->vid, currFrame->frameIndex,
        std::count_if(currFrame->childRoIs.begin(), currFrame->childRoIs.end(),
-                     [](auto& cRoI) { return cRoI->type == RoI::Type::OF; }));
+                     [](auto& cRoI) { return cRoI->type == OF; }));
 }
 
 void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
@@ -312,13 +312,13 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
   }
 
   if (!boundingBoxes.empty()) {
-    const std::vector<RoI::OFFeatures>& ofFeatures = opticalFlowTracking(
+    const std::vector<OFFeatures>& ofFeatures = opticalFlowTracking(
         prevFrame, currFrame, boundingRects, targetSize);
     assert(ofFeatures.size() == boundingBoxes.size());
     for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
       const BoundingBox& box = boundingBoxes[boxIndex];
       const Rect& loc = box.location;
-      const RoI::OFFeatures& of = ofFeatures[boxIndex];
+      const OFFeatures& of = ofFeatures[boxIndex];
       float x = of.shiftAvg.first;
       float y = of.shiftAvg.second;
       float newLeft = std::max(0.0f, loc.left + x);
@@ -328,13 +328,13 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       if (newLeft < newRight && newTop < newBottom) {
         outChildRoIs.push_back(std::make_unique<RoI>(
             box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-            RoI::Type::OF, box.origin, box.label, of, box.confidence, mConfig.ROI_PADDING, false));
+            OF, box.origin, box.label, of, box.confidence, mConfig.ROI_PADDING, false));
       }
     }
   }
 }
 
-std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
+std::vector<OFFeatures> RoIExtractor::opticalFlowTracking(
     const Frame* prevFrame, const Frame* currFrame,
     const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
   assert(!prevFrame->preProcessedMat.empty());
@@ -386,7 +386,7 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
   assert(inputPoints.size() == status.size());
   assert(inputPoints.size() == errs.size());
 
-  std::vector<RoI::OFFeatures> ofFeatures;
+  std::vector<OFFeatures> ofFeatures;
   for (int i = 0; i < startEndIndices.size() - 1; i++) {
     int startIndex = startEndIndices[i];
     int endIndex = startEndIndices[i + 1];
@@ -401,7 +401,7 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
       boxErrs.push_back(errs[j]);
       boxStatusVec.push_back(status[j]);
     }
-    ofFeatures.push_back(RoI::OFFeatures(boxShifts, boxErrs, boxStatusVec));
+    ofFeatures.push_back(OFFeatures(boxShifts, boxErrs, boxStatusVec));
   }
   return ofFeatures;
 }
@@ -453,10 +453,10 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
         UNASSIGNED_ID,
         currFrame,
         box,
-        RoI::PD,
+        PD,
         origin_PD,
         -1,
-        RoI::OFFeatures({}, {}, {}),
+        OFFeatures({}, {}, {}),
         RoI::INVALID_CONF,
         mConfig.ROI_PADDING,
         false));

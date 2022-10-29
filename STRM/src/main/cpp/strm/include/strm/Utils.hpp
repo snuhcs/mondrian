@@ -3,9 +3,9 @@
 
 #include <memory>
 
-#include "strm/DataType.hpp"
-
 namespace rm {
+
+class BoundingBox;
 
 std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
                              const int numLabels, const float iouThreshold);

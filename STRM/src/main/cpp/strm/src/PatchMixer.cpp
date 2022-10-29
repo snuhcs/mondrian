@@ -2,6 +2,8 @@
 
 #include <numeric>
 
+#include "strm/MixedFrame.hpp"
+#include "strm/RoIResizer.hpp"
 #include "strm/Test.hpp"
 
 namespace rm {
@@ -58,7 +60,7 @@ void PatchMixer::prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarge
       for (auto& pRoI : frame->parentRoIs) {
         // if (pRoI->prevRoI != nullptr) {
         if (std::all_of(pRoI->childRoIs.begin(), pRoI->childRoIs.end(),
-                        [](RoI* cRoI) { return cRoI->type == RoI::OF; })) {
+                        [](RoI* cRoI) { return cRoI->type == OF; })) {
           if (std::any_of(pRoI->childRoIs.begin(), pRoI->childRoIs.end(),
                           [](RoI* cRoI) { return cRoI->prevRoI == nullptr; })) {
             pRoI->priority = 0.1234;
