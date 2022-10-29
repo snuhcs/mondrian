@@ -27,6 +27,7 @@ find_library(
 add_library(
         strm
         SHARED
+        strm/src/BinPacker.cpp
         strm/src/Config.cpp
         strm/src/DataType.cpp
         strm/src/Frame.cpp
