@@ -2,6 +2,7 @@
 
 #include "strm/RoI.hpp"
 #include "strm/RoIResizer.hpp"
+#include "strm/Test.hpp"
 
 namespace rm {
 
@@ -19,6 +20,8 @@ void Frame::resizeRoIs(RoIResizer* roiResizer) {
       auto[scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features);
       assert(0.0f < scale && scale <= 1.0f);
       cRoI->setTargetScale(scale, level);
+    } else {
+      cRoI->setTargetScale(roiResizer->maxScale(), roiResizer->maxLevel());
     }
   }
 }
@@ -39,6 +42,7 @@ void Frame::resetParentRoIs() {
 }
 
 void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
+  resetParentRoIs();
   while (true) {
     bool updated = false;
     int i, j;
@@ -94,25 +98,10 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
     parentRoIs.erase(parentRoIs.begin() + j);
     parentRoIs.erase(parentRoIs.begin() + i);
   }
-}
-
-void Frame::addProbeRoIs(RoIResizer* mRoIResizer) {
-  assert(probingRoIs.empty());
-  for (auto& cRoI: childRoIs) {
-    assert(cRoI->frame == this);
-    assert(cRoI->roisForProbing.empty());
-    std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
-        cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
-    for (auto scale: probingCandidates) {
-      std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
-          nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
-          cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, true);
-      assert(0.0f < scale && scale <= 1.0f);
-      probeRoI->setTargetScale(scale, cRoI->getScaleLevel());
-      cRoI->roisForProbing.push_back(probeRoI.get());
-      probingRoIs.push_back(std::move(probeRoI));
-    }
-  }
+  testAssignedUniqueRoIID(childRoIs);
+  testParentChildrenIDsAndChildIDsSame(childRoIs, parentRoIs);
+  testChildRoIsFrameRelation(childRoIs);
+  testParentRoIsFrameRelation(parentRoIs);
 }
 
 void Frame::resetProbeRoIs() {
@@ -154,6 +143,7 @@ void Frame::filterPDRoIs(float threshold) {
       assert(cRoI->id != UNASSIGNED_ID);
     }
   }
+  testAssignedUniqueRoIID(childRoIs);
 }
 
 bool Frame::isReadyToMarry(int mixedFrameIndex) const {

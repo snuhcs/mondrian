@@ -48,9 +48,6 @@ class SpatioTemporalRoIMixer {
 
   void roiWiseInference(std::vector<MixedFrame>& mixedFrames);
 
-  static void testNoInterpolationPacking(const MultiStream& frames, const Stream& droppedFrames,
-                                         Frame* fullFrameTarget);
-
   void releaseFrames(const MultiStream& frames);
 
   void log(const Frame* frame);
@@ -72,7 +69,6 @@ class SpatioTemporalRoIMixer {
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;
-  std::unique_ptr<PatchMixer> mPatchMixer;
   std::unique_ptr<InferenceEngine> mInferenceEngine;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 

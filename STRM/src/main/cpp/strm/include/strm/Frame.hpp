@@ -72,8 +72,6 @@ class Frame {
 
   void mergeRoIs(float mergeThreshold, float maxSize);
 
-  void addProbeRoIs(RoIResizer* mRoIResizer);
-
   void resetProbeRoIs();
 
   void filterPDRoIs(float threshold);
