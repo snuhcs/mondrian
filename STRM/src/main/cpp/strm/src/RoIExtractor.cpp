@@ -23,7 +23,7 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize, b
       mTargetSize(cv::Size(int(mConfig.EXTRACTION_RESIZE_WIDTH),
                            int(mConfig.EXTRACTION_RESIZE_HEIGHT))),
       mInferencePlan(std::move(inferencePlan)), mFullFrameInferenceCount(0),
-      mVids(std::move(vids)), mbStop(false), isFullyPacked(false) {
+      mVids(std::move(vids)), mbStop(false), isFullyPacked(false), mFullFrameVid(-1) {
   if (run) {
     resetBinPackerWithPlan(mInferencePlan);
     mThreads.reserve(config.NUM_WORKERS);
@@ -49,7 +49,7 @@ void RoIExtractor::enqueue(Frame* frame) {
        "RoIExtractor::enqueue", frame->vid, frame->frameIndex,
        mPDWaiting.size(), mOFWaiting.size(),
        std::accumulate(mPackedFrames.begin(), mPackedFrames.end(), 0,
-                       [](const auto& it) { return it->second.size(); }));
+                       [](int cnt, const auto& it) { return cnt + it.second.size(); }));
   queueLock.unlock();
   queueCv.notify_all();
 }
@@ -60,8 +60,11 @@ void RoIExtractor::notify() {
 
 std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::prepareInference(
     std::vector<InferenceInfo>& nextInferencePlan, bool runFull) {
+//  LOGD("XXX RoIExtractor::prepareInference before packLock");
   std::unique_lock<std::mutex> packLock(packMtx);
+//  LOGD("XXX RoIExtractor::prepareInference before queueLock");
   std::unique_lock<std::mutex> queueLock(queueMtx);
+//  LOGD("XXX RoIExtractor::prepareInference after queueLock");
 
   if (!isFullyPacked) {
     restorePrevs(/*isLast=*/false);
@@ -71,6 +74,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
       prepareFrameLast(info.frame, info.lastPackedLocations, info.last.indices);
     }
   }
+//  LOGD("XXX A");
 
   Frame* fullFrameTarget = nullptr;
   if (mFullFrameVid != -1) {
@@ -78,6 +82,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
       fullFrameTarget = *mPackedFrames[mFullFrameVid].rbegin();
     }
   }
+//  LOGD("XXX B");
 
   std::map<int, std::set<RoI*>> groupedRoIs;
   for (const auto&[vid, frames]: mPackedFrames) {
@@ -91,23 +96,27 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
       }
     }
   }
+//  LOGD("XXX C");
   std::vector<MixedFrame> mixedFrames;
   for (auto&[mixedFrameIndex, rois]: groupedRoIs) {
     const auto& info = mInferencePlan[mixedFrameIndex];
     mixedFrames.emplace_back(info.device, rois, info.size);
   }
+//  LOGD("XXX D");
 
   MultiStream selectedFrames = std::move(mPackedFrames);
   mPackedFrames.clear();
   isFullyPacked = false;
   mPrevPackVids.clear();
   mPrevPackInfos.clear();
+//  LOGD("XXX E");
 
   Stream droppedFrames;
 
   for (Frame* frame: mOFProcessing) {
     frame->extractOFAgain = true;
   }
+//  LOGD("XXX F");
 
   if (runFull) {
     int index = mFullFrameInferenceCount % int(mVids.size());
@@ -146,6 +155,12 @@ void RoIExtractor::work(int extractorId) {
     }
   };
   auto getOFJob = [this]() {
+    if (mOFWaiting.empty()) {
+      LOGD("XXX getOFJob: %d %d", mOFWaiting.empty(), isFullyPacked);
+    } else {
+      Frame* firstFrame = *mOFWaiting.begin();
+      LOGD("XXX getOFJob: %d %d %d %d %d %d", mOFWaiting.empty(), isFullyPacked, firstFrame->vid, firstFrame->frameIndex, firstFrame->useInferenceResultForOF, firstFrame->readyForOFExtraction());
+    }
     if (!mOFWaiting.empty()
         && !isFullyPacked
         && (*mOFWaiting.begin())->readyForOFExtraction()) {
@@ -159,8 +174,8 @@ void RoIExtractor::work(int extractorId) {
     bool isOF = false;
     Frame* frame = nullptr;
 
-    std::unique_lock<std::mutex> lock(queueMtx);
-    queueCv.wait(lock, [this, &isOF, &frame, &getPDJob, &getOFJob]() {
+    std::unique_lock<std::mutex> queueLock(queueMtx);
+    queueCv.wait(queueLock, [this, &isOF, &frame, &getPDJob, &getOFJob]() {
       if (mbStop) {
         return true;
       }
@@ -178,7 +193,7 @@ void RoIExtractor::work(int extractorId) {
     });
 
     if (mbStop) {
-      lock.unlock();
+      queueLock.unlock();
       queueCv.notify_all();
       return;
     }
@@ -191,7 +206,7 @@ void RoIExtractor::work(int extractorId) {
       frame->PDExtractorID = extractorId;
       mPDWaiting.erase(mPDWaiting.begin());
     }
-    lock.unlock();
+    queueLock.unlock();
     queueCv.notify_all();
 
     if (isOF) {
@@ -203,9 +218,9 @@ void RoIExtractor::work(int extractorId) {
     if (isOF) {
       postprocessOF(frame);
     } else {
-      lock.lock();
+      queueLock.lock();
       mOFWaiting.insert(frame);
-      lock.unlock();
+      queueLock.unlock();
     }
     queueCv.notify_all();
   }
@@ -213,28 +228,40 @@ void RoIExtractor::work(int extractorId) {
 
 void RoIExtractor::postprocessOF(Frame* currFrame) {
   currFrame->filterPDRoIs(mConfig.PD_FILTER_THRESHOLD);
+  std::stringstream ss0;
+  for (auto& cRoI: currFrame->childRoIs) {
+    ss0 << "(" << cRoI->paddedLoc.width() << ", " << cRoI->paddedLoc.height() << ")" << ", ";
+  }
+  LOGD("XXX filterPDRoIs: %s", ss0.str().c_str());
   currFrame->resizeStartTime = NowMicros();
   currFrame->resizeRoIs(mRoIResizer);
   currFrame->resizeEndTime = NowMicros();
+  std::stringstream ss1;
+  for (auto& cRoI: currFrame->childRoIs) {
+    ss1 << "(" << cRoI->paddedLoc.width() << ", " << cRoI->paddedLoc.height() << ")" << ", ";
+  }
+  LOGD("XXX resizeRoIs: %s", ss1.str().c_str());
   currFrame->mergeRoIStartTime = NowMicros();
   if (mConfig.MERGE) {
-    currFrame->mergeRoIs(mConfig.MERGE_THRESHOLD, mMaxMergeSize);
+    currFrame->mergeRoIs(mConfig.MERGE_THRESHOLD, float(mMaxMergeSize));
   }
   currFrame->mergeRoIEndTime = NowMicros();
 
-  IntPairs BoxesIfLast = getBoxesIfLastFrame(currFrame);
-  IntPairs BoxesIfIntermediate = getBoxesIfIntermediateFrame(currFrame);
+  IntPairs boxesIfLast = getBoxesIfLastFrame(currFrame);
+  IntPairs boxesIfIntermediate = getBoxesIfIntermediateFrame(currFrame);
 
   std::unique_lock<std::mutex> packLock(packMtx);
-  tryPack(currFrame, BoxesIfLast, BoxesIfIntermediate);
+  tryPack(currFrame, boxesIfLast, boxesIfIntermediate);
   packLock.unlock();
 
   std::lock_guard<std::mutex> queueLock(queueMtx);
   mOFProcessing.erase(currFrame);
   if (currFrame->extractOFAgain) {
+    LOGD("XXX currFrame->extractOFAgain");
     currFrame->resetOFRoIExtraction();
     mOFWaiting.insert(currFrame);
   } else {
+    LOGD("XXX currFrame->isRoIsReady");
     currFrame->isRoIsReady = true;
   }
 }
@@ -242,6 +269,7 @@ void RoIExtractor::postprocessOF(Frame* currFrame) {
 void RoIExtractor::tryPack(Frame* currFrame, const IntPairs& boxesIfLast,
                            const IntPairs& boxesIfIntermediate) {
   const int vid = currFrame->vid;
+  LOGD("XXX RoIExtractor::tryPack %d", isFullyPacked);
   if (!isFullyPacked) {
     /*
      * mPrevPackVids contains the candidate last frames.
@@ -250,6 +278,7 @@ void RoIExtractor::tryPack(Frame* currFrame, const IntPairs& boxesIfLast,
      */
     bool vidExists = std::find(mPrevPackVids.begin(), mPrevPackVids.end(), vid) != mPrevPackVids.end();
     if (currFrame->vid == mFullFrameVid) {
+      LOGD("XXX currFrame->vid == mFullFrameVid");
       assert(!vidExists);
       restorePrevs(/*isLast=*/false);
       auto packIndices = mBinPacker->pack(boxesIfIntermediate, false);
@@ -287,12 +316,14 @@ void RoIExtractor::tryPack(Frame* currFrame, const IntPairs& boxesIfLast,
         }
       }
     } else {
+      LOGD("XXX currFrame->vid != mFullFrameVid");
       restorePrevs(/*isLast=*/false);
       if (vidExists) {
         packAndApplyPrev(/*isLast=*/false, /*targetVid=*/vid);
       }
       packAndApplyPrevs(/*isLast=*/true, /*skipVid=*/vid);
       auto packIndicesLast = mBinPacker->pack(boxesIfLast, true);
+      LOGD("XXX mBinPacker->pack(boxesIfLast, true); %lu %lu ", packIndicesLast.size(), boxesIfLast.size());
       if (packIndicesLast.size() == boxesIfLast.size()) { // Packing success
         restorePrevs(/*isLast=*/true, /*skipVid=*/vid);
         if (vidExists) {
@@ -372,21 +403,24 @@ void RoIExtractor::restorePrev(bool isLast, int targetVid) {
 
 IntPairs RoIExtractor::getBoxesIfLastFrame(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
-  IntPairs BoxesIfLast;
+  IntPairs boxesIfLast;
   for (const auto& pRoI : frame->parentRoIs) {
     int w = int(pRoI->paddedLoc.width());
     int h = int(pRoI->paddedLoc.height());
-    BoxesIfLast.emplace_back(w, h);
+    boxesIfLast.emplace_back(w, h);
+    LOGD("XXX getBoxesIfLastFrame parentRoIs: %d %d", w, h);
   }
   for (const auto& cRoI : frame->childRoIs) {
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
         cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
     for (auto scale: probingCandidates) {
-      BoxesIfLast.emplace_back(int(cRoI->paddedLoc.width() * scale),
-                               int(cRoI->paddedLoc.height() * scale));
+      int w = int(cRoI->paddedLoc.width() * scale);
+      int h = int(cRoI->paddedLoc.height() * scale);
+      boxesIfLast.emplace_back(w, h);
+      LOGD("XXX getBoxesIfLastFrame probeRoIs: %d %d", w, h);
     }
   }
-  return BoxesIfLast;
+  return boxesIfLast;
 }
 
 void RoIExtractor::prepareFrameLast(Frame* frame,
@@ -456,6 +490,7 @@ void RoIExtractor::processPD(Frame* currFrame) {
 void RoIExtractor::processOF(Frame* currFrame) {
   assert(!currFrame->extractOFAgain);
   Frame* prevFrame = currFrame->prevFrame;
+  LOGD("XXX processOF prevFrame %d %d: %lu", prevFrame->vid, prevFrame->frameIndex, prevFrame->boxes.size());
   std::vector<BoundingBox> reliablePrevBoxes;
   if (prevFrame->useInferenceResultForOF) {
     testAssignedUniqueBoxID(prevFrame->boxes);
@@ -478,6 +513,12 @@ void RoIExtractor::processOF(Frame* currFrame) {
       reliablePrevBoxes.push_back(reliableBox);
     }
   }
+  std::stringstream ss;
+  for (auto& box : reliablePrevBoxes) {
+    auto& loc = box.location;
+    ss << "(" << loc.left << ", " << loc.top << ", " << loc.right << ", " << loc.bottom << "), ";
+  }
+  LOGD("XXX reliablePrevBoxes %d: %s", prevFrame->useInferenceResultForOF, ss.str().c_str());
   currFrame->opticalFlowRoIProcessStartTime = NowMicros();
   getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes, mTargetSize, currFrame->childRoIs);
   currFrame->opticalFlowRoIProcessEndTime = NowMicros();
@@ -516,6 +557,7 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       float newRight = std::min(float(width), loc.right + x);
       float newBottom = std::min(float(height), loc.bottom + y);
       if (newLeft < newRight && newTop < newBottom) {
+        LOGD("XXX OF RoI: (%f, %f, %f, %f) %f", newLeft, newTop, newRight, newBottom, mConfig.ROI_PADDING);
         outChildRoIs.push_back(std::make_unique<RoI>(
             box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
             OF, box.origin, box.label, of, box.confidence, mConfig.ROI_PADDING, false));
@@ -638,6 +680,7 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
   }
 
   for (const Rect& box : boxes) {
+    LOGD("XXX OF RoI: (%f, %f, %f, %f) %f", box.left, box.top, box.right, box.bottom, mConfig.ROI_PADDING);
     outChildRoIs.push_back(std::make_unique<RoI>(
         nullptr,
         UNASSIGNED_ID,
@@ -678,7 +721,6 @@ void RoIExtractor::resetBinPackerWithPlan(const std::vector<InferenceInfo>& infe
   for (const auto& info : inferencePlan) {
     WHs.emplace_back(info.size, info.size);
   }
-  std::lock_guard<std::mutex> packLock(packMtx);
   mBinPacker = std::make_unique<BinPacker>(WHs);
 }
 

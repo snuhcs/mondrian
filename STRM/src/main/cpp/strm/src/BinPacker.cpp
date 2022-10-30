@@ -10,9 +10,16 @@ BinPacker::BinPacker(const IntPairs& WHs) {
   for (auto[w, h]: WHs) {
     freeRectsVec.push_back({IntRect(0, 0, w, h)});
   }
+  LOGD("XXX BinPacker: %s", toString().c_str());
 }
 
 IntPairs BinPacker::pack(const IntPairs& boxWHs, bool reverse) const {
+  std::stringstream ss;
+  for (const auto&[w, h] : boxWHs) {
+    ss << "(" << w << ", " << h << ")" << ", ";
+  }
+  LOGD("XXX pack FR: %s", toString().c_str());
+  LOGD("XXX pack WH: %s", ss.str().c_str());
   auto copiedFreeRectsVec = freeRectsVec;
   IntPairs packIndices;
   for (const auto&[w, h]: boxWHs) {
@@ -59,6 +66,7 @@ IntPairs BinPacker::apply(const BoxIndices& boxIndices) {
     auto[pack_i, pack_j] = packIndices[i];
     packedWHs.push_back(packBox(freeRectsVec, w, h, pack_i, pack_j));
   }
+  LOGD("XXX BinPacker: %s", toString().c_str());
   return packedWHs;
 }
 

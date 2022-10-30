@@ -3,6 +3,7 @@
 
 #include <list>
 #include <queue>
+#include <set>
 #include <thread>
 #include <utility>
 
@@ -11,7 +12,7 @@
 #include "strm/BinPacker.hpp"
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
-#include "strm/PatchMixer.hpp"
+#include "strm/MixedFrame.hpp"
 #include "strm/RoIResizer.hpp"
 #include "strm/Utils.hpp"
 

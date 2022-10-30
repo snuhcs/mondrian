@@ -3,6 +3,7 @@
 #include "strm/RoI.hpp"
 #include "strm/RoIResizer.hpp"
 #include "strm/Test.hpp"
+#include "strm/Log.hpp"
 
 namespace rm {
 
@@ -35,6 +36,7 @@ void Frame::resetParentRoIs() {
   }
   for (auto& cRoI: childRoIs) {
     std::unique_ptr<RoI> pRoI = std::make_unique<RoI>(*cRoI);
+    LOGD("XXX make_unique: (%f, %f), (%f, %f)", cRoI->paddedLoc.width(), cRoI->paddedLoc.height(), pRoI->paddedLoc.width(), pRoI->paddedLoc.height());
     cRoI->parentRoI = pRoI.get();
     pRoI->childRoIs.push_back(cRoI.get());
     parentRoIs.push_back(std::move(pRoI));
@@ -43,6 +45,11 @@ void Frame::resetParentRoIs() {
 
 void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
   resetParentRoIs();
+  std::stringstream ss;
+  for (auto& pRoI: parentRoIs) {
+    ss << "(" << pRoI->paddedLoc.width() << ", " << pRoI->paddedLoc.height() << ")" << ", ";
+  }
+  LOGD("XXX mergeRoIs: %s", ss.str().c_str());
   while (true) {
     bool updated = false;
     int i, j;

@@ -36,7 +36,6 @@ add_library(
         strm/src/Interpolator.cpp
         strm/src/Logger.cpp
         strm/src/MixedFrame.cpp
-        strm/src/PatchMixer.cpp
         strm/src/PatchReconstructor.cpp
         strm/src/RoI.cpp
         strm/src/RoIResizer.cpp
