@@ -19,9 +19,9 @@ namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize,
-               bool run, bool roiWiseInference, RoIResizer* roiResizer,
-               std::vector<InferenceInfo> inferencePlan);
+  RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize, bool run,
+               RoIResizer* roiResizer, std::vector<InferenceInfo> inferencePlan,
+               std::set<int> vids);
 
   ~RoIExtractor();
 
@@ -40,6 +40,8 @@ class RoIExtractor {
   void processOF(Frame* currFrame);
 
   void postprocessOF(Frame* currFrame);
+
+  void tryPack(Frame* currFrame, const IntPairs& boxesIfLast, const IntPairs& boxesIfIntermediate);
 
   void getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
                           const std::vector<BoundingBox>& boundingBoxes,
@@ -60,17 +62,24 @@ class RoIExtractor {
 
   void resetBinPackerWithPlan(const std::vector<InferenceInfo>& inferencePlan);
 
-  std::vector<std::pair<int, int>> getBoxesIfLastFrame(const Frame* frame);
+  void prepareFrameLast(Frame* frame, const IntPairs& packedLocations,
+                        const IntPairs& packedIndices);
 
-  void prepareFrameLast(Frame* frame,
-                        const std::vector<std::pair<int, int>>& packedLocations,
-                        const std::vector<std::pair<int, int>>& packedIndices);
-
-  static std::vector<std::pair<int, int>> getBoxesIfIntermediateFrame(const Frame* frame);
+  IntPairs getBoxesIfLastFrame(const Frame* frame);
 
   static void prepareFrameIntermediate(Frame* frame,
-                                const std::vector<std::pair<int, int>>& packedLocations,
-                                const std::vector<std::pair<int, int>>& packedIndices);
+                                       const IntPairs& packedLocations,
+                                       const IntPairs& packedIndices);
+
+  static IntPairs getBoxesIfIntermediateFrame(const Frame* frame);
+
+  void packAndApplyPrevs(bool isLast, int skipVid = -1);
+
+  void packAndApplyPrev(bool isLast, int targetVid);
+
+  void restorePrevs(bool isLast, int skipVid = -1);
+
+  void restorePrev(bool isLast, int targetVid);
 
   std::vector<std::thread> mThreads;
   bool mbStop;
@@ -79,7 +88,8 @@ class RoIExtractor {
   const cv::Size mTargetSize;
   const int mMaxMergeSize;
   const RoIExtractorConfig mConfig;
-  const bool mRoIWiseInference;
+  const std::set<int> mVids;
+  int mFullFrameVid;
 
   RoIResizer* mRoIResizer;
 
@@ -93,7 +103,6 @@ class RoIExtractor {
   std::mutex queueMtx;
   std::mutex packMtx;
   std::condition_variable queueCv;
-  std::condition_variable packCv;
 
   Stream mPDWaiting;
   Stream mOFWaiting;
@@ -102,11 +111,17 @@ class RoIExtractor {
   Stream mPackedFrames;
   std::unique_ptr<BinPacker> mBinPacker;
   bool isFullyPacked;
-  Frame* prevPackedFrame;
-  std::vector<std::pair<int, int>> prevPackIndicesIntermediate;
-  std::vector<std::pair<int, int>> prevBoxesIfIntermediate;
-  std::vector<std::pair<int, int>> prevPackIndicesLast;
-  std::vector<std::pair<int, int>> prevBoxesIfLast;
+
+  struct PackInfo {
+    Frame* frame;
+    BoxIndices last;
+    BoxIndices inter;
+    IntPairs lastPackedLocations;
+    IntPairs interPackedLocations;
+  };
+
+  std::vector<int> mPrevPackVids;
+  std::map<int, PackInfo> mPrevPackInfos;
 };
 
 } // namespace rm

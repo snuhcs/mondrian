@@ -8,10 +8,17 @@ namespace rm {
 
 class SpatioTemporalRoIMixer;
 
+using IntPairs = std::vector<std::pair<int, int>>;
+
+struct BoxIndices {
+  IntPairs boxes;
+  IntPairs indices;
+};
+
 class BinPacker {
   friend SpatioTemporalRoIMixer;
  public:
-  BinPacker(const std::vector<std::pair<int, int>>& WHs);
+  BinPacker(const IntPairs& WHs);
 
   /*
    * 1. Simulate packing with BinPacker::pack(boxes, reverse=false)
@@ -22,14 +29,11 @@ class BinPacker {
    *   * apply(packIndices);
    *   * return packedWHs
    */
-  std::vector<std::pair<int, int>> pack(const std::vector<std::pair<int, int>>& boxes,
-                                        bool reverse) const;
+  IntPairs pack(const IntPairs& boxes, bool reverse) const;
 
-  std::vector<std::pair<int, int>> apply(const std::vector<std::pair<int, int>>& boxes,
-                                         const std::vector<std::pair<int, int>>& packIndices);
+  IntPairs apply(const BoxIndices& boxIndices);
 
-  void restore(const std::vector<std::pair<int, int>>& boxes,
-               const std::vector<std::pair<int, int>>& packIndices);
+  void restore(const BoxIndices& boxIndices);
 
   std::string toString() const;
 

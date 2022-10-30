@@ -6,16 +6,15 @@
 
 namespace rm {
 
-BinPacker::BinPacker(const std::vector<std::pair<int, int>>& WHs) {
+BinPacker::BinPacker(const IntPairs& WHs) {
   for (auto[w, h]: WHs) {
     freeRectsVec.push_back({IntRect(0, 0, w, h)});
   }
 }
 
-std::vector<std::pair<int, int>> BinPacker::pack(const std::vector<std::pair<int, int>>& boxWHs,
-                                                 bool reverse) const {
+IntPairs BinPacker::pack(const IntPairs& boxWHs, bool reverse) const {
   auto copiedFreeRectsVec = freeRectsVec;
-  std::vector<std::pair<int, int>> packIndices;
+  IntPairs packIndices;
   for (const auto&[w, h]: boxWHs) {
     int minRemainingArea = INT_MAX / 2;
     int pack_i = -1;
@@ -50,10 +49,11 @@ std::vector<std::pair<int, int>> BinPacker::pack(const std::vector<std::pair<int
   return packIndices;
 }
 
-std::vector<std::pair<int, int>> BinPacker::apply(const std::vector<std::pair<int, int>>& boxes,
-                                                  const std::vector<std::pair<int, int>>& packIndices) {
+IntPairs BinPacker::apply(const BoxIndices& boxIndices) {
+  const auto& boxes = boxIndices.boxes;
+  const auto& packIndices = boxIndices.indices;
   assert(boxes.size() == packIndices.size());
-  std::vector<std::pair<int, int>> packedWHs;
+  IntPairs packedWHs;
   for (int i = 0; i < boxes.size(); i++) {
     auto[w, h] = boxes[i];
     auto[pack_i, pack_j] = packIndices[i];
@@ -62,8 +62,9 @@ std::vector<std::pair<int, int>> BinPacker::apply(const std::vector<std::pair<in
   return packedWHs;
 }
 
-void BinPacker::restore(const std::vector<std::pair<int, int>>& boxes,
-                        const std::vector<std::pair<int, int>>& packIndices) {
+void BinPacker::restore(const BoxIndices& boxIndices) {
+  const auto& boxes = boxIndices.boxes;
+  const auto& packIndices = boxIndices.indices;
   assert(boxes.size() == packIndices.size());
   for (int i = int(boxes.size()) - 1; i >= 0; i--) {
     auto[w, h] = boxes[i];
@@ -126,9 +127,9 @@ BinPacker::splitFreeRect(int w, int h, const IntRect& freeRect) {
 
 std::string BinPacker::toString() const {
   std::stringstream ss;
-  for (auto& freeRects : freeRectsVec) {
+  for (auto& freeRects: freeRectsVec) {
     ss << std::endl;
-    for (auto& freeRect : freeRects) {
+    for (auto& freeRect: freeRects) {
       ss << freeRect.toString() << ", ";
     }
   }
@@ -137,17 +138,17 @@ std::string BinPacker::toString() const {
 
 void BinPacker::restoreTest() {
   BinPacker binPacker({{640, 640}, {640, 640}});
-  std::vector<std::pair<int, int>> boxes0 = {{20, 30}, {189, 83}, {92, 30}, {39, 40}, {20, 39}};
-  std::vector<std::pair<int, int>> boxes1 = {{29, 20}, {2, 82}, {280, 38}, {29, 290}, {20, 24}};
+  IntPairs boxes0 = {{20, 30}, {189, 83}, {92, 30}, {39, 40}, {20, 39}};
+  IntPairs boxes1 = {{29, 20}, {2, 82}, {280, 38}, {29, 290}, {20, 24}};
   LOGD("XXX 1 %s", binPacker.toString().c_str());
   auto packIndices0 = binPacker.pack(boxes0, false);
-  auto packedLocations0 = binPacker.apply(boxes0, packIndices0);
+  auto packedLocations0 = binPacker.apply({boxes0, packIndices0});
   LOGD("XXX 2 %s", binPacker.toString().c_str());
 
   auto packIndices1 = binPacker.pack(boxes1, false);
-  auto packedLocation1 = binPacker.apply(boxes1, packIndices1);
+  auto packedLocation1 = binPacker.apply({boxes1, packIndices1});
   LOGD("XXX 3 %s", binPacker.toString().c_str());
-  binPacker.restore(boxes1, packIndices1);
+  binPacker.restore({boxes1, packIndices1});
   LOGD("XXX 4 %s", binPacker.toString().c_str());
 }
 

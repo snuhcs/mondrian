@@ -15,15 +15,14 @@ namespace rm {
 const cv::TermCriteria RoIExtractor::CRITERIA = cv::TermCriteria(
     cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
 
-RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize,
-                           bool run, bool roiWiseInference, RoIResizer* roiResizer,
-                           std::vector<InferenceInfo> inferencePlan)
-    : mConfig(config), mMaxMergeSize(maxMergeSize),
-      mRoIResizer(roiResizer), mRoIWiseInference(roiWiseInference),
+RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize, bool run,
+                           RoIResizer* roiResizer, std::vector<InferenceInfo> inferencePlan,
+                           std::set<int> vids)
+    : mConfig(config), mMaxMergeSize(maxMergeSize), mRoIResizer(roiResizer),
       mTargetSize(cv::Size(int(mConfig.EXTRACTION_RESIZE_WIDTH),
                            int(mConfig.EXTRACTION_RESIZE_HEIGHT))),
       mInferencePlan(std::move(inferencePlan)), mFullFrameInferenceCount(0),
-      mbStop(false), isFullyPacked(false) {
+      mVids(std::move(vids)), mbStop(false), isFullyPacked(false) {
   if (run) {
     resetBinPackerWithPlan(inferencePlan);
     mThreads.reserve(config.NUM_WORKERS);
@@ -62,30 +61,34 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
   std::unique_lock<std::mutex> queueLock(queueMtx);
 
   if (!isFullyPacked) {
-    mBinPacker->restore(prevBoxesIfIntermediate, prevPackIndicesIntermediate);
-    auto packedLocations = mBinPacker->apply(prevBoxesIfLast, prevPackIndicesLast);
-    prepareFrameLast(prevPackedFrame, packedLocations, prevPackIndicesLast);
+    restorePrevs(/*isLast=*/false);
+    packAndApplyPrevs(/*isLast=*/true);
+    for (int vid : mPrevPackVids) {
+      const auto& info = mPrevPackInfos[vid];
+      prepareFrameLast(info.frame, info.lastPackedLocations, info.last.indices);
+    }
   }
+
+
+
+  if (runFull) {
+    int index = mFullFrameInferenceCount % int(mVids.size());
+    mFullFrameInferenceCount++;
+    mFullFrameVid = *std::next(mVids.begin(), index);
+  } else {
+    mFullFrameVid = -1;
+  }
+  mInferencePlan = nextInferencePlan;
 
   for (Frame* frame : mOFProcessing) {
     frame->extractOFAgain = true;
   }
-
-  if (runFull) {
-
-  }
-  mInferencePlan = nextInferencePlan;
   isFullyPacked = false;
-  prevPackedFrame = nullptr;
-  prevPackIndicesIntermediate = {};
-  prevBoxesIfIntermediate = {};
-  prevPackIndicesLast = {};
-  prevBoxesIfLast = {};
+  mPrevPackVids.clear();
+  mPrevPackInfos.clear();
 
   queueLock.unlock();
   packLock.unlock();
-
-  isFullyPacked = false;
   queueCv.notify_all();
 
   return {};
@@ -165,9 +168,9 @@ void RoIExtractor::work(int extractorId) {
       processPD(frame);
     }
 
-    if (isOF) { // Postprocess OF
+    if (isOF) {
       postprocessOF(frame);
-    } else { // Postprocess PD
+    } else {
       lock.lock();
       mOFWaiting.insert(frame);
       lock.unlock();
@@ -187,42 +190,12 @@ void RoIExtractor::postprocessOF(Frame* currFrame) {
   }
   currFrame->mergeRoIEndTime = NowMicros();
 
-  std::vector<std::pair<int, int>> BoxesIfLast = getBoxesIfLastFrame(currFrame);
-  std::vector<std::pair<int, int>> BoxesIfIntermediate = getBoxesIfIntermediateFrame(currFrame);
-  std::vector<std::pair<int, int>> packedLocations;
+  IntPairs BoxesIfLast = getBoxesIfLastFrame(currFrame);
+  IntPairs BoxesIfIntermediate = getBoxesIfIntermediateFrame(currFrame);
 
   std::unique_lock<std::mutex> packLock(packMtx);
-  packCv.wait(packLock);
-  if (!isFullyPacked) {
-    auto packIndicesLast = mBinPacker->pack(BoxesIfLast, false);
-    if (packIndicesLast.size() == BoxesIfLast.size()) { // Packable
-      auto packIndicesIntermediate = mBinPacker->pack(BoxesIfIntermediate, true);
-      packedLocations = mBinPacker->apply(BoxesIfIntermediate, packIndicesIntermediate);
-      prevBoxesIfIntermediate = BoxesIfIntermediate;
-      prevPackIndicesIntermediate = packIndicesIntermediate;
-      prevPackIndicesLast = packIndicesLast;
-      prevBoxesIfLast = BoxesIfLast;
-      prevPackedFrame = currFrame;
-      mPackedFrames.insert(currFrame);
-      assert(packedLocations.size() == BoxesIfIntermediate.size());
-      prepareFrameIntermediate(currFrame, packedLocations);
-    } else { // Not packable
-      mBinPacker->restore(prevBoxesIfIntermediate, prevPackIndicesIntermediate);
-      packedLocations = mBinPacker->apply(prevBoxesIfLast, prevPackIndicesLast);
-      assert(packedLocations.size() == BoxesIfLast.size());
-      prepareFrameLast(currFrame, packedLocations);
-
-      isFullyPacked = true;
-      std::lock_guard<std::mutex> queueLock(queueMtx);
-      for (Frame* frame : mOFProcessing) {
-        if (frame != currFrame) {
-          frame->extractOFAgain = true;
-        }
-      }
-    }
-  }
+  tryPack(currFrame, BoxesIfLast, BoxesIfIntermediate);
   packLock.unlock();
-  packCv.notify_all();
 
   std::lock_guard<std::mutex> queueLock(queueMtx);
   mOFProcessing.erase(currFrame);
@@ -234,9 +207,97 @@ void RoIExtractor::postprocessOF(Frame* currFrame) {
   }
 }
 
-std::vector<std::pair<int, int>> RoIExtractor::getBoxesIfLastFrame(const Frame* frame) {
+void RoIExtractor::tryPack(Frame* currFrame, const IntPairs& boxesIfLast,
+                           const IntPairs& boxesIfIntermediate) {
+  const int vid = currFrame->vid;
+  if (!isFullyPacked) {
+    /*
+     * mPrevPackVids contains the candidate last frames.
+     * If incoming frame's packing as a last frame fails,
+     * mPrevPackVids will be used as last frames.
+     */
+    bool vidExists = std::find(mPrevPackVids.begin(), mPrevPackVids.end(), vid) != mPrevPackVids.end();
+    restorePrevs(/*isLast=*/false);
+    if (vidExists) {
+      packAndApplyPrev(/*isLast=*/false, /*targetVid=*/vid);
+    }
+    packAndApplyPrevs(/*isLast=*/true, /*skipVid=*/vid);
+    auto packIndicesLast = mBinPacker->pack(boxesIfLast, true);
+    if (packIndicesLast.size() == boxesIfLast.size()) { // Packing success
+      restorePrevs(/*isLast=*/true, /*skipVid=*/vid);
+      if (vidExists) {
+        auto& prevVidInfo = mPrevPackInfos[vid];
+        prepareFrameIntermediate(prevVidInfo.frame,
+                                 prevVidInfo.interPackedLocations,
+                                 prevVidInfo.inter.indices);
+        mPrevPackVids.erase(mPrevPackVids.begin());
+      }
+      mPrevPackVids.push_back(vid);
+      mPackedFrames.insert(currFrame);
+      auto& info = mPrevPackInfos[vid];
+      info.frame = currFrame;
+      info.last.boxes = boxesIfLast;
+      info.inter.boxes = boxesIfIntermediate;
+      packAndApplyPrevs(/*isLast=*/false);
+    } else { // Packing failed
+      assert(packIndicesLast.size() < boxesIfLast.size());
+      if (vidExists) {
+        restorePrevs(/*isLast=*/true, /*skipVid=*/vid);
+        restorePrev(/*isLast=*/false, /*targetVid=*/vid);
+        packAndApplyPrevs(/*isLast=*/true);
+      }
+      for (int pVid: mPrevPackVids) {
+        const auto& info = mPrevPackInfos[pVid];
+        prepareFrameLast(info.frame, info.lastPackedLocations, info.last.indices);
+      }
+      isFullyPacked = true;
+      std::lock_guard<std::mutex> queueLock(queueMtx);
+      for (Frame* frame: mOFProcessing) {
+        frame->extractOFAgain = true;
+      }
+    }
+  }
+}
+
+void RoIExtractor::packAndApplyPrevs(bool isLast, int skipVid) {
+  for (int pVid : mPrevPackVids) {
+    if (pVid != skipVid) {
+      packAndApplyPrev(isLast, pVid);
+    }
+  }
+}
+
+void RoIExtractor::packAndApplyPrev(bool isLast, int targetVid) {
+  auto& info = mPrevPackInfos[targetVid];
+  if (isLast) {
+    info.last.indices = mBinPacker->pack(info.last.boxes, true);
+    info.lastPackedLocations = mBinPacker->apply(info.last);
+  } else {
+    info.inter.indices = mBinPacker->pack(info.inter.boxes, false);
+    info.interPackedLocations = mBinPacker->apply(info.inter);
+  }
+}
+
+void RoIExtractor::restorePrevs(bool isLast, int skipVid) {
+  for (auto it = mPrevPackVids.rbegin(); it != mPrevPackVids.rend(); it++) {
+    if (*it != skipVid) {
+      restorePrev(isLast, *it);
+    }
+  }
+}
+
+void RoIExtractor::restorePrev(bool isLast, int targetVid) {
+  auto& info = mPrevPackInfos[targetVid];
+  if (isLast) {
+    mBinPacker->restore(info.last);
+  } else {
+    mBinPacker->restore(info.inter);
+  }
+}
+
+IntPairs RoIExtractor::getBoxesIfLastFrame(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
-  std::vector<std::pair<int, int>> BoxesIfLast;
+  IntPairs BoxesIfLast;
   for (const auto& pRoI : frame->parentRoIs) {
     int w = int(pRoI->paddedLoc.width());
     int h = int(pRoI->paddedLoc.height());
@@ -254,9 +315,10 @@ std::vector<std::pair<int, int>> RoIExtractor::getBoxesIfLastFrame(const Frame* 
 }
 
 void RoIExtractor::prepareFrameLast(Frame* frame,
-                                    const std::vector<std::pair<int, int>>& packedLocations,
-                                    const std::vector<std::pair<int, int>>& packedIndices) {
+                                    const IntPairs& packedLocations,
+                                    const IntPairs& packedIndices) {
   assert(packedLocations.size() == packedIndices.size());
+  frame->resetProbeRoIs();
   int i = 0;
   for (const auto& pRoI: frame->parentRoIs) {
     pRoI->packedLocation = packedLocations[i];
@@ -282,9 +344,9 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
   assert(i == packedLocations.size());
 }
 
-std::vector<std::pair<int, int>> RoIExtractor::getBoxesIfIntermediateFrame(const Frame* frame) {
+IntPairs RoIExtractor::getBoxesIfIntermediateFrame(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
-  std::vector<std::pair<int, int>> BoxesIfIntermediate;
+  IntPairs BoxesIfIntermediate;
   for (const auto& pRoI : frame->parentRoIs) {
     auto[rw, rh] = pRoI->getResizedWidthHeight();
     BoxesIfIntermediate.emplace_back(int(rw), int(rh));
@@ -293,9 +355,10 @@ std::vector<std::pair<int, int>> RoIExtractor::getBoxesIfIntermediateFrame(const
 }
 
 void RoIExtractor::prepareFrameIntermediate(Frame* frame,
-                                            const std::vector<std::pair<int, int>>& packedLocations,
-                                            const std::vector<std::pair<int, int>>& packedIndices) {
+                                            const IntPairs& packedLocations,
+                                            const IntPairs& packedIndices) {
   assert(packedLocations.size() == packedIndices.size());
+  frame->resetProbeRoIs();
   int i = 0;
   for (const auto& pRoI : frame->parentRoIs) {
     pRoI->packedLocation = packedLocations[i];
@@ -536,7 +599,7 @@ void RoIExtractor::cannyEdgeDetection(cv::Mat mat) {
 }
 
 void RoIExtractor::resetBinPackerWithPlan(const std::vector<InferenceInfo>& inferencePlan) {
-  std::vector<std::pair<int, int>> WHs;
+  IntPairs WHs;
   for (const auto& info : inferencePlan) {
     WHs.emplace_back(info.size, info.size);
   }

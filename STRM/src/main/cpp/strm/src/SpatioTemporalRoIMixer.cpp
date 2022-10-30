@@ -21,6 +21,14 @@ namespace rm {
 const int SpatioTemporalRoIMixer::FULL_KEY_OFFSET = 1000000;
 const bool SpatioTemporalRoIMixer::FAIR = true;
 
+static auto key_set = [](const std::map<int, int>& map) {
+  std::set<int> keys;
+  for (const auto&[k, v]: map) {
+    keys.insert(k);
+  }
+  return keys;
+};
+
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
                                                std::map<int, int> startIndices,
                                                JavaVM* vm, JNIEnv* env, jobject emulator)
@@ -37,7 +45,8 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
           mConfig.roIExtractorConfig, mInputSizes.front(),
           mConfig.FULL_FRAME_INTERVAL != 0, mConfig.ROI_WISE_INFERENCE, mRoIResizer.get(),
           InferencePlanner::getInferencePlan(mInferenceEngine->getInferenceTimeTable(),
-                                             mScheduleInterval, mConfig.ROI_WISE_INFERENCE))),
+                                             mScheduleInterval, mConfig.ROI_WISE_INFERENCE),
+          key_set(startIndices))),
       mPatchReconstructor(new PatchReconstructor(
           config.patchReconstructorConfig, mRoIResizer.get())) {
   assert(!config.ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
