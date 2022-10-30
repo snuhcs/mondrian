@@ -108,7 +108,7 @@ class RoIExtractor {
   Stream mOFWaiting;
   Stream mOFProcessing;
 
-  Stream mPackedFrames;
+  MultiStream mPackedFrames;
   std::unique_ptr<BinPacker> mBinPacker;
   bool isFullyPacked;
 

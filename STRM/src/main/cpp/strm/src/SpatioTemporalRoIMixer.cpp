@@ -42,10 +42,10 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mRoIResizer(new RoIResizer(config.roiResizerConfig)),
       mInferenceEngine(new InferenceEngine(config.inferenceEngineConfig, vm, env, emulator)),
       mRoIExtractor(new RoIExtractor(
-          mConfig.roIExtractorConfig, mInputSizes.front(),
-          mConfig.FULL_FRAME_INTERVAL != 0, mConfig.ROI_WISE_INFERENCE, mRoIResizer.get(),
-          InferencePlanner::getInferencePlan(mInferenceEngine->getInferenceTimeTable(),
-                                             mScheduleInterval, mConfig.ROI_WISE_INFERENCE),
+          mConfig.roIExtractorConfig, mInputSizes.front(), mConfig.FULL_FRAME_INTERVAL != 0,
+          mRoIResizer.get(), InferencePlanner::getInferencePlan(
+              mInferenceEngine->getInferenceTimeTable(),
+              mScheduleInterval, mConfig.ROI_WISE_INFERENCE),
           key_set(startIndices))),
       mPatchReconstructor(new PatchReconstructor(
           config.patchReconstructorConfig, mRoIResizer.get())) {

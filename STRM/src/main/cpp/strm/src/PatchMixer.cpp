@@ -15,18 +15,6 @@ const float PatchMixer::HIGH_PRIORITY    = 1100000000;
 PatchMixer::PatchMixer(const PatchMixerConfig& config)
     : mConfig(config) {}
 
-std::vector<Frame*> PatchMixer::addProbeRoIs(MultiStream& frames, const Frame* fullFrameTarget, RoIResizer* mRoIResizer) {
-  std::vector<Frame*> probeFrames;
-  std::set<Frame*> lastFrames = filterLastFrames(frames);
-  for (Frame* lastFrame : lastFrames) {
-    if (lastFrame != fullFrameTarget) {
-      lastFrame->addProbeRoIs(mRoIResizer);
-      probeFrames.push_back(lastFrame);
-    }
-  }
-  return probeFrames;
-}
-
 std::vector<RoI*> PatchMixer::collectRoIs(MultiStream& frames, const Frame* fullFrameTarget) {
   std::vector<RoI*> packingCandidates;
 
