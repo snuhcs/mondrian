@@ -5,7 +5,10 @@
 
 namespace rm {
 
+class SpatioTemporalRoIMixer;
+
 class BinPacker {
+  friend SpatioTemporalRoIMixer;
  public:
   BinPacker(const std::vector<std::pair<int, int>>& WHs);
 
@@ -16,12 +19,18 @@ class BinPacker {
    *     * The number of not packed boxes: boxes.size() - packIndices.size()
    * 2. Apply simulated indices with BinPacker::apply(packIndices)
    *   * apply(packIndices);
+   *   * return packedWHs
    */
   std::vector<std::pair<int, int>> pack(const std::vector<std::pair<int, int>>& boxes,
-                                        bool reverse);
+                                        bool reverse) const;
 
-  void apply(const std::vector<std::pair<int, int>>& boxes,
-             const std::vector<std::pair<int, int>>& packIndices);
+  std::vector<std::pair<int, int>> apply(const std::vector<std::pair<int, int>>& boxes,
+                                         const std::vector<std::pair<int, int>>& packIndices);
+
+  void restore(const std::vector<std::pair<int, int>>& boxes,
+               const std::vector<std::pair<int, int>>& packIndices);
+
+  std::string toString();
 
  private:
   struct IntRect {
@@ -46,8 +55,11 @@ class BinPacker {
     }
   };
 
-  static void packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
-                      int w, int h, int pack_i, int pack_j);
+  static std::pair<int, int> packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
+                                     int w, int h, int pack_i, int pack_j);
+
+  static void restoreBox(std::vector<std::vector<IntRect>>& freeRectsVec,
+                         int w, int h, int pack_i, int pack_j);
 
   static bool canFit(int w, int h, const IntRect& freeRect);
 
