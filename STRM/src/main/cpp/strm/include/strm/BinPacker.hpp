@@ -1,6 +1,7 @@
 #ifndef BIN_PACKER_HPP_
 #define BIN_PACKER_HPP_
 
+#include <sstream>
 #include <vector>
 
 namespace rm {
@@ -30,7 +31,7 @@ class BinPacker {
   void restore(const std::vector<std::pair<int, int>>& boxes,
                const std::vector<std::pair<int, int>>& packIndices);
 
-  std::string toString();
+  std::string toString() const;
 
  private:
   struct IntRect {
@@ -53,6 +54,12 @@ class BinPacker {
     int area() const {
       return width() * height();
     }
+
+    std::string toString() const {
+      std::stringstream ss;
+      ss << "(" << left << ", " << top << ", " << right << ", " << bottom << ")";
+      return ss.str();
+    }
   };
 
   static std::pair<int, int> packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
@@ -66,6 +73,8 @@ class BinPacker {
   static std::pair<IntRect, IntRect> splitFreeRect(int w, int h, const IntRect& freeRect);
 
   std::vector<std::vector<IntRect>> freeRectsVec;
+
+  static void restoreTest();
 };
 
 } // namespace rm
