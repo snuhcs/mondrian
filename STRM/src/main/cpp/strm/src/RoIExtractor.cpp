@@ -20,8 +20,8 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize, b
                            RoIResizer* roiResizer, std::vector<InferenceInfo> inferencePlan,
                            std::set<int> vids)
     : mConfig(config), mMaxMergeSize(maxMergeSize), mRoIResizer(roiResizer),
-      mTargetSize(cv::Size(int(mConfig.EXTRACTION_RESIZE_WIDTH),
-                           int(mConfig.EXTRACTION_RESIZE_HEIGHT))),
+      mTargetSize(cv::Size(int(config.EXTRACTION_RESIZE_WIDTH),
+                           int(config.EXTRACTION_RESIZE_HEIGHT))),
       mInferencePlan(std::move(inferencePlan)), mFullFrameInferenceCount(0),
       mVids(std::move(vids)), mbStop(false), isFullyPacked(false), mFullFrameVid(-1) {
   if (run) {
@@ -680,7 +680,7 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
   }
 
   for (const Rect& box : boxes) {
-    LOGD("XXX OF RoI: (%f, %f, %f, %f) %f", box.left, box.top, box.right, box.bottom, mConfig.ROI_PADDING);
+    LOGD("XXX PD RoI: (%f, %f, %f, %f) %f", box.left, box.top, box.right, box.bottom, mConfig.ROI_PADDING);
     outChildRoIs.push_back(std::make_unique<RoI>(
         nullptr,
         UNASSIGNED_ID,
