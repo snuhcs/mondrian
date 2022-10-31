@@ -44,6 +44,8 @@ class SpatioTemporalRoIMixer {
 
   void fullFrameInference(Frame* frame);
 
+  int getFullFrameSize(const std::map<Device, std::map<int, time_us>>& latencyTable);
+
   void mixedInference(std::vector<MixedFrame>& mixedFrames);
 
   void roiWiseInference(std::vector<MixedFrame>& mixedFrames);

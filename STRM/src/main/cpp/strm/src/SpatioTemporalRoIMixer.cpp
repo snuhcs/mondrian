@@ -98,7 +98,7 @@ void SpatioTemporalRoIMixer::work() {
     auto latencyTable = mInferenceEngine->getInferenceTimeTable();
     std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
         latencyTable, mScheduleInterval, mConfig.ROI_WISE_INFERENCE,
-        {{GPU, runFull ? latencyTable[GPU][mInputSizes.back()] : 0L}});
+        {{GPU, runFull ? getFullFrameSize(latencyTable) : 0L}});
     logger.step("plan");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
          "STRM::getInferencePlan", logger.getDuration("plan"), toString(inferencePlan).c_str());
@@ -219,6 +219,17 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   mResults[frame->vid][frame->frameIndex] = {NowMicros(), std::move(resultBoxes)};
   resultLock.unlock();
   mResultsCv.notify_all();
+}
+
+int SpatioTemporalRoIMixer::getFullFrameSize(
+        const std::map<Device, std::map<int, time_us>>& latencyTable) {
+  for (auto it = mInputSizes.rbegin(); it != mInputSizes.rend(); it++) {
+    time_us latency = latencyTable.at(GPU).at(*it);
+    if (latency >= mScheduleInterval) {
+      return *it;
+    }
+  }
+  return mInputSizes.front();
 }
 
 void SpatioTemporalRoIMixer::mixedInference(std::vector<MixedFrame>& mixedFrames) {
