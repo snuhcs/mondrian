@@ -68,23 +68,16 @@ class RoIExtractor {
   void resetBinPackerWithPlan(const std::vector<InferenceInfo>& inferencePlan);
 
   void prepareFrameLast(Frame* frame,
-                        const std::tuple<IntPairs, IntPairs>& packIndicesLocations);
+                        const Indices& indices, const Locations& locations);
 
   IntPairs getBoxesIfLast(const Frame* frame);
 
   static void prepareScaledFrame(Frame* frame,
-                                 const IntPairs& packedLocations,
-                                 const IntPairs& packedIndices);
+                                 const Indices& indices, const Locations& locations);
 
   static IntPairs getBoxesIfScaled(const Frame* frame);
 
   void applyLasts();
-
-//  std::vector<IntPairs> packBoxesVec(const std::vector<IntPairs>& boxesVec, bool backward);
-
-//  void restorePrevs(bool isLast, int skipVid = -1);
-//
-//  void restorePrev(bool isLast, int targetVid);
 
   std::vector<std::thread> mThreads;
   bool mbStop;
@@ -120,7 +113,8 @@ class RoIExtractor {
 
   struct LastPackInfo {
     Frame* frame;
-    std::pair<IntPairs, IntPairs> packIndicesLocations;
+    Indices indices;
+    Locations locations;
   };
 
   std::map<int, LastPackInfo> mCandidateLastFrames;

@@ -65,10 +65,6 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
 
   if (!isFullyPacked) {
     applyLasts();
-    for (int vid: mCandidateLastVids) {
-      const auto& info = mCandidateLastFrames[vid];
-      prepareFrameLast(info.frame, info.lastPackedLocations, info.last.indices);
-    }
   }
 
   Frame* fullFrameTarget = mFullFrameTarget;
@@ -94,7 +90,6 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
   MultiStream selectedFrames = std::move(mPackedFrames);
   mPackedFrames.clear();
   isFullyPacked = false;
-  mCandidateLastVids.clear();
   mCandidateLastFrames.clear();
 
   Stream droppedFrames;
@@ -268,9 +263,6 @@ void RoIExtractor::tryPack(Frame* frame) {
 
   if (isFullyPacked) {
     applyLasts();
-    for (auto&[cVid, info]: mCandidateLastFrames) {
-      prepareFrameLast(info.frame, info.packedLocations, info.packIndices);
-    }
     std::lock_guard<std::mutex> queueLock(queueMtx);
     for (Frame* f: mOFProcessing) {
       f->extractOFAgain = true;
@@ -282,53 +274,62 @@ void RoIExtractor::tryPackFullVid(Frame* frame) {
   LOGD("XXX frame->vid == mFullFrameVid: mCandidateLastFrames == %s | %d",
        candidateLastFramesStr().c_str(), frame->vid);
   assert(mCandidateLastFrames.find(frame->vid) == mCandidateLastFrames.end());
+
+  // If mFullFrameTarget is not set
   if (mFullFrameTarget == nullptr) {
     mFullFrameTarget = frame;
     return;
   }
+
+  // Try pack incoming frame as scaled
   auto copiedFreeRectsVec = mFreeRectsVec;
   auto[fullPackIndices, fullPackLocations] = BinPacker::pack(
       copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, /*backward=*/true);
+
   // If single scaled packing fails (rare case)
   if (fullPackIndices.size() != frame->boxesIfScaled.size()) {
     assert(fullPackIndices.size() < frame->boxesIfScaled.size());
     isFullyPacked = true;
+    return;
   }
-    // Single scaled packing success
-  else {
-    BinPacker::apply(copiedFreeRectsVec, {mFullFrameTarget->boxesIfScaled, fullPackIndices});
-    IntPairs lastBoxes;
-    for (auto&[cVid, info]: mCandidateLastFrames) {
-      lastBoxes.insert(lastBoxes.end(),
-                       info.frame->boxesIfLast.begin(),
-                       info.frame->boxesIfLast.end());
-    }
-    auto[lastPackIndices, lastPackLocations] = BinPacker::pack(
-        copiedFreeRectsVec, lastBoxes, /*backward=*/false);
-    if (lastPackIndices.size() != lastBoxes.size()) { // Packing failed
-      isFullyPacked = true;
-    } else { // Packing success
-      int i = 0;
-      for (auto&[_, info]: mCandidateLastFrames) {
-        auto&[packIndices, packLocations] = info.packIndicesLocations;
-        assert(packIndices.size() == info.frame->boxesIfLast.size());
-        int length = int(packIndices.size());
-        packIndices.clear();
-        packIndices.insert(packIndices.end(),
-                           lastPackIndices.begin() + i,
-                           lastPackIndices.end() + i + length);
-        packLocations.clear();
-        packLocations.insert(packLocations.end(),
-                             lastPackLocations.begin() + i,
-                             lastPackLocations.end() + i + length);
-        i += length;
-      }
-      assert(i == lastPackIndices.size());
-      prepareScaledFrame(frame, fullPackIndices, fullPackLocations);
-      mPackedFrames[frame->vid].insert(frame);
-      mFreeRectsVec = std::move(copiedFreeRectsVec);
-    }
+
+  // Apply incoming frame and try pack last frame candidates
+  BinPacker::apply(copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, fullPackIndices);
+  IntPairs lastBoxes;
+  for (auto&[cVid, info]: mCandidateLastFrames) {
+    lastBoxes.insert(lastBoxes.end(),
+                     info.frame->boxesIfLast.begin(),
+                     info.frame->boxesIfLast.end());
   }
+  auto[lastPackIndices, lastPackLocations] = BinPacker::pack(
+      copiedFreeRectsVec, lastBoxes, /*backward=*/false);
+
+  // If last frame candidates packing failed
+  if (lastPackIndices.size() != lastBoxes.size()) {
+    assert(lastPackIndices.size() < lastBoxes.size());
+    isFullyPacked = true;
+    return;
+  }
+
+  // If last frame candidates packing success
+  int i = 0;
+  for (auto&[_, info]: mCandidateLastFrames) {
+    assert(info.indices.size() == info.frame->boxesIfLast.size());
+    int length = int(info.indices.size());
+    info.indices.clear();
+    info.indices.insert(info.indices.end(),
+                        lastPackIndices.begin() + i,
+                        lastPackIndices.end() + i + length);
+    info.locations.clear();
+    info.locations.insert(info.locations.end(),
+                          lastPackLocations.begin() + i,
+                          lastPackLocations.end() + i + length);
+    i += length;
+  }
+  assert(i == lastPackIndices.size());
+  prepareScaledFrame(frame, fullPackIndices, fullPackLocations);
+  mPackedFrames[frame->vid].insert(frame);
+  mFreeRectsVec = std::move(copiedFreeRectsVec);
 }
 
 void RoIExtractor::tryPackNonFullVid(Frame* frame) {
@@ -337,70 +338,86 @@ void RoIExtractor::tryPackNonFullVid(Frame* frame) {
   LOGD("XXX frame->vid != mFullFrameVid: %s, mCandidateLastFrames == %s | %d",
        vidExists ? "vid exists" : "vid not exists", candidateLastFramesStr().c_str(), vid);
   auto copiedFreeRectsVec = mFreeRectsVec;
+
+  auto appendLastBoxes = [](IntPairs& lastBoxes, Frame* frameToAppend) {
+    lastBoxes.insert(lastBoxes.end(),
+                     frameToAppend->boxesIfLast.begin(), frameToAppend->boxesIfLast.end());
+  };
+  auto getIndicesPositions = [](const Indices& lastPackIndices, const Locations& lastPackLocations,
+                                Indices& indices, Locations& locations, int& i) {
+    assert(indices.size() == locations.size());
+    int length = int(indices.size());
+    int sidx = i;
+    int eidx = i + length;
+    i = eidx;
+    indices.clear();
+    indices.insert(indices.end(),
+                   lastPackIndices.begin() + sidx,
+                   lastPackIndices.end() + eidx);
+    locations.clear();
+    locations.insert(locations.end(),
+                     lastPackLocations.begin() + sidx,
+                     lastPackLocations.end() + eidx);
+  };
+
+  // Try pack last candidate frames.
+  // If candidateVid == frame->vid, pack candidateVid first as scaled
   std::pair<IntPairs, IntPairs> prevVidPackIndicesLocations;
   if (vidExists) {
     prevVidPackIndicesLocations = BinPacker::pack(
-        copiedFreeRectsVec, mCandidateLastFrames[vid].frame->boxesIfScaled, /*backward=*/true);
+            copiedFreeRectsVec, mCandidateLastFrames[vid].frame->boxesIfScaled, /*backward=*/true);
+    BinPacker::apply(copiedFreeRectsVec,
+                     mCandidateLastFrames[vid].frame->boxesIfScaled,
+                     prevVidPackIndicesLocations.second);
   }
   IntPairs lastBoxes;
   for (auto&[cVid, info]: mCandidateLastFrames) {
     if (cVid != vid) {
-      lastBoxes.insert(lastBoxes.end(),
-                       info.frame->boxesIfLast.begin(),
-                       info.frame->boxesIfLast.end());
+      appendLastBoxes(lastBoxes, info.frame);
     }
   }
-  lastBoxes.insert(lastBoxes.end(),
-                   frame->boxesIfLast.begin(),
-                   frame->boxesIfLast.end());
+  appendLastBoxes(lastBoxes, frame);
   auto[lastPackIndices, lastPackLocations] = BinPacker::pack(
-      copiedFreeRectsVec, lastBoxes, /*backward=*/false);
-  if (packIndicesLast.size() == boxes.size()) { // Packing success
-    if (vidExists) {
-      mFreeRectsVec = std::move(copiedFreeRectsVec);
-      auto& prevVidInfo = mCandidateLastFrames[vid];
-      prepareScaledFrame(prevVidInfo.frame,
-                         prevVidPackedLocations,
-                         prevVidInfo.inter.indices);
-      mCandidateLastVids.erase(mCandidateLastVids.begin());
-    }
-    mCandidateLastVids.push_back(vid);
-    mPackedFrames[frame->vid].insert(frame);
-    auto& info = mCandidateLastFrames[vid];
-    info.frame = frame;
-    info.last.boxes = boxesIfLast;
-    info.inter.boxes = boxesIfIntermediate;
-    applyLasts();
-  } else { // Packing failed
-    assert(packIndicesLast.size() < boxesIfLast.size());
+          copiedFreeRectsVec, lastBoxes, /*backward=*/false);
+
+  if (lastPackIndices.size() != lastBoxes.size()) {
+    assert(lastPackIndices.size() < lastBoxes.size());
     isFullyPacked = true;
+    return;
   }
+
+  // If last frame candidates packing success
+  if (vidExists) {
+    auto& info = mCandidateLastFrames[vid];
+    prepareScaledFrame(info.frame,
+                       prevVidPackIndicesLocations.first,
+                       prevVidPackIndicesLocations.second);
+  }
+  int i = 0;
+  for (auto&[cVid, info]: mCandidateLastFrames) {
+    if (cVid != vid) {
+      getIndicesPositions(lastPackIndices, lastPackLocations,
+                          info.indices, info.locations, i);
+    }
+  }
+  LastPackInfo lastPackInfo;
+  lastPackInfo.frame = frame;
+  getIndicesPositions(lastPackIndices, lastPackLocations,
+                      lastPackInfo.indices, lastPackInfo.locations, i);
+  assert(i == lastPackIndices.size());
+  mCandidateLastFrames[vid] = std::move(lastPackInfo);
+  mPackedFrames[frame->vid].insert(frame);
+  mFreeRectsVec = std::move(copiedFreeRectsVec);
 }
 
 void RoIExtractor::applyLasts() {
   for (auto&[pVid, info]: mCandidateLastFrames) {
-    BinPacker::apply(mFreeRectsVec, {info.frame->boxesIfLast, info.packIndicesLocations.first});
+    BinPacker::apply(mFreeRectsVec, info.frame->boxesIfLast, info.locations);
+  }
+  for (auto&[cVid, info]: mCandidateLastFrames) {
+    prepareFrameLast(info.frame, info.indices, info.locations);
   }
 }
-
-//void RoIExtractor::restorePrevs(bool isLast, int skipVid) {
-//  LOGD("restorePrevs     : Skip    %d, %s", skipVid, isLast ? "last" : "intermediate");
-//  for (auto it = mCandidateLastVids.rbegin(); it != mCandidateLastVids.rend(); it++) {
-//    if (*it != skipVid) {
-//      restorePrev(isLast, *it);
-//    }
-//  }
-//}
-//
-//void RoIExtractor::restorePrev(bool isLast, int targetVid) {
-//  LOGD("restorePrev      : Restore %d %s", targetVid, isLast ? "last" : "intermediate");
-//  auto& info = mCandidateLastFrames[targetVid];
-//  if (isLast) {
-//    BinPacker::restore(mFreeRectsVec, info.last);
-//  } else {
-//    BinPacker::restore(mFreeRectsVec, info.inter);
-//  }
-//}
 
 IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
@@ -422,15 +439,14 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
   return boxesIfLast;
 }
 
-void RoIExtractor::prepareFrameLast(
-    Frame* frame, const std::tuple<IntPairs, IntPairs>& packIndicesLocations) {
-  const auto&[packedIndices, packedLocations] = packIndicesLocations;
-  assert(packedLocations.size() == packedIndices.size());
+void RoIExtractor::prepareFrameLast(Frame* frame,
+                                    const Indices& indices, const Locations& locations) {
+  assert(indices.size() == locations.size());
   frame->resetProbeRoIs();
   int i = 0;
   for (const auto& pRoI: frame->parentRoIs) {
-    pRoI->packedLocation = packedLocations[i];
-    pRoI->packedMixedFrameIndex = packedIndices[i].first;
+    pRoI->packedLocation = locations[i];
+    pRoI->packedMixedFrameIndex = indices[i].first;
     i++;
   }
   for (const auto& cRoI: frame->childRoIs) {
@@ -442,14 +458,14 @@ void RoIExtractor::prepareFrameLast(
           cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, true);
       assert(0.0f < scale && scale <= 1.0f);
       probeRoI->setTargetScale(scale, cRoI->getScaleLevel());
-      probeRoI->packedLocation = packedLocations[i];
-      probeRoI->packedMixedFrameIndex = packedIndices[i].first;
+      probeRoI->packedLocation = locations[i];
+      probeRoI->packedMixedFrameIndex = indices[i].first;
       i++;
       cRoI->roisForProbing.push_back(probeRoI.get());
       frame->probingRoIs.push_back(std::move(probeRoI));
     }
   }
-  assert(i == packedLocations.size());
+  assert(i == locations.size());
 }
 
 IntPairs RoIExtractor::getBoxesIfScaled(const Frame* frame) {
@@ -463,17 +479,16 @@ IntPairs RoIExtractor::getBoxesIfScaled(const Frame* frame) {
 }
 
 void RoIExtractor::prepareScaledFrame(Frame* frame,
-                                      const IntPairs& packedLocations,
-                                      const IntPairs& packedIndices) {
-  assert(packedLocations.size() == packedIndices.size());
+                                      const Indices& indices, const Locations& locations) {
+  assert(indices.size() == locations.size());
   frame->resetProbeRoIs();
   int i = 0;
-  for (const auto& pRoI : frame->parentRoIs) {
-    pRoI->packedLocation = packedLocations[i];
-    pRoI->packedMixedFrameIndex = packedIndices[i].first;
+  for (const auto& pRoI: frame->parentRoIs) {
+    pRoI->packedMixedFrameIndex = indices[i].first;
+    pRoI->packedLocation = locations[i];
     i++;
   }
-  assert(i == packedLocations.size());
+  assert(i == locations.size());
 }
 
 void RoIExtractor::processPD(Frame* currFrame) {

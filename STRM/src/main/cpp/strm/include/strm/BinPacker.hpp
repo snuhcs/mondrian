@@ -9,6 +9,9 @@ namespace rm {
 class SpatioTemporalRoIMixer;
 
 using IntPairs = std::vector<std::pair<int, int>>;
+using WHs = IntPairs;
+using Indices = IntPairs;
+using Locations = IntPairs;
 
 struct IntRect {
   int left;
@@ -38,18 +41,13 @@ struct IntRect {
   }
 };
 
-struct BoxIndices {
-  IntPairs boxes;
-  IntPairs indices;
-};
-
 class BinPacker {
  public:
-  static std::tuple<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
-                                             const IntPairs& boxes, bool backward);
+  static std::tuple<Indices, Locations> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
+                                             const WHs& boxes, bool backward);
 
   static void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                    const BoxIndices& boxIndices);
+                    const WHs& boxes, const Indices& indices);
 
  private:
   static void printFreeRects(const std::vector<std::vector<IntRect>>& freeRectsVec);

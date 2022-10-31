@@ -61,16 +61,14 @@ std::tuple<IntPairs, IntPairs> BinPacker::pack(
 }
 
 void BinPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                      const BoxIndices& boxIndices) {
-  LOGD("BinPacker::apply(%lu)", boxIndices.boxes.size());
+                      const WHs& boxes, const Indices& indices) {
+  LOGD("BinPacker::apply(%lu)", boxes.size());
   printFreeRects(freeRectsVec);
-  const auto& boxes = boxIndices.boxes;
-  const auto& packIndices = boxIndices.indices;
-  assert(boxes.size() == packIndices.size());
+  assert(boxes.size() == indices.size());
   LOGD("=====   Apply boxes   =====");
   for (int i = 0; i < boxes.size(); i++) {
     auto[w, h] = boxes[i];
-    auto[pack_i, pack_j] = packIndices[i];
+    auto[pack_i, pack_j] = indices[i];
     LOGD("(%3d, %3d), (%3d, %3d)", w, h, pack_i, pack_j);
     packBox(freeRectsVec, w, h, pack_i, pack_j);
   }
@@ -86,7 +84,6 @@ void BinPacker::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
   auto[rect0, rect1] = splitFreeRect(w, h, freeRectToPack);
   freeRectsVec[pack_i].push_back(rect0);
   freeRectsVec[pack_i].push_back(rect1);
-  return {freeRectToPack.left, freeRectToPack.top};
 }
 
 bool BinPacker::canFit(int w, int h, const IntRect& freeRect) {
