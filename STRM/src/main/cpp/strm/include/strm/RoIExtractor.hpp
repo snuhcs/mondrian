@@ -44,9 +44,9 @@ class RoIExtractor {
 
   void tryPack(Frame* frame);
 
-  void tryPackFullVid(Frame* frame);
+  bool tryPackFullVid(Frame* frame);
 
-  void tryPackNonFullVid(Frame* frame);
+  bool tryPackNonFullVid(Frame* frame);
 
   void getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
                           const std::vector<BoundingBox>& boundingBoxes,
@@ -106,10 +106,11 @@ class RoIExtractor {
   Stream mPDWaiting;
   Stream mOFWaiting;
   Stream mOFProcessing;
-
   MultiStream mPackedFrames;
+
+  // Finalized frames are packed
   std::vector<std::vector<IntRect>> mFreeRectsVec;
-  bool isFullyPacked;
+  bool notFullyPacked;
 
   struct LastPackInfo {
     Frame* frame;
@@ -117,7 +118,45 @@ class RoIExtractor {
     Locations locations;
   };
 
+  // Can be packed as last. Otherwise packed as scaled.
   std::map<int, LastPackInfo> mCandidateLastFrames;
+
+  void test(const LastPackInfo& info) const {
+    assert(info.frame->boxesIfLast.size() == info.indices.size());
+  }
+
+  IntPairs origWHs;
+
+  void testPackedFrames(bool all = false) const {
+    for (auto&[vid, frames]: mPackedFrames) {
+      for (auto& frame: frames) {
+        bool isCandidate = false;
+        for (auto&[vid, info]: mCandidateLastFrames) {
+          if (info.frame == frame) {
+            isCandidate = true;
+            break;
+          }
+        }
+        if (!all && isCandidate) {
+          continue;
+        }
+        for (auto& pRoI: frame->parentRoIs) {
+          assert(pRoI->packedMixedFrameIndex < origWHs.size());
+          auto[mw, mh] = origWHs[pRoI->packedMixedFrameIndex];
+          auto[x, y] = pRoI->packedLocation;
+          auto[w, h] = pRoI->getResizedMatWidthHeight();
+          assert(x >= 0 && y >= 0 && w >= 0 && h >= 0 && x + w <= mw && y + h <= mh);
+        }
+        assert(isCandidate || frame->probingRoIs.empty());
+        for (auto& probingRoI: frame->probingRoIs) {
+          auto[mw, mh] = origWHs[probingRoI->packedMixedFrameIndex];
+          auto[x, y] = probingRoI->packedLocation;
+          auto[w, h] = probingRoI->getResizedMatWidthHeight();
+          assert(x >= 0 && y >= 0 && w >= 0 && h >= 0 && x + w <= mw && y + h <= mh);
+        }
+      }
+    }
+  }
 
   std::string candidateLastFramesStr() const {
     std::stringstream ss;

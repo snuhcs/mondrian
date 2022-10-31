@@ -185,7 +185,6 @@ void SpatioTemporalRoIMixer::work() {
 }
 
 void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
-  assert(frame->isFullFrameTarget);
   int key = frame->frameIndex + FULL_KEY_OFFSET;
   int fullFrameSize = mInputSizes.back();
   mInferenceEngine->enqueue(frame->mat, GPU, fullFrameSize, key);
@@ -392,7 +391,6 @@ int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& mat) {
        "STRM::preprocess", NowMicros() - startTime, frame->vid, frame->frameIndex);
   if (mConfig.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == mStartIndices[vid]) {
     frame->useInferenceResultForOF = true;
-    frame->isFullFrameTarget = true;
     fullFrameInference(frame);
     if (mConfig.FULL_FRAME_INTERVAL == 0) {
       std::lock_guard<std::mutex> framesLock(mFrameBuffersMtx);

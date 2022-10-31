@@ -44,7 +44,6 @@ class Frame {
   IntPairs boxesIfLast;
   IntPairs boxesIfScaled;
 
-  bool isFullFrameTarget;
   int inferenceFrameSize;
   Device inferenceDevice;
 

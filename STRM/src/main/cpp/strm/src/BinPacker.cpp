@@ -12,9 +12,9 @@ std::tuple<IntPairs, IntPairs> BinPacker::pack(
   LOGD("BinPacker::pack(# boxes=%lu, backward=%d)", boxWHs.size(), backward);
   printFreeRects(freeRectsVec);
   LOGD("===== Try Pack Boxes =====");
-  for (const auto&[w, h]: boxWHs) {
-    LOGD("(%3d, %3d)", w, h);
-  }
+//  for (const auto&[w, h]: boxWHs) {
+//    LOGD("(%3d, %3d)", w, h);
+//  }
   LOGD("=====   Boxes End    =====");
 
   auto copiedFreeRectsVec = freeRectsVec;
@@ -43,20 +43,19 @@ std::tuple<IntPairs, IntPairs> BinPacker::pack(
         break;
       }
     }
-    if (pack_i == -1) {
-      assert(pack_j == -1);
+    if (pack_i == -1 || pack_j == -1) {
+      assert(pack_i == -1 && pack_j == -1);
       LOGD("===== Try Pack Failed =====");
-      assert(packIndices == packLocations);
+      assert(packIndices.size() == packLocations.size());
       return {packIndices, packLocations};
-    } else {
-      packIndices.emplace_back(pack_i, pack_j);
-      const IntRect& rect = copiedFreeRectsVec[pack_i][pack_j];
-      packLocations.emplace_back(rect.left, rect.top);
     }
+    const IntRect& rect = copiedFreeRectsVec[pack_i][pack_j];
+    packIndices.emplace_back(pack_i, pack_j);
+    packLocations.emplace_back(rect.left, rect.top);
     packBox(copiedFreeRectsVec, w, h, pack_i, pack_j);
   }
   LOGD("===== Try Pack Success =====");
-  assert(packIndices == packLocations);
+  assert(packIndices.size() == packLocations.size());
   return {packIndices, packLocations};
 }
 
@@ -69,7 +68,7 @@ void BinPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
   for (int i = 0; i < boxes.size(); i++) {
     auto[w, h] = boxes[i];
     auto[pack_i, pack_j] = indices[i];
-    LOGD("(%3d, %3d), (%3d, %3d)", w, h, pack_i, pack_j);
+//    LOGD("(%3d, %3d), (%3d, %3d)", w, h, pack_i, pack_j);
     packBox(freeRectsVec, w, h, pack_i, pack_j);
   }
   LOGD("=====    Apply End    =====");
@@ -101,6 +100,7 @@ std::pair<IntRect, IntRect> BinPacker::splitFreeRect(int w, int h, const IntRect
 }
 
 void BinPacker::printFreeRects(const std::vector<std::vector<IntRect>>& freeRectsVec) {
+  return;
   for (int i = 0; i < freeRectsVec.size(); i++) {
     LOGD("===== %3d FreeRects =====", i);
     for (const auto& freeRect: freeRectsVec[i]) {

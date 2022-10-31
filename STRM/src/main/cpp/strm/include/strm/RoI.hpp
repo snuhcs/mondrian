@@ -261,6 +261,11 @@ class RoI {
             paddedLoc.height() * targetScale};
   }
 
+  std::pair<int, int> getResizedMatWidthHeight() const {
+    auto[w, h] = getResizedWidthHeight();
+    return {std::round(w), std::round(h)};
+  }
+
   cv::Mat getOrigMat() const;
 
   cv::Mat getPaddedMat() const;
