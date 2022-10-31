@@ -18,7 +18,6 @@ class Logger;
 class MixedFrame;
 class RoIExtractor;
 class RoIResizer;
-class PatchMixer;
 class PatchReconstructor;
 
 using FrameResult = std::pair<time_us, std::vector<BoundingBox>>;
