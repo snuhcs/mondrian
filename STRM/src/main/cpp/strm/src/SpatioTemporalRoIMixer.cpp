@@ -194,14 +194,12 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
   frame->inferenceDevice = device;
   frame->fullInferenceStartTime = times.first;
   frame->fullInferenceEndTime = times.second;
-  std::stringstream ss;
   for (const BoundingBox& box: boxes) {
     auto& loc = box.location;
-    ss << "(" << loc.left << ", " << loc.top << ", " << loc.right << ", " << loc.bottom << "), ";
     frame->boxes.push_back(std::make_unique<BoundingBox>(
         UNASSIGNED_ID, box.location, box.confidence, box.label, origin_FF));
   }
-  LOGD("XXX fullFrameInference %d %d, %lu: %s", frame->vid, frame->frameIndex, frame->boxes.size(), ss.str().c_str());
+  LOGD("XXX fullFrameInference %d %d, %lu", frame->vid, frame->frameIndex, frame->boxes.size());
   mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, true);
 
   for (auto& box: frame->boxes) {

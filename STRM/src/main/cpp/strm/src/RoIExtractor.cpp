@@ -228,19 +228,19 @@ void RoIExtractor::work(int extractorId) {
 
 void RoIExtractor::postprocessOF(Frame* currFrame) {
   currFrame->filterPDRoIs(mConfig.PD_FILTER_THRESHOLD);
-  std::stringstream ss0;
-  for (auto& cRoI: currFrame->childRoIs) {
-    ss0 << "(" << cRoI->paddedLoc.width() << ", " << cRoI->paddedLoc.height() << ")" << ", ";
-  }
-  LOGD("XXX filterPDRoIs: %s", ss0.str().c_str());
+//  std::stringstream ss0;
+//  for (auto& cRoI: currFrame->childRoIs) {
+//    ss0 << "(" << cRoI->paddedLoc.width() << ", " << cRoI->paddedLoc.height() << ")" << ", ";
+//  }
+//  LOGD("XXX filterPDRoIs: %s", ss0.str().c_str());
   currFrame->resizeStartTime = NowMicros();
   currFrame->resizeRoIs(mRoIResizer);
   currFrame->resizeEndTime = NowMicros();
-  std::stringstream ss1;
-  for (auto& cRoI: currFrame->childRoIs) {
-    ss1 << "(" << cRoI->paddedLoc.width() << ", " << cRoI->paddedLoc.height() << ")" << ", ";
-  }
-  LOGD("XXX resizeRoIs: %s", ss1.str().c_str());
+//  std::stringstream ss1;
+//  for (auto& cRoI: currFrame->childRoIs) {
+//    ss1 << "(" << cRoI->paddedLoc.width() << ", " << cRoI->paddedLoc.height() << ")" << ", ";
+//  }
+//  LOGD("XXX resizeRoIs: %s", ss1.str().c_str());
   currFrame->mergeRoIStartTime = NowMicros();
   if (mConfig.MERGE) {
     currFrame->mergeRoIs(mConfig.MERGE_THRESHOLD, float(mMaxMergeSize));
@@ -257,11 +257,11 @@ void RoIExtractor::postprocessOF(Frame* currFrame) {
   std::lock_guard<std::mutex> queueLock(queueMtx);
   mOFProcessing.erase(currFrame);
   if (currFrame->extractOFAgain) {
-    LOGD("XXX currFrame->extractOFAgain");
+//    LOGD("XXX currFrame->extractOFAgain");
     currFrame->resetOFRoIExtraction();
     mOFWaiting.insert(currFrame);
   } else {
-    LOGD("XXX currFrame->isRoIsReady");
+//    LOGD("XXX currFrame->isRoIsReady");
     currFrame->isRoIsReady = true;
   }
 }
@@ -278,7 +278,11 @@ void RoIExtractor::tryPack(Frame* currFrame, const IntPairs& boxesIfLast,
      */
     bool vidExists = std::find(mPrevPackVids.begin(), mPrevPackVids.end(), vid) != mPrevPackVids.end();
     if (currFrame->vid == mFullFrameVid) {
-      LOGD("XXX currFrame->vid == mFullFrameVid");
+      std::stringstream ss;
+      for (int pVid : mPrevPackVids) {
+        ss << pVid << ", ";
+      }
+      LOGD("XXX currFrame->vid == mFullFrameVid: %s", ss.str().c_str());
       assert(!vidExists);
       restorePrevs(/*isLast=*/false);
       auto packIndices = mBinPacker->pack(boxesIfIntermediate, false);
@@ -316,7 +320,11 @@ void RoIExtractor::tryPack(Frame* currFrame, const IntPairs& boxesIfLast,
         }
       }
     } else {
-      LOGD("XXX currFrame->vid != mFullFrameVid");
+      std::stringstream ss;
+      for (int pVid : mPrevPackVids) {
+        ss << pVid << ", ";
+      }
+      LOGD("XXX currFrame->vid != mFullFrameVid: %s", ss.str().c_str());
       restorePrevs(/*isLast=*/false);
       if (vidExists) {
         packAndApplyPrev(/*isLast=*/false, /*targetVid=*/vid);
@@ -408,7 +416,7 @@ IntPairs RoIExtractor::getBoxesIfLastFrame(const Frame* frame) {
     int w = int(pRoI->paddedLoc.width());
     int h = int(pRoI->paddedLoc.height());
     boxesIfLast.emplace_back(w, h);
-    LOGD("XXX getBoxesIfLastFrame parentRoIs: %d %d", w, h);
+//    LOGD("XXX getBoxesIfLastFrame parentRoIs: %d %d", w, h);
   }
   for (const auto& cRoI : frame->childRoIs) {
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
@@ -417,7 +425,7 @@ IntPairs RoIExtractor::getBoxesIfLastFrame(const Frame* frame) {
       int w = int(cRoI->paddedLoc.width() * scale);
       int h = int(cRoI->paddedLoc.height() * scale);
       boxesIfLast.emplace_back(w, h);
-      LOGD("XXX getBoxesIfLastFrame probeRoIs: %d %d", w, h);
+//      LOGD("XXX getBoxesIfLastFrame probeRoIs: %d %d", w, h);
     }
   }
   return boxesIfLast;
@@ -490,7 +498,7 @@ void RoIExtractor::processPD(Frame* currFrame) {
 void RoIExtractor::processOF(Frame* currFrame) {
   assert(!currFrame->extractOFAgain);
   Frame* prevFrame = currFrame->prevFrame;
-  LOGD("XXX processOF prevFrame %d %d: %lu", prevFrame->vid, prevFrame->frameIndex, prevFrame->boxes.size());
+//  LOGD("XXX processOF prevFrame %d %d: %lu", prevFrame->vid, prevFrame->frameIndex, prevFrame->boxes.size());
   std::vector<BoundingBox> reliablePrevBoxes;
   if (prevFrame->useInferenceResultForOF) {
     testAssignedUniqueBoxID(prevFrame->boxes);
@@ -518,7 +526,7 @@ void RoIExtractor::processOF(Frame* currFrame) {
     auto& loc = box.location;
     ss << "(" << loc.left << ", " << loc.top << ", " << loc.right << ", " << loc.bottom << "), ";
   }
-  LOGD("XXX reliablePrevBoxes %d: %s", prevFrame->useInferenceResultForOF, ss.str().c_str());
+//  LOGD("XXX reliablePrevBoxes %d: %s", prevFrame->useInferenceResultForOF, ss.str().c_str());
   currFrame->opticalFlowRoIProcessStartTime = NowMicros();
   getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes, mTargetSize, currFrame->childRoIs);
   currFrame->opticalFlowRoIProcessEndTime = NowMicros();
@@ -557,7 +565,7 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       float newRight = std::min(float(width), loc.right + x);
       float newBottom = std::min(float(height), loc.bottom + y);
       if (newLeft < newRight && newTop < newBottom) {
-        LOGD("XXX OF RoI: (%f, %f, %f, %f) %f", newLeft, newTop, newRight, newBottom, mConfig.ROI_PADDING);
+//        LOGD("XXX getOpticalFlowRoIs: (%f, %f, %f, %f) %f", newLeft, newTop, newRight, newBottom, mConfig.ROI_PADDING);
         outChildRoIs.push_back(std::make_unique<RoI>(
             box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
             OF, box.origin, box.label, of, box.confidence, mConfig.ROI_PADDING, false));
@@ -680,7 +688,7 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
   }
 
   for (const Rect& box : boxes) {
-    LOGD("XXX PD RoI: (%f, %f, %f, %f) %f", box.left, box.top, box.right, box.bottom, mConfig.ROI_PADDING);
+//    LOGD("XXX PD RoI: (%f, %f, %f, %f) %f", box.left, box.top, box.right, box.bottom, mConfig.ROI_PADDING);
     outChildRoIs.push_back(std::make_unique<RoI>(
         nullptr,
         UNASSIGNED_ID,

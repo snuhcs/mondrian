@@ -18,8 +18,8 @@ IntPairs BinPacker::pack(const IntPairs& boxWHs, bool reverse) const {
   for (const auto&[w, h] : boxWHs) {
     ss << "(" << w << ", " << h << ")" << ", ";
   }
-  LOGD("XXX pack FR: %s", toString().c_str());
-  LOGD("XXX pack WH: %s", ss.str().c_str());
+  LOGD("XXX BinPacker pack() FR: %s", toString().c_str());
+  LOGD("XXX BinPacker pack() WH: %s", ss.str().c_str());
   auto copiedFreeRectsVec = freeRectsVec;
   IntPairs packIndices;
   for (const auto&[w, h]: boxWHs) {
@@ -66,7 +66,7 @@ IntPairs BinPacker::apply(const BoxIndices& boxIndices) {
     auto[pack_i, pack_j] = packIndices[i];
     packedWHs.push_back(packBox(freeRectsVec, w, h, pack_i, pack_j));
   }
-  LOGD("XXX BinPacker: %s", toString().c_str());
+  LOGD("XXX BinPacker apply(): %s", toString().c_str());
   return packedWHs;
 }
 
