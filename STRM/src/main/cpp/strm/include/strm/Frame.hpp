@@ -5,6 +5,7 @@
 
 #include "opencv2/core/mat.hpp"
 
+#include "strm/BinPacker.hpp"
 #include "strm/DataType.hpp"
 #include "strm/RoI.hpp"
 
@@ -39,6 +40,9 @@ class Frame {
   bool extractOFAgain;
   std::vector<std::unique_ptr<RoI>> childRoIs; // => box
   std::vector<std::unique_ptr<RoI>> parentRoIs;
+
+  IntPairs boxesIfLast;
+  IntPairs boxesIfScaled;
 
   bool isFullFrameTarget;
   int inferenceFrameSize;
