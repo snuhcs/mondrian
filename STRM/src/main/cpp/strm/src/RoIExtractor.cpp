@@ -22,8 +22,9 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize, b
     : mConfig(config), mMaxMergeSize(maxMergeSize), mRoIResizer(roiResizer),
       mTargetSize(cv::Size(int(config.EXTRACTION_RESIZE_WIDTH),
                            int(config.EXTRACTION_RESIZE_HEIGHT))),
-      mInferencePlan(std::move(inferencePlan)), mFullFrameInferenceCount(0),
-      mVids(std::move(vids)), mbStop(false), notFullyPacked(true), mFullFrameVid(-1) {
+      mInferencePlan(std::move(inferencePlan)),
+      mFullFrameInferenceCount(0), mFullFrameTarget(nullptr), mFullFrameVid(-1),
+      mVids(std::move(vids)), mbStop(false), notFullyPacked(true) {
   if (run) {
     resetBinPackerWithPlan(mInferencePlan);
     mThreads.reserve(config.NUM_WORKERS);
@@ -74,7 +75,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
   std::map<int, std::set<RoI*>> groupedRoIs;
   for (const auto&[vid, frames]: mPackedFrames) {
     for (Frame* frame: frames) {
-      if (frame == fullFrameTarget) continue;
+      assert(frame != fullFrameTarget);
       for (auto& pRoI: frame->parentRoIs) {
         groupedRoIs[pRoI->packedMixedFrameIndex].insert(pRoI.get());
       }
@@ -284,11 +285,11 @@ bool RoIExtractor::tryPackFullVid(Frame* frame) {
   auto[fullPackIndices, fullPackLocations] = BinPacker::pack(
       copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, /*backward=*/true);
 
-  LOGD("XXX fullPackIndices.size() != frame->boxesIfScaled.size() %d",
-       fullPackIndices.size() != frame->boxesIfScaled.size());
+  LOGD("XXX fullPackIndices.size() != mFullFrameTarget->boxesIfScaled.size() %d",
+       fullPackIndices.size() != mFullFrameTarget->boxesIfScaled.size());
   // If single scaled packing fails (rare case)
-  if (fullPackIndices.size() != frame->boxesIfScaled.size()) {
-    assert(fullPackIndices.size() < frame->boxesIfScaled.size());
+  if (fullPackIndices.size() != mFullFrameTarget->boxesIfScaled.size()) {
+    assert(fullPackIndices.size() < mFullFrameTarget->boxesIfScaled.size());
     return false;
   }
 
@@ -417,8 +418,8 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
   IntPairs boxesIfLast;
   for (const auto& pRoI : frame->parentRoIs) {
-    int w = int(pRoI->paddedLoc.width());
-    int h = int(pRoI->paddedLoc.height());
+    int w = std::round(pRoI->paddedLoc.width());
+    int h = std::round(pRoI->paddedLoc.height());
     boxesIfLast.emplace_back(w, h);
   }
   for (const auto& cRoI : frame->childRoIs) {
