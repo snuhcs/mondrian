@@ -49,7 +49,7 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mRoIResizer.get(), InferencePlanner::getInferencePlan(
           mInferenceEngine->getInferenceTimeTable(),
           mScheduleInterval, mConfig.ROI_WISE_INFERENCE),
-      key_set(startIndices));
+      key_set(mStartIndices));
   if (config.LOG_EXECUTION) {
     mExecutionLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/timeline.csv");
     mExecutionLogger->logExecutionHeader();
