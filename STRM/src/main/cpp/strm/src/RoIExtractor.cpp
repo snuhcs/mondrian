@@ -64,11 +64,9 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
   std::unique_lock<std::mutex> packLock(packMtx);
   std::unique_lock<std::mutex> queueLock(queueMtx);
 
-  testPackedFrames();
   if (notFullyPacked) {
     applyLasts();
   }
-  testPackedFrames(true);
 
   Frame* fullFrameTarget = mFullFrameTarget;
 
@@ -140,10 +138,8 @@ void RoIExtractor::work(int extractorId) {
   };
   auto getOFJob = [this]() {
     if (mOFWaiting.empty()) {
-//      LOGD("XXX getOFJob: %d %d", mOFWaiting.empty(), notFullyPacked);
     } else {
       Frame* firstFrame = *mOFWaiting.begin();
-//      LOGD("XXX getOFJob: %d %d %d %d %d %d", mOFWaiting.empty(), notFullyPacked, firstFrame->vid, firstFrame->frameIndex, firstFrame->useInferenceResultForOF, firstFrame->readyForOFExtraction());
     }
     if (!mOFWaiting.empty()
         && notFullyPacked
@@ -241,7 +237,6 @@ void RoIExtractor::postprocessOF(Frame* currFrame) {
 void RoIExtractor::tryPack(Frame* frame) {
   // TODO: Cache pack indices
   assert(frame->vid != -1);
-  LOGD("XXX RoIExtractor::tryPack %d", notFullyPacked);
   if (!notFullyPacked) {
     return;
   }
@@ -251,8 +246,6 @@ void RoIExtractor::tryPack(Frame* frame) {
   } else {
     notFullyPacked = tryPackNonFullVid(frame);
   }
-
-  testPackedFrames();
 
   if (!notFullyPacked) {
     applyLasts();
@@ -269,11 +262,8 @@ static auto appendLastBoxes = [](IntPairs& lastBoxes, Frame* frameToAppend) {
 };
 
 bool RoIExtractor::tryPackFullVid(Frame* frame) {
-  LOGD("XXX frame->vid == mFullFrameVid: mCandidateLastFrames == %s | %d",
-       candidateLastFramesStr().c_str(), frame->vid);
   assert(mCandidateLastFrames.find(frame->vid) == mCandidateLastFrames.end());
 
-  LOGD("XXX mFullFrameTarget == nullptr %d", mFullFrameTarget == nullptr);
   // If mFullFrameTarget is not set
   if (mFullFrameTarget == nullptr) {
     mFullFrameTarget = frame;
@@ -285,8 +275,6 @@ bool RoIExtractor::tryPackFullVid(Frame* frame) {
   auto[fullPackIndices, fullPackLocations] = BinPacker::pack(
       copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, /*backward=*/true);
 
-  LOGD("XXX fullPackIndices.size() != mFullFrameTarget->boxesIfScaled.size() %d",
-       fullPackIndices.size() != mFullFrameTarget->boxesIfScaled.size());
   // If single scaled packing fails (rare case)
   if (fullPackIndices.size() != mFullFrameTarget->boxesIfScaled.size()) {
     assert(fullPackIndices.size() < mFullFrameTarget->boxesIfScaled.size());
@@ -302,8 +290,6 @@ bool RoIExtractor::tryPackFullVid(Frame* frame) {
   auto[lastPackIndices, lastPackLocations] = BinPacker::pack(
       copiedFreeRectsVec, lastBoxes, /*backward=*/false);
 
-  LOGD("XXX lastPackIndices.size() != lastBoxes.size() %d",
-       lastPackIndices.size() != lastBoxes.size());
   // If last frame candidates packing failed
   if (lastPackIndices.size() != lastBoxes.size()) {
     assert(lastPackIndices.size() < lastBoxes.size());
@@ -336,8 +322,6 @@ bool RoIExtractor::tryPackFullVid(Frame* frame) {
 bool RoIExtractor::tryPackNonFullVid(Frame* frame) {
   const int vid = frame->vid;
   bool vidExists = mCandidateLastFrames.find(frame->vid) != mCandidateLastFrames.end();
-  LOGD("XXX frame->vid != mFullFrameVid: %s, mCandidateLastFrames == %s | %d",
-       vidExists ? "vid exists" : "vid not exists", candidateLastFramesStr().c_str(), vid);
   auto copiedFreeRectsVec = mFreeRectsVec;
 
   // Try pack last candidate frames.
@@ -365,8 +349,6 @@ bool RoIExtractor::tryPackNonFullVid(Frame* frame) {
   auto[lastPackIndices, lastPackLocations] = BinPacker::pack(
           copiedFreeRectsVec, lastBoxes, /*backward=*/false);
 
-  LOGD("XXX lastPackIndices.size() != lastBoxes.size() %d",
-       lastPackIndices.size() != lastBoxes.size());
   if (lastPackIndices.size() != lastBoxes.size()) {
     assert(lastPackIndices.size() < lastBoxes.size());
     if (!vidExists) {
@@ -400,7 +382,6 @@ bool RoIExtractor::tryPackNonFullVid(Frame* frame) {
   assert(i == lastPackIndices.size());
   mPackedFrames[vid].insert(frame);
   mFreeRectsVec = std::move(copiedFreeRectsVec);
-  test(mCandidateLastFrames[vid]);
   return true;
 }
 
@@ -500,7 +481,6 @@ void RoIExtractor::processPD(Frame* currFrame) {
 void RoIExtractor::processOF(Frame* currFrame) {
   assert(!currFrame->extractOFAgain);
   Frame* prevFrame = currFrame->prevFrame;
-//  LOGD("XXX processOF prevFrame %d %d: %lu", prevFrame->vid, prevFrame->frameIndex, prevFrame->boxes.size());
   std::vector<BoundingBox> reliablePrevBoxes;
   if (prevFrame->useInferenceResultForOF) {
     testAssignedUniqueBoxID(prevFrame->boxes);
@@ -523,12 +503,6 @@ void RoIExtractor::processOF(Frame* currFrame) {
       reliablePrevBoxes.push_back(reliableBox);
     }
   }
-  std::stringstream ss;
-  for (auto& box : reliablePrevBoxes) {
-    auto& loc = box.location;
-    ss << "(" << loc.left << ", " << loc.top << ", " << loc.right << ", " << loc.bottom << "), ";
-  }
-//  LOGD("XXX reliablePrevBoxes %d: %s", prevFrame->useInferenceResultForOF, ss.str().c_str());
   currFrame->opticalFlowRoIProcessStartTime = NowMicros();
   getOpticalFlowRoIs(prevFrame, currFrame, reliablePrevBoxes, mTargetSize, currFrame->childRoIs);
   currFrame->opticalFlowRoIProcessEndTime = NowMicros();
@@ -567,7 +541,6 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       float newRight = std::min(float(width), loc.right + x);
       float newBottom = std::min(float(height), loc.bottom + y);
       if (newLeft < newRight && newTop < newBottom) {
-//        LOGD("XXX getOpticalFlowRoIs: (%f, %f, %f, %f) %f", newLeft, newTop, newRight, newBottom, mConfig.ROI_PADDING);
         outChildRoIs.push_back(std::make_unique<RoI>(
             box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
             OF, box.origin, box.label, of, box.confidence, mConfig.ROI_PADDING, false));
@@ -690,7 +663,6 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
   }
 
   for (const Rect& box : boxes) {
-//    LOGD("XXX PD RoI: (%f, %f, %f, %f) %f", box.left, box.top, box.right, box.bottom, mConfig.ROI_PADDING);
     outChildRoIs.push_back(std::make_unique<RoI>(
         nullptr,
         UNASSIGNED_ID,
@@ -733,7 +705,6 @@ void RoIExtractor::resetBinPackerWithPlan(const std::vector<InferenceInfo>& infe
     WHs.emplace_back(info.size, info.size);
     mFreeRectsVec.push_back({IntRect(0, 0, info.size, info.size)});
   }
-  origWHs = WHs;
 }
 
 } // namespace rm

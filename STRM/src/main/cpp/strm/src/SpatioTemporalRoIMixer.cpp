@@ -198,7 +198,6 @@ void SpatioTemporalRoIMixer::fullFrameInference(Frame* frame) {
     frame->boxes.push_back(std::make_unique<BoundingBox>(
         UNASSIGNED_ID, box.location, box.confidence, box.label, origin_FF));
   }
-  LOGD("XXX fullFrameInference %d %d, %lu", frame->vid, frame->frameIndex, frame->boxes.size());
   mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, true);
 
   for (auto& box: frame->boxes) {
@@ -344,11 +343,6 @@ void SpatioTemporalRoIMixer::releaseFrames(const MultiStream& frames) {
     }
 
     if (!freeFrameIndices.empty()) {
-      std::stringstream ss;
-      for (int idx : freeFrameIndices) {
-        ss << idx << ", ";
-      }
-      LOGD("XXX freeImage: %s", ss.str().c_str());
       mFrameBuffers.at(vid)->freeImage(freeFrameIndices);
     }
   }
