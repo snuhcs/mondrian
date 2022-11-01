@@ -2,21 +2,11 @@
 
 #include <sstream>
 
-#include "strm/Log.hpp"
-
 namespace rm {
 
 std::tuple<IntPairs, IntPairs> BinPacker::pack(
     const std::vector<std::vector<IntRect>>& freeRectsVec,
     const IntPairs& boxWHs, bool backward) {
-  LOGD("BinPacker::pack(# boxes=%lu, backward=%d)", boxWHs.size(), backward);
-  printFreeRects(freeRectsVec);
-//  LOGD("===== Try Pack Boxes =====");
-//  for (const auto&[w, h]: boxWHs) {
-//    LOGD("(%3d, %3d)", w, h);
-//  }
-//  LOGD("=====   Boxes End    =====");
-
   auto copiedFreeRectsVec = freeRectsVec;
   IntPairs packIndices;
   IntPairs packLocations;
@@ -45,7 +35,6 @@ std::tuple<IntPairs, IntPairs> BinPacker::pack(
     }
     if (pack_i == -1 || pack_j == -1) {
       assert(pack_i == -1 && pack_j == -1);
-//      LOGD("===== Try Pack Failed =====");
       assert(packIndices.size() == packLocations.size());
       return {packIndices, packLocations};
     }
@@ -54,25 +43,18 @@ std::tuple<IntPairs, IntPairs> BinPacker::pack(
     packLocations.emplace_back(rect.left, rect.top);
     packBox(copiedFreeRectsVec, w, h, pack_i, pack_j);
   }
-//  LOGD("===== Try Pack Success =====");
   assert(packIndices.size() == packLocations.size());
   return {packIndices, packLocations};
 }
 
 void BinPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
                       const WHs& boxes, const Indices& indices) {
-  LOGD("BinPacker::apply(%lu)", boxes.size());
-  printFreeRects(freeRectsVec);
   assert(boxes.size() == indices.size());
-//  LOGD("=====   Apply boxes   =====");
   for (int i = 0; i < boxes.size(); i++) {
     auto[w, h] = boxes[i];
     auto[pack_i, pack_j] = indices[i];
-//    LOGD("(%3d, %3d), (%3d, %3d)", w, h, pack_i, pack_j);
     packBox(freeRectsVec, w, h, pack_i, pack_j);
   }
-//  LOGD("=====    Apply End    =====");
-  printFreeRects(freeRectsVec);
 }
 
 void BinPacker::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
@@ -98,59 +80,5 @@ std::pair<IntRect, IntRect> BinPacker::splitFreeRect(int w, int h, const IntRect
             IntRect(freeRect.left + w, freeRect.top, freeRect.right, freeRect.top + h)};
   }
 }
-
-void BinPacker::printFreeRects(const std::vector<std::vector<IntRect>>& freeRectsVec) {
-  return;
-  for (int i = 0; i < freeRectsVec.size(); i++) {
-    LOGD("===== %3d FreeRects =====", i);
-    for (const auto& freeRect: freeRectsVec[i]) {
-      LOGD("%s", freeRect.toString().c_str());
-    }
-  }
-  LOGD("===== FreeRects End =====");
-}
-
-//void BinPacker::restore(std::vector<std::vector<IntRect>>& freeRectsVec,
-//                        const BoxIndices& boxIndices) {
-//  LOGD("BinPacker::restore(# boxes=%lu)", boxIndices.boxes.size());
-//  LOGD("=====    Before    =====");
-//  printFreeRects(freeRectsVec);
-//  const auto& boxes = boxIndices.boxes;
-//  const auto& packIndices = boxIndices.indices;
-//  assert(boxes.size() == packIndices.size());
-//  for (int i = int(boxes.size()) - 1; i >= 0; i--) {
-//    auto[w, h] = boxes[i];
-//    auto[pack_i, pack_j] = packIndices[i];
-//    restoreBox(freeRectsVec, w, h, pack_i, pack_j);
-//  }
-//  LOGD("=====    After     =====");
-//  printFreeRects(freeRectsVec);
-//}
-
-//void BinPacker::restoreBox(std::vector<std::vector<IntRect>>& freeRectsVec,
-//                           int w, int h, int pack_i, int pack_j) {
-//  IntRect rect0 = *(freeRectsVec[pack_i].rbegin() + 1); // Last - 1 rect
-//  IntRect rect1 = *(freeRectsVec[pack_i].rbegin());     // Last     rect
-//  freeRectsVec[pack_i].pop_back();                      // Remove rect1
-//  freeRectsVec[pack_i].pop_back();                      // Remove rect0
-//  // Reverse order BinPacker::splitFreeRect
-//  assert(rect0.bottom == rect1.bottom || rect0.right == rect1.right);
-//  if (rect0.bottom == rect1.bottom) {
-//    assert(rect0.left - w == rect1.left);
-//    assert(rect0.top == rect1.top - h);
-//    assert(rect0.left - w == rect1.right - w);
-//  } else { // rect0.right == rect1.right
-//    assert(rect0.left == rect1.left - w);
-//    assert(rect0.top - h == rect1.top);
-//    assert(rect0.top - h == rect1.bottom - h);
-//  }
-//  if (rect0.bottom == rect1.bottom) {
-//    IntRect mergedFreeRect(rect1.left, rect0.top, rect0.right, rect0.bottom);
-//    freeRectsVec[pack_i].insert(freeRectsVec[pack_i].begin() + pack_j, mergedFreeRect);
-//  } else { // rect0.right == rect1.right
-//    IntRect mergedFreeRect(rect0.left, rect1.top, rect0.right, rect0.bottom);
-//    freeRectsVec[pack_i].insert(freeRectsVec[pack_i].begin() + pack_j, mergedFreeRect);
-//  }
-//}
 
 } // namespace rm

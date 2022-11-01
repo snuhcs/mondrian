@@ -97,6 +97,16 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
 
   Stream droppedFrames;
 
+  time_us scheduledTime = NowMicros();
+  for (auto&[vid, frames]: selectedFrames) {
+    for (auto& frame: frames) {
+      frame->scheduledTime = scheduledTime;
+    }
+  }
+  if (fullFrameTarget != nullptr) {
+    fullFrameTarget->scheduledTime = scheduledTime;
+  }
+
   for (Frame* frame: mOFProcessing) {
     frame->extractOFAgain = true;
   }
@@ -220,9 +230,11 @@ void RoIExtractor::postprocessOF(Frame* currFrame) {
   currFrame->boxesIfLast = getBoxesIfLast(currFrame);
   currFrame->boxesIfScaled = getBoxesIfScaled(currFrame);
 
+  currFrame->mixingStartTime = NowMicros();
   std::unique_lock<std::mutex> packLock(packMtx);
   tryPack(currFrame);
   packLock.unlock();
+  currFrame->mixingEndTime = NowMicros();
 
   std::lock_guard<std::mutex> queueLock(queueMtx);
   mOFProcessing.erase(currFrame);

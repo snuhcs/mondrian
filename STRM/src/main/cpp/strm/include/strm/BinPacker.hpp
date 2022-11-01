@@ -50,16 +50,8 @@ class BinPacker {
                     const WHs& boxes, const Indices& indices);
 
  private:
-  static void printFreeRects(const std::vector<std::vector<IntRect>>& freeRectsVec);
-
   static void packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
                       int w, int h, int pack_i, int pack_j);
-
-//  static void restore(std::vector<std::vector<IntRect>>& freeRectsVec,
-//                      const BoxIndices& boxIndices);
-//
-//  static void restoreBox(std::vector<std::vector<IntRect>>& freeRectsVec,
-//                         int w, int h, int pack_i, int pack_j);
 
   static bool canFit(int w, int h, const IntRect& freeRect);
 

@@ -20,7 +20,7 @@ class MixedFrame {
 
   MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixedFrameSize);
 
-  Stream getPackedFrames();
+  Stream getPackedFrames() const;
 };
 
 } // namespace rm

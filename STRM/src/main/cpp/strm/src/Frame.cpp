@@ -13,7 +13,7 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat mat,
       width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
       extractOFAgain(false), enqueueTime(enqueueTime),
       isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
-      inferenceFrameSize(0) {}
+      inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
 
 void Frame::resizeRoIs(RoIResizer* roiResizer) {
   for (auto& cRoI: childRoIs) {
@@ -181,16 +181,6 @@ void Frame::resetOFRoIExtraction() {
   isRoIsReady = false;
 }
 
-std::set<Frame*> filterLastFrames(const MultiStream& frames) {
-  std::set<Frame*> lastFrames;
-  for (auto it: frames) {
-    if (!it.second.empty()) {
-      lastFrames.insert(*it.second.rbegin());
-    }
-  }
-  return lastFrames;
-}
-
 std::string toString(const MultiStream& frames) {
   std::stringstream ss;
   for (auto it = frames.begin(); it != frames.end(); it++) {
@@ -207,6 +197,14 @@ std::string toString(const MultiStream& frames) {
     }
   }
   return ss.str();
+}
+
+std::string toString(const Stream& frames) {
+  MultiStream multiStream;
+  for (const auto& frame: frames) {
+    multiStream[frame->vid].insert(frame);
+  }
+  return toString(multiStream);
 }
 
 } // namespace rm

@@ -59,7 +59,8 @@ class Frame {
   time_us mergeRoIStartTime = 0;
   time_us mergeRoIEndTime = 0;
   time_us mixingStartTime = 0;
-  time_us mixingEndTime = 0;;
+  time_us mixingEndTime = 0;
+  time_us scheduledTime = 0;
   time_us mixedInferenceStartTime = 0;
   time_us mixedInferenceEndTime = 0;
   time_us reconstructStartTime = 0;
@@ -98,7 +99,7 @@ struct FrameComp {
 using Stream = std::set<Frame*, FrameComp>;
 using MultiStream = std::map<int, Stream>;
 
-std::set<Frame*> filterLastFrames(const MultiStream& frames);
+std::string toString(const Stream& frames);
 
 std::string toString(const MultiStream& frames);
 

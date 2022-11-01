@@ -11,8 +11,9 @@ extern const idType UNASSIGNED_ID;
 extern const idType MERGED_ROI_ID;
 
 enum Device {
-  GPU,
-  DSP,
+  NO_DEVICE = -1,
+  GPU = 0,
+  DSP = 1,
 };
 
 enum Origin {
