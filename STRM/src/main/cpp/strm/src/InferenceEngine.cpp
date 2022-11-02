@@ -47,7 +47,8 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
         inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
     LOGD("Profiling %s %d size started", device == GPU ? "GPU" : "DSP", inputSize);
-    time_us initialLatency = classifier->profileInferenceTime();
+    time_us initialLatency = classifier->profileInferenceTime(config.PROFILE_WARMUPS,
+                                                              config.PROFILE_RUNS);
     LOGD("Profiling %s %d size ended    // %lld", device == GPU ? "GPU" : "DSP", inputSize,
          initialLatency);
     classifier->setInferenceTime(initialLatency);
