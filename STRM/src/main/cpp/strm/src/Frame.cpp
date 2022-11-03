@@ -112,7 +112,7 @@ void Frame::resetProbeRoIs() {
   }
 }
 
-void Frame::filterPDRoIs(float threshold) {
+void Frame::filterPDRoIs(float threshold, bool eatPD) {
   std::vector<RoI*> OFRoIs;
   for (auto& cRoI: childRoIs) {
     if (cRoI->type == OF) {
@@ -136,7 +136,9 @@ void Frame::filterPDRoIs(float threshold) {
       }
       if (totalOFCoverage / cRoI->getPaddedArea() >= threshold) {
         assert(maxOverlapRoI != nullptr);
-        maxOverlapRoI->eatPD(cRoI->paddedLoc);
+        if (eatPD) {
+          maxOverlapRoI->eatPD(cRoI->paddedLoc);
+        }
         it = childRoIs.erase(it);
         continue;
       }

@@ -21,6 +21,7 @@
         "extraction_resize_width": 960,
         "extraction_resize_height": 540,
         "min_roi_area": 0,
+        "eat_pd": true,
         "roi_padding": 10,
         "optical_flow_roi_confidence_threshold": 0.1,
         "pd_filter_threshold": 0.5,
