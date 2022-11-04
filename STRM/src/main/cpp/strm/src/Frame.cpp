@@ -7,6 +7,8 @@
 
 namespace rm {
 
+const int Frame::FULL_KEY_OFFSET = 1000000;
+
 Frame::Frame(const int vid, const int frameIndex, const cv::Mat mat,
              Frame* prevFrame, const time_us& enqueueTime)
     : vid(vid), frameIndex(frameIndex), mat(mat),

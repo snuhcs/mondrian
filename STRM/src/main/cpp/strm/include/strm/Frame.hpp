@@ -16,6 +16,9 @@ class RoI;
 class RoIResizer;
 
 class Frame {
+ private:
+  static const int FULL_KEY_OFFSET;
+
  public:
   const int vid;
   const int frameIndex;
@@ -85,6 +88,10 @@ class Frame {
   bool readyForOFExtraction() const;
 
   void resetOFRoIExtraction();
+
+  int getKey() const {
+    return frameIndex + FULL_KEY_OFFSET;
+  }
 };
 
 struct FrameComp {
