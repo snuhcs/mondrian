@@ -22,7 +22,7 @@ void Frame::resizeRoIs(RoIResizer* roiResizer) {
   }
   for (auto& cRoI: childRoIs) {
     if (cRoI->type == RoI::Type::PD && cRoI->nextRoI != nullptr) {
-      cRoI->setTargetScale(cRoI->nextRoI->getTargetScale(), cRoI->nextRoI->getScaleLevel());
+      cRoI->setTargetScale(roiResizer->maxScale(), roiResizer->maxLevel());
     }
   }
 }
