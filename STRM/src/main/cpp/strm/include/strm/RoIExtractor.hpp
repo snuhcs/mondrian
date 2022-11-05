@@ -65,7 +65,7 @@ class RoIExtractor {
 
   static void cannyEdgeDetection(cv::Mat mat);
 
-  void resetBinPackerWithPlan(const std::vector<InferenceInfo>& inferencePlan);
+  void resetPatchMixerWithPlan(const std::vector<InferenceInfo>& inferencePlan);
 
   void prepareFrameLast(Frame* frame,
                         const Indices& indices, const Locations& locations);

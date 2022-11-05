@@ -26,7 +26,7 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize, b
       mFullFrameInferenceCount(0), mFullFrameTarget(nullptr), mFullFrameVid(-1),
       mVids(std::move(vids)), mbStop(false), notFullyPacked(true) {
   if (run) {
-    resetBinPackerWithPlan(mInferencePlan);
+    resetPatchMixerWithPlan(mInferencePlan);
     mThreads.reserve(config.NUM_WORKERS);
     for (int extractorId = 0; extractorId < config.NUM_WORKERS; extractorId++) {
       mThreads.emplace_back([this, extractorId]() { work(extractorId); });
@@ -120,7 +120,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
   }
   mFullFrameTarget = nullptr;
   mInferencePlan = nextInferencePlan;
-  resetBinPackerWithPlan(mInferencePlan);
+  resetPatchMixerWithPlan(mInferencePlan);
 
   queueLock.unlock();
   packLock.unlock();
@@ -136,7 +136,7 @@ void RoIExtractor::work(int extractorId) {
    * 2. Extracting PD        | -
    * 3. Before OF extraction | mOFWaiting
    * 4. Extracting OF        | mOFProcessing
-   * 5. OF extraction ended  | mBinPacker
+   * 5. OF extraction ended  | mPackedFrames
    */
 
   auto getPDJob = [this]() {
@@ -710,7 +710,7 @@ void RoIExtractor::cannyEdgeDetection(cv::Mat mat) {
              1);
 }
 
-void RoIExtractor::resetBinPackerWithPlan(const std::vector<InferenceInfo>& inferencePlan) {
+void RoIExtractor::resetPatchMixerWithPlan(const std::vector<InferenceInfo>& inferencePlan) {
   mFreeRectsVec.clear();
   IntPairs WHs;
   for (const auto& info: inferencePlan) {

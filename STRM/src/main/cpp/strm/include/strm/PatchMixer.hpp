@@ -1,5 +1,5 @@
-#ifndef BIN_PACKER_HPP_
-#define BIN_PACKER_HPP_
+#ifndef PATCH_MIXER_HPP_
+#define PATCH_MIXER_HPP_
 
 #include <sstream>
 #include <vector>
@@ -60,4 +60,4 @@ class PatchMixer {
 
 } // namespace rm
 
-#endif // BIN_PACKER_HPP_
+#endif // PATCH_MIXER_HPP_
