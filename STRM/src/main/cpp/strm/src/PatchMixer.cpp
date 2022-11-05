@@ -1,10 +1,10 @@
-#include "strm/BinPacker.hpp"
+#include "strm/PatchMixer.hpp"
 
 #include <sstream>
 
 namespace rm {
 
-std::tuple<IntPairs, IntPairs> BinPacker::pack(
+std::tuple<IntPairs, IntPairs> PatchMixer::pack(
     const std::vector<std::vector<IntRect>>& freeRectsVec,
     const IntPairs& boxWHs, bool backward) {
   auto copiedFreeRectsVec = freeRectsVec;
@@ -47,7 +47,7 @@ std::tuple<IntPairs, IntPairs> BinPacker::pack(
   return {packIndices, packLocations};
 }
 
-void BinPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
+void PatchMixer::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
                       const WHs& boxes, const Indices& indices) {
   assert(boxes.size() == indices.size());
   for (int i = 0; i < boxes.size(); i++) {
@@ -57,7 +57,7 @@ void BinPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
   }
 }
 
-void BinPacker::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
+void PatchMixer::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
                         int w, int h, int pack_i, int pack_j) {
   assert(pack_i < freeRectsVec.size() && pack_j < freeRectsVec[pack_i].size());
   IntRect freeRectToPack = freeRectsVec[pack_i][pack_j];
@@ -67,11 +67,11 @@ void BinPacker::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
   freeRectsVec[pack_i].push_back(rect1);
 }
 
-bool BinPacker::canFit(int w, int h, const IntRect& freeRect) {
+bool PatchMixer::canFit(int w, int h, const IntRect& freeRect) {
   return w <= freeRect.width() && h <= freeRect.height();
 }
 
-std::pair<IntRect, IntRect> BinPacker::splitFreeRect(int w, int h, const IntRect& freeRect) {
+std::pair<IntRect, IntRect> PatchMixer::splitFreeRect(int w, int h, const IntRect& freeRect) {
   if (freeRect.width() > freeRect.height()) {
     return {IntRect(freeRect.left + w, freeRect.top, freeRect.right, freeRect.bottom),
             IntRect(freeRect.left, freeRect.top + h, freeRect.left + w, freeRect.bottom)};

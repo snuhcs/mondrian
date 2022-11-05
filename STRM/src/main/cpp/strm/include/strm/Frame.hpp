@@ -5,8 +5,8 @@
 
 #include "opencv2/core/mat.hpp"
 
-#include "strm/BinPacker.hpp"
 #include "strm/DataType.hpp"
+#include "strm/PatchMixer.hpp"
 #include "strm/RoI.hpp"
 
 namespace rm {

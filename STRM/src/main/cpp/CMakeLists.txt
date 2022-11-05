@@ -27,7 +27,6 @@ find_library(
 add_library(
         strm
         SHARED
-        strm/src/BinPacker.cpp
         strm/src/Config.cpp
         strm/src/DataType.cpp
         strm/src/Frame.cpp
@@ -36,6 +35,7 @@ add_library(
         strm/src/Interpolator.cpp
         strm/src/Logger.cpp
         strm/src/MixedFrame.cpp
+        strm/src/PatchMixer.cpp
         strm/src/PatchReconstructor.cpp
         strm/src/RoI.cpp
         strm/src/RoIResizer.cpp

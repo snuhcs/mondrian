@@ -284,7 +284,7 @@ bool RoIExtractor::tryPackFullVid(Frame* frame) {
 
   // Try pack incoming frame as scaled
   auto copiedFreeRectsVec = mFreeRectsVec;
-  auto[fullPackIndices, fullPackLocations] = BinPacker::pack(
+  auto[fullPackIndices, fullPackLocations] = PatchMixer::pack(
       copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, /*backward=*/true);
 
   // If single scaled packing fails (rare case)
@@ -294,12 +294,12 @@ bool RoIExtractor::tryPackFullVid(Frame* frame) {
   }
 
   // Apply incoming frame and try pack last frame candidates
-  BinPacker::apply(copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, fullPackIndices);
+  PatchMixer::apply(copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, fullPackIndices);
   IntPairs lastBoxes;
   for (auto&[cVid, info]: mCandidateLastFrames) {
     appendLastBoxes(lastBoxes, info.frame);
   }
-  auto[lastPackIndices, lastPackLocations] = BinPacker::pack(
+  auto[lastPackIndices, lastPackLocations] = PatchMixer::pack(
       copiedFreeRectsVec, lastBoxes, /*backward=*/false);
 
   // If last frame candidates packing failed
@@ -340,11 +340,11 @@ bool RoIExtractor::tryPackNonFullVid(Frame* frame) {
   // If candidateVid == frame->vid, pack candidateVid first as scaled
   std::pair<Indices, Locations> existPackIndicesLocations;
   if (vidExists) {
-    existPackIndicesLocations = BinPacker::pack(
+    existPackIndicesLocations = PatchMixer::pack(
         copiedFreeRectsVec, mCandidateLastFrames[vid].frame->boxesIfScaled, /*backward=*/true);
-    BinPacker::apply(copiedFreeRectsVec,
-                     mCandidateLastFrames[vid].frame->boxesIfScaled,
-                     existPackIndicesLocations.first);
+    PatchMixer::apply(copiedFreeRectsVec,
+                      mCandidateLastFrames[vid].frame->boxesIfScaled,
+                      existPackIndicesLocations.first);
   } else {
     // Temporarily add. Erase if packing fails
     mCandidateLastFrames[vid] = LastPackInfo();
@@ -358,7 +358,7 @@ bool RoIExtractor::tryPackNonFullVid(Frame* frame) {
       appendLastBoxes(lastBoxes, info.frame);
     }
   }
-  auto[lastPackIndices, lastPackLocations] = BinPacker::pack(
+  auto[lastPackIndices, lastPackLocations] = PatchMixer::pack(
           copiedFreeRectsVec, lastBoxes, /*backward=*/false);
 
   if (lastPackIndices.size() != lastBoxes.size()) {
@@ -400,7 +400,7 @@ bool RoIExtractor::tryPackNonFullVid(Frame* frame) {
 void RoIExtractor::applyLasts() {
   for (auto&[pVid, info]: mCandidateLastFrames) {
     assert(info.indices.size() == info.locations.size());
-    BinPacker::apply(mFreeRectsVec, info.frame->boxesIfLast, info.indices);
+    PatchMixer::apply(mFreeRectsVec, info.frame->boxesIfLast, info.indices);
   }
   for (auto&[cVid, info]: mCandidateLastFrames) {
     prepareFrameLast(info.frame, info.indices, info.locations);

@@ -41,7 +41,7 @@ struct IntRect {
   }
 };
 
-class BinPacker {
+class PatchMixer {
  public:
   static std::tuple<Indices, Locations> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
                                              const WHs& boxes, bool backward);

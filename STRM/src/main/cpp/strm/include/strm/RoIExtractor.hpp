@@ -9,10 +9,10 @@
 
 #include "opencv2/core/mat.hpp"
 
-#include "strm/BinPacker.hpp"
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
 #include "strm/MixedFrame.hpp"
+#include "strm/PatchMixer.hpp"
 #include "strm/RoIResizer.hpp"
 #include "strm/Utils.hpp"
 
