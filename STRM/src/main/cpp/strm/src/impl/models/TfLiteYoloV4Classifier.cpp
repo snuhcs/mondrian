@@ -1,6 +1,5 @@
 #include "strm/impl/models/TfLiteYoloV4Classifier.hpp"
 
-#include <chrono>
 #include <map>
 #include <set>
 
@@ -16,7 +15,7 @@ namespace rm {
 TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceThreshold,
                                                float iouThreshold, bool isTiny)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
-                 confidenceThreshold, iouThreshold) {
+                 confidenceThreshold, iouThreshold, GPU) {
   std::stringstream ss;
   ss << "/data/local/tmp/models/yolov4-";
   if (isTiny) {
@@ -36,13 +35,6 @@ TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceTh
   } else {
     LOGD("YoloV4 interpreter created");
   }
-
-//  // For CPU (XNNPack)
-//  if (interpreter->AllocateTensors() != kTfLiteOk) {
-//    LOGE("YoloV4 tensor allocation failed");
-//  } else {
-//    LOGD("YoloV4 tensor allocated");
-//  }
 
   auto options = TfLiteGpuDelegateOptionsV2Default();
   delegate = TfLiteGpuDelegateV2Create(&options);
@@ -129,15 +121,15 @@ Rect TfLiteYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
       std::min(imageHeight,((y + h / 2) * heightRatio)));
 }
 
-long long int TfLiteYoloV4Classifier::profileInferenceTime() {
+time_us TfLiteYoloV4Classifier::profileInferenceTime() {
   // Warmup
   interpreter->Invoke();
   interpreter->Invoke();
 
-  auto start = std::chrono::system_clock::now();
+  time_us start = NowMicros();
   interpreter->Invoke();
-  auto end = std::chrono::system_clock::now();
-  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  time_us end = NowMicros();
+  return end - start;
 }
 
 } // namespace rm

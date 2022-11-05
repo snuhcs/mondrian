@@ -28,21 +28,23 @@ Logger::~Logger() {
   }
 }
 
-void Logger::logHeader() {
+void Logger::logExecutionHeader() {
   if (!logFile.is_open()) {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << "key" << delim
+  logFile << "videoId" << delim
           << "frameIndex" << delim
           << "PDExtractorID" << delim
           << "OFExtractorID" << delim
           << "numBoxes" << delim
           << "numChildRoIs" << delim
           << "numParentRoIs" << delim
+          << "inferenceFrameSize" << delim
+          << "inferenceDevice" << delim
           << "enqueueTime" << delim
-          << "fullFrameEnqueueTime" << delim
-          << "fullFrameGetResultsTime" << delim
+          << "fullInferenceStartTime" << delim
+          << "fullInferenceEndTime" << delim
           << "pixelDiffRoIProcessStartTime" << delim
           << "pixelDiffRoIProcessEndTime" << delim
           << "opticalFlowRoIProcessStartTime" << delim
@@ -53,29 +55,31 @@ void Logger::logHeader() {
           << "mergeRoIEndTime" << delim
           << "mixingStartTime" << delim
           << "mixingEndTime" << delim
-          << "inferenceStartTime" << delim
-          << "inferenceEndTime" << delim
+          << "mixedInferenceStartTime" << delim
+          << "mixedInferenceEndTime" << delim
           << "reconstructStartTime" << delim
           << "reconstructEndTime" << delim
           << "endTime" << '\n';
   logFile.flush();
 }
 
-void Logger::log(Frame* frame) {
+void Logger::logExecution(const Frame* frame) {
   if (!logFile.is_open() || frame == nullptr) {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << frame->key << delim
+  logFile << frame->vid << delim
           << frame->frameIndex << delim
           << frame->PDExtractorID << delim
           << frame->OFExtractorID << delim
           << frame->boxes.size() << delim
           << frame->childRoIs.size() << delim
           << frame->parentRoIs.size() << delim
+          << frame->inferenceFrameSize << delim
+          << frame->inferenceDevice << delim
           << fromBaseTime(frame->enqueueTime) << delim
-          << fromBaseTime(frame->fullFrameEnqueueTime) << delim
-          << fromBaseTime(frame->fullFrameGetResultsTime) << delim
+          << fromBaseTime(frame->fullInferenceStartTime) << delim
+          << fromBaseTime(frame->fullInferenceEndTime) << delim
           << fromBaseTime(frame->pixelDiffRoIProcessStartTime) << delim
           << fromBaseTime(frame->pixelDiffRoIProcessEndTime) << delim
           << fromBaseTime(frame->opticalFlowRoIProcessStartTime) << delim
@@ -86,11 +90,11 @@ void Logger::log(Frame* frame) {
           << fromBaseTime(frame->mergeRoIEndTime) << delim
           << fromBaseTime(frame->mixingStartTime) << delim
           << fromBaseTime(frame->mixingEndTime) << delim
-          << fromBaseTime(frame->inferenceStartTime) << delim
-          << fromBaseTime(frame->inferenceEndTime) << delim
+          << fromBaseTime(frame->mixedInferenceStartTime) << delim
+          << fromBaseTime(frame->mixedInferenceEndTime) << delim
           << fromBaseTime(frame->reconstructStartTime) << delim
           << fromBaseTime(frame->reconstructEndTime) << delim
-          << fromBaseTime(NowMicros()) << '\n';
+          << fromBaseTime(frame->endTime) << '\n';
   logFile.flush();
 }
 
@@ -98,13 +102,13 @@ time_us Logger::fromBaseTime(const time_us& time) const {
   return time != 0 ? time - baseTime : 0;
 }
 
-void Logger::logResult(const std::string& key, int frameIndex, time_us time,
+void Logger::logResult(int vid, int frameIndex, time_us time,
                        const std::vector<BoundingBox>& boxes) {
   if (!logFile.is_open()) {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << key << ','
+  logFile << vid << ','
           << frameIndex << ','
           << fromBaseTime(time) * 1000 << ',';
   for (int i = 0; i < boxes.size(); i++) {
@@ -133,7 +137,7 @@ void Logger::logRoIHeader() {
   std::lock_guard<std::mutex> lock(mtx);
   logFile
       // frame
-      << "key" << delim
+      << "videoId" << delim
       << "frameIndex" << delim
 
       // origLoc
@@ -158,12 +162,12 @@ void Logger::logRoIHeader() {
       << "xyRatio" << delim
 
       // OF features
-      << "avgShiftX" << delim
-      << "avgShiftY" << delim
-      << "stdShiftX" << delim
-      << "stdShiftY" << delim
-      << "avgErr" << delim
-      << "ncc" << delim
+      << "shiftAvgX" << delim
+      << "shiftAvgY" << delim
+      << "shiftStdX" << delim
+      << "shiftStdY" << delim
+      << "shiftNcc" << delim
+      << "errAvg" << delim
 
       << "numProbingRoIs" << delim
       << "priority" << delim
@@ -174,18 +178,18 @@ void Logger::logRoIHeader() {
       << "packedAbsMixedFrameIndex" << delim
 
       << "maxEdgeLength" << delim
-      << "targetSize" << '\n';
+      << "targetScale" << '\n';
   logFile.flush();
 }
 
-void Logger::logRoI(RoI* roi) {
+void Logger::logRoI(const RoI* roi) {
   if (!logFile.is_open() || roi == nullptr) {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
   logFile
       // frame
-      << roi->frame->key << delim
+      << roi->frame->vid << delim
       << roi->frame->frameIndex << delim
 
       // origLoc
@@ -210,12 +214,12 @@ void Logger::logRoI(RoI* roi) {
       << roi->features.xyRatio << delim
 
       // OF features
-      << roi->features.ofFeatures.avgShift.first << delim
-      << roi->features.ofFeatures.avgShift.second << delim
-      << roi->features.ofFeatures.stdShift.first << delim
-      << roi->features.ofFeatures.stdShift.second << delim
-      << roi->features.ofFeatures.avgErr << delim
-      << roi->features.ofFeatures.ncc << delim
+      << roi->features.ofFeatures.shiftAvg.first << delim
+      << roi->features.ofFeatures.shiftAvg.second << delim
+      << roi->features.ofFeatures.shiftStd.first << delim
+      << roi->features.ofFeatures.shiftStd.second << delim
+      << roi->features.ofFeatures.shiftNcc << delim
+      << roi->features.ofFeatures.errAvg << delim
 
       << roi->roisForProbing.size() << delim
       << roi->parentRoI->priority << delim
@@ -226,7 +230,7 @@ void Logger::logRoI(RoI* roi) {
       << roi->parentRoI->packedAbsMixedFrameIndex << delim
 
       << roi->maxEdgeLength << delim
-      << roi->getTargetSize() << '\n';
+      << roi->getTargetScale() << '\n';
   logFile.flush();
 }
 

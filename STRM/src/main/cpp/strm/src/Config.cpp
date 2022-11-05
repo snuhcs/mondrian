@@ -14,9 +14,6 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["max_queue_size"].isNull()) {
     config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
   }
-  if (!json["num_workers"].isNull()) {
-    config.NUM_WORKERS = json["num_workers"].asInt();
-  }
   if (!json["extraction_resize_width"].isNull()) {
     config.EXTRACTION_RESIZE_WIDTH = json["extraction_resize_width"].asFloat();
   }
@@ -54,8 +51,8 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   if (!json["resize_smoothing_factor"].isNull()) {
     config.RESIZE_SMOOTHING_FACTOR = json["resize_smoothing_factor"].asFloat();
   }
-  if (!json["static_resize_target"].isNull()) {
-    config.STATIC_RESIZE_TARGET = json["static_resize_target"].asFloat();
+  if (!json["static_target_scale"].isNull()) {
+    config.STATIC_TARGET_SCALE = json["static_target_scale"].asFloat();
   }
   if (!json["probe_step_size"].isNull()) {
     config.PROBE_STEP_SIZE = json["probe_step_size"].asFloat();
@@ -91,6 +88,52 @@ PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
   }
   if (!json["batch_size"].isNull()) {
     config.BATCH_SIZE = json["batch_size"].asInt();
+  }
+  return config;
+}
+
+InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
+  InferenceEngineConfig config;
+  if (!json["draw_inference_result"].isNull()) {
+    config.DRAW_INFERENCE_RESULT = json["draw_inference_result"].asBool();
+  }
+  if (!json["model"].isNull()) {
+    config.MODEL = json["model"].asString();
+  }
+  if (!json["runtime"].isNull()) {
+    config.RUNTIME = json["runtime"].asString();
+  }
+  if (!json["use_tiny"].isNull()) {
+    config.USE_TINY = json["use_tiny"].asBool();
+  }
+  if (!json["conf_threshold"].isNull()) {
+    config.CONF_THRESHOLD = json["conf_threshold"].asFloat();
+  }
+  if (!json["iou_threshold"].isNull()) {
+    config.IOU_THRESHOLD = json["iou_threshold"].asFloat();
+  }
+  if (!json["input_sizes"].isNull()) {
+    const Json::Value inputSizes = json["input_sizes"];
+    config.INPUT_SIZES.clear();
+    for (const auto& size : inputSizes) {
+      config.INPUT_SIZES.push_back(size.asInt());
+    }
+    std::sort(config.INPUT_SIZES.begin(), config.INPUT_SIZES.end());
+  }
+  if (!json["devices"].isNull()) {
+    const Json::Value devices = json["devices"];
+    config.DEVICES.clear();
+    for (const auto& device : devices) {
+      std::string deviceStr = device.asString();
+      if (deviceStr == "GPU") {
+        config.DEVICES.push_back(GPU);
+      } else if (deviceStr == "DSP") {
+        config.DEVICES.push_back(DSP);
+      } else {
+        LOGD("%s device is not supported", deviceStr.c_str());
+      }
+    }
+    assert(std::find(config.DEVICES.begin(), config.DEVICES.end(), GPU) != config.DEVICES.end());
   }
   return config;
 }
@@ -156,6 +199,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   }
   if (!json["patch_mixer"].isNull()) {
     config.patchMixerConfig = parsePatchMixerConfig(json["patch_mixer"]);
+  }
+  if (!json["inference_engine"].isNull()) {
+    config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
   }
   if (!json["patch_reconstructor"].isNull()) {
     config.patchReconstructorConfig = parsePatchReconstructorConfig(

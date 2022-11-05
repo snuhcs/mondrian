@@ -42,7 +42,7 @@ add_library(
         strm/src/tree/MTA.cpp
         strm/src/tree/VIRAT.cpp
         strm/src/tree/YouTube.cpp
-        strm/src/impl/CustomInferenceEngine.cpp
+        strm/src/InferenceEngine.cpp
         strm/src/impl/ImplConfig.cpp
         strm/src/impl/Worker.cpp
         strm/src/impl/models/Classifier.cpp

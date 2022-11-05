@@ -20,14 +20,15 @@ static Rect moveResizeRoIPos(const RoI* roi) {
 }
 
 static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
+  float scale = pRoI->getTargetScale();
   float newLeft = (packedBox.location.left - pRoI->packedLocation.first)
-                  * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->paddedLoc.left;
+                  / scale + pRoI->paddedLoc.left;
   float newTop = (packedBox.location.top - pRoI->packedLocation.second)
-                 * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->paddedLoc.top;
+                 / scale + pRoI->paddedLoc.top;
   float newRight = (packedBox.location.right - pRoI->packedLocation.first)
-                   * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->paddedLoc.left;
+                   / scale + pRoI->paddedLoc.left;
   float newBottom = (packedBox.location.bottom - pRoI->packedLocation.second)
-                    * pRoI->maxEdgeLength / pRoI->getTargetSize() + pRoI->paddedLoc.top;
+                    / scale + pRoI->paddedLoc.top;
   return Rect(std::max(0.0f, newLeft),
               std::max(0.0f, newTop),
               std::min(float(pRoI->frame->mat.cols), newRight),

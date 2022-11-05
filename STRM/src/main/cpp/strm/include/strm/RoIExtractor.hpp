@@ -20,7 +20,7 @@ class RoIExtractor {
  public:
   RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
                bool roiWiseInference, const PatchMixer* patchMixer, RoIResizer* roiResizer,
-               int frameSize, int numFramesPerInterval);
+               std::vector<InferenceInfo> inferencePlan);
 
   ~RoIExtractor();
 
@@ -28,7 +28,7 @@ class RoIExtractor {
 
   void notify();
 
-  MultiStream getExtractedFrames(int numFrames);
+  MultiStream getExtractedFrames(std::vector<InferenceInfo>& inferencePlan);
 
   void reEnqueueFrames(const Stream& droppedFrames);
 
@@ -70,12 +70,11 @@ class RoIExtractor {
 
   RoIResizer* mRoIResizer;
   const PatchMixer* mPatchMixer;
-  const int mFrameSize;
 
   std::mutex packMtx;
-  std::map<int, std::vector<Rect>> mFreeRectsMap;
+  std::vector<FreeRects> mFreeRectsList;
   int mRoICount;
-  int mNumFramesPerInterval;
+  std::vector<InferenceInfo> mInferencePlan;
   bool isFullyPacked;
 
   static const cv::TermCriteria CRITERIA;

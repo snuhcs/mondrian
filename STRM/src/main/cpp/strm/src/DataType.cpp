@@ -1,5 +1,7 @@
 #include "strm/DataType.hpp"
 
+#include <numeric>
+
 #include "strm/Log.hpp"
 #include "strm/Logger.hpp"
 #include "strm/RoIResizer.hpp"
@@ -14,12 +16,13 @@ const std::pair<float, float> RoI::NOT_PACKED{-1, -1};
 void Frame::resizeRoIs(RoIResizer* roiResizer) {
   for (auto& cRoI : childRoIs) {
     if (cRoI->type == RoI::Type::OF) {
-      cRoI->setTargetSize(roiResizer->getTargetSize(cRoI->id, cRoI->features));
+      auto [scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features);
+      cRoI->setTargetScale(scale, level);
     }
   }
   for (auto& cRoI : childRoIs) {
     if (cRoI->type == RoI::Type::PD && cRoI->nextRoI != nullptr) {
-      cRoI->setTargetSize(cRoI->nextRoI->getTargetSize());
+      cRoI->setTargetScale(cRoI->nextRoI->getTargetScale(), cRoI->nextRoI->getScaleLevel());
     }
   }
 }
@@ -60,15 +63,12 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
           continue;
         }
         float newArea = (newRight - newLeft) * (newBottom - newLeft);
-        if (roi0->getTargetSize() * roi1->maxEdgeLength >
-            roi1->getTargetSize() * roi0->maxEdgeLength) {
+        if (roi0->getTargetScale() > roi1->getTargetScale()) {
           // If roi0 resizes conservatively than roi1
-          newArea = newArea * roi0->getTargetSize() * roi0->getTargetSize()
-                    / roi0->maxEdgeLength / roi0->maxEdgeLength;
+          newArea = newArea * roi0->getTargetScale() * roi0->getTargetScale();
         } else {
           // If roi1 resizes conservatively than roi0
-          newArea = newArea * roi1->getTargetSize() * roi1->getTargetSize()
-                    / roi1->maxEdgeLength / roi1->maxEdgeLength;
+          newArea = newArea * roi1->getTargetScale() * roi1->getTargetScale();
         }
         float originalArea = roi0->getResizedArea() + roi1->getResizedArea();
         if (newArea >= originalArea) {
@@ -100,20 +100,20 @@ void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
   }
 }
 
-void Frame::addProbeRoIs(int numProbeSteps, float probeStepSize) {
+void Frame::addProbeRoIs(RoIResizer* mRoIResizer) {
   assert(probingRoIs.empty());
   for (auto& cRoI : childRoIs) {
     assert(cRoI->frame == this);
     assert(cRoI->roisForProbing.empty());
-    float probe = float(-numProbeSteps) * probeStepSize;
-    for (int i = 0; i < 2 * numProbeSteps + 1; i++) {
+    std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
+        cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
+    for (auto scale : probingCandidates) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
           cRoI->features.ofFeatures, 0, true);
-      probeRoI->setTargetSize(cRoI->getTargetSize() + probe);
+      probeRoI->setTargetScale(scale, cRoI->getScaleLevel());
       cRoI->roisForProbing.push_back(probeRoI.get());
       probingRoIs.push_back(std::move(probeRoI));
-      probe += probeStepSize;
     }
   }
 }
@@ -181,10 +181,6 @@ bool Frame::readyForOFExtraction() const {
   }
 }
 
-std::string Frame::toShortKey(const std::string& key) {
-  return key.substr(key.size() - 1, 1);
-}
-
 std::set<Frame*> filterLastFrames(const MultiStream& frames) {
   std::set<Frame*> lastFrames;
   for (auto it : frames) {
@@ -198,9 +194,8 @@ std::set<Frame*> filterLastFrames(const MultiStream& frames) {
 std::string toString(const MultiStream& frames) {
   std::stringstream ss;
   for (auto it = frames.begin(); it != frames.end(); it++) {
-    std::string shortKey = Frame::toShortKey(it->first);
-    ss << "video " << shortKey << ": ";
-    if (it->first.empty()) {
+    ss << "video " << it->first << ": ";
+    if (it->second.empty()) {
       ss << "EMPTY";
     } else {
       Frame* firstFrame = *(it->second.begin());
@@ -214,8 +209,23 @@ std::string toString(const MultiStream& frames) {
   return ss.str();
 }
 
-FrameBuffer::FrameBuffer(const std::string& key, int capacity)
-    : key(key), shortKey(Frame::toShortKey(key)), capacity(capacity), count(0) {
+std::string toString(const std::vector<InferenceInfo>& inferencePlan) {
+  std::stringstream ss;
+  for (int i = int(inferencePlan.size()) - 1; i >= 0; i--) {
+    const InferenceInfo& info = inferencePlan[i];
+    // TODO: support other processors
+    ss << "(" << (info.device == GPU ? "GPU" : "DSP") << ", "
+       << info.size << ", "
+       << info.accumulatedLatency << ")";
+    if (i != 0) {
+      ss << ", ";
+    }
+  }
+  return ss.str();
+}
+
+FrameBuffer::FrameBuffer(int vid, int capacity, int startIndex)
+    : vid(vid), capacity(capacity), count(startIndex) {
   frames.resize(capacity);
 }
 
@@ -224,37 +234,27 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
   int frameIndex = count++;
   cv.wait(lock, [this, frameIndex]() { return frames[frameIndex % capacity].get() == nullptr; });
   Frame* prevFrame = frameIndex == 0 ? nullptr : frames[(frameIndex - 1) % capacity].get();
-  frames[frameIndex % capacity] = std::make_unique<Frame>(key, frameIndex, mat, prevFrame,
+  frames[frameIndex % capacity] = std::make_unique<Frame>(vid, frameIndex, mat, prevFrame,
                                                           NowMicros());
   if (prevFrame != nullptr) {
     prevFrame->nextFrame = frames[frameIndex % capacity].get();
   }
   Frame* currFrame = frames[frameIndex % capacity].get();
   lock.unlock();
-  LOGD("%-25s                 for video %-5s frame %-4d",
-       "FrameBuffer::enqueue", shortKey.c_str(), frameIndex);
+  LOGD("%-25s                 for video %-5d frame %-4d",
+       "FrameBuffer::enqueue", vid, frameIndex);
   return currFrame;
 }
 
-void
-FrameBuffer::freeImage(const std::vector<int>& frameIndices, Logger* logger, Logger* roiLogger) {
+void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
   std::unique_lock<std::mutex> lock(mtx);
   for (int frameIndex : frameIndices) {
-    Frame* frame = frames[frameIndex % capacity].get();
-    if (logger != nullptr) {
-      logger->log(frame);
-    }
-    if (roiLogger != nullptr) {
-      for (auto& cRoI : frame->childRoIs) {
-        roiLogger->logRoI(cRoI.get());
-      }
-    }
     frames[frameIndex % capacity].reset();
   }
   lock.unlock();
   cv.notify_all();
-  LOGD("%-25s                 for video %-5s frame %-4d ~ %-4d",
-       "FrameBuffer::freeImage", shortKey.c_str(), frameIndices.front(), frameIndices.back());
+  LOGD("%-25s                 for video %-5d frame %-4d ~ %-4d",
+       "FrameBuffer::freeImage", vid, frameIndices.front(), frameIndices.back());
 }
 
 int MixedFrame::numMixedFrames = 0;

@@ -3,6 +3,7 @@ package hcs.offloading.strm;
 import android.graphics.Bitmap;
 import android.media.MediaMetadataRetriever;
 import android.util.Log;
+import android.util.Pair;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -18,9 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Emulator {
     static {
@@ -40,6 +39,7 @@ public class Emulator {
 
     private static class VideoConfig {
         String PATH;
+        Pair<Integer, Integer> FRAME_RANGE;
         int FPS = 0;
     }
 
@@ -47,8 +47,6 @@ public class Emulator {
 
     private final long handle;
     private final InferenceViewCallback inferenceViewCallback;
-
-    private final Map<String, Integer> videoCount = new HashMap<>(); // Count same video inputs
     private final List<Thread> videoThreads;
 
     public Emulator(InferenceViewCallback inferenceViewCallback) throws JSONException, IOException {
@@ -71,27 +69,32 @@ public class Emulator {
 
     private List<Thread> createAndStartVideoThreads(List<VideoConfig> videoConfigs) {
         List<Thread> videoThreads = new ArrayList<>();
-        for (VideoConfig config : videoConfigs) {
-            videoCount.merge(config.PATH, 1, Integer::sum); // Put 1 if not exists else +1
-            String key = config.PATH + videoCount.get(config.PATH);
+        for (int videoIndex = 0; videoIndex < videoConfigs.size(); videoIndex++) {
+            VideoConfig config = videoConfigs.get(videoIndex);
+            int vid = videoIndex;
             videoThreads.add(new Thread(() -> {
                 MediaMetadataRetriever retriever = new MediaMetadataRetriever();
                 retriever.setDataSource(config.PATH);
-                int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
                 long startTimeNs = System.nanoTime();
-                for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-                    Log.v(TAG, key + " " + frameIndex + " loaded");
+                int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
+                int startIndex = config.FRAME_RANGE.first;
+                int endIndex = config.FRAME_RANGE.second == -1 ? frameCount : config.FRAME_RANGE.second;
+                for (int frameIndex = startIndex; frameIndex < endIndex; frameIndex++) {
+                    Log.v(TAG, "Video " + vid + " frame " + frameIndex + " loaded");
                     Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
                     Mat mat = new Mat();
                     Utils.bitmapToMat(bitmap, mat);
-                    enqueueImage(handle, key, mat.getNativeObjAddr());
-                    long endTimeNs = System.nanoTime();
-                    long nextStartTimeNs = startTimeNs + (long) (frameIndex + 1) * (long) (1e9 / config.FPS);
-                    if (config.FPS != 0 && nextStartTimeNs > endTimeNs) {
-                        try {
-                            Thread.sleep((nextStartTimeNs - endTimeNs) / 1000000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
+                    enqueueImage(handle, vid, mat.getNativeObjAddr());
+                    if (config.FPS != 0) {
+                        long endTimeNs = System.nanoTime();
+                        long nextStartTimeNs = startTimeNs +
+                                (long) (frameIndex - startIndex + 1) * (long) (1e9 / config.FPS);
+                        if (nextStartTimeNs > endTimeNs) {
+                            try {
+                                Thread.sleep((nextStartTimeNs - endTimeNs) / 1000000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 }
@@ -112,6 +115,13 @@ public class Emulator {
             JSONObject jsonVideoConfig = jsonVideoConfigs.getJSONObject(i);
             if (jsonVideoConfig.has("path")) {
                 videoConfig.PATH = jsonVideoConfig.getString("path");
+            }
+            if (jsonVideoConfig.has("frame_range")) {
+                JSONArray frame_range = jsonVideoConfig.getJSONArray("frame_range");
+                if (frame_range.length() != 2) {
+                    throw new JSONException("Frame range should contain only start index and end index");
+                }
+                videoConfig.FRAME_RANGE = new Pair<>(frame_range.getInt(0), frame_range.getInt(1));
             }
             if (jsonVideoConfig.has("fps")) {
                 videoConfig.FPS = jsonVideoConfig.getInt("fps");
@@ -140,17 +150,17 @@ public class Emulator {
         return sb.toString();
     }
 
-    public void drawInferenceResult(long addr, List<BoundingBox> results) {
-        inferenceViewCallback.drawInferenceResult(addr, results);
+    public void drawOutput0(long addr, List<BoundingBox> results) {
+        inferenceViewCallback.drawOutput0(addr, results);
     }
 
-    public void drawObjectDetectionResult(long addr, List<BoundingBox> results) {
-        inferenceViewCallback.drawObjectDetectionResult(addr, results);
+    public void drawOutput1(long addr, List<BoundingBox> results) {
+        inferenceViewCallback.drawOutput1(addr, results);
     }
 
     private native long createSpatioTemporalRoIMixer();
 
-    private native void enqueueImage(long handle, String key, long matAddr);
+    private native void enqueueImage(long handle, int vid, long matAddr);
 
     private native void close(long handle);
 }

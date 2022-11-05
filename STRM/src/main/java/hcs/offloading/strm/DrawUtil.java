@@ -121,7 +121,7 @@ public class DrawUtil {
 
     public static Bitmap drawBoxes(Bitmap bitmap, List<BoundingBox> boxes, boolean fancyOutput) {
         final Canvas canvas = new Canvas(bitmap);
-        ArrayList<Integer> ids = new ArrayList<>();
+        List<Integer> ids = new ArrayList<>();
         if (fancyOutput) {
             for (BoundingBox box : boxes) {
                 assert (!ids.contains(box.id));

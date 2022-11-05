@@ -5,35 +5,21 @@
 #include <vector>
 
 #include <json/json.h>
+#include "strm/DataType.hpp"
 
 namespace rm {
 
 struct VideoConfig {
   std::string PATH;
+  std::pair<int, int> FRAME_RANGE;
   int FPS = 0;
 };
 
-struct InferenceEngineConfig {
-  std::string MODEL = "YOLO_V4";
-  std::string RUNTIME = "TFLITE";
-  bool USE_TINY = false;
-  float CONF_THRESHOLD = 0.1;
-  float IOU_THRESHOLD = 0.5;
-  int NUM_WORKERS = 1;
-  std::vector<int> INPUT_SIZES = {
-      800
-  };
-};
-
 struct IMPLConfig {
-  bool DRAW_OUTPUT = false;
-  bool DRAW_INFERENCE_RESULT = true;
   std::vector<VideoConfig> videoConfigs;
-  InferenceEngineConfig inferenceEngineConfig;
 };
 
 std::vector<VideoConfig> parseVideoConfigs(const Json::Value& json);
-InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json);
 IMPLConfig parseIMPLConfig(const std::string& jsonPath);
 
 } // namespace rm

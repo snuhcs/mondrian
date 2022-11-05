@@ -1,26 +1,15 @@
 {
-    "draw_output": false,
-    "draw_inference_result": true,
     "video_configs": [
         {
-            "path": "/data/local/tmp/video/MTA/test_cam_3_1000_1450.mp4",
+            "path": "/data/local/tmp/video/MTA/test_cam_3.mp4",
+            "frame_range": [1000, 1450],
             "fps": 0
         }
     ],
-    "inference_engine": {
-        "model": "YOLO_V5",
-        "runtime": "TFLITE",
-        "use_tiny": false,
-        "conf_threshold": 0.1,
-        "iou_threshold": 0.5,
-        "num_workers": 1,
-        "input_sizes": [
-            896
-        ]
-    },
     "log_internal": true,
     "log_execution": true,
     "log_roi": true,
+    "draw_output": false,
     "allow_interpolation": false,
     "roi_wise_inference": false,
     "full_frame_interval": 1,
@@ -41,7 +30,7 @@
     "roi_resizer": {
         "train_data": "MTA",
         "resize_smoothing_factor": 0.1,
-        "static_resize_target": 100,
+        "static_target_scale": 1.0,
         "probe_step_size": 5,
         "num_probe_steps": 1,
         "probe_reset_threshold": 10,
@@ -54,6 +43,20 @@
         "priority_mixing": true,
         "emulated_batch": false,
         "batch_size": 64
+    },
+    "inference_engine": {
+        "draw_inference_result": true,
+        "model": "YOLO_V5",
+        "runtime": "TFLITE",
+        "use_tiny": false,
+        "conf_threshold": 0.1,
+        "iou_threshold": 0.5,
+        "input_sizes": [
+            832
+        ],
+        "devices" : [
+            "GPU"
+        ]
     },
     "patch_reconstructor": {
         "frame_boxes_iou_threshold": 0.5,

@@ -24,20 +24,18 @@ class PatchMixer {
   PatchMixer(const PatchMixerConfig& config);
 
   std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> packRoIs(
-      MultiStream& frames, int fullFrameStreamIndex, int frameSize, int numFrames,
-      bool allowInterpolation, bool roiWiseInference, bool probe, int numProbeSteps,
-      float probeStepSize);
+      MultiStream& frames, int fullFrameStreamIndex,
+      const std::vector<InferenceInfo>& inferencePlan,
+      bool allowInterpolation, bool roiWiseInference, RoIResizer* roiResizer);
 
-  static bool tryPackRoI(const std::pair<float, float>& resizedWH,
-                         std::map<int, std::vector<Rect>>& freeRectsMap,
-                         bool firstMatch, RoI* pRoI = nullptr,
-                         std::map<int, std::set<RoI*>>* packedRoIsMap = nullptr,
-                         bool emulatedBatch = false);
+  bool tryPackRoI(std::pair<float, float> resizedWH,
+                  std::vector<FreeRects>& freeRectsList,
+                  bool firstMatch, RoI* pRoI = nullptr,
+                  std::map<int, std::set<RoI*>>* packedRoIsMap = nullptr) const;
 
  private:
   std::tuple<Frame*, std::vector<Frame*>, std::vector<RoI*>> preparePack(
-      MultiStream& selectedFrames, int fullFrameStreamIndex, bool probe, int numProbeSteps,
-      float probeStepSize) const;
+      MultiStream& selectedFrames, int fullFrameStreamIndex, RoIResizer* mRoIResizer) const;
 
   static void splitFrames(MultiStream& selectedFrames, Stream& droppedFrames,
                           int numPackableFrames);
@@ -46,7 +44,7 @@ class PatchMixer {
                                    int fullFrameStreamIndex);
 
   static std::vector<Frame*> addProbeRoIs(MultiStream& frames, const Frame* fullFrameTarget,
-                                          int numProbeSteps, float probeStepSize);
+                                          RoIResizer* mRoIResizer);
 
   static std::vector<RoI*> collectRoIs(MultiStream& frames, const Frame* fullFrameTarget);
 

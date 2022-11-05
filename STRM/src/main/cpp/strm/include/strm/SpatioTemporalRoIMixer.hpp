@@ -21,18 +21,17 @@
 
 namespace rm {
 
-using FrameResult = std::tuple<time_us, cv::Mat, std::vector<BoundingBox>>;
+using FrameResult = std::pair<time_us, std::vector<BoundingBox>>;
 
 class SpatioTemporalRoIMixer {
  public:
   SpatioTemporalRoIMixer(const STRMConfig& config,
-                         InferenceEngine* inferenceEngine,
-                         int numSourceVideos,
-                         JavaVM* vm, JNIEnv* env, jobject strm, bool draw);
+                         std::map<int, int> startIndices,
+                         JavaVM* vm, JNIEnv* env, jobject strm);
 
   ~SpatioTemporalRoIMixer();
 
-  int enqueueImage(const std::string& key, const cv::Mat& mat);
+  int enqueueImage(const int vid, const cv::Mat& mat);
 
  private:
   void waitForStart();
@@ -49,14 +48,23 @@ class SpatioTemporalRoIMixer {
 
   void roiWiseInference(std::vector<MixedFrame>& mixedFrames);
 
-  void releaseFrames(const MultiStream& frames);
-
-  void drawObjectDetectionResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
-
-  static int getNumInferences(time_us remainingTime, time_us inferenceTime);
-
   static void testNoInterpolationPacking(const MultiStream& frames, const Stream& droppedFrames,
                                          Frame* fullFrameTarget);
+
+  void releaseFrames(const MultiStream& frames);
+
+  void log(const Frame* frame);
+
+  std::vector<InferenceInfo> getInferencePlan(
+      const std::map<Device, std::pair<time_us, time_us>>& startEndTime,
+      const std::map<Device, std::map<int, time_us>>& inferenceTimes, bool roiWiseInference);
+
+  static double weigh(const std::vector<time_us>& layout, std::map<long long, double> profile);
+
+  static std::vector<time_us> search(const std::vector<long long>& bars, long long total,
+                                     std::map<long long, double>& profile);
+
+  static const int FULL_KEY_OFFSET;
 
   const STRMConfig mConfig;
   const time_us mScheduleInterval;
@@ -65,44 +73,31 @@ class SpatioTemporalRoIMixer {
 
   std::thread mResultThread;
   std::unique_ptr<Logger> mResultLogger;
-  std::unique_ptr<Logger> mLogger;
+  std::unique_ptr<Logger> mExecutionLogger;
   std::unique_ptr<Logger> mRoILogger;
-  InferenceEngine* mInferenceEngine;
   const cv::Size mTargetSize;
   const std::vector<int> mInputSizes;
-  const int mInferenceFrameSize;
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;
   std::unique_ptr<PatchMixer> mPatchMixer;
+  std::unique_ptr<InferenceEngine> mInferenceEngine;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 
-  int mNumSourceVideos;
   int mNumStartedFrameBuffers = 0;
   std::mutex mStartMtx;
   std::condition_variable mStartCv;
   std::condition_variable mEnqueueCv;
-  bool startEnqueue = false;
+  bool mbStartEnqueue = false;
 
   std::mutex mFrameBuffersMtx;
-  std::map<std::string, std::unique_ptr<FrameBuffer>> mFrameBuffers;
+  std::map<int, std::unique_ptr<FrameBuffer>> mFrameBuffers;
+  std::map<int, int> mStartIndices;
 
   std::mutex mResultsMtx;
   std::condition_variable mResultsCv;
-  std::map<std::string, std::map<int, FrameResult>> mResults;
-  std::map<std::string, int> mResultIndices;
-
-  const bool draw;
-  JavaVM* jvm;
-  JNIEnv* env;
-  jobject strm;
-  jclass class_SpatioTemporalRoIMixer;
-  jmethodID SpatioTemporalRoIMixer_drawObjectDetectionResult;
-  jclass class_ArrayList;
-  jmethodID ArrayList_init;
-  jmethodID ArrayList_add;
-  jclass class_BoundingBox;
-  jmethodID BoundingBox_init;
+  std::map<int, std::map<int, FrameResult>> mResults;
+  std::map<int, int> mResultIndices;
 };
 
 } // namespace rm

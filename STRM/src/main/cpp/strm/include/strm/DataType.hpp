@@ -24,6 +24,11 @@ extern const idType MERGED_ROI_ID;
 
 struct RoI;
 
+enum Device {
+  GPU,
+  DSP,
+};
+
 struct Rect {
   float left;
   float top;
@@ -104,8 +109,7 @@ struct BoundingBox {
 class RoIResizer;
 
 struct Frame {
-  const std::string key;
-  const std::string shortKey;
+  const int vid;
   const int frameIndex;
   cv::Mat mat;
   Frame* prevFrame;
@@ -130,10 +134,12 @@ struct Frame {
   std::vector<std::unique_ptr<RoI>> parentRoIs;
 
   bool isFullFrameTarget;
+  int inferenceFrameSize;
+  Device inferenceDevice;
 
   const time_us enqueueTime;
-  time_us fullFrameEnqueueTime = 0;
-  time_us fullFrameGetResultsTime = 0;
+  time_us fullInferenceStartTime = 0;
+  time_us fullInferenceEndTime = 0;
   time_us opticalFlowRoIProcessStartTime = 0;
   time_us opticalFlowRoIProcessEndTime = 0;
   time_us pixelDiffRoIProcessStartTime = 0;
@@ -144,17 +150,19 @@ struct Frame {
   time_us mergeRoIEndTime = 0;
   time_us mixingStartTime = 0;
   time_us mixingEndTime = 0;;
-  time_us inferenceStartTime = 0;
-  time_us inferenceEndTime = 0;
+  time_us mixedInferenceStartTime = 0;
+  time_us mixedInferenceEndTime = 0;
   time_us reconstructStartTime = 0;
   time_us reconstructEndTime = 0;
+  time_us endTime = 0;
 
-  Frame(const std::string& key, const int frameIndex, const cv::Mat mat,
+  Frame(const int vid, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime)
-      : key(key), shortKey(toShortKey(key)), frameIndex(frameIndex), mat(mat),
+      : vid(vid), frameIndex(frameIndex), mat(mat),
         width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
         extractOFAgain(false), enqueueTime(enqueueTime), isFullFrameTarget(false),
-        isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1) {}
+        isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
+        inferenceFrameSize(0) {}
 
   void resizeRoIs(RoIResizer* roiResizer);
 
@@ -162,7 +170,7 @@ struct Frame {
 
   void mergeRoIs(float mergeThreshold, float maxSize);
 
-  void addProbeRoIs(int numProbeSteps, float probeStepSize);
+  void addProbeRoIs(RoIResizer* mRoIResizer);
 
   void resetProbeRoIs();
 
@@ -171,39 +179,51 @@ struct Frame {
   bool isReadyToMarry(int mixedFrameIndex) const;
 
   bool readyForOFExtraction() const;
-
-  static std::string toShortKey(const std::string& key);
 };
 
 struct FrameComp {
   bool operator()(const Frame* lhs, const Frame* rhs) const {
     if (lhs->frameIndex == rhs->frameIndex) {
-      return lhs->key < rhs->key;
+      return lhs->vid < rhs->vid;
     }
     return lhs->frameIndex < rhs->frameIndex;
   }
 };
 
+struct InferenceInfo {
+  Device device;
+  int size;
+  time_us latency;
+  time_us accumulatedLatency = -1;
+};
+
+struct FreeRects {
+  Device device;
+  int frameSize;
+  std::vector<Rect> rects;
+};
+
 using Stream = std::set<Frame*, FrameComp>;
-using MultiStream = std::map<std::string, Stream>;
+using MultiStream = std::map<int, Stream>;
 
 std::set<Frame*> filterLastFrames(const MultiStream& frames);
 
 std::string toString(const MultiStream& frames);
 
+std::string toString(const std::vector<InferenceInfo>& inferencePlan);
+
 class Logger;
 
 class FrameBuffer {
  public:
-  FrameBuffer(const std::string& key, int capacity);
+  FrameBuffer(int vid, int capacity, int startIndex);
 
   Frame* enqueue(const cv::Mat& mat);
 
-  void freeImage(const std::vector<int>& frameIndices, Logger* logger, Logger* roiLogger);
+  void freeImage(const std::vector<int>& frameIndices);
 
  private:
-  const std::string key;
-  const std::string shortKey;
+  const int vid;
   const int capacity;
 
   int count;
@@ -218,42 +238,80 @@ struct RoI {
     PD = 2,
   };
 
+  enum ScaleLevel {
+    scale_NULL = -1,
+    scale_LOW = 0,
+    scale_MID = 1,
+    scale_HIGH = 2,
+  };
+
   struct OFFeatures {
-    const std::vector<std::pair<float, float>> shifts;
-    const std::vector<float> errs;
+//    const std::vector<std::pair<float, float>> shifts;
+//    const std::vector<float> errs;
 
-    std::pair<float, float> avgShift;
-    std::pair<float, float> stdShift;
-    float avgErr;
-    float ncc;
+    std::pair<float, float> shiftAvg;
+    std::pair<float, float> shiftStd;
+    float shiftNcc;
+    float errAvg;
 
-    OFFeatures(const std::vector<std::pair<float, float>>& shifts, const std::vector<float>& errs)
-        : shifts(shifts), errs(errs), avgShift(getShiftAvg(shifts)), stdShift(getShiftStd(shifts)),
-          avgErr(getAvgErr(errs)), ncc(getNCC(shifts)) {
-      if (!shifts.empty()) {
-        std::vector<std::pair<float, float>> filtered = filterShifts(shifts);
-        avgShift = getShiftAvg(filtered);
-        stdShift = getShiftStd(filtered);
-        ncc = getNCC(filtered);
+    OFFeatures(const std::vector<std::pair<float, float>>& shifts,
+               const std::vector<float>& errs,
+               const std::vector<uchar>& statusVec) {
+      assert(shifts.size() == errs.size() && errs.size() == statusVec.size());
+      if (std::all_of(statusVec.begin(), statusVec.end(),
+                      [](const uchar& status) { return status == 0; })) {
+        shiftAvg = {0, 0};
+        shiftStd = {0, 0};
+        shiftNcc = 100;
+        errAvg = 100;
+        return;
       }
+      auto[validShifts, validErrs] = filterShiftsWithStatus(
+          shifts, errs, statusVec);
+      auto[filteredShifts, filteredErrs] = filterOutlierShifts(validShifts, validErrs);
+      assert(!filteredShifts.empty());
+      shiftAvg = getShiftAvg(filteredShifts);
+      shiftStd = getShiftStd(filteredShifts);
+      shiftNcc = getNCC(filteredShifts);
+      errAvg = getAvgErr(filteredErrs);
     }
 
-    static std::vector<std::pair<float, float>> filterShifts(
-        const std::vector<std::pair<float, float>>& shifts) {
-      std::vector<float> distances;
-      for (const auto&[x, y] : shifts) {
-        distances.push_back(x * x + y * y);
-      }
-      auto const q1_index = int(float(distances.size()) * 0.25);
-      std::nth_element(distances.begin(), distances.begin() + q1_index, distances.end());
-      float q1 = distances[q1_index];
+    static std::pair<std::vector<std::pair<float, float>>, std::vector<float>>
+    filterShiftsWithStatus(const std::vector<std::pair<float, float>>& shifts,
+                           const std::vector<float>& errs,
+                           const std::vector<uchar>& statusVec) {
       std::vector<std::pair<float, float>> filteredShifts;
-      for (auto&[x, y] : shifts) {
-        if (x * x + y * y > q1) {
-          filteredShifts.emplace_back(x, y);
+      std::vector<float> filteredErrs;
+      for (int i = 0; i < shifts.size(); i++) {
+        assert(statusVec[i] == 0 || statusVec[i] == 1);
+        if (statusVec[i] == 1) {
+          filteredShifts.push_back(shifts[i]);
+          filteredErrs.push_back(errs[i]);
         }
       }
-      return filteredShifts;
+      return {filteredShifts, filteredErrs};
+    }
+
+    static std::pair<std::vector<std::pair<float, float>>, std::vector<float>>
+    filterOutlierShifts(const std::vector<std::pair<float, float>>& shifts,
+                        const std::vector<float>& errs) {
+      assert(!shifts.empty());
+      std::vector<float> distances;
+      for (const auto&[x, y]: shifts) {
+        distances.push_back(x * x + y * y);
+      }
+      std::sort(distances.begin(), distances.end());
+      int q1_distance = distances[distances.size() / 4];
+      std::vector<std::pair<float, float>> filteredShifts;
+      std::vector<float> filteredErrs;
+      for (int i = 0; i < shifts.size(); i++) {
+        auto&[x, y] = shifts[i];
+        if (x * x + y * y >= q1_distance) {
+          filteredShifts.emplace_back(x, y);
+          filteredErrs.push_back(errs[i]);
+        }
+      }
+      return {filteredShifts, filteredErrs};
     }
 
     static std::pair<float, float> getShiftAvg(const std::vector<std::pair<float, float>>& shifts) {
@@ -347,7 +405,8 @@ struct RoI {
   float maxEdgeLength;
 
  private:
-  float targetSize;
+  float targetScale;
+  ScaleLevel scaleLevel;
 
  public:
   std::pair<float, float> packedLocation;
@@ -384,7 +443,7 @@ struct RoI {
           (float) origLoc.width() / (float) origLoc.height(),
           ofFeatures
       }, maxEdgeLength(std::max(paddedLoc.width(), paddedLoc.height())),
-        targetSize(maxEdgeLength), packedLocation(NOT_PACKED), isMatchTried(false),
+        targetScale(1.0f), scaleLevel(scale_NULL), packedLocation(NOT_PACKED), isMatchTried(false),
         nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
         packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1),
         isProbingRoI(isProbingRoI), priority(-1) {
@@ -414,11 +473,9 @@ struct RoI {
     }
     std::unique_ptr<RoI> mergedRoI(
         new RoI(nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-                roiType, origin_Null, roiLabel, OFFeatures({}, {}), 0, false));
-    mergedRoI->setTargetSize(pRoI0->targetSize * pRoI1->maxEdgeLength >
-                             pRoI1->targetSize * pRoI0->maxEdgeLength ?
-                             mergedRoI->maxEdgeLength * pRoI0->targetSize / pRoI0->maxEdgeLength :
-                             mergedRoI->maxEdgeLength * pRoI1->targetSize / pRoI1->maxEdgeLength);
+                roiType, origin_Null, roiLabel, OFFeatures({}, {}, {}), 0, false));
+    mergedRoI->setTargetScale(pRoI0->targetScale > pRoI1->targetScale ?
+                              pRoI0->targetScale : pRoI1->targetScale, scale_NULL);
     return std::move(mergedRoI);
   }
 
@@ -457,68 +514,69 @@ struct RoI {
     return resizedWH.first * resizedWH.second;
   }
 
-  float getTargetSize() const {
-    return targetSize;
+  float getTargetScale() const {
+    return targetScale;
   }
 
-  void setTargetSize(float newTargetSize) {
+  ScaleLevel getScaleLevel() const {
+    return scaleLevel;
+  }
+
+  void setTargetScale(float newTargetScale, ScaleLevel newScaleLevel) {
+    // assert(newTargetScale <= 1); // TODO
     float minEdgeLength = std::min(paddedLoc.width(), paddedLoc.height());
-    targetSize = std::max(maxEdgeLength / minEdgeLength,
-                          std::min(maxEdgeLength, newTargetSize));
+    // compare with 1/minEdgeLength to prevent shorter edge being even shorter than 1 after downscaling
+    targetScale = std::max(1 / minEdgeLength, newTargetScale);
+    scaleLevel = newScaleLevel;
   }
 
   std::pair<float, float> getResizedWidthHeight() const {
-    assert(targetSize <= maxEdgeLength);
-    std::pair<float, float> wh;
-    if (targetSize == maxEdgeLength) {
-      wh = {paddedLoc.width(), paddedLoc.height()};
-    }
-    if (paddedLoc.width() > paddedLoc.height()) {
-      wh = {targetSize, paddedLoc.height() * targetSize / paddedLoc.width()};
-    } else {
-      wh = {paddedLoc.width() * targetSize / paddedLoc.height(), targetSize};
-    }
-    return {std::max(1.0f, wh.first), std::max(1.0f, wh.second)};
+    return {paddedLoc.width() * targetScale,
+            paddedLoc.height() * targetScale};
   }
 
   cv::Mat getOrigMat() const {
-    return frame->mat.operator()(
-        cv::Rect(origLoc.left, origLoc.top, origLoc.width(), origLoc.height()));
+    int left = std::max(0, std::min(frame->mat.cols, int(origLoc.left)));
+    int top = std::max(0, std::min(frame->mat.rows, int(origLoc.top)));
+    int width = std::max(0, std::min(frame->mat.cols - left, int(origLoc.width())));
+    int height = std::max(0, std::min(frame->mat.rows - top, int(origLoc.height())));
+    return frame->mat.operator()(cv::Rect(left, top, width, height));
   }
 
   cv::Mat getPaddedMat() const {
-    return frame->mat.operator()(
-        cv::Rect(paddedLoc.left, paddedLoc.top, paddedLoc.width(), paddedLoc.height()));
+    int left = std::max(0, std::min(frame->mat.cols, int(paddedLoc.left)));
+    int top = std::max(0, std::min(frame->mat.rows, int(paddedLoc.top)));
+    int width = std::max(0, std::min(frame->mat.cols - left, int(paddedLoc.width())));
+    int height = std::max(0, std::min(frame->mat.rows - top, int(paddedLoc.height())));
+    return frame->mat.operator()(cv::Rect(left, top, width, height));
   }
 
   cv::Mat getResizedMat() const {
     auto[w, h] = getResizedWidthHeight();
-    assert(w >= 1 && h >= 1);
     cv::Mat resizedMat;
-    cv::resize(getPaddedMat(), resizedMat, cv::Size(w, h));
+    cv::resize(getPaddedMat(), resizedMat, cv::Size(std::round(w), std::round(h)));
     return resizedMat;
-  }
-
-  bool operator<(const RoI& roi) const {
-    return targetSize < roi.targetSize;
   }
 };
 
 struct MixedFrame {
   static int numMixedFrames;
+  const Device device;
   const int mixedFrameIndex;
+  const int mixedFrameSize;
   cv::Mat packedMat;
   std::set<RoI*> packedRoIs;
 
-  MixedFrame(std::set<RoI*> packedRoIs, int mixedFrameSize)
-      : packedRoIs(packedRoIs), mixedFrameIndex(numMixedFrames++) {
+  MixedFrame(Device device, std::set<RoI*> packedRoIs, int mixedFrameSize)
+      : device(device), packedRoIs(packedRoIs), mixedFrameIndex(numMixedFrames++),
+        mixedFrameSize(mixedFrameSize) {
     packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
     for (RoI* roi : packedRoIs) {
       assert(roi->isPacked());
-      std::pair<float, float> wh = roi->getResizedWidthHeight();
-      roi->getResizedMat().copyTo(
+      cv::Mat resizedMat = roi->getResizedMat();
+      resizedMat.copyTo(
           packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
-                             wh.first, wh.second)));
+                             resizedMat.cols, resizedMat.rows)));
       roi->packedAbsMixedFrameIndex = mixedFrameIndex;
     }
   }

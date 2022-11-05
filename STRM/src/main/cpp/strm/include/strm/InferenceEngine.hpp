@@ -1,27 +1,49 @@
-#ifndef INFERENCE_ENGINE_HPP_
-#define INFERENCE_ENGINE_HPP_
+#ifndef INFERENCE_ENGINE_H
+#define INFERENCE_ENGINE_H
 
-#include <vector>
+#include <jni.h>
 
-#include "opencv2/core/mat.hpp"
+#include <map>
+#include <queue>
 
-#include "strm/DataType.hpp"
+#include "strm/Config.hpp"
+#include "strm/impl/Worker.hpp"
+#include "strm/impl/models/Classifier.hpp"
 
 namespace rm {
 
 class InferenceEngine {
+  friend Worker;
+
  public:
-  virtual ~InferenceEngine() {}
+  InferenceEngine(const InferenceEngineConfig& config,
+                  JavaVM* vm, JNIEnv* env, jobject emulator);
 
-  virtual int enqueue(const cv::Mat mat, const int inputSize) = 0;
+  void enqueue(const cv::Mat& mat, Device device, int inputSize, int key);
 
-  virtual std::vector<BoundingBox> getResults(const int handle) = 0;
+  Result getResults(int key);
 
-  virtual long long getInferenceTimeMs(int inputSize) const = 0;
+  std::map<Device, std::map<int, time_us>> getInferenceTimeTable() const;
 
-  virtual std::vector<int> getInputSizes() const = 0;
+  std::vector<int> getInputSizes() const;
+
+ private:
+  void enqueueResults(const int handle, const Result& boxes);
+
+  template<typename T>
+  void addClassifiers(Device device, const InferenceEngineConfig& config,
+                      JavaVM* vm, JNIEnv* env, jobject emulator);
+
+  const InferenceEngineConfig mConfig;
+
+  std::map<Device, std::unique_ptr<Worker>> workers;
+  std::vector<std::unique_ptr<Classifier>> classifiers;
+
+  std::mutex resultMtx;
+  std::condition_variable resultCv;
+  std::map<int, Result> results;
 };
 
-}
+} // namespace rm
 
-#endif // INFERENCE_ENGINE_HPP_
+#endif // INFERENCE_ENGINE_H

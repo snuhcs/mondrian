@@ -1,6 +1,5 @@
 #include "strm/impl/models/TfLiteYoloV5ClassifierDSP.hpp"
 
-#include <chrono>
 #include <map>
 #include <set>
 
@@ -20,14 +19,15 @@ namespace rm {
 TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(int inputSize, float confidenceThreshold,
                                                      float iouThreshold, bool isTiny)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
-                 confidenceThreshold, iouThreshold), delegate(nullptr, [](TfLiteDelegate* d) {}) {
+                 confidenceThreshold, iouThreshold, DSP),
+      delegate(nullptr, [](TfLiteDelegate* d) {}) {
   std::stringstream ss;
   ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "x-") << inputSize << "-int8.tflite";
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
   if (model == nullptr) {
     LOGE("YoloV5 model load failed");
   } else {
-    LOGD("YoloV5 model loaded: %s", ss.str().c_str());
+    LOGD("YoloV5 model loaded");
   }
 
   tflite::ops::builtin::BuiltinOpResolver resolver;
@@ -74,17 +74,17 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(int inputSize, float confid
   auto* outputQuantization = (TfLiteAffineQuantization*) outputTensor->quantization.params;
   assert(inputQuantization->scale->size == 1 &&
          inputQuantization->zero_point->size == 1 &&
-         inputQuantization->quantized_dimension == 0 &&
-         inputQuantization->zero_point->data[0] == 0);
+         inputQuantization->quantized_dimension == 0);
   assert(outputQuantization->scale->size == 1 &&
          outputQuantization->zero_point->size == 1 &&
-         outputQuantization->quantized_dimension == 0 &&
-         outputQuantization->zero_point->data[0] == 0);
+         outputQuantization->quantized_dimension == 0);
+  inputBias = inputQuantization->zero_point->data[0];
+  outputBias = outputQuantization->zero_point->data[0];
   inputScale = inputQuantization->scale->data[0];
   outputScale = outputQuantization->scale->data[0];
 
-  input = inputTensor->data.uint8;
-  outputs = outputTensor->data.uint8;
+  input = inputTensor->data.int8;
+  outputs = outputTensor->data.int8;
 }
 
 cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& mat) {
@@ -110,37 +110,41 @@ cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& mat) {
   cv::copyMakeBorder(preprocessedMat, preprocessedMat, top, bottom, left, right,
                      cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
   cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
-//  preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
+  preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
   return preprocessedMat;
 }
 
 void TfLiteYoloV5ClassifierDSP::inference(const cv::Mat& mat) {
-  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_8UC3);
-  std::memcpy((void*) input, (void*) mat.data, inputSize.area() * mat.elemSize());
+  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_32FC3);
+  mat /= inputScale;
+  cv::Mat newMat;
+  mat.convertTo(newMat, CV_8SC3);
+  newMat += inputBias;
+  assert(newMat.cols == inputSize.width && newMat.rows == inputSize.height &&
+         newMat.type() == CV_8SC3);
+  std::memcpy((void*) input, (void*) newMat.data, inputSize.area() * newMat.elemSize());
   interpreter->Invoke();
 }
 
-std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& mat) {
+Result TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& mat) {
   cv::Mat preprocessedMat = preprocess(mat);
 
-  auto start = std::chrono::system_clock::now();
+  time_us start = NowMicros();
   inference(preprocessedMat);
-  auto end = std::chrono::system_clock::now();
-  long long currentInferenceTimeMs =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  time_us end = NowMicros();
 
-  float weight = 0.1;
-  inferenceTimeMs = weight * currentInferenceTimeMs + (1 - weight) * inferenceTimeMs;
-  LOGV("Inference time: %lld ms", inferenceTimeMs);
+  // Exponential smoothing
+  inferenceTime = (3 * (end - start) + 7 * inferenceTime) / 10;
+  LOGV("Inference time: %lld ms", inferenceTime);
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
-    const uint8_t* box = &outputs[i * 85];
-    const uint8_t* classConfidences = &outputs[i * 85 + 5];
+    const int8_t* box = &outputs[i * 85];
+    const int8_t* classConfidences = &outputs[i * 85 + 5];
     float maxConfidence = 0;
     int maxLabel = -1;
     for (int label = 0; label < numLabels; label++) {
-      float confidence = float(classConfidences[label]) * outputScale;
+      float confidence = float(classConfidences[label] - outputBias) * outputScale;
       if (maxConfidence < confidence) {
         maxLabel = label;
         maxConfidence = confidence;
@@ -150,15 +154,15 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
       detections.emplace_back(
           UNASSIGNED_ID,
-          reconstructBox(float(box[0]) * outputScale,
-                         float(box[1]) * outputScale,
-                         float(box[2]) * outputScale,
-                         float(box[3]) * outputScale,
+          reconstructBox(float(box[0] - outputBias) * outputScale,
+                         float(box[1] - outputBias) * outputScale,
+                         float(box[2] - outputBias) * outputScale,
+                         float(box[3] - outputBias) * outputScale,
                          mat.cols, mat.rows),
           maxConfidence, maxLabel, origin_Null);
     }
   }
-  return nms(detections, numLabels, iouThreshold);
+  return {nms(detections, numLabels, iouThreshold), {start, end}, device};
 }
 
 Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float h,
@@ -178,15 +182,15 @@ Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float 
       std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
 }
 
-long long int TfLiteYoloV5ClassifierDSP::profileInferenceTime() {
+time_us TfLiteYoloV5ClassifierDSP::profileInferenceTime() {
   // Warmup
   interpreter->Invoke();
   interpreter->Invoke();
 
-  auto start = std::chrono::system_clock::now();
+  time_us start = NowMicros();
   interpreter->Invoke();
-  auto end = std::chrono::system_clock::now();
-  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  time_us end = NowMicros();
+  return end - start;
 }
 
 } // namespace rm

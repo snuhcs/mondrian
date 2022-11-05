@@ -1,6 +1,5 @@
 #include "strm/impl/models/MnnYoloV4Classifier.hpp"
 
-#include <chrono>
 #include <map>
 #include <set>
 
@@ -12,7 +11,7 @@ namespace rm {
 MnnYoloV4Classifier::MnnYoloV4Classifier(int inputSize, float confidenceThreshold,
                                          float iouThreshold, bool isTiny)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * (isTiny ? 15 : 63),
-                 confidenceThreshold, iouThreshold) {
+                 confidenceThreshold, iouThreshold, GPU) {
   std::string filepath = "/data/local/tmp/models/yolov4-";
   filepath += (isTiny ? "tiny-" : "") + std::to_string(inputSize) + "-fp16.mnn";
   interpreter = MNN::Interpreter::createFromFile(filepath.c_str());
@@ -122,7 +121,7 @@ Rect MnnYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
       std::min(imageHeight, ((y + h / 2) * heightRatio)));
 }
 
-long long int MnnYoloV4Classifier::profileInferenceTime() {
+time_us MnnYoloV4Classifier::profileInferenceTime() {
   // Warmup
   interpreter->runSession(session);
   interpreter->runSession(session);
@@ -132,6 +131,5 @@ long long int MnnYoloV4Classifier::profileInferenceTime() {
   auto end = std::chrono::system_clock::now();
   return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }
-
 
 } // namespace rm

@@ -67,7 +67,7 @@ void Interpolator::extrapolateLeft(std::vector<RoI*> childRoIs, int idx) {
   std::pair<float, float> prevCenter = prevRoI->box->location.center();
   for (int current = idx - 1; current >= 0; current--) {
     RoI* currRoI = childRoIs.at(current);
-    std::pair<float, float> shift = prevRoI->features.ofFeatures.avgShift;
+    std::pair<float, float> shift = prevRoI->features.ofFeatures.shiftAvg;
     std::pair<float, float> newCenter = std::make_pair(prevCenter.first - shift.first,
                                                        prevCenter.second - shift.second);
     BoundingBox* prevBox = prevRoI->box;
@@ -87,7 +87,7 @@ void Interpolator::extrapolateRight(std::vector<RoI*> childRoIs, int idx) {
   std::pair<float, float> prevCenter = prevRoI->box->location.center();
   for (int current = idx + 1; current < childRoIs.size(); current++) {
     RoI* currRoI = childRoIs.at(current);
-    std::pair<float, float> shift = currRoI->features.ofFeatures.avgShift;
+    std::pair<float, float> shift = currRoI->features.ofFeatures.shiftAvg;
     std::pair<float, float> newCenter = std::make_pair(prevCenter.first + shift.first,
                                                        prevCenter.second + shift.second);
     BoundingBox* prevBox = prevRoI->box;
@@ -110,7 +110,7 @@ void Interpolator::interpolateBetween(std::vector<RoI*> childRoIs, int leftIdx, 
   std::pair<float, float> prevCenter = prevRoI->box->location.center();
   for (int current = leftIdx + 1; current < rightIdx; current++) {
     RoI* currRoI = childRoIs.at(current);
-    std::pair<float, float> shift = currRoI->features.ofFeatures.avgShift;
+    std::pair<float, float> shift = currRoI->features.ofFeatures.shiftAvg;
     std::pair<float, float> newCenter = std::make_pair(
         prevCenter.first + shift.first * (float) bbxShift.first / totalShift.first,
         prevCenter.second + shift.second * (float) bbxShift.second / totalShift.second);
@@ -128,8 +128,8 @@ std::pair<float, float> Interpolator::sumMotionVectors(std::vector<RoI*> childRo
   float xShift = 0;
   float yShift = 0;
   for (int i = start + 1; i <= end; i++) {
-    xShift += childRoIs.at(i)->features.ofFeatures.avgShift.first;
-    yShift += childRoIs.at(i)->features.ofFeatures.avgShift.second;
+    xShift += childRoIs.at(i)->features.ofFeatures.shiftAvg.first;
+    yShift += childRoIs.at(i)->features.ofFeatures.shiftAvg.second;
   }
   return std::make_pair(xShift, yShift);
 }

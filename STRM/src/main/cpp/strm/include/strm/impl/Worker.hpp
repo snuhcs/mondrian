@@ -1,32 +1,56 @@
 #ifndef IMPL_WORKER_HPP_
 #define IMPL_WORKER_HPP_
 
+#include <jni.h>
+
+#include <queue>
 #include <thread>
 
-#include "strm/impl/CustomInferenceEngine.hpp"
 #include "strm/impl/models/Classifier.hpp"
 
 namespace rm {
 
+class InferenceEngine;
+
 class Worker {
  public:
-  Worker(CustomInferenceEngine* engine, std::map<int, Classifier*> classifierMap);
+  Worker(InferenceEngine* engine, Device device, std::map<int, Classifier*> classifierMap,
+         bool draw, JavaVM* vm, JNIEnv* env, jobject emulator);
 
-  ~Worker() {
-    isClosed.store(true);
-    thread.join();
-  }
+  ~Worker();
 
-  long long getInferenceTimeMs(int inputSize);
+  void enqueue(const cv::Mat& mat, int inputSize, int key);
+
+  std::map<int, time_us> getInferenceTimes();
 
  private:
-  void Work();
+  void work();
 
-  CustomInferenceEngine* engine;
+  void drawInferenceResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
+
+  const Device device;
+  const bool draw;
+
+  std::mutex mtx;
+  std::condition_variable cv;
+  std::queue<std::tuple<const cv::Mat, int, int>> inputs;
+
+  InferenceEngine* engine;
   std::map<int, Classifier*> classifierMap;
 
   std::atomic_bool isClosed;
   std::thread thread;
+
+  JavaVM* jvm;
+  JNIEnv* env;
+  jobject emulator;
+  jclass class_Emulator;
+  jmethodID Emulator_drawOutput;
+  jclass class_ArrayList;
+  jmethodID ArrayList_init;
+  jmethodID ArrayList_add;
+  jclass class_BoundingBox;
+  jmethodID BoundingBox_init;
 };
 
 } // namespace rm

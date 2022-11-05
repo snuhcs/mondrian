@@ -1,6 +1,5 @@
 #include "strm/impl/models/TfLiteYoloV5Classifier.hpp"
 
-#include <chrono>
 #include <map>
 #include <set>
 
@@ -17,7 +16,7 @@ namespace rm {
 TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(int inputSize, float confidenceThreshold,
                                                float iouThreshold, bool isTiny)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
-                 confidenceThreshold, iouThreshold) {
+                 confidenceThreshold, iouThreshold, GPU) {
   std::stringstream ss;
   ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "x-") << inputSize << "-fp16.tflite";
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
@@ -33,13 +32,6 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(int inputSize, float confidenceTh
   } else {
     LOGD("YoloV5 interpreter created");
   }
-
-//  // For CPU (XNNPack)
-//  if (interpreter->AllocateTensors() != kTfLiteOk) {
-//    LOGE("YoloV5 tensor allocation failed");
-//  } else {
-//    LOGD("YoloV5 tensor allocated");
-//  }
 
   auto options = TfLiteGpuDelegateOptionsV2Default();
   delegate = TfLiteGpuDelegateV2Create(&options);
@@ -137,15 +129,15 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
       std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
 }
 
-long long int TfLiteYoloV5Classifier::profileInferenceTime() {
+time_us TfLiteYoloV5Classifier::profileInferenceTime() {
   // Warmup
   interpreter->Invoke();
   interpreter->Invoke();
 
-  auto start = std::chrono::system_clock::now();
+  time_us start = NowMicros();
   interpreter->Invoke();
-  auto end = std::chrono::system_clock::now();
-  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  time_us end = NowMicros();
+  return end - start;
 }
 
 } // namespace rm
