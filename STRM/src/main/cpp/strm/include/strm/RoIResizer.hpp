@@ -36,6 +36,14 @@ class RoIResizer {
   std::vector<float> getProbingCandidates(
       float scale, int level, int numProbeSteps);
 
+  float maxScale() const {
+    return 1.0f;
+  }
+
+  int maxLevel() const {
+    return mTargetSize.size() - 1;
+  }
+
  private:
   class CircularBuffer {
    public:

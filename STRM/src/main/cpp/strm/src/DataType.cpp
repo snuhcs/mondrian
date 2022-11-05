@@ -22,7 +22,7 @@ void Frame::resizeRoIs(RoIResizer* roiResizer) {
   }
   for (auto& cRoI: childRoIs) {
     if (cRoI->type == RoI::Type::PD && cRoI->nextRoI != nullptr) {
-      cRoI->setTargetScale(cRoI->nextRoI->getTargetScale(), cRoI->nextRoI->getScaleLevel());
+      cRoI->setTargetScale(roiResizer->maxScale(), roiResizer->maxLevel());
     }
   }
 }
@@ -248,7 +248,21 @@ Frame* FrameBuffer::enqueue(const cv::Mat& mat) {
 
 void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
   std::unique_lock<std::mutex> lock(mtx);
+  // Hide them from any other frame's eyesight
   for (int frameIndex: frameIndices) {
+    auto frame = frames[frameIndex % capacity].get();
+
+    assert(frame != nullptr);
+    assert(frame->nextFrame != nullptr);
+    assert(frame->nextFrame->prevFrame == frame);
+    if (frame->prevFrame != nullptr) {
+      assert(frame->prevFrame->nextFrame == frame);
+    }
+    frames[frameIndex % capacity]->nextFrame->prevFrame = nullptr;
+  }
+  // Reset smart pointers
+  for (int frameIndex: frameIndices) {
+    assert(frames[frameIndex % capacity].get() != nullptr);
     frames[frameIndex % capacity].reset();
   }
   lock.unlock();

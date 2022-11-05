@@ -254,9 +254,8 @@ void RoIExtractor::work(int extractorId) {
 }
 
 void RoIExtractor::processPD(Frame* currFrame) {
-  Frame* prevFrame = currFrame->prevFrame;
   currFrame->pixelDiffRoIProcessStartTime = NowMicros();
-  getPixelDiffRoIs(prevFrame, currFrame, mTargetSize, mConfig.MIN_ROI_AREA, currFrame->childRoIs);
+  getPixelDiffRoIs(currFrame, mTargetSize, mConfig.MIN_ROI_AREA, currFrame->childRoIs);
   currFrame->pixelDiffRoIProcessEndTime = NowMicros();
   LOGD("%-25s took %-7lld us for video %-5d frame %-4d // %4lu PD RoIs",
        "RoIExtractor::processPD",
@@ -407,9 +406,20 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
   return ofFeatures;
 }
 
-void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
-                                    const cv::Size& targetSize, const float mixRoIArea,
+void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize,
+                                    const float minRoIArea,
                                     std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
+
+  // Find {PD_INTERVAL}th previous frame. If not available, use farthest frame.
+  Frame *prevFrame = currFrame;
+  for (int i=0; i<mConfig.PD_INTERVAL; ++i) {
+    assert(prevFrame!= nullptr);
+    if (prevFrame->prevFrame == nullptr) {
+      break;
+    }
+    prevFrame = prevFrame->prevFrame;
+  }
+
   assert(!prevFrame->preProcessedMat.empty());
   assert(!currFrame->preProcessedMat.empty());
   assert(prevFrame->preProcessedMat.channels() == currFrame->preProcessedMat.channels());
@@ -428,7 +438,7 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
     std::vector<cv::Point> approxCurve;
     cv::approxPolyDP(contour, approxCurve, approxDistance, true);
     cv::Rect2f box = cv::boundingRect(approxCurve);
-    if (box.area() >= mixRoIArea) {
+    if (box.area() >= minRoIArea) {
       boxes.push_back(Rect(
           box.x * float(currFrame->mat.cols) / float(targetSize.width),
           box.y * float(currFrame->mat.rows) / float(targetSize.height),
@@ -458,9 +468,9 @@ cv::Mat RoIExtractor::calculateDiffAndThreshold(
   cv::Mat diff;
   cv::absdiff(prevMat, currMat, diff);
   cv::dilate(diff, diff,
-             cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)),
+             cv::getStructuringElement(cv::MORPH_RECT, cv::Size(4, 4)),
              cv::Point(0, 0),
-             5);
+             2);
   cv::threshold(diff, diff, 35, 255, cv::THRESH_BINARY);
   return diff;
 }
@@ -468,7 +478,7 @@ cv::Mat RoIExtractor::calculateDiffAndThreshold(
 void RoIExtractor::cannyEdgeDetection(cv::Mat mat) {
   cv::Canny(mat, mat, 120, 255, 3, false);
   cv::dilate(mat, mat,
-             cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)),
+             cv::getStructuringElement(cv::MORPH_RECT, cv::Size(4, 4)),
              cv::Point(0, 0),
              1);
 }
