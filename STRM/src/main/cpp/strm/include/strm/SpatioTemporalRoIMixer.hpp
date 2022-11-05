@@ -56,6 +56,7 @@ class SpatioTemporalRoIMixer {
   void log(const Frame* frame);
 
   static const int FULL_KEY_OFFSET;
+  static const bool FAIR;
 
   const STRMConfig mConfig;
   const time_us mScheduleInterval;
@@ -74,6 +75,10 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<PatchMixer> mPatchMixer;
   std::unique_ptr<InferenceEngine> mInferenceEngine;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
+
+  int mPrevEnqueuedVid = -1;
+  std::mutex mFairEnqueueMtx;
+  std::condition_variable mFairCv;
 
   int mNumStartedFrameBuffers = 0;
   std::mutex mStartMtx;

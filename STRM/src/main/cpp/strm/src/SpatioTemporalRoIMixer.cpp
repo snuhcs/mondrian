@@ -19,6 +19,7 @@
 namespace rm {
 
 const int SpatioTemporalRoIMixer::FULL_KEY_OFFSET = 1000000;
+const bool SpatioTemporalRoIMixer::FAIR = true;
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
                                                std::map<int, int> startIndices,
@@ -388,6 +389,17 @@ void SpatioTemporalRoIMixer::waitForStart() {
 
 int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& mat) {
   assert(!mat.empty());
+
+  if (FAIR) {
+    std::unique_lock<std::mutex> fairLock(mFairEnqueueMtx);
+    mFairCv.wait(fairLock, [vid, this]() {
+      return mStartIndices.size() == 1 || mPrevEnqueuedVid != vid;
+    });
+    mPrevEnqueuedVid = vid;
+    fairLock.unlock();
+    mFairCv.notify_all();
+  }
+
   std::unique_lock<std::mutex> lock(mFrameBuffersMtx);
   if (mFrameBuffers.find(vid) == mFrameBuffers.end()) {
     mFrameBuffers[vid] = std::make_unique<FrameBuffer>(
