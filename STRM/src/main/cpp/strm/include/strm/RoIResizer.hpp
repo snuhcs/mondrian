@@ -62,6 +62,7 @@ class RoIResizer {
   static const std::map<std::string, std::vector<float>> scalesForLevels;
 
   const RoIResizerConfig mConfig;
+  const int mScaleGranularity;
   const Predictor mPredictor;
   const std::vector<float> mTargetSize;
 
