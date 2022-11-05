@@ -11,11 +11,11 @@ std::tuple<IntPairs, IntPairs> BinPacker::pack(
     const IntPairs& boxWHs, bool backward) {
   LOGD("BinPacker::pack(# boxes=%lu, backward=%d)", boxWHs.size(), backward);
   printFreeRects(freeRectsVec);
-  LOGD("===== Try Pack Boxes =====");
+//  LOGD("===== Try Pack Boxes =====");
 //  for (const auto&[w, h]: boxWHs) {
 //    LOGD("(%3d, %3d)", w, h);
 //  }
-  LOGD("=====   Boxes End    =====");
+//  LOGD("=====   Boxes End    =====");
 
   auto copiedFreeRectsVec = freeRectsVec;
   IntPairs packIndices;
@@ -45,7 +45,7 @@ std::tuple<IntPairs, IntPairs> BinPacker::pack(
     }
     if (pack_i == -1 || pack_j == -1) {
       assert(pack_i == -1 && pack_j == -1);
-      LOGD("===== Try Pack Failed =====");
+//      LOGD("===== Try Pack Failed =====");
       assert(packIndices.size() == packLocations.size());
       return {packIndices, packLocations};
     }
@@ -54,7 +54,7 @@ std::tuple<IntPairs, IntPairs> BinPacker::pack(
     packLocations.emplace_back(rect.left, rect.top);
     packBox(copiedFreeRectsVec, w, h, pack_i, pack_j);
   }
-  LOGD("===== Try Pack Success =====");
+//  LOGD("===== Try Pack Success =====");
   assert(packIndices.size() == packLocations.size());
   return {packIndices, packLocations};
 }
@@ -64,14 +64,14 @@ void BinPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
   LOGD("BinPacker::apply(%lu)", boxes.size());
   printFreeRects(freeRectsVec);
   assert(boxes.size() == indices.size());
-  LOGD("=====   Apply boxes   =====");
+//  LOGD("=====   Apply boxes   =====");
   for (int i = 0; i < boxes.size(); i++) {
     auto[w, h] = boxes[i];
     auto[pack_i, pack_j] = indices[i];
 //    LOGD("(%3d, %3d), (%3d, %3d)", w, h, pack_i, pack_j);
     packBox(freeRectsVec, w, h, pack_i, pack_j);
   }
-  LOGD("=====    Apply End    =====");
+//  LOGD("=====    Apply End    =====");
   printFreeRects(freeRectsVec);
 }
 
