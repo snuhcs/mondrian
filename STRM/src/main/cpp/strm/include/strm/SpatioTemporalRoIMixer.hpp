@@ -41,19 +41,18 @@ class SpatioTemporalRoIMixer {
 
   void preprocess(Frame* frame) const;
 
-  void fullFrameInference(Frame* frame);
+  void handleFullFrameInferenceResults(Frame* frame);
 
   int getFullFrameSize(const std::map<Device, std::map<int, time_us>>& latencyTable);
 
-  void mixedInference(std::vector<MixedFrame>& mixedFrames);
+  void handleMixedFrameInferenceResults(std::vector<MixedFrame>& mixedFrames);
 
-  void roiWiseInference(std::vector<MixedFrame>& mixedFrames);
+  void handleRoIWiseInferenceResults(std::vector<MixedFrame>& mixedFrames);
 
   void releaseFrames(const MultiStream& frames);
 
   void log(const Frame* frame);
 
-  static const int FULL_KEY_OFFSET;
   static const bool FAIR;
 
   const STRMConfig mConfig;
@@ -67,6 +66,7 @@ class SpatioTemporalRoIMixer {
   std::unique_ptr<Logger> mRoILogger;
   const cv::Size mTargetSize;
   const std::vector<int> mInputSizes;
+  int mFullFrameSize;
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;

@@ -40,9 +40,14 @@ Worker::~Worker() {
 }
 
 void Worker::work() {
+  std::thread::id id = std::this_thread::get_id();
+  auto startTime = NowMicros();
   while (!isClosed.load()) {
+    LOGD("Worker::work() before acquire : %lld", NowMicros() - startTime);
     std::unique_lock<std::mutex> lock(mtx);
+    LOGD("Worker::work() after  acquire : %lld", NowMicros() - startTime);
     cv.wait(lock, [this]() { return isClosed.load() || !inputs.empty(); });
+    LOGD("Worker::work() after  enqueued: %lld", NowMicros() - startTime);
     if (isClosed.load()) {
       lock.unlock();
       break;
@@ -50,12 +55,16 @@ void Worker::work() {
     auto[mat, size, key] = std::move(inputs.front());
     inputs.pop();
     lock.unlock();
+    LOGD("Worker::work() after  unlock  : %lld", NowMicros() - startTime);
 
     Result boxTimeDevice = classifierMap[size]->recognizeImage(mat);
+    LOGD("Worker::work() recognizeImage : %lld", NowMicros() - startTime);
     engine->enqueueResults(key, boxTimeDevice);
+    LOGD("Worker::work() enqueue Results: %lld", NowMicros() - startTime);
     if (draw) {
       drawInferenceResult(mat, std::get<0>(boxTimeDevice));
     }
+    LOGD("Worker::work() draw Result    : %lld", NowMicros() - startTime);
   }
 }
 
