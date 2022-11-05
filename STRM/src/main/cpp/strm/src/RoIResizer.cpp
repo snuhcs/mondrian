@@ -49,7 +49,7 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
 int RoIResizer::getMaxVotedLevel(const idType id, const RoI::Features& features) {
   auto record = prevPredictionBuffer.find(id);
   if (record == prevPredictionBuffer.end()) {
-    prevPredictionBuffer[id] = CircularBuffer();
+    prevPredictionBuffer[id] = CircularBuffer(mTargetSize.size());
   }
   prevPredictionBuffer[id].push(predictLevelWithFeatures(features));
   return prevPredictionBuffer[id].maxVote();
@@ -128,8 +128,8 @@ float RoIResizer::getOverlap(Rect& targetRect, Rect& baseRect) {
   return overlapRatio;
 }
 
-RoIResizer::CircularBuffer::CircularBuffer()
-    : capacity_(5), oldest_index(0), size_(0) {
+RoIResizer::CircularBuffer::CircularBuffer(int numLevels)
+    : capacity_(5), oldest_index(0), size_(0), numLevels(numLevels) {
   // NOTE that capacity should be even number to avoid tie
   data_.resize(capacity_);
 }
@@ -143,7 +143,7 @@ void RoIResizer::CircularBuffer::push(int data) {
 }
 
 int RoIResizer::CircularBuffer::maxVote() {
-  std::vector<size_t> count(3, 0);
+  std::vector<size_t> count(numLevels, 0);
   for (int i = 0; i < size_; i++) {
     ++count[data_[i]];
   }

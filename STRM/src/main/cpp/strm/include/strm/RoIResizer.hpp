@@ -39,13 +39,16 @@ class RoIResizer {
  private:
   class CircularBuffer {
    public:
-    CircularBuffer();
+    CircularBuffer() {}; // Default ctor for std::map
+
+    CircularBuffer(int numLevels);
 
     void push(int data);
 
     int maxVote();
 
    private:
+    int numLevels;
     size_t capacity_, oldest_index, size_;
     std::vector<int> data_;
   };
