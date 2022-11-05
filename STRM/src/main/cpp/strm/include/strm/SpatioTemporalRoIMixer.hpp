@@ -18,7 +18,6 @@ class Logger;
 class MixedFrame;
 class RoIExtractor;
 class RoIResizer;
-class PatchMixer;
 class PatchReconstructor;
 
 using FrameResult = std::pair<time_us, std::vector<BoundingBox>>;
@@ -44,12 +43,11 @@ class SpatioTemporalRoIMixer {
 
   void fullFrameInference(Frame* frame);
 
+  int getFullFrameSize(const std::map<Device, std::map<int, time_us>>& latencyTable);
+
   void mixedInference(std::vector<MixedFrame>& mixedFrames);
 
   void roiWiseInference(std::vector<MixedFrame>& mixedFrames);
-
-  static void testNoInterpolationPacking(const MultiStream& frames, const Stream& droppedFrames,
-                                         Frame* fullFrameTarget);
 
   void releaseFrames(const MultiStream& frames);
 
@@ -72,7 +70,6 @@ class SpatioTemporalRoIMixer {
 
   std::unique_ptr<RoIExtractor> mRoIExtractor;
   std::unique_ptr<RoIResizer> mRoIResizer;
-  std::unique_ptr<PatchMixer> mPatchMixer;
   std::unique_ptr<InferenceEngine> mInferenceEngine;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 

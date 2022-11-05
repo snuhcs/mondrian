@@ -4,8 +4,8 @@
 
 namespace rm {
 
-double
-InferencePlanner::weigh(const std::vector<time_us>& layout, std::map<time_us, double> profile) {
+double InferencePlanner::weigh(const std::vector<time_us>& layout,
+                               std::map<time_us, double> profile) {
   double weight = 0;
   for (auto l: layout) {
     assert (profile.find(l) != profile.end());
@@ -71,10 +71,10 @@ std::vector<time_us> InferencePlanner::search(time_us total,
   return layouts[0];
 }
 
-
 std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
     const std::map<Device, std::map<int, time_us>>& latencyTable,
-    time_us interval, bool roiWiseInference) {
+    time_us interval, bool roiWiseInference,
+    const std::map<Device, time_us>& startTimes) {
   std::vector<InferenceInfo> inferencePlan;
   for (const auto&[device, size_latency]: latencyTable) {
     std::map<time_us, double> profile;
@@ -95,7 +95,10 @@ std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
     }
     std::sort(bars.begin(), bars.end(),
               [&profile](time_us b1, time_us b2) { return (profile[b1] > profile[b2]); });
-    std::vector<time_us> layout = search(interval, bars, profile);
+    time_us startTime = startTimes.find(device) != startTimes.end()
+        ? startTimes.at(device)
+        : 0L;
+    std::vector<time_us> layout = search(interval - startTime, bars, profile);
     inferencePlan.reserve(layout.size());
     for (auto& l: layout) {
       inferencePlan.push_back({device, latency_size[l], l, 0});
@@ -108,6 +111,11 @@ std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
         devicePlan.push_back(&info);
       }
     }
+    // Larger size first
+    std::sort(devicePlan.begin(), devicePlan.end(),
+              [](const InferenceInfo* l, const InferenceInfo* r) {
+                return l->size > r->size;
+              });
     time_us accumulatedLatency = 0;
     for (auto* info: devicePlan) {
       accumulatedLatency += info->latency;

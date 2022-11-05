@@ -97,9 +97,9 @@ cv::Mat RoI::getPaddedMat() const {
 }
 
 cv::Mat RoI::getResizedMat() const {
-  auto[w, h] = getResizedWidthHeight();
+  auto[w, h] = getResizedMatWidthHeight();
   cv::Mat resizedMat;
-  cv::resize(getPaddedMat(), resizedMat, cv::Size(std::round(w), std::round(h)));
+  cv::resize(getPaddedMat(), resizedMat, cv::Size(w, h));
   return resizedMat;
 }
 

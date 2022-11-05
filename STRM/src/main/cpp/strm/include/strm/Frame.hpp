@@ -6,6 +6,7 @@
 #include "opencv2/core/mat.hpp"
 
 #include "strm/DataType.hpp"
+#include "strm/PatchMixer.hpp"
 #include "strm/RoI.hpp"
 
 namespace rm {
@@ -40,7 +41,9 @@ class Frame {
   std::vector<std::unique_ptr<RoI>> childRoIs; // => box
   std::vector<std::unique_ptr<RoI>> parentRoIs;
 
-  bool isFullFrameTarget;
+  IntPairs boxesIfLast;
+  IntPairs boxesIfScaled;
+
   int inferenceFrameSize;
   Device inferenceDevice;
 
@@ -56,7 +59,8 @@ class Frame {
   time_us mergeRoIStartTime = 0;
   time_us mergeRoIEndTime = 0;
   time_us mixingStartTime = 0;
-  time_us mixingEndTime = 0;;
+  time_us mixingEndTime = 0;
+  time_us scheduledTime = 0;
   time_us mixedInferenceStartTime = 0;
   time_us mixedInferenceEndTime = 0;
   time_us reconstructStartTime = 0;
@@ -71,8 +75,6 @@ class Frame {
   void resetParentRoIs();
 
   void mergeRoIs(float mergeThreshold, float maxSize);
-
-  void addProbeRoIs(RoIResizer* mRoIResizer);
 
   void resetProbeRoIs();
 
@@ -97,7 +99,7 @@ struct FrameComp {
 using Stream = std::set<Frame*, FrameComp>;
 using MultiStream = std::map<int, Stream>;
 
-std::set<Frame*> filterLastFrames(const MultiStream& frames);
+std::string toString(const Stream& frames);
 
 std::string toString(const MultiStream& frames);
 

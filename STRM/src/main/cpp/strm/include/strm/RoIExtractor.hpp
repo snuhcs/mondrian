@@ -3,6 +3,7 @@
 
 #include <list>
 #include <queue>
+#include <set>
 #include <thread>
 #include <utility>
 
@@ -10,6 +11,7 @@
 
 #include "strm/Config.hpp"
 #include "strm/DataType.hpp"
+#include "strm/MixedFrame.hpp"
 #include "strm/PatchMixer.hpp"
 #include "strm/RoIResizer.hpp"
 #include "strm/Utils.hpp"
@@ -18,9 +20,9 @@ namespace rm {
 
 class RoIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, bool run, bool allowInterpolation,
-               bool roiWiseInference, const PatchMixer* patchMixer, RoIResizer* roiResizer,
-               std::vector<InferenceInfo> inferencePlan);
+  RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize, bool run,
+               RoIResizer* roiResizer, std::vector<InferenceInfo> inferencePlan,
+               std::set<int> vids);
 
   ~RoIExtractor();
 
@@ -28,18 +30,23 @@ class RoIExtractor {
 
   void notify();
 
-  MultiStream getExtractedFrames(std::vector<InferenceInfo>& inferencePlan);
-
-  void reEnqueueFrames(const Stream& droppedFrames);
+  std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> prepareInference(
+      std::vector<InferenceInfo>& nextInferencePlan, bool runFull);
 
  private:
   void work(int extractorId);
 
-  void resetPack();
-
   void processPD(Frame* currFrame);
 
   void processOF(Frame* currFrame);
+
+  void postprocessOF(Frame* currFrame);
+
+  void tryPack(Frame* frame);
+
+  bool tryPackFullVid(Frame* frame);
+
+  bool tryPackNonFullVid(Frame* frame);
 
   void getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
                           const std::vector<BoundingBox>& boundingBoxes,
@@ -58,31 +65,61 @@ class RoIExtractor {
 
   static void cannyEdgeDetection(cv::Mat mat);
 
+  void resetPatchMixerWithPlan(const std::vector<InferenceInfo>& inferencePlan);
+
+  void prepareFrameLast(Frame* frame,
+                        const Indices& indices, const Locations& locations);
+
+  IntPairs getBoxesIfLast(const Frame* frame);
+
+  static void prepareScaledFrame(Frame* frame,
+                                 const Indices& indices, const Locations& locations);
+
+  static IntPairs getBoxesIfScaled(const Frame* frame);
+
+  void applyLasts();
+
   std::vector<std::thread> mThreads;
   bool mbStop;
 
-  const RoIExtractorConfig mConfig;
-  const bool mAllowInterpolation;
-  const bool mRoIWiseInference;
-
-  RoIResizer* mRoIResizer;
-  const PatchMixer* mPatchMixer;
-
-  std::mutex packMtx;
-  std::vector<FreeRects> mFreeRectsList;
-  int mRoICount;
-  std::vector<InferenceInfo> mInferencePlan;
-  bool isFullyPacked;
-
   static const cv::TermCriteria CRITERIA;
   const cv::Size mTargetSize;
+  const int mMaxMergeSize;
+  const RoIExtractorConfig mConfig;
+  const std::set<int> mVids;
+  int mFullFrameVid;
+  Frame* mFullFrameTarget;
 
-  std::mutex mtx;
-  std::condition_variable cv;
+  RoIResizer* mRoIResizer;
+
+  int mFullFrameInferenceCount;
+  std::vector<InferenceInfo> mInferencePlan;
+
+  /*
+   * If you want to acquire queueMtx and packMtx at the same time,
+   * you must acquire packMtx first.
+   */
+  std::mutex queueMtx;
+  std::mutex packMtx;
+  std::condition_variable queueCv;
+
   Stream mPDWaiting;
   Stream mOFWaiting;
   Stream mOFProcessing;
-  Stream mExtractionFinished;
+  MultiStream mPackedFrames;
+
+  // Finalized frames are packed
+  std::vector<std::vector<IntRect>> mFreeRectsVec;
+  bool notFullyPacked;
+
+  struct LastPackInfo {
+    Frame* frame;
+    Indices indices;
+    Locations locations;
+  };
+
+  // Can be packed as last. Otherwise packed as scaled.
+  std::map<int, LastPackInfo> mCandidateLastFrames;
 };
 
 } // namespace rm

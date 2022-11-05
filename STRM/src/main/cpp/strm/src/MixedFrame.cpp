@@ -20,7 +20,7 @@ MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixe
   }
 }
 
-Stream MixedFrame::getPackedFrames() {
+Stream MixedFrame::getPackedFrames() const {
   Stream packedFrames;
   for (RoI* roi: packedRoIs) {
     packedFrames.insert(roi->frame);

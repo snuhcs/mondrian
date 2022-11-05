@@ -1,63 +1,61 @@
 #ifndef PATCH_MIXER_HPP_
 #define PATCH_MIXER_HPP_
 
-#include <map>
-#include <mutex>
-#include <set>
+#include <sstream>
 #include <vector>
-
-#include "opencv2/core/mat.hpp"
-
-#include "strm/Config.hpp"
-#include "strm/Frame.hpp"
-#include "strm/Log.hpp"
 
 namespace rm {
 
-class MixedFrame;
-class RoIExtractor;
+class SpatioTemporalRoIMixer;
+
+using IntPairs = std::vector<std::pair<int, int>>;
+using WHs = IntPairs;
+using Indices = IntPairs;
+using Locations = IntPairs;
+
+struct IntRect {
+  int left;
+  int top;
+  int right;
+  int bottom;
+
+  IntRect(int left, int top, int right, int bottom)
+      : left(left), top(top), right(right), bottom(bottom) {};
+
+  int width() const {
+    return right - left;
+  }
+
+  int height() const {
+    return bottom - top;
+  }
+
+  int area() const {
+    return width() * height();
+  }
+
+  std::string toString() const {
+    std::stringstream ss;
+    ss << "(" << left << ", " << top << ", " << right << ", " << bottom << ")";
+    return ss.str();
+  }
+};
 
 class PatchMixer {
-  friend RoIExtractor;
  public:
-  PatchMixer(const PatchMixerConfig& config);
+  static std::tuple<Indices, Locations> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
+                                             const WHs& boxes, bool backward);
 
-  std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> packRoIs(
-      MultiStream& frames, int fullFrameStreamIndex,
-      const std::vector<InferenceInfo>& inferencePlan,
-      bool allowInterpolation, bool roiWiseInference, RoIResizer* roiResizer);
-
-  bool tryPackRoI(std::pair<float, float> resizedWH,
-                  std::vector<FreeRects>& freeRectsList,
-                  bool firstMatch, RoI* pRoI = nullptr,
-                  std::map<int, std::set<RoI*>>* packedRoIsMap = nullptr) const;
+  static void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
+                    const WHs& boxes, const Indices& indices);
 
  private:
-  std::tuple<Frame*, std::vector<Frame*>, std::vector<RoI*>> preparePack(
-      MultiStream& selectedFrames, int fullFrameStreamIndex, RoIResizer* mRoIResizer) const;
+  static void packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
+                      int w, int h, int pack_i, int pack_j);
 
-  static void splitFrames(MultiStream& selectedFrames, Stream& droppedFrames,
-                          int numPackableFrames);
+  static bool canFit(int w, int h, const IntRect& freeRect);
 
-  static Frame* getFullFrameTarget(const MultiStream& selectedFrames,
-                                   int fullFrameStreamIndex);
-
-  static std::vector<Frame*> addProbeRoIs(MultiStream& frames, const Frame* fullFrameTarget,
-                                          RoIResizer* mRoIResizer);
-
-  static std::vector<RoI*> collectRoIs(MultiStream& frames, const Frame* fullFrameTarget);
-
-  static void prioritizeRoIs(MultiStream& frames, const Frame* fullFrameTarget);
-
-  static bool canFit(std::pair<float, float> wh, const Rect& rect);
-
-  static std::pair<Rect, Rect> splitFreeRect(std::pair<float, float> wh, const Rect& rect);
-
-  static const float HIGHEST_PRIORITY;
-  static const float HIGHER_PRIORITY;
-  static const float HIGH_PRIORITY;
-
-  PatchMixerConfig mConfig;
+  static std::pair<IntRect, IntRect> splitFreeRect(int w, int h, const IntRect& freeRect);
 };
 
 } // namespace rm
