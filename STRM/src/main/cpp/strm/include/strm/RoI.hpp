@@ -164,8 +164,10 @@ class RoI {
   static const int INVALID_CONF;
 
   Frame* frame;
-  const Rect origLoc;
-  const Rect paddedLoc;
+  Rect origLoc;
+  Rect paddedLoc;
+  const float roiPadding;
+
   Type type;
   Origin origin;
   int label;
@@ -208,6 +210,10 @@ class RoI {
       const float confidence,
       float roiPadding,
       bool isProbingRoI);
+
+  void setOrigLoc(const Rect& origLoc);
+
+  void eatPD(const Rect& PDRect);
 
   static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1);
 

@@ -18,6 +18,7 @@ struct RoIExtractorConfig {
   float EXTRACTION_RESIZE_WIDTH = 960;
   float EXTRACTION_RESIZE_HEIGHT = 540;
   float MIN_ROI_AREA = 0;
+  bool EAT_PD = true;
   float ROI_PADDING = 10;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
   float PD_FILTER_THRESHOLD = 0.5;

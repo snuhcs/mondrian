@@ -78,7 +78,7 @@ class Frame {
 
   void resetProbeRoIs();
 
-  void filterPDRoIs(float threshold);
+  void filterPDRoIs(float threshold, bool eatPD);
 
   bool isReadyToMarry(int mixedFrameIndex) const;
 

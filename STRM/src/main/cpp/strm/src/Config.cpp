@@ -23,6 +23,9 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["min_roi_area"].isNull()) {
     config.MIN_ROI_AREA = json["min_roi_area"].asFloat();
   }
+  if (!json["eat_pd"].isNull()) {
+    config.EAT_PD = json["eat_pd"].asBool();
+  }
   if (!json["roi_padding"].isNull()) {
     config.ROI_PADDING = json["roi_padding"].asFloat();
   }

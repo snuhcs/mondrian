@@ -217,7 +217,7 @@ void RoIExtractor::work(int extractorId) {
 }
 
 void RoIExtractor::postprocessOF(Frame* currFrame) {
-  currFrame->filterPDRoIs(mConfig.PD_FILTER_THRESHOLD);
+  currFrame->filterPDRoIs(mConfig.PD_FILTER_THRESHOLD, mConfig.EAT_PD);
   currFrame->resizeStartTime = NowMicros();
   currFrame->resizeRoIs(mRoIResizer);
   currFrame->resizeEndTime = NowMicros();
