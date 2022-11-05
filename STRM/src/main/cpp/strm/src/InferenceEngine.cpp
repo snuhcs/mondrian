@@ -81,7 +81,6 @@ void InferenceEngine::enqueueResults(int key, const Result& boxTimes) {
 
 std::map<Device, std::map<int, time_us>> InferenceEngine::getInferenceTimeTable() const {
   std::map<Device, std::map<int, time_us>> inferenceTimeTable;
-  // TODO: fill inferenceTimeTable for each device, each input size (with time unit us)
   for (const auto&[device, worker] : workers) {
     inferenceTimeTable[device] = worker->getInferenceTimes();
   }

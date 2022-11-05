@@ -3,9 +3,8 @@
 
 namespace rm {
 
-float MTA(float width, float height, float maxEdgeLength, float type, float origin, float xyRatio,
-          float avgShiftX, float avgShiftY, float avgShift, float stdShiftX, float stdShiftY,
-          float stdShift, float avgErr, float ncc);
+int MTA(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float shiftStd,
+        float shiftNcc, float avgErr, float confidence);
 
 } // namespace rm
 

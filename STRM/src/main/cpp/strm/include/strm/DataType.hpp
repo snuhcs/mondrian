@@ -238,12 +238,7 @@ struct RoI {
     PD = 2,
   };
 
-  enum ScaleLevel {
-    scale_NULL = -1,
-    scale_LOW = 0,
-    scale_MID = 1,
-    scale_HIGH = 2,
-  };
+  static const int INVALID_CONF;
 
   struct OFFeatures {
 //    const std::vector<std::pair<float, float>> shifts;
@@ -252,7 +247,7 @@ struct RoI {
     std::pair<float, float> shiftAvg;
     std::pair<float, float> shiftStd;
     float shiftNcc;
-    float errAvg;
+    float avgErr;
 
     OFFeatures(const std::vector<std::pair<float, float>>& shifts,
                const std::vector<float>& errs,
@@ -263,7 +258,7 @@ struct RoI {
         shiftAvg = {0, 0};
         shiftStd = {0, 0};
         shiftNcc = 100;
-        errAvg = 100;
+        avgErr = 100;
         return;
       }
       auto[validShifts, validErrs] = filterShiftsWithStatus(
@@ -273,7 +268,7 @@ struct RoI {
       shiftAvg = getShiftAvg(filteredShifts);
       shiftStd = getShiftStd(filteredShifts);
       shiftNcc = getNCC(filteredShifts);
-      errAvg = getAvgErr(filteredErrs);
+      avgErr = getAvgErr(filteredErrs);
     }
 
     static std::pair<std::vector<std::pair<float, float>>, std::vector<float>>
@@ -307,7 +302,7 @@ struct RoI {
       for (int i = 0; i < shifts.size(); i++) {
         auto&[x, y] = shifts[i];
         if (x * x + y * y >= q1_distance) {
-          filteredShifts.emplace_back(x, y);
+          filteredShifts.push_back({x, y});
           filteredErrs.push_back(errs[i]);
         }
       }
@@ -383,6 +378,7 @@ struct RoI {
     Origin origin;
     float xyRatio;
     OFFeatures ofFeatures;
+    float confidence;
   };
 
   Frame* frame;
@@ -406,7 +402,7 @@ struct RoI {
 
  private:
   float targetScale;
-  ScaleLevel scaleLevel;
+  int scaleLevel;
 
  public:
   std::pair<float, float> packedLocation;
@@ -427,57 +423,11 @@ struct RoI {
       const Origin origin,
       const int label,
       const OFFeatures ofFeatures,
+      const float confidence,
       float roiPadding,
-      bool isProbingRoI)
-      : prevRoI(prevRoI), id(id), frame(frame), origLoc(origLoc), paddedLoc(
-      std::max(0.0f, origLoc.left - roiPadding),
-      std::max(0.0f, origLoc.top - roiPadding),
-      std::min(float(frame->mat.cols), origLoc.right + roiPadding),
-      std::min(float(frame->mat.rows), origLoc.bottom + roiPadding)),
-        type(type), origin(origin), label(label), features{
-          paddedLoc.width(),
-          paddedLoc.height(),
-          label,
-          type,
-          origin,
-          (float) origLoc.width() / (float) origLoc.height(),
-          ofFeatures
-      }, maxEdgeLength(std::max(paddedLoc.width(), paddedLoc.height())),
-        targetScale(1.0f), scaleLevel(scale_NULL), packedLocation(NOT_PACKED), isMatchTried(false),
-        nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
-        packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1),
-        isProbingRoI(isProbingRoI), priority(-1) {
-    if (prevRoI != nullptr) {
-      prevRoI->nextRoI = this;
-    }
-  };
+      bool isProbingRoI);
 
-  static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
-    assert(pRoI0->frame == pRoI1->frame);
-    float newLeft = std::min(pRoI0->paddedLoc.left, pRoI1->paddedLoc.left);
-    float newTop = std::min(pRoI0->paddedLoc.top, pRoI1->paddedLoc.top);
-    float newRight = std::max(pRoI0->paddedLoc.right, pRoI1->paddedLoc.right);
-    float newBottom = std::max(pRoI0->paddedLoc.bottom, pRoI1->paddedLoc.bottom);
-    RoI::Type roiType = pRoI0->type != RoI::Type::PD || pRoI1->type != RoI::Type::PD
-                        ? RoI::Type::OF
-                        : RoI::Type::PD;
-    int roiLabel;
-    if (pRoI0->label == pRoI1->label) {
-      roiLabel = pRoI0->label;
-    } else if (pRoI0->label != -1 && pRoI1->label == -1) {
-      roiLabel = pRoI0->label;
-    } else if (pRoI0->label == -1 && pRoI1->label != -1) {
-      roiLabel = pRoI1->label;
-    } else {
-      roiLabel = -1;
-    }
-    std::unique_ptr<RoI> mergedRoI(
-        new RoI(nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-                roiType, origin_Null, roiLabel, OFFeatures({}, {}, {}), 0, false));
-    mergedRoI->setTargetScale(pRoI0->targetScale > pRoI1->targetScale ?
-                              pRoI0->targetScale : pRoI1->targetScale, scale_NULL);
-    return std::move(mergedRoI);
-  }
+  static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1);
 
   static std::pair<idType, idType> getNewIds(unsigned long num) {
     idType minId = lastId.fetch_add(num);
@@ -518,17 +468,11 @@ struct RoI {
     return targetScale;
   }
 
-  ScaleLevel getScaleLevel() const {
+  int getScaleLevel() const {
     return scaleLevel;
   }
 
-  void setTargetScale(float newTargetScale, ScaleLevel newScaleLevel) {
-    // assert(newTargetScale <= 1); // TODO
-    float minEdgeLength = std::min(paddedLoc.width(), paddedLoc.height());
-    // compare with 1/minEdgeLength to prevent shorter edge being even shorter than 1 after downscaling
-    targetScale = std::max(1 / minEdgeLength, newTargetScale);
-    scaleLevel = newScaleLevel;
-  }
+  void setTargetScale(float newTargetScale, int newScaleLevel);
 
   std::pair<float, float> getResizedWidthHeight() const {
     return {paddedLoc.width() * targetScale,

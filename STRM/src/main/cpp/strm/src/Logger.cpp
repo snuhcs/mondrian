@@ -160,6 +160,7 @@ void Logger::logRoIHeader() {
       << "width" << delim
       << "height" << delim
       << "xyRatio" << delim
+      << "confidence" << delim
 
       // OF features
       << "shiftAvgX" << delim
@@ -167,7 +168,7 @@ void Logger::logRoIHeader() {
       << "shiftStdX" << delim
       << "shiftStdY" << delim
       << "shiftNcc" << delim
-      << "errAvg" << delim
+      << "avgErr" << delim
 
       << "numProbingRoIs" << delim
       << "priority" << delim
@@ -178,7 +179,8 @@ void Logger::logRoIHeader() {
       << "packedAbsMixedFrameIndex" << delim
 
       << "maxEdgeLength" << delim
-      << "targetScale" << '\n';
+      << "targetScale" << delim
+      << "scaleLevel" << '\n';
   logFile.flush();
 }
 
@@ -212,6 +214,7 @@ void Logger::logRoI(const RoI* roi) {
       << roi->features.width << delim
       << roi->features.height << delim
       << roi->features.xyRatio << delim
+      << roi->features.confidence << delim
 
       // OF features
       << roi->features.ofFeatures.shiftAvg.first << delim
@@ -219,7 +222,7 @@ void Logger::logRoI(const RoI* roi) {
       << roi->features.ofFeatures.shiftStd.first << delim
       << roi->features.ofFeatures.shiftStd.second << delim
       << roi->features.ofFeatures.shiftNcc << delim
-      << roi->features.ofFeatures.errAvg << delim
+      << roi->features.ofFeatures.avgErr << delim
 
       << roi->roisForProbing.size() << delim
       << roi->parentRoI->priority << delim
@@ -230,7 +233,8 @@ void Logger::logRoI(const RoI* roi) {
       << roi->parentRoI->packedAbsMixedFrameIndex << delim
 
       << roi->maxEdgeLength << delim
-      << roi->getTargetScale() << '\n';
+      << roi->getTargetScale() << delim
+      << roi->getScaleLevel() << '\n';
   logFile.flush();
 }
 

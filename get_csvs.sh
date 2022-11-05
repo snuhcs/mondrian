@@ -7,7 +7,7 @@ adb shell run-as hcs.offloading.strm cat /data/data/hcs.offloading.strm/exec.csv
 r2=$?
 adb shell run-as hcs.offloading.strm cat /data/data/hcs.offloading.strm/boxes.txt > csvs/boxes.txt
 r3=$?
-if [ $r1 -eq 0 ] || [ $r2 -eq 0 ] || [ $r3 -eq 0] 
+if [ $r1 -eq 0 ] || [ $r2 -eq 0 ] || [ $r3 -eq 0]
 then
     mkdir csvs/$dirname
     mv csvs/roi.csv csvs/$dirname/roi.csv

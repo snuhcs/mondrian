@@ -31,7 +31,7 @@ RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, bool run, bool allo
     }
     mThreads.reserve(config.NUM_WORKERS);
     for (int extractorId = 0; extractorId < config.NUM_WORKERS; extractorId++) {
-      mThreads.emplace_back([this, extractorId]() { work(extractorId); });
+      mThreads.push_back(std::thread([this, extractorId]() { work(extractorId); }));
     }
   }
 }
@@ -309,7 +309,7 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
   std::vector<Rect> boundingRects;
   boundingRects.reserve(boundingBoxes.size());
   for (const auto& bbx : boundingBoxes) {
-    boundingRects.emplace_back(bbx.location);
+    boundingRects.push_back(Rect(bbx.location));
   }
 
   if (!boundingBoxes.empty()) {
@@ -327,9 +327,9 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       float newRight = std::min(float(width), loc.right + x);
       float newBottom = std::min(float(height), loc.bottom + y);
       if (newLeft < newRight && newTop < newBottom) {
-        outChildRoIs.emplace_back(
-            new RoI(box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-                    RoI::Type::OF, box.origin, box.label, of, mConfig.ROI_PADDING, false));
+        outChildRoIs.push_back(std::make_unique<RoI>(
+            box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
+            RoI::Type::OF, box.origin, box.label, of, box.confidence, mConfig.ROI_PADDING, false));
       }
     }
   }
@@ -368,8 +368,9 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
     }
     if (points.empty()) {
       startEndIndices.push_back(startEndIndices.back() + 1);
-      inputPoints.emplace_back(((float) bbx.left + (float) bbx.width() / 2) * xRatio,
-                               ((float) bbx.top + (float) bbx.height() / 2) * yRatio);
+      inputPoints.push_back(cv::Point2f(
+          ((float) bbx.left + (float) bbx.width() / 2) * xRatio,
+          ((float) bbx.top + (float) bbx.height() / 2) * yRatio));
     } else {
       startEndIndices.push_back(startEndIndices.back() + int(points.size()));
       inputPoints.insert(inputPoints.end(), points.begin(), points.end());
@@ -396,13 +397,12 @@ std::vector<RoI::OFFeatures> RoIExtractor::opticalFlowTracking(
     for (int j = startIndex; j < endIndex; j++) {
       float x = outputPoints[j].x - inputPoints[j].x;
       float y = outputPoints[j].y - inputPoints[j].y;
-      boxShifts.emplace_back(
-          x * (float) currFrame->width / (float) targetSize.width,
-          y * (float) currFrame->height / (float) targetSize.height);
+      boxShifts.push_back({x * (float) currFrame->width / (float) targetSize.width,
+                           y * (float) currFrame->height / (float) targetSize.height});
       boxErrs.push_back(errs[j]);
       boxStatusVec.push_back(status[j]);
     }
-    ofFeatures.emplace_back(boxShifts, boxErrs, boxStatusVec);
+    ofFeatures.push_back(RoI::OFFeatures(boxShifts, boxErrs, boxStatusVec));
   }
   return ofFeatures;
 }
@@ -429,16 +429,16 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
     cv::approxPolyDP(contour, approxCurve, approxDistance, true);
     cv::Rect2f box = cv::boundingRect(approxCurve);
     if (box.area() >= mixRoIArea) {
-      boxes.emplace_back(
+      boxes.push_back(Rect(
           box.x * float(currFrame->mat.cols) / float(targetSize.width),
           box.y * float(currFrame->mat.rows) / float(targetSize.height),
           (box.x + box.width) * float(currFrame->mat.cols) / float(targetSize.width),
-          (box.y + box.height) * float(currFrame->mat.rows) / float(targetSize.height));
+          (box.y + box.height) * float(currFrame->mat.rows) / float(targetSize.height)));
     }
   }
 
   for (const Rect& box : boxes) {
-    outChildRoIs.emplace_back(new RoI(
+    outChildRoIs.push_back(std::make_unique<RoI>(
         nullptr,
         UNASSIGNED_ID,
         currFrame,
@@ -447,6 +447,7 @@ void RoIExtractor::getPixelDiffRoIs(const Frame* prevFrame, Frame* currFrame,
         origin_PD,
         -1,
         RoI::OFFeatures({}, {}, {}),
+        RoI::INVALID_CONF,
         mConfig.ROI_PADDING,
         false));
   }
