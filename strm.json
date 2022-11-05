@@ -52,6 +52,8 @@
         "use_tiny": false,
         "conf_threshold": 0.1,
         "iou_threshold": 0.5,
+        "profile_warmups": 5,
+        "profile_runs": 5,
         "input_sizes": [
             832
         ],
