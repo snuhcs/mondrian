@@ -3,6 +3,7 @@
 #include <map>
 #include <set>
 
+#include "opencv2/opencv.hpp"
 #include "tensorflow/lite/model_builder.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/delegates/gpu/delegate.h"

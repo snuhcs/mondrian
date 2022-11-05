@@ -3,23 +3,23 @@
 
 #include <jni.h>
 
-#include <fstream>
-#include <map>
-#include <set>
-#include <string>
-#include <vector>
+#include <thread>
+
+#include "opencv2/core/mat.hpp"
 
 #include "strm/Config.hpp"
-#include "strm/DataType.hpp"
-#include "strm/InferenceEngine.hpp"
-#include "strm/RoIResizer.hpp"
-#include "strm/RoIExtractor.hpp"
-#include "strm/PatchMixer.hpp"
-#include "strm/PatchReconstructor.hpp"
-#include "strm/Utils.hpp"
-#include "strm/Logger.hpp"
+#include "strm/Frame.hpp"
 
 namespace rm {
+
+class FrameBuffer;
+class InferenceEngine;
+class Logger;
+class MixedFrame;
+class RoIExtractor;
+class RoIResizer;
+class PatchMixer;
+class PatchReconstructor;
 
 using FrameResult = std::pair<time_us, std::vector<BoundingBox>>;
 
@@ -54,15 +54,6 @@ class SpatioTemporalRoIMixer {
   void releaseFrames(const MultiStream& frames);
 
   void log(const Frame* frame);
-
-  std::vector<InferenceInfo> getInferencePlan(
-      const std::map<Device, std::pair<time_us, time_us>>& startEndTime,
-      const std::map<Device, std::map<int, time_us>>& inferenceTimes, bool roiWiseInference);
-
-  static double weigh(const std::vector<time_us>& layout, std::map<long long, double> profile);
-
-  static std::vector<time_us> search(const std::vector<long long>& bars, long long total,
-                                     std::map<long long, double>& profile);
 
   static const int FULL_KEY_OFFSET;
 

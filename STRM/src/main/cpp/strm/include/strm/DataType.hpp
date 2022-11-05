@@ -1,18 +1,6 @@
 #ifndef DATA_TYPE_HPP_
 #define DATA_TYPE_HPP_
 
-#include <atomic>
-#include <chrono>
-#include <cstdint>
-#include <fstream>
-#include <map>
-#include <set>
-#include <string>
-#include <vector>
-
-#include "opencv2/core/mat.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-
 #include "strm/Time.hpp"
 
 namespace rm {
@@ -22,11 +10,19 @@ typedef int idType;
 extern const idType UNASSIGNED_ID;
 extern const idType MERGED_ROI_ID;
 
-struct RoI;
-
 enum Device {
   GPU,
   DSP,
+};
+
+enum Origin {
+  origin_Null = 0,  // null value for initialization
+  origin_FF = 1,    // (Box) matched Box from full frame
+  origin_BB = 2,    // (RoI, Box) OF RoI from bounding box, Box from those RoIs
+  origin_PD = 3,    // (RoI, Box) PD RoI, OF RoI originated from PD RoI, Box from those RoIs
+  origin_IP = 4,    // (Box) interpolated Box
+  origin_NewFF = 5, // (Box) unmatched Box from full frame
+  origin_NewMF = 6, // (Box) unmatched Box from mixed frame
 };
 
 struct Rect {
@@ -82,15 +78,7 @@ struct Rect {
   }
 };
 
-enum Origin {
-  origin_Null = 0,  // null value for initialization
-  origin_FF = 1,    // (Box) matched Box from full frame
-  origin_BB = 2,    // (RoI, Box) OF RoI from bounding box, Box from those RoIs
-  origin_PD = 3,    // (RoI, Box) PD RoI, OF RoI originated from PD RoI, Box from those RoIs
-  origin_IP = 4,    // (Box) interpolated Box
-  origin_NewFF = 5, // (Box) unmatched Box from full frame
-  origin_NewMF = 6, // (Box) unmatched Box from mixed frame
-};
+class RoI;
 
 struct BoundingBox {
   Rect location;
@@ -106,90 +94,6 @@ struct BoundingBox {
         srcRoI(nullptr), choiceOfBox(UNASSIGNED_ID) {}
 };
 
-class RoIResizer;
-
-struct Frame {
-  const int vid;
-  const int frameIndex;
-  cv::Mat mat;
-  Frame* prevFrame;
-  Frame* nextFrame;
-  cv::Mat preProcessedMat;
-  int PDExtractorID;
-  int OFExtractorID;
-
-  const float width;
-  const float height;
-
-  bool useInferenceResultForOF;
-
-  bool isBoxesReady;
-  bool isRoIsReady;
-  std::vector<std::unique_ptr<BoundingBox>> boxes;
-  std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
-  std::vector<std::unique_ptr<RoI>> probingRoIs;
-
-  bool extractOFAgain;
-  std::vector<std::unique_ptr<RoI>> childRoIs; // => box
-  std::vector<std::unique_ptr<RoI>> parentRoIs;
-
-  bool isFullFrameTarget;
-  int inferenceFrameSize;
-  Device inferenceDevice;
-
-  const time_us enqueueTime;
-  time_us fullInferenceStartTime = 0;
-  time_us fullInferenceEndTime = 0;
-  time_us opticalFlowRoIProcessStartTime = 0;
-  time_us opticalFlowRoIProcessEndTime = 0;
-  time_us pixelDiffRoIProcessStartTime = 0;
-  time_us pixelDiffRoIProcessEndTime = 0;
-  time_us resizeStartTime = 0;
-  time_us resizeEndTime = 0;
-  time_us mergeRoIStartTime = 0;
-  time_us mergeRoIEndTime = 0;
-  time_us mixingStartTime = 0;
-  time_us mixingEndTime = 0;;
-  time_us mixedInferenceStartTime = 0;
-  time_us mixedInferenceEndTime = 0;
-  time_us reconstructStartTime = 0;
-  time_us reconstructEndTime = 0;
-  time_us endTime = 0;
-
-  Frame(const int vid, const int frameIndex, const cv::Mat mat,
-        Frame* prevFrame, const time_us& enqueueTime)
-      : vid(vid), frameIndex(frameIndex), mat(mat),
-        width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
-        extractOFAgain(false), enqueueTime(enqueueTime), isFullFrameTarget(false),
-        isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
-        inferenceFrameSize(0) {}
-
-  void resizeRoIs(RoIResizer* roiResizer);
-
-  void resetParentRoIs();
-
-  void mergeRoIs(float mergeThreshold, float maxSize);
-
-  void addProbeRoIs(RoIResizer* mRoIResizer);
-
-  void resetProbeRoIs();
-
-  void filterPDRoIs(float threshold);
-
-  bool isReadyToMarry(int mixedFrameIndex) const;
-
-  bool readyForOFExtraction() const;
-};
-
-struct FrameComp {
-  bool operator()(const Frame* lhs, const Frame* rhs) const {
-    if (lhs->frameIndex == rhs->frameIndex) {
-      return lhs->vid < rhs->vid;
-    }
-    return lhs->frameIndex < rhs->frameIndex;
-  }
-};
-
 struct InferenceInfo {
   Device device;
   int size;
@@ -203,336 +107,7 @@ struct FreeRects {
   std::vector<Rect> rects;
 };
 
-using Stream = std::set<Frame*, FrameComp>;
-using MultiStream = std::map<int, Stream>;
-
-std::set<Frame*> filterLastFrames(const MultiStream& frames);
-
-std::string toString(const MultiStream& frames);
-
 std::string toString(const std::vector<InferenceInfo>& inferencePlan);
-
-class Logger;
-
-class FrameBuffer {
- public:
-  FrameBuffer(int vid, int capacity, int startIndex);
-
-  Frame* enqueue(const cv::Mat& mat);
-
-  void freeImage(const std::vector<int>& frameIndices);
-
- private:
-  const int vid;
-  const int capacity;
-
-  int count;
-  std::mutex mtx;
-  std::condition_variable cv;
-  std::vector<std::unique_ptr<Frame>> frames;
-};
-
-struct RoI {
-  enum Type {
-    OF = 1,
-    PD = 2,
-  };
-
-  static const int INVALID_CONF;
-
-  struct OFFeatures {
-//    const std::vector<std::pair<float, float>> shifts;
-//    const std::vector<float> errs;
-
-    std::pair<float, float> shiftAvg;
-    std::pair<float, float> shiftStd;
-    float shiftNcc;
-    float avgErr;
-
-    OFFeatures(const std::vector<std::pair<float, float>>& shifts,
-               const std::vector<float>& errs,
-               const std::vector<uchar>& statusVec) {
-      assert(shifts.size() == errs.size() && errs.size() == statusVec.size());
-      if (std::all_of(statusVec.begin(), statusVec.end(),
-                      [](const uchar& status) { return status == 0; })) {
-        shiftAvg = {0, 0};
-        shiftStd = {0, 0};
-        shiftNcc = 100;
-        avgErr = 100;
-        return;
-      }
-      auto[validShifts, validErrs] = filterShiftsWithStatus(
-          shifts, errs, statusVec);
-      auto[filteredShifts, filteredErrs] = filterOutlierShifts(validShifts, validErrs);
-      assert(!filteredShifts.empty());
-      shiftAvg = getShiftAvg(filteredShifts);
-      shiftStd = getShiftStd(filteredShifts);
-      shiftNcc = getNCC(filteredShifts);
-      avgErr = getAvgErr(filteredErrs);
-    }
-
-    static std::pair<std::vector<std::pair<float, float>>, std::vector<float>>
-    filterShiftsWithStatus(const std::vector<std::pair<float, float>>& shifts,
-                           const std::vector<float>& errs,
-                           const std::vector<uchar>& statusVec) {
-      std::vector<std::pair<float, float>> filteredShifts;
-      std::vector<float> filteredErrs;
-      for (int i = 0; i < shifts.size(); i++) {
-        assert(statusVec[i] == 0 || statusVec[i] == 1);
-        if (statusVec[i] == 1) {
-          filteredShifts.push_back(shifts[i]);
-          filteredErrs.push_back(errs[i]);
-        }
-      }
-      return {filteredShifts, filteredErrs};
-    }
-
-    static std::pair<std::vector<std::pair<float, float>>, std::vector<float>>
-    filterOutlierShifts(const std::vector<std::pair<float, float>>& shifts,
-                        const std::vector<float>& errs) {
-      assert(!shifts.empty());
-      std::vector<float> distances;
-      for (const auto&[x, y]: shifts) {
-        distances.push_back(x * x + y * y);
-      }
-      std::sort(distances.begin(), distances.end());
-      int q1_distance = distances[distances.size() / 4];
-      std::vector<std::pair<float, float>> filteredShifts;
-      std::vector<float> filteredErrs;
-      for (int i = 0; i < shifts.size(); i++) {
-        auto&[x, y] = shifts[i];
-        if (x * x + y * y >= q1_distance) {
-          filteredShifts.push_back({x, y});
-          filteredErrs.push_back(errs[i]);
-        }
-      }
-      return {filteredShifts, filteredErrs};
-    }
-
-    static std::pair<float, float> getShiftAvg(const std::vector<std::pair<float, float>>& shifts) {
-      if (shifts.empty()) {
-        return {0, 0};
-      }
-      std::pair<float, float> shift = {0, 0};
-      for (const auto&[x, y] : shifts) {
-        shift.first += x;
-        shift.second += y;
-      }
-      shift.first /= shifts.size();
-      shift.second /= shifts.size();
-      return shift;
-    }
-
-    static std::pair<float, float> getShiftStd(const std::vector<std::pair<float, float>>& shifts) {
-      if (shifts.empty()) {
-        return {0, 0};
-      }
-      std::pair<float, float> var = {0, 0};
-      auto[avgX, avgY] = getShiftAvg(shifts);
-      for (const auto&[x, y] : shifts) {
-        var.first += (x - avgX) * (x - avgX);
-        var.second += (y - avgY) * (y - avgY);
-      }
-      var.first /= shifts.size();
-      var.second /= shifts.size();
-      return {std::sqrt(var.first), std::sqrt(var.second)};
-    }
-
-    static float getAvgErr(const std::vector<float>& errs) {
-      if (errs.empty()) {
-        return 0;
-      }
-      float err = 0;
-      for (const float& e : errs) {
-        err += e;
-      }
-      return err /= errs.size();
-    }
-
-    static float getNCC(const std::vector<std::pair<float, float>>& shifts) {
-      if (shifts.size() <= 1) {
-        return 0;
-      }
-      float ncc = 0;
-      for (int i = 0; i < shifts.size(); i++) {
-        for (int j = i + 1; j < shifts.size(); j++) {
-          auto&[Xi, Yi] = shifts[i];
-          auto&[Xj, Yj] = shifts[j];
-          float sizeI = Xi * Xi + Yi * Yi;
-          float sizeJ = Xj * Xj + Yj * Yj;
-          if (sizeI == 0 || sizeJ == 0) {
-            continue;
-          }
-          ncc += (Xi * Xj + Yi * Yj) / std::sqrt(sizeI * sizeJ);
-        }
-      }
-      return ncc / (shifts.size() * (shifts.size() - 1) / 2);
-    }
-  };
-
-  struct Features {
-    float width;
-    float height;
-    int label;
-    Type type;
-    Origin origin;
-    float xyRatio;
-    OFFeatures ofFeatures;
-    float confidence;
-  };
-
-  Frame* frame;
-  const Rect origLoc;
-  const Rect paddedLoc;
-  Type type;
-  Origin origin;
-  int label;
-  Features features;
-  std::vector<RoI*> roisForProbing;
-  float priority;
-
-  inline static std::atomic<idType> lastId = 0;
-  idType id;
-  RoI* prevRoI; // only valid with childRoIs
-  RoI* nextRoI; // only valid with childRoIs
-  std::vector<RoI*> childRoIs;
-  RoI* parentRoI;
-
-  float maxEdgeLength;
-
- private:
-  float targetScale;
-  int scaleLevel;
-
- public:
-  std::pair<float, float> packedLocation;
-  static const std::pair<float, float> NOT_PACKED;
-
-  int packedMixedFrameIndex;
-  int packedAbsMixedFrameIndex;
-  bool isProbingRoI;
-  bool isMatchTried; // only valid within parentRoIs
-  BoundingBox* box;
-  BoundingBox* probingBox;
-
-  RoI(RoI* prevRoI,
-      const idType id,
-      Frame* frame,
-      const Rect origLoc,
-      const Type type,
-      const Origin origin,
-      const int label,
-      const OFFeatures ofFeatures,
-      const float confidence,
-      float roiPadding,
-      bool isProbingRoI);
-
-  static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1);
-
-  static std::pair<idType, idType> getNewIds(unsigned long num) {
-    idType minId = lastId.fetch_add(num);
-    idType maxId = minId + num;
-    // [minId, maxId)
-    return std::pair<idType, idType>(minId, maxId);
-  }
-
-  bool isProbingReady() const {
-    if (roisForProbing.empty()) {
-      return false;
-    }
-    bool ready = true;
-    for (auto& pRoI : roisForProbing) {
-      ready &= pRoI->isMatchTried;
-    }
-    return ready;
-  }
-
-  bool isPacked() const {
-    return packedLocation != NOT_PACKED;
-  }
-
-  bool isParent() const {
-    return childRoIs.size() > 1;
-  }
-
-  float getPaddedArea() const {
-    return paddedLoc.area();
-  }
-
-  float getResizedArea() const {
-    const std::pair<float, float> resizedWH = getResizedWidthHeight();
-    return resizedWH.first * resizedWH.second;
-  }
-
-  float getTargetScale() const {
-    return targetScale;
-  }
-
-  int getScaleLevel() const {
-    return scaleLevel;
-  }
-
-  void setTargetScale(float newTargetScale, int newScaleLevel);
-
-  std::pair<float, float> getResizedWidthHeight() const {
-    return {paddedLoc.width() * targetScale,
-            paddedLoc.height() * targetScale};
-  }
-
-  cv::Mat getOrigMat() const {
-    int left = std::max(0, std::min(frame->mat.cols, int(origLoc.left)));
-    int top = std::max(0, std::min(frame->mat.rows, int(origLoc.top)));
-    int width = std::max(0, std::min(frame->mat.cols - left, int(origLoc.width())));
-    int height = std::max(0, std::min(frame->mat.rows - top, int(origLoc.height())));
-    return frame->mat.operator()(cv::Rect(left, top, width, height));
-  }
-
-  cv::Mat getPaddedMat() const {
-    int left = std::max(0, std::min(frame->mat.cols, int(paddedLoc.left)));
-    int top = std::max(0, std::min(frame->mat.rows, int(paddedLoc.top)));
-    int width = std::max(0, std::min(frame->mat.cols - left, int(paddedLoc.width())));
-    int height = std::max(0, std::min(frame->mat.rows - top, int(paddedLoc.height())));
-    return frame->mat.operator()(cv::Rect(left, top, width, height));
-  }
-
-  cv::Mat getResizedMat() const {
-    auto[w, h] = getResizedWidthHeight();
-    cv::Mat resizedMat;
-    cv::resize(getPaddedMat(), resizedMat, cv::Size(std::round(w), std::round(h)));
-    return resizedMat;
-  }
-};
-
-struct MixedFrame {
-  static int numMixedFrames;
-  const Device device;
-  const int mixedFrameIndex;
-  const int mixedFrameSize;
-  cv::Mat packedMat;
-  std::set<RoI*> packedRoIs;
-
-  MixedFrame(Device device, std::set<RoI*> packedRoIs, int mixedFrameSize)
-      : device(device), packedRoIs(packedRoIs), mixedFrameIndex(numMixedFrames++),
-        mixedFrameSize(mixedFrameSize) {
-    packedMat = cv::Mat::zeros(mixedFrameSize, mixedFrameSize, CV_8UC4);
-    for (RoI* roi : packedRoIs) {
-      assert(roi->isPacked());
-      cv::Mat resizedMat = roi->getResizedMat();
-      resizedMat.copyTo(
-          packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
-                             resizedMat.cols, resizedMat.rows)));
-      roi->packedAbsMixedFrameIndex = mixedFrameIndex;
-    }
-  }
-
-  Stream getPackedFrames() {
-    Stream packedFrames;
-    for (RoI* roi : packedRoIs) {
-      packedFrames.insert(roi->frame);
-    }
-    return packedFrames;
-  }
-};
 
 } // namespace rm
 

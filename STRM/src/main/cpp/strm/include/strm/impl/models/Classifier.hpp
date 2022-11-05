@@ -1,7 +1,10 @@
 #ifndef IMPL_MODELS_CLASSIFIER_HPP_
 #define IMPL_MODELS_CLASSIFIER_HPP_
 
+#include "opencv2/core/mat.hpp"
+
 #include "strm/DataType.hpp"
+#include "strm/Time.hpp"
 
 namespace rm {
 

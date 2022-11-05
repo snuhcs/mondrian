@@ -37,8 +37,6 @@ class RoIExtractor {
 
   void resetPack();
 
-  static void resetOFRoIExtraction(Frame* frame);
-
   void processPD(Frame* currFrame);
 
   void processOF(Frame* currFrame);
@@ -48,7 +46,7 @@ class RoIExtractor {
                           const cv::Size& targetSize,
                           std::vector<std::unique_ptr<RoI>>& outChildRoIs) const;
 
-  static std::vector<RoI::OFFeatures> opticalFlowTracking(
+  static std::vector<OFFeatures> opticalFlowTracking(
       const Frame* prevFrame, const Frame* currFrame, const std::vector<Rect>& boundingBoxes,
       const cv::Size& targetSize);
 

@@ -6,16 +6,15 @@
 #include <set>
 #include <vector>
 
-#include <opencv2/core/mat.hpp>
+#include "opencv2/core/mat.hpp"
 
 #include "strm/Config.hpp"
-#include "strm/DataType.hpp"
+#include "strm/Frame.hpp"
 #include "strm/Log.hpp"
-#include "strm/InferenceEngine.hpp"
-#include "strm/PatchReconstructor.hpp"
 
 namespace rm {
 
+class MixedFrame;
 class RoIExtractor;
 
 class PatchMixer {

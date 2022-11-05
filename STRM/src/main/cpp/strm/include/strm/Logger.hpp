@@ -3,10 +3,13 @@
 
 #include <fstream>
 
-#include "strm/DataType.hpp"
 #include "strm/Time.hpp"
 
 namespace rm {
+
+class BoundingBox;
+class Frame;
+class RoI;
 
 class Logger {
  public:

@@ -5,12 +5,14 @@
 #include <map>
 
 #include "strm/Config.hpp"
-#include "strm/DataType.hpp"
+#include "strm/RoI.hpp"
 #include "strm/tree/VIRAT.hpp"
 #include "strm/tree/MTA.hpp"
 #include "strm/tree/YouTube.hpp"
 
 namespace rm {
+
+class RoI;
 
 using Predictor = std::function<int(
     float, float, float, float, float, float, float, float)>;
@@ -21,7 +23,7 @@ class RoIResizer {
 
   RoIResizer(const RoIResizerConfig& config);
 
-  std::pair<float, int> getTargetScale(const idType id, const RoI::Features& features);
+  std::pair<float, int> getTargetScale(const idType id, const Features& features);
 
   void updateTable(RoI* roi);
 
@@ -61,9 +63,9 @@ class RoIResizer {
     std::vector<int> data_;
   };
 
-  int getMaxVotedLevel(const idType id, const RoI::Features& features);
+  int getMaxVotedLevel(const idType id, const Features& features);
 
-  int predictLevelWithFeatures(const RoI::Features& features) const;
+  int predictLevelWithFeatures(const Features& features) const;
 
   bool isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const;
 

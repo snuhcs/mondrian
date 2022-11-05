@@ -29,10 +29,15 @@ add_library(
         SHARED
         strm/src/Config.cpp
         strm/src/DataType.cpp
+        strm/src/Frame.cpp
+        strm/src/FrameBuffer.cpp
+        strm/src/InferencePlanner.cpp
         strm/src/Interpolator.cpp
         strm/src/Logger.cpp
+        strm/src/MixedFrame.cpp
         strm/src/PatchMixer.cpp
         strm/src/PatchReconstructor.cpp
+        strm/src/RoI.cpp
         strm/src/RoIResizer.cpp
         strm/src/RoIExtractor.cpp
         strm/src/SpatioTemporalRoIMixer.cpp

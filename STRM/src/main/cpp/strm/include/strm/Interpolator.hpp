@@ -1,9 +1,7 @@
 #ifndef INTERPOLATOR_HPP_
 #define INTERPOLATOR_HPP_
 
-#include <map>
-
-#include "strm/DataType.hpp"
+#include "strm/Frame.hpp"
 
 namespace rm {
 

@@ -1,5 +1,9 @@
 #include "strm/Test.hpp"
 
+#include <set>
+
+#include "strm/Frame.hpp"
+
 namespace rm {
 
 void testAssignedUniqueBoxID(const std::vector<std::unique_ptr<BoundingBox>>& boxes) {

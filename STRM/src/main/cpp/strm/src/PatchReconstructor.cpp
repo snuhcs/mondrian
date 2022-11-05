@@ -3,6 +3,8 @@
 #include <set>
 
 #include "strm/Log.hpp"
+#include "strm/MixedFrame.hpp"
+#include "strm/RoIResizer.hpp"
 #include "strm/Utils.hpp"
 
 namespace rm {

@@ -3,6 +3,8 @@
 #include <map>
 #include <set>
 
+#include "opencv2/opencv.hpp"
+
 #include "strm/Config.hpp"
 #include "strm/Log.hpp"
 

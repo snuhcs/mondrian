@@ -1,9 +1,12 @@
 #ifndef TEST_HPP_
 #define TEST_HPP_
 
-#include "strm/DataType.hpp"
+#include <vector>
 
 namespace rm {
+
+class BoundingBox;
+class RoI;
 
 void testAssignedUniqueBoxID(const std::vector<std::unique_ptr<BoundingBox>>& boxes);
 
