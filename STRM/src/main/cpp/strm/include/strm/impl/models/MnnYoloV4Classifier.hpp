@@ -13,7 +13,8 @@ class MnnYoloV4Classifier : public Classifier {
 
   ~MnnYoloV4Classifier();
 
-  time_us profileInferenceTime() override;
+ protected:
+  void singleInference() const override;
 
  private:
   cv::Mat preprocess(const cv::Mat& mat) override;

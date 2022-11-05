@@ -58,6 +58,8 @@ struct InferenceEngineConfig {
   bool USE_TINY = false;
   float CONF_THRESHOLD = 0.1;
   float IOU_THRESHOLD = 0.5;
+  int PROFILE_WARMUPS = 5;
+  int PROFILE_RUNS = 5;
   std::vector<int> INPUT_SIZES = {
       832
   };

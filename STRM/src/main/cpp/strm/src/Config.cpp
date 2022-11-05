@@ -115,6 +115,12 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   if (!json["iou_threshold"].isNull()) {
     config.IOU_THRESHOLD = json["iou_threshold"].asFloat();
   }
+  if (!json["profile_warmups"].isNull()) {
+    config.PROFILE_WARMUPS = json["profile_warmups"].asInt();
+  }
+  if (!json["profile_runs"].isNull()) {
+    config.PROFILE_RUNS = json["profile_runs"].asInt();
+  }
   if (!json["input_sizes"].isNull()) {
     const Json::Value inputSizes = json["input_sizes"];
     config.INPUT_SIZES.clear();

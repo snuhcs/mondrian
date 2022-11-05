@@ -14,7 +14,8 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
 
   Result recognizeImage(const cv::Mat& mat) override;
 
-  time_us profileInferenceTime() override;
+ protected:
+  void singleInference() const override;
 
  private:
   cv::Mat preprocess(const cv::Mat& mat) override;

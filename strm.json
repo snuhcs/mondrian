@@ -21,7 +21,7 @@
         "extraction_resize_width": 960,
         "extraction_resize_height": 540,
         "min_roi_area": 0,
-        "eat_pd": true,
+        "eat_pd": false,
         "roi_padding": 10,
         "optical_flow_roi_confidence_threshold": 0.1,
         "pd_filter_threshold": 0.5,
@@ -52,6 +52,8 @@
         "use_tiny": false,
         "conf_threshold": 0.1,
         "iou_threshold": 0.5,
+        "profile_warmups": 5,
+        "profile_runs": 5,
         "input_sizes": [
             832
         ],

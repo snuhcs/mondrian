@@ -74,4 +74,16 @@ const float* Classifier::getClassConfidences(const int i) const {
   return nullptr;
 }
 
+time_us Classifier::profileInferenceTime(int profileWarmups, int profileRuns) const {
+  for (int i = 0; i < profileWarmups; i++) {
+    singleInference();
+  }
+  time_us start = NowMicros();
+  for (int i = 0; i < profileRuns; i++) {
+    singleInference();
+  }
+  time_us end = NowMicros();
+  return (end - start) / profileRuns;
+}
+
 } // namespace rm

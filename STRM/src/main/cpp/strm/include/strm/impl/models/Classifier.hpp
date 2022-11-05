@@ -25,7 +25,7 @@ class Classifier {
 
   void setInferenceTime(time_us currInferenceTime);
 
-  virtual time_us profileInferenceTime() = 0;
+  time_us profileInferenceTime(int profileWarmups, int profileRuns) const;
 
  protected:
   virtual cv::Mat preprocess(const cv::Mat& mat) = 0;
@@ -40,6 +40,8 @@ class Classifier {
 
   virtual Rect reconstructBox(float x, float y, float w, float h,
                               float imageWidth, float imageHeight) = 0;
+
+  virtual void singleInference() const = 0;
 
   const Device device;
   const int numLabels;

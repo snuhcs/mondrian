@@ -129,15 +129,8 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
       std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
 }
 
-time_us TfLiteYoloV5Classifier::profileInferenceTime() {
-  // Warmup
+void TfLiteYoloV5Classifier::singleInference() const {
   interpreter->Invoke();
-  interpreter->Invoke();
-
-  time_us start = NowMicros();
-  interpreter->Invoke();
-  time_us end = NowMicros();
-  return end - start;
 }
 
 } // namespace rm
