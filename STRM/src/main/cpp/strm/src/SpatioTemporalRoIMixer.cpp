@@ -258,7 +258,7 @@ int SpatioTemporalRoIMixer::getFullFrameSize(
         const std::map<Device, std::map<int, time_us>>& latencyTable) {
   for (auto it = mInputSizes.rbegin(); it != mInputSizes.rend(); it++) {
     time_us latency = latencyTable.at(GPU).at(*it);
-    if (latency >= mScheduleInterval) {
+    if (latency < mScheduleInterval) {
       return *it;
     }
   }
