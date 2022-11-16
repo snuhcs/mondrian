@@ -552,7 +552,7 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       float newTop = std::max(0.0f, loc.top + y);
       float newRight = std::min(float(width), loc.right + x);
       float newBottom = std::min(float(height), loc.bottom + y);
-      if (newLeft < newRight && newTop < newBottom) {
+      if (newRight - newLeft >= 1.0f && newBottom - newTop >= 1.0f) {
         outChildRoIs.push_back(std::make_unique<RoI>(
             box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
             OF, box.origin, box.label, of, box.confidence, mConfig.ROI_PADDING, false));
@@ -675,18 +675,20 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
   }
 
   for (const Rect& box : boxes) {
-    outChildRoIs.push_back(std::make_unique<RoI>(
-        nullptr,
-        UNASSIGNED_ID,
-        currFrame,
-        box,
-        PD,
-        origin_PD,
-        -1,
-        OFFeatures({}, {}, {}),
-        RoI::INVALID_CONF,
-        mConfig.ROI_PADDING,
-        false));
+    if (box.width() >= 1.0f && box.height() >= 1.0f) {
+      outChildRoIs.push_back(std::make_unique<RoI>(
+          nullptr,
+          UNASSIGNED_ID,
+          currFrame,
+          box,
+          PD,
+          origin_PD,
+          -1,
+          OFFeatures({}, {}, {}),
+          RoI::INVALID_CONF,
+          mConfig.ROI_PADDING,
+          false));
+    }
   }
 }
 
