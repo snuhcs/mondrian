@@ -182,8 +182,8 @@ void Logger::logRoIHeader() {
       << "packedLoc_t" << delim
       << "packedLoc_r" << delim
       << "packedLoc_b" << delim
-      << "packedLocationX" << delim
-      << "packedLocationY" << delim
+      << "packedXY_x" << delim
+      << "packedXY_y" << delim
       << "packedScale" << delim
       << "packedAbsMixedFrameIndex" << delim
 
@@ -241,8 +241,8 @@ void Logger::logRoI(const RoI* roi) {
       << roi->parentRoI->paddedLoc.top << delim
       << roi->parentRoI->paddedLoc.right << delim
       << roi->parentRoI->paddedLoc.bottom << delim
-      << roi->parentRoI->packedLocation.first << delim
-      << roi->parentRoI->packedLocation.second << delim
+      << roi->parentRoI->packedXY.first << delim
+      << roi->parentRoI->packedXY.second << delim
       << roi->parentRoI->getTargetScale() << delim
       << roi->parentRoI->packedAbsMixedFrameIndex << delim
 

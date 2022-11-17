@@ -5,7 +5,7 @@
 
 namespace rm {
 
-const std::pair<float, float> RoI::NOT_PACKED{-1, -1};
+const std::pair<float, float> RoI::INVALID_XY{-1, -1};
 
 const int RoI::INVALID_CONF = -1;
 
@@ -31,7 +31,7 @@ RoI::RoI(RoI* prevRoI,
         ofFeatures,
         confidence
     }, roiPadding(roiPadding),
-      targetScale(1.0f), scaleLevel(RoIResizer::INVALID_LEVEL), packedLocation(NOT_PACKED),
+      targetScale(1.0f), scaleLevel(RoIResizer::INVALID_LEVEL), packedXY(INVALID_XY),
       isMatchTried(false), nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
       packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1),
       isProbingRoI(isProbingRoI), priority(-1) {

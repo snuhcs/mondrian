@@ -436,7 +436,7 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
   int i = 0;
   for (const auto& pRoI: frame->parentRoIs) {
     pRoI->setTargetScale(1.0f, mRoIResizer->maxLevel());
-    pRoI->packedLocation = locations[i];
+    pRoI->packedXY = locations[i];
     pRoI->packedMixedFrameIndex = indices[i].first;
     i++;
   }
@@ -449,7 +449,7 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
           cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, true);
       assert(0.0f < scale && scale <= 1.0f);
       probeRoI->setTargetScale(scale, cRoI->getScaleLevel());
-      probeRoI->packedLocation = locations[i];
+      probeRoI->packedXY = locations[i];
       probeRoI->packedMixedFrameIndex = indices[i].first;
       cRoI->roisForProbing.push_back(probeRoI.get());
       frame->probingRoIs.push_back(std::move(probeRoI));
@@ -475,7 +475,7 @@ void RoIExtractor::prepareScaledFrame(Frame* frame,
   frame->resetProbeRoIs();
   int i = 0;
   for (const auto& pRoI: frame->parentRoIs) {
-    pRoI->packedLocation = locations[i];
+    pRoI->packedXY = locations[i];
     pRoI->packedMixedFrameIndex = indices[i].first;
     i++;
   }
