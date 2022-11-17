@@ -700,7 +700,7 @@ cv::Mat RoIExtractor::calculateDiffAndThreshold(
   cv::absdiff(prevMat, currMat, diff);
   cv::dilate(diff, diff,
              cv::getStructuringElement(cv::MORPH_RECT, cv::Size(4, 4)),
-             cv::Point(0, 0),
+             cv::Point(-1, -1),
              2);
   cv::threshold(diff, diff, 35, 255, cv::THRESH_BINARY);
   return diff;
@@ -710,8 +710,8 @@ void RoIExtractor::cannyEdgeDetection(cv::Mat mat) {
   cv::Canny(mat, mat, 120, 255, 3, false);
   cv::dilate(mat, mat,
              cv::getStructuringElement(cv::MORPH_RECT, cv::Size(4, 4)),
-             cv::Point(0, 0),
-             1);
+             cv::Point(-1, -1),
+             2);
 }
 
 void RoIExtractor::resetPatchMixerWithPlan(const std::vector<InferenceInfo>& inferencePlan) {
