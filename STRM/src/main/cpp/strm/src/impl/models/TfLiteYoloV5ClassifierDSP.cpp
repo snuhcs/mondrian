@@ -135,7 +135,7 @@ Result TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& mat) {
 
   // Exponential smoothing
   inferenceTime = (3 * (end - start) + 7 * inferenceTime) / 10;
-  LOGV("Inference time: %lld ms", inferenceTime);
+  LOGV("Inference time: %lld us", inferenceTime);
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
