@@ -87,7 +87,9 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
   for (auto&[mixedFrameIndex, rois]: groupedRoIs) {
     assert(mixedFrameIndex < mInferencePlan.size());
     const auto& info = mInferencePlan[mixedFrameIndex];
-    mixedFrames.push_back(MixedFrame(info.device, rois, info.size));
+    if (!rois.empty()) {
+      mixedFrames.emplace_back(info.device, rois, info.size);
+    }
   }
 
   MultiStream selectedFrames = std::move(mPackedFrames);
