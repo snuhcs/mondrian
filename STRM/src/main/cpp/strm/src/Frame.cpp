@@ -12,8 +12,8 @@ const int Frame::FULL_KEY_OFFSET = 1000000;
 Frame::Frame(const int vid, const int frameIndex, const cv::Mat mat,
              Frame* prevFrame, const time_us& enqueueTime)
     : vid(vid), frameIndex(frameIndex), mat(mat),
-      width(mat.cols), height(mat.rows), prevFrame(prevFrame), useInferenceResultForOF(false),
-      extractOFAgain(false), enqueueTime(enqueueTime),
+      width(mat.cols), height(mat.rows), prevFrame(prevFrame), nextFrame(nullptr),
+      useInferenceResultForOF(false), extractOFAgain(false), enqueueTime(enqueueTime),
       isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
       inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
 
