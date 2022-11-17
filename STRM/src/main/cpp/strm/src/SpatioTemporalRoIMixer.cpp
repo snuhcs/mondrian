@@ -455,7 +455,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& mat) {
 }
 
 void SpatioTemporalRoIMixer::preprocess(Frame* frame) const {
-  cv::resize(frame->mat, frame->preProcessedMat, mTargetSize, 0, 0, CV_INTER_NN);
+  cv::resize(frame->mat, frame->preProcessedMat, mTargetSize, 0, 0, CV_INTER_LINEAR);
   cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGRA2GRAY);
 }
 
