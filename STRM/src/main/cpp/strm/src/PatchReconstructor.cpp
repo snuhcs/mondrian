@@ -15,21 +15,21 @@ PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
 
 static Rect moveResizeRoIPos(const RoI* roi) {
   std::pair<float, float> wh = roi->getResizedWidthHeight();
-  return Rect(roi->packedLocation.first,
-              roi->packedLocation.second,
-              roi->packedLocation.first + wh.first,
-              roi->packedLocation.second + wh.second);
+  return Rect(roi->packedXY.first,
+              roi->packedXY.second,
+              roi->packedXY.first + wh.first,
+              roi->packedXY.second + wh.second);
 }
 
 static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
   float scale = pRoI->getTargetScale();
-  float newLeft = (packedBox.location.left - pRoI->packedLocation.first)
+  float newLeft = (packedBox.location.left - pRoI->packedXY.first)
                   / scale + pRoI->paddedLoc.left;
-  float newTop = (packedBox.location.top - pRoI->packedLocation.second)
+  float newTop = (packedBox.location.top - pRoI->packedXY.second)
                  / scale + pRoI->paddedLoc.top;
-  float newRight = (packedBox.location.right - pRoI->packedLocation.first)
+  float newRight = (packedBox.location.right - pRoI->packedXY.first)
                    / scale + pRoI->paddedLoc.left;
-  float newBottom = (packedBox.location.bottom - pRoI->packedLocation.second)
+  float newBottom = (packedBox.location.bottom - pRoI->packedXY.second)
                     / scale + pRoI->paddedLoc.top;
   return Rect(std::max(0.0f, newLeft),
               std::max(0.0f, newTop),

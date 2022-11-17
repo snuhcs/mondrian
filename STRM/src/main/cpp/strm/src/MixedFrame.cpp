@@ -14,7 +14,7 @@ MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixe
     assert(roi->isPacked());
     cv::Mat resizedMat = roi->getResizedMat();
     resizedMat.copyTo(
-        packedMat(cv::Rect(roi->packedLocation.first, roi->packedLocation.second,
+        packedMat(cv::Rect(roi->packedXY.first, roi->packedXY.second,
                            resizedMat.cols, resizedMat.rows)));
     roi->packedAbsMixedFrameIndex = mixedFrameIndex;
   }

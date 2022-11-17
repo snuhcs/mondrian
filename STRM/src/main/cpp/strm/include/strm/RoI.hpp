@@ -189,8 +189,8 @@ class RoI {
   int scaleLevel;
 
  public:
-  std::pair<float, float> packedLocation;
-  static const std::pair<float, float> NOT_PACKED;
+  std::pair<float, float> packedXY;
+  static const std::pair<float, float> INVALID_XY;
 
   int packedMixedFrameIndex;
   int packedAbsMixedFrameIndex;
@@ -236,7 +236,7 @@ class RoI {
   }
 
   bool isPacked() const {
-    return packedLocation != NOT_PACKED;
+    return packedXY != INVALID_XY;
   }
 
   bool isParent() const {
