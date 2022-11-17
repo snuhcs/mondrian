@@ -177,8 +177,14 @@ void Logger::logRoIHeader() {
       << "priority" << delim
       << "id" << delim
 
+      // Packing info
+      << "packedLoc_l" << delim
+      << "packedLoc_t" << delim
+      << "packedLoc_r" << delim
+      << "packedLoc_b" << delim
       << "packedLocationX" << delim
       << "packedLocationY" << delim
+      << "packedScale" << delim
       << "packedAbsMixedFrameIndex" << delim
 
       << "maxEdgeLength" << delim
@@ -231,8 +237,13 @@ void Logger::logRoI(const RoI* roi) {
       << roi->parentRoI->priority << delim
       << roi->id << delim
 
+      << roi->parentRoI->paddedLoc.left << delim
+      << roi->parentRoI->paddedLoc.top << delim
+      << roi->parentRoI->paddedLoc.right << delim
+      << roi->parentRoI->paddedLoc.bottom << delim
       << roi->parentRoI->packedLocation.first << delim
       << roi->parentRoI->packedLocation.second << delim
+      << roi->parentRoI->getTargetScale() << delim
       << roi->parentRoI->packedAbsMixedFrameIndex << delim
 
       << roi->maxEdgeLength << delim
