@@ -2,6 +2,7 @@
 #define FRAME_BUFFER_HPP_
 
 #include <condition_variable>
+#include <map>
 #include <mutex>
 
 #include "opencv2/core/mat.hpp"
@@ -19,13 +20,12 @@ class FrameBuffer {
   void freeImage(const std::vector<int>& frameIndices);
 
  private:
-  Frame* getFrame(int frameIndex) const;
-
   const int vid;
+  const int capacity;
   int count;
   std::mutex mtx;
   std::condition_variable cv;
-  std::vector<std::shared_ptr<Frame>> frames;
+  std::map<int, std::unique_ptr<Frame>> frames;
 };
 
 } // namespace rm
