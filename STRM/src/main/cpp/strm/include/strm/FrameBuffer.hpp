@@ -19,13 +19,13 @@ class FrameBuffer {
   void freeImage(const std::vector<int>& frameIndices);
 
  private:
-  const int vid;
-  const int capacity;
+  Frame* getFrame(int frameIndex) const;
 
+  const int vid;
   int count;
   std::mutex mtx;
   std::condition_variable cv;
-  std::vector<std::unique_ptr<Frame>> frames;
+  std::vector<std::shared_ptr<Frame>> frames;
 };
 
 } // namespace rm
