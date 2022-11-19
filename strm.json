@@ -55,7 +55,7 @@
         "profile_warmups": 5,
         "profile_runs": 5,
         "input_sizes": [
-            832
+            768
         ],
         "devices" : [
             "GPU"
