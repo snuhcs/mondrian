@@ -76,10 +76,10 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
     for (Frame* frame: frames) {
       assert(frame != fullFrameTarget);
       for (auto& pRoI: frame->parentRoIs) {
-        groupedRoIs[pRoI->packedMixedFrameIndex].insert(pRoI.get());
+        groupedRoIs[pRoI->getPackedMixedFrameIndex()].insert(pRoI.get());
       }
       for (auto& probeRoI: frame->probingRoIs) {
-        groupedRoIs[probeRoI->packedMixedFrameIndex].insert(probeRoI.get());
+        groupedRoIs[probeRoI->getPackedMixedFrameIndex()].insert(probeRoI.get());
       }
     }
   }
@@ -418,17 +418,17 @@ void RoIExtractor::applyLasts() {
 IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
   IntPairs boxesIfLast;
-  for (const auto& pRoI : frame->parentRoIs) {
-    int w = std::round(pRoI->paddedLoc.width());
-    int h = std::round(pRoI->paddedLoc.height());
+  for (const auto& pRoI: frame->parentRoIs) {
+    int w = RoI::toInt(pRoI->paddedLoc.width());
+    int h = RoI::toInt(pRoI->paddedLoc.height());
     boxesIfLast.emplace_back(w, h);
   }
-  for (const auto& cRoI : frame->childRoIs) {
+  for (const auto& cRoI: frame->childRoIs) {
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
         cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
     for (auto scale: probingCandidates) {
-      int w = std::round(cRoI->paddedLoc.width() * scale);
-      int h = std::round(cRoI->paddedLoc.height() * scale);
+      int w = RoI::toInt(cRoI->paddedLoc.width() * scale);
+      int h = RoI::toInt(cRoI->paddedLoc.height() * scale);
       boxesIfLast.emplace_back(w, h);
     }
   }
@@ -442,8 +442,7 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
   int i = 0;
   for (const auto& pRoI: frame->parentRoIs) {
     pRoI->setTargetScale(1.0f, mRoIResizer->maxLevel());
-    pRoI->packedXY = locations[i];
-    pRoI->packedMixedFrameIndex = indices[i].first;
+    pRoI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mRoISize);
     i++;
   }
   for (const auto& cRoI: frame->childRoIs) {
@@ -455,8 +454,7 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
           cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, true);
       assert(0.0f < scale && scale <= 1.0f);
       probeRoI->setTargetScale(scale, cRoI->getScaleLevel());
-      probeRoI->packedXY = locations[i];
-      probeRoI->packedMixedFrameIndex = indices[i].first;
+      probeRoI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mRoISize);
       cRoI->roisForProbing.push_back(probeRoI.get());
       frame->probingRoIs.push_back(std::move(probeRoI));
       i++;
@@ -481,8 +479,7 @@ void RoIExtractor::prepareScaledFrame(Frame* frame,
   frame->resetProbeRoIs();
   int i = 0;
   for (const auto& pRoI: frame->parentRoIs) {
-    pRoI->packedXY = locations[i];
-    pRoI->packedMixedFrameIndex = indices[i].first;
+    pRoI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mRoISize);
     i++;
   }
   assert(i == locations.size());

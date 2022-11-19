@@ -6,7 +6,7 @@ namespace rm {
 
 std::tuple<IntPairs, IntPairs> PatchMixer::pack(
     const std::vector<std::vector<IntRect>>& freeRectsVec,
-    const IntPairs& boxWHs, bool backward, bool emulatedBatch, int singleInputSize) {
+    const IntPairs& boxWHs, bool backward, bool emulatedBatch, int roiSize) {
   auto copiedFreeRectsVec = freeRectsVec;
   IntPairs packIndices;
   IntPairs packLocations;
@@ -36,7 +36,7 @@ std::tuple<IntPairs, IntPairs> PatchMixer::pack(
     packIndices.emplace_back(pack_i, pack_j);
     packLocations.emplace_back(rect.left, rect.top);
     if (emulatedBatch) {
-      packBox(copiedFreeRectsVec, singleInputSize, singleInputSize, pack_i, pack_j);
+      packBox(copiedFreeRectsVec, roiSize, roiSize, pack_i, pack_j);
     } else {
       packBox(copiedFreeRectsVec, w, h, pack_i, pack_j);
     }
@@ -47,13 +47,13 @@ std::tuple<IntPairs, IntPairs> PatchMixer::pack(
 
 void PatchMixer::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
                        const WHs& boxWH, const Indices& indices,
-                       bool emulatedBatch, int singleInputSize) {
+                       bool emulatedBatch, int roiSize) {
   assert(boxWH.size() == indices.size());
   for (int i = 0; i < boxWH.size(); i++) {
     auto[w, h] = boxWH[i];
     auto[pack_i, pack_j] = indices[i];
     if (emulatedBatch) {
-      packBox(freeRectsVec, singleInputSize, singleInputSize, pack_i, pack_j);
+      packBox(freeRectsVec, roiSize, roiSize, pack_i, pack_j);
     } else {
       packBox(freeRectsVec, w, h, pack_i, pack_j);
     }

@@ -241,8 +241,8 @@ void Logger::logRoI(const RoI* roi) {
       << roi->parentRoI->paddedLoc.top << delim
       << roi->parentRoI->paddedLoc.right << delim
       << roi->parentRoI->paddedLoc.bottom << delim
-      << roi->parentRoI->packedXY.first << delim
-      << roi->parentRoI->packedXY.second << delim
+      << roi->parentRoI->getPackedXY().first << delim
+      << roi->parentRoI->getPackedXY().second << delim
       << roi->parentRoI->getTargetScale() << delim
       << roi->parentRoI->packedAbsMixedFrameIndex << delim
 

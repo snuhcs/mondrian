@@ -188,11 +188,12 @@ class RoI {
   float targetScale;
   int scaleLevel;
 
- public:
   IntPair packedXY;
+  int packedMixedFrameIndex;
+
+ public:
   static const IntPair INVALID_XY;
 
-  int packedMixedFrameIndex;
   int packedAbsMixedFrameIndex;
   bool isProbingRoI;
   bool isMatchTried; // only valid within parentRoIs
@@ -267,6 +268,36 @@ class RoI {
             paddedLoc.height() * targetScale};
   }
 
+  IntPair getWHForRoISize(int roiSize) const {
+    int w = toInt(paddedLoc.width());
+    int h = toInt(paddedLoc.height());
+    if (std::max(w, h) <= roiSize) {
+      return {w, h};
+    } else if (w >= h) {
+      return {roiSize, roiSize * h / w};
+    } else { // w < h
+      return {roiSize * w / h, roiSize};
+    }
+  }
+
+  IntPair getPackedXY() const {
+    return packedXY;
+  }
+
+  int getPackedMixedFrameIndex() const {
+    return packedMixedFrameIndex;
+  }
+
+  void setPackInfo(IntPair xy, int mixedFrameIndex, bool emulatedBatch, int roiSize) {
+    if (emulatedBatch) {
+      auto[rw, rh] = getWHForRoISize(roiSize);
+      xy.first += (roiSize - rw) / 2;
+      xy.second += (roiSize - rh) / 2;
+    }
+    packedXY = xy;
+    packedMixedFrameIndex = mixedFrameIndex;
+  }
+
   static int toInt(float v) {
     return std::round(v);
   }
@@ -280,7 +311,7 @@ class RoI {
 
   cv::Mat getPaddedMat() const;
 
-  cv::Mat getResizedMat(int singleInputSize = -1) const;
+  cv::Mat getResizedMat(bool emulatedBatch, int roiSize) const;
 };
 
 } // namespace rm

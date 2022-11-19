@@ -310,7 +310,7 @@ void SpatioTemporalRoIMixer::handleRoIWiseInferenceResults(
     auto[boxes, times, device] = mInferenceEngine->getResults(mixedFrame.getKey());
     assert(mixedFrame.packedRoIs.size() == 1);
     assert(device == mixedFrame.device);
-    auto&[x, y] = (*mixedFrame.packedRoIs.begin())->packedXY;
+    auto[x, y] = (*mixedFrame.packedRoIs.begin())->getPackedXY();
     RoI* pRoI = *mixedFrame.packedRoIs.begin();
     if (pRoI->frame->inferenceDevice == NO_DEVICE) {
       pRoI->frame->inferenceFrameSize = mixedFrame.mixedFrameSize;
