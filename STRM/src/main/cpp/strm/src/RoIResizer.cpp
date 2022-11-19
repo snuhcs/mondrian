@@ -19,7 +19,6 @@ const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
 
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
     : mConfig(config),
-      mScaleGranularity(5),
       mPredictor(candidatePredictors.at(config.TRAIN_DATA)),
       mTargetSize(scalesForLevels.at(config.TRAIN_DATA)) {}
 

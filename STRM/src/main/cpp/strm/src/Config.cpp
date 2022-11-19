@@ -78,23 +78,6 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   return config;
 }
 
-PatchMixerConfig parsePatchMixerConfig(const Json::Value& json) {
-  PatchMixerConfig config;
-  if (!json["n_way_mixing"].isNull()) {
-    config.N_WAY_MIXING = json["n_way_mixing"].asBool();
-  }
-  if (!json["priority_mixing"].isNull()) {
-    config.PRIORITY_MIXING = json["priority_mixing"].asBool();
-  }
-  if (!json["emulated_batch"].isNull()) {
-    config.EMULATED_BATCH = json["emulated_batch"].asBool();
-  }
-  if (!json["batch_size"].isNull()) {
-    config.BATCH_SIZE = json["batch_size"].asInt();
-  }
-  return config;
-}
-
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   InferenceEngineConfig config;
   if (!json["draw_inference_result"].isNull()) {
@@ -188,9 +171,6 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["allow_interpolation"].isNull()) {
     config.ALLOW_INTERPOLATION = json["allow_interpolation"].asBool();
   }
-  if (!json["roi_wise_inference"].isNull()) {
-    config.ROI_WISE_INFERENCE = json["roi_wise_inference"].asBool();
-  }
   if (!json["full_frame_interval"].isNull()) {
     config.FULL_FRAME_INTERVAL = json["full_frame_interval"].asInt();
   }
@@ -203,6 +183,15 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["latency_slo_ms"].isNull()) {
     config.LATENCY_SLO_MS = json["latency_slo_ms"].asInt();
   }
+  if (!json["use_emulated_batch"].isNull()) {
+    config.USE_EMULATED_BATCH = json["use_emulated_batch"].asBool();
+  }
+  if (!json["use_roi_wise_inference"].isNull()) {
+    config.USE_ROI_WISE_INFERENCE = json["use_roi_wise_inference"].asBool();
+  }
+  if (!json["roi_size"].isNull()) {
+    config.ROI_SIZE = json["roi_size"].asInt();
+  }
 
   if (!json["roi_extractor"].isNull()) {
     config.roIExtractorConfig = parseRoIExtractorConfig(json["roi_extractor"]);
@@ -210,15 +199,17 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["roi_resizer"].isNull()) {
     config.roiResizerConfig = parseRoIResizerConfig(json["roi_resizer"]);
   }
-  if (!json["patch_mixer"].isNull()) {
-    config.patchMixerConfig = parsePatchMixerConfig(json["patch_mixer"]);
-  }
   if (!json["inference_engine"].isNull()) {
     config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
   }
   auto& input_sizes = config.inferenceEngineConfig.INPUT_SIZES;
   assert(std::find(input_sizes.begin(), input_sizes.end(),
                    config.FULL_FRAME_SIZE) != input_sizes.end());
+  if (config.USE_EMULATED_BATCH) {
+    assert(std::all_of(input_sizes.begin(), input_sizes.end(), [&config](int input_size) {
+      return input_size % config.ROI_SIZE == 0;
+    }));
+  }
   if (!json["patch_reconstructor"].isNull()) {
     config.patchReconstructorConfig = parsePatchReconstructorConfig(
         json["patch_reconstructor"]);
