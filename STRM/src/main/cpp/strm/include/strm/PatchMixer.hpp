@@ -4,11 +4,12 @@
 #include <sstream>
 #include <vector>
 
+#include "strm/DataType.hpp"
+
 namespace rm {
 
 class SpatioTemporalRoIMixer;
 
-using IntPairs = std::vector<std::pair<int, int>>;
 using WHs = IntPairs;
 using Indices = IntPairs;
 using Locations = IntPairs;
@@ -44,12 +45,16 @@ struct IntRect {
 class PatchMixer {
  public:
   static std::tuple<Indices, Locations> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
-                                             const WHs& boxes, bool backward);
+                                             const WHs& boxWHs, bool backward,
+                                             bool emulatedBatch, int singleInputSize);
 
   static void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                    const WHs& boxes, const Indices& indices);
+                    const WHs& boxWH, const Indices& indices,
+                    bool emulatedBatch, int singleInputSize);
 
  private:
+  static int getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, int w, int h);
+
   static void packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
                       int w, int h, int pack_i, int pack_j);
 

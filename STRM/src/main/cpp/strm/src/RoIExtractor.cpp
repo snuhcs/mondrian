@@ -17,9 +17,10 @@ const cv::TermCriteria RoIExtractor::CRITERIA = cv::TermCriteria(
     cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
 
 RoIExtractor::RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize, bool run,
-                           RoIResizer* roiResizer, std::vector<InferenceInfo> inferencePlan,
-                           std::set<int> vids)
+                           RoIResizer* roiResizer, bool emulatedBatch, int roiSize,
+                           std::vector<InferenceInfo> inferencePlan, std::set<int> vids)
     : mConfig(config), mMaxMergeSize(maxMergeSize), mRoIResizer(roiResizer),
+      mEmulatedBatch(emulatedBatch), mRoISize(roiSize),
       mTargetSize(cv::Size(int(config.EXTRACTION_RESIZE_WIDTH),
                            int(config.EXTRACTION_RESIZE_HEIGHT))),
       mInferencePlan(std::move(inferencePlan)),
@@ -88,7 +89,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
     assert(mixedFrameIndex < mInferencePlan.size());
     const auto& info = mInferencePlan[mixedFrameIndex];
     if (!rois.empty()) {
-      mixedFrames.emplace_back(info.device, rois, info.size);
+      mixedFrames.emplace_back(info.device, rois, info.size, mEmulatedBatch, mRoISize);
     }
   }
 
@@ -287,7 +288,8 @@ bool RoIExtractor::tryPackFullVid(Frame* frame) {
   // Try pack incoming frame as scaled
   auto copiedFreeRectsVec = mFreeRectsVec;
   auto[fullPackIndices, fullPackLocations] = PatchMixer::pack(
-      copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, /*backward=*/true);
+      copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, /*backward=*/true,
+      mEmulatedBatch, mRoISize);
 
   // If single scaled packing fails (rare case)
   if (fullPackIndices.size() != mFullFrameTarget->boxesIfScaled.size()) {
@@ -296,13 +298,14 @@ bool RoIExtractor::tryPackFullVid(Frame* frame) {
   }
 
   // Apply incoming frame and try pack last frame candidates
-  PatchMixer::apply(copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, fullPackIndices);
+  PatchMixer::apply(copiedFreeRectsVec, mFullFrameTarget->boxesIfScaled, fullPackIndices,
+                    mEmulatedBatch, mRoISize);
   IntPairs lastBoxes;
   for (auto&[cVid, info]: mCandidateLastFrames) {
     appendLastBoxes(lastBoxes, info.frame);
   }
   auto[lastPackIndices, lastPackLocations] = PatchMixer::pack(
-      copiedFreeRectsVec, lastBoxes, /*backward=*/false);
+      copiedFreeRectsVec, lastBoxes, /*backward=*/false, mEmulatedBatch, mRoISize);
 
   // If last frame candidates packing failed
   if (lastPackIndices.size() != lastBoxes.size()) {
@@ -343,10 +346,11 @@ bool RoIExtractor::tryPackNonFullVid(Frame* frame) {
   std::pair<Indices, Locations> existPackIndicesLocations;
   if (vidExists) {
     existPackIndicesLocations = PatchMixer::pack(
-        copiedFreeRectsVec, mCandidateLastFrames[vid].frame->boxesIfScaled, /*backward=*/true);
+        copiedFreeRectsVec, mCandidateLastFrames[vid].frame->boxesIfScaled, /*backward=*/true,
+        mEmulatedBatch, mRoISize);
     PatchMixer::apply(copiedFreeRectsVec,
                       mCandidateLastFrames[vid].frame->boxesIfScaled,
-                      existPackIndicesLocations.first);
+                      existPackIndicesLocations.first, mEmulatedBatch, mRoISize);
   } else {
     // Temporarily add. Erase if packing fails
     mCandidateLastFrames[vid] = LastPackInfo();
@@ -361,7 +365,8 @@ bool RoIExtractor::tryPackNonFullVid(Frame* frame) {
     }
   }
   auto[lastPackIndices, lastPackLocations] = PatchMixer::pack(
-          copiedFreeRectsVec, lastBoxes, /*backward=*/false);
+          copiedFreeRectsVec, lastBoxes, /*backward=*/false,
+          mEmulatedBatch, mRoISize);
 
   if (lastPackIndices.size() != lastBoxes.size()) {
     assert(lastPackIndices.size() < lastBoxes.size());
@@ -402,7 +407,8 @@ bool RoIExtractor::tryPackNonFullVid(Frame* frame) {
 void RoIExtractor::applyLasts() {
   for (auto&[pVid, info]: mCandidateLastFrames) {
     assert(info.indices.size() == info.locations.size());
-    PatchMixer::apply(mFreeRectsVec, info.frame->boxesIfLast, info.indices);
+    PatchMixer::apply(mFreeRectsVec, info.frame->boxesIfLast, info.indices,
+                      mEmulatedBatch, mRoISize);
   }
   for (auto&[cVid, info]: mCandidateLastFrames) {
     prepareFrameLast(info.frame, info.indices, info.locations);

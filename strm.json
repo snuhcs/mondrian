@@ -11,11 +11,13 @@
     "log_roi": true,
     "draw_output": false,
     "allow_interpolation": false,
-    "roi_wise_inference": false,
     "full_frame_interval": 1,
     "full_frame_size": 768,
     "buffer_size": 500,
     "latency_slo_ms": 10000,
+    "use_emulated_batch": true,
+    "use_roi_wise_inference": false,
+    "roi_size": 64,
     "roi_extractor": {
         "max_queue_size": 200,
         "num_workers": 2,
@@ -39,12 +41,6 @@
         "overlap_threshold": 0.8,
         "absolute_confidence_threshold": 0.3,
         "relative_confidence_threshold": 0.1
-    },
-    "patch_mixer": {
-        "n_way_mixing": true,
-        "priority_mixing": true,
-        "emulated_batch": false,
-        "batch_size": 64
     },
     "inference_engine": {
         "draw_inference_result": true,

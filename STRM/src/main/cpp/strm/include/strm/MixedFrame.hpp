@@ -18,7 +18,8 @@ class MixedFrame {
   cv::Mat packedMat;
   std::set<RoI*> packedRoIs;
 
-  MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixedFrameSize);
+  MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixedFrameSize,
+             bool emulatedBatch, int roiSize);
 
   Stream getPackedFrames() const;
 

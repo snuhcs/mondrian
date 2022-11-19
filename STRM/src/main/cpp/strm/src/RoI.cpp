@@ -5,7 +5,7 @@
 
 namespace rm {
 
-const std::pair<float, float> RoI::INVALID_XY{-1, -1};
+const IntPair RoI::INVALID_XY{-1, -1};
 
 const int RoI::INVALID_CONF = -1;
 
@@ -116,10 +116,29 @@ cv::Mat RoI::getPaddedMat() const {
   return frame->mat.operator()(cv::Rect(left, top, width, height));
 }
 
-cv::Mat RoI::getResizedMat() const {
-  auto[w, h] = getResizedMatWidthHeight();
+cv::Mat RoI::getResizedMat(int singleInputSize) const {
+  int rw;
+  int rh;
+  if (singleInputSize == -1) { // Mixed Inference
+    auto rwh = getResizedMatWidthHeight();
+    rw = rwh.first;
+    rh = rwh.second;
+  } else { // Emulated Batch or RoI-wise Inference
+    int w = toInt(paddedLoc.width());
+    int h = toInt(paddedLoc.height());
+    if (std::max(w, h) <= singleInputSize) {
+      rw = w;
+      rh = h;
+    } else if (w >= h) {
+      rw = singleInputSize;
+      rh = singleInputSize * h / w;
+    } else { // w < h
+      rh = singleInputSize;
+      rw = singleInputSize * w / h;
+    }
+  }
   cv::Mat resizedMat;
-  cv::resize(getPaddedMat(), resizedMat, cv::Size(w, h));
+  cv::resize(getPaddedMat(), resizedMat, cv::Size(rw, rh));
   return resizedMat;
 }
 

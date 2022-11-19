@@ -53,13 +53,14 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mInferenceEngine(new InferenceEngine(config.inferenceEngineConfig, vm, env, emulator)),
       mPatchReconstructor(new PatchReconstructor(
           config.patchReconstructorConfig, mRoIResizer.get())) {
-  assert(!config.ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
+  assert(!config.USE_ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
   auto latencyTable = mInferenceEngine->getInferenceTimeTable();
   logLatencyTable(latencyTable);
   mRoIExtractor = std::make_unique<RoIExtractor>(
       mConfig.roIExtractorConfig, mInputSizes.front(), mConfig.FULL_FRAME_INTERVAL != 0,
-      mRoIResizer.get(), InferencePlanner::getInferencePlan(
-          latencyTable, mScheduleInterval, mConfig.ROI_WISE_INFERENCE),
+      mRoIResizer.get(), config.USE_EMULATED_BATCH, config.ROI_SIZE,
+      InferencePlanner::getInferencePlan(latencyTable, mScheduleInterval,
+                                         mConfig.USE_ROI_WISE_INFERENCE),
       key_set(mStartIndices));
 
   if (config.LOG_EXECUTION) {
@@ -109,7 +110,7 @@ void SpatioTemporalRoIMixer::work() {
     logger.start();
     auto latencyTable = mInferenceEngine->getInferenceTimeTable();
     std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
-        latencyTable, mScheduleInterval, mConfig.ROI_WISE_INFERENCE,
+        latencyTable, mScheduleInterval, mConfig.USE_ROI_WISE_INFERENCE,
         {{GPU, fullFramePlan ? mConfig.FULL_FRAME_SIZE : 0L}});
     logger.step("plan");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
@@ -159,15 +160,15 @@ void SpatioTemporalRoIMixer::work() {
     }
 
     // 6. Handle mixed frame or RoI-wise inference results
-    if (mConfig.ROI_WISE_INFERENCE) {
+    if (mConfig.USE_ROI_WISE_INFERENCE) {
       handleRoIWiseInferenceResults(mixedFrames);
     } else {
       handleMixedFrameInferenceResults(mixedFrames);
     }
     logger.step("inf");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
-         mConfig.ROI_WISE_INFERENCE ? "STRM::handleRoIWiseInferenceResults"
-                                    : "STRM::handleMixedFrameInferenceResults",
+         mConfig.USE_ROI_WISE_INFERENCE ? "STRM::handleRoIWiseInferenceResults"
+                                        : "STRM::handleMixedFrameInferenceResults",
          logger.getDuration("inf"), toString(inferencePlan).c_str());
 
     // 7. Interpolate results

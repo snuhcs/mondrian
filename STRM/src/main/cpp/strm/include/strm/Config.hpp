@@ -41,16 +41,6 @@ struct RoIResizerConfig {
   float RELATIVE_CONFIDENCE_THRESHOLD = 0.1;
 };
 
-struct PatchMixerConfig {
-  // Mixing config
-  bool N_WAY_MIXING = true;
-  bool PRIORITY_MIXING = true;
-
-  // Emulated batch
-  bool EMULATED_BATCH = false;
-  int BATCH_SIZE = 64;
-};
-
 struct InferenceEngineConfig {
   bool DRAW_INFERENCE_RESULT = true;
   std::string MODEL = "YOLO_V5";
@@ -80,21 +70,21 @@ struct STRMConfig {
   bool LOG_EXECUTION = true;
   bool LOG_ROI = true;
   bool ALLOW_INTERPOLATION = false;
-  bool ROI_WISE_INFERENCE = false;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int FULL_FRAME_SIZE = 768;
   int BUFFER_SIZE = 500;
   int LATENCY_SLO_MS = 10000;
+  bool USE_EMULATED_BATCH = false;
+  bool USE_ROI_WISE_INFERENCE = false;
+  int ROI_SIZE = 64; // Used for Emulated Batch or RoI-wise Inference
   RoIExtractorConfig roIExtractorConfig;
   RoIResizerConfig roiResizerConfig;
-  PatchMixerConfig patchMixerConfig;
   InferenceEngineConfig inferenceEngineConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 };
 
 RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
 RoIResizerConfig parseRoIResizerConfig(const Json::Value& json);
-PatchMixerConfig parsePatchMixerConfig(const Json::Value& json);
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
 STRMConfig parseSTRMConfig(const std::string& jsonPath);

@@ -7,6 +7,9 @@ namespace rm {
 
 typedef int idType;
 
+using IntPair = std::pair<int, int>;
+using IntPairs = std::vector<std::pair<int, int>>;
+
 extern const idType UNASSIGNED_ID;
 extern const idType MERGED_ROI_ID;
 

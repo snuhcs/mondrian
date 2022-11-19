@@ -189,8 +189,8 @@ class RoI {
   int scaleLevel;
 
  public:
-  std::pair<float, float> packedXY;
-  static const std::pair<float, float> INVALID_XY;
+  IntPair packedXY;
+  static const IntPair INVALID_XY;
 
   int packedMixedFrameIndex;
   int packedAbsMixedFrameIndex;
@@ -267,16 +267,20 @@ class RoI {
             paddedLoc.height() * targetScale};
   }
 
+  static int toInt(float v) {
+    return std::round(v);
+  }
+
   std::pair<int, int> getResizedMatWidthHeight() const {
     auto[w, h] = getResizedWidthHeight();
-    return {std::round(w), std::round(h)};
+    return {toInt(w), toInt(h)};
   }
 
   cv::Mat getOrigMat() const;
 
   cv::Mat getPaddedMat() const;
 
-  cv::Mat getResizedMat() const;
+  cv::Mat getResizedMat(int singleInputSize = -1) const;
 };
 
 } // namespace rm

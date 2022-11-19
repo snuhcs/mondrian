@@ -6,7 +6,8 @@ namespace rm {
 
 int MixedFrame::numMixedFrames = 0;
 
-MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixedFrameSize)
+MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixedFrameSize,
+                       bool emulatedBatch, int roiSize)
     : device(device), packedRoIs(packedRoIs), mixedFrameSize(mixedFrameSize),
       packedMat(mixedFrameSize, mixedFrameSize, CV_8UC4, cv::Scalar(114, 114, 114, 255)),
       mixedFrameIndex(numMixedFrames++) {
@@ -14,10 +15,18 @@ MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixe
   // (e.g. white for YOLOv4, gray for YOLOv5)
   for (RoI* roi: packedRoIs) {
     assert(roi->isPacked());
-    cv::Mat resizedMat = roi->getResizedMat();
+    cv::Mat resizedMat = emulatedBatch
+        ? roi->getResizedMat(roiSize)
+        : roi->getResizedMat();
+    int rw = resizedMat.cols;
+    int rh = resizedMat.rows;
+    auto[packX, packY] = roi->packedXY;
+    if (emulatedBatch) {
+      packX += (roiSize - rw) / 2;
+      packY += (roiSize - rh) / 2;
+    }
     resizedMat.copyTo(
-        packedMat(cv::Rect(roi->packedXY.first, roi->packedXY.second,
-                           resizedMat.cols, resizedMat.rows)));
+        packedMat(cv::Rect(packX, packY, rw, rh)));
     roi->packedAbsMixedFrameIndex = mixedFrameIndex;
   }
 }
