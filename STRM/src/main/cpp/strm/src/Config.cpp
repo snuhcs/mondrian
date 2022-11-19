@@ -127,6 +127,7 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
     for (const auto& size : inputSizes) {
       config.INPUT_SIZES.push_back(size.asInt());
     }
+    // TODO: Change INPUT_SIZES from std::vector to std::set
     std::sort(config.INPUT_SIZES.begin(), config.INPUT_SIZES.end());
   }
   if (!json["devices"].isNull()) {
@@ -193,6 +194,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["full_frame_interval"].isNull()) {
     config.FULL_FRAME_INTERVAL = json["full_frame_interval"].asInt();
   }
+  if (!json["full_frame_size"].isNull()) {
+    config.FULL_FRAME_SIZE = json["full_frame_size"].asInt();
+  }
   if (!json["buffer_size"].isNull()) {
     config.BUFFER_SIZE = json["buffer_size"].asInt();
   }
@@ -212,6 +216,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["inference_engine"].isNull()) {
     config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
   }
+  auto& input_sizes = config.inferenceEngineConfig.INPUT_SIZES;
+  assert(std::find(input_sizes.begin(), input_sizes.end(),
+                   config.FULL_FRAME_SIZE) != input_sizes.end());
   if (!json["patch_reconstructor"].isNull()) {
     config.patchReconstructorConfig = parsePatchReconstructorConfig(
         json["patch_reconstructor"]);

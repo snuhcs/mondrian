@@ -13,6 +13,7 @@
     "allow_interpolation": false,
     "roi_wise_inference": false,
     "full_frame_interval": 1,
+    "full_frame_size": 768,
     "buffer_size": 500,
     "latency_slo_ms": 10000,
     "roi_extractor": {
