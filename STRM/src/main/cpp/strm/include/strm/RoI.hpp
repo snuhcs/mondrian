@@ -268,7 +268,7 @@ class RoI {
             paddedLoc.height() * targetScale};
   }
 
-  IntPair getWHForRoISize(int roiSize) const {
+  IntPair getResizedMatWidthHeightWithTargetSize(int roiSize) const {
     int w = toInt(paddedLoc.width());
     int h = toInt(paddedLoc.height());
     if (std::max(w, h) <= roiSize) {
@@ -290,7 +290,7 @@ class RoI {
 
   void setPackInfo(IntPair xy, int mixedFrameIndex, bool emulatedBatch, int roiSize) {
     if (emulatedBatch) {
-      auto[rw, rh] = getWHForRoISize(roiSize);
+      auto[rw, rh] = getResizedMatWidthHeightWithTargetSize(roiSize);
       xy.first += (roiSize - rw) / 2;
       xy.second += (roiSize - rh) / 2;
     }
