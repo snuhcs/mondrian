@@ -61,7 +61,7 @@ struct InferenceEngineConfig {
   int PROFILE_WARMUPS = 5;
   int PROFILE_RUNS = 5;
   std::vector<int> INPUT_SIZES = {
-      832
+      768
   };
   std::vector<Device> DEVICES = {
       GPU
