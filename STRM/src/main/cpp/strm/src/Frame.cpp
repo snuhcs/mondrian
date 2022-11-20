@@ -165,10 +165,10 @@ bool Frame::isReadyToMarry(int mixedFrameIndex) const {
     if (!pRoI->isPacked()) {
       continue;
     }
-    if (pRoI->packedMixedFrameIndex > mixedFrameIndex) {
+    if (pRoI->getPackedMixedFrameIndex() > mixedFrameIndex) {
       return false;
     }
-    atLeastOneIndexIsSame |= (pRoI->packedMixedFrameIndex == mixedFrameIndex);
+    atLeastOneIndexIsSame |= (pRoI->getPackedMixedFrameIndex() == mixedFrameIndex);
   }
   return atLeastOneIndexIsSame;
 }

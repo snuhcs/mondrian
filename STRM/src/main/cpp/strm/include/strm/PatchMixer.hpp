@@ -46,11 +46,11 @@ class PatchMixer {
  public:
   static std::tuple<Indices, Locations> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
                                              const WHs& boxWHs, bool backward,
-                                             bool emulatedBatch, int singleInputSize);
+                                             bool emulatedBatch, int roiSize);
 
   static void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
                     const WHs& boxWH, const Indices& indices,
-                    bool emulatedBatch, int singleInputSize);
+                    bool emulatedBatch, int roiSize);
 
  private:
   static int getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, int w, int h);

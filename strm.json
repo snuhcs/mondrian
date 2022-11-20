@@ -15,7 +15,7 @@
     "full_frame_size": 768,
     "buffer_size": 500,
     "latency_slo_ms": 10000,
-    "use_emulated_batch": true,
+    "use_emulated_batch": false,
     "use_roi_wise_inference": false,
     "roi_size": 64,
     "roi_extractor": {

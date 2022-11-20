@@ -72,8 +72,7 @@ class RoIExtractor {
 
   IntPairs getBoxesIfLast(const Frame* frame);
 
-  static void prepareScaledFrame(Frame* frame,
-                                 const Indices& indices, const Locations& locations);
+  void prepareScaledFrame(Frame* frame, const Indices& indices, const Locations& locations);
 
   static IntPairs getBoxesIfScaled(const Frame* frame);
 

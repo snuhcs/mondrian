@@ -116,27 +116,11 @@ cv::Mat RoI::getPaddedMat() const {
   return frame->mat.operator()(cv::Rect(left, top, width, height));
 }
 
-cv::Mat RoI::getResizedMat(int singleInputSize) const {
-  int rw;
-  int rh;
-  if (singleInputSize == -1) { // Mixed Inference
-    auto rwh = getResizedMatWidthHeight();
-    rw = rwh.first;
-    rh = rwh.second;
-  } else { // Emulated Batch or RoI-wise Inference
-    int w = toInt(paddedLoc.width());
-    int h = toInt(paddedLoc.height());
-    if (std::max(w, h) <= singleInputSize) {
-      rw = w;
-      rh = h;
-    } else if (w >= h) {
-      rw = singleInputSize;
-      rh = singleInputSize * h / w;
-    } else { // w < h
-      rh = singleInputSize;
-      rw = singleInputSize * w / h;
-    }
-  }
+cv::Mat RoI::getResizedMat(bool emulatedBatch, int roiSize) const {
+  IntPair rwh = emulatedBatch
+                ? getResizedMatWidthHeight(roiSize) // Resize with size
+                : getResizedMatWidthHeight();       // Resize with scale
+  auto[rw, rh] = rwh;
   cv::Mat resizedMat;
   cv::resize(getPaddedMat(), resizedMat, cv::Size(rw, rh));
   return resizedMat;

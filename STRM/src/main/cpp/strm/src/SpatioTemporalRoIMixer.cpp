@@ -20,15 +20,7 @@ namespace rm {
 
 const bool SpatioTemporalRoIMixer::FAIR = true;
 
-static auto key_set = [](const std::map<int, int>& map) {
-  std::set<int> keys;
-  for (const auto&[k, v]: map) {
-    keys.insert(k);
-  }
-  return keys;
-};
-
-static auto logLatencyTable = [](const std::map<Device, std::map<int, time_us>>& latencyTable) {
+static auto printLatencyTable = [](const std::map<Device, std::map<int, time_us>>& latencyTable) {
   std::stringstream ss;
   for (const auto&[device, size_latency]: latencyTable) {
     for (const auto&[size, latency]: size_latency) {
@@ -37,6 +29,14 @@ static auto logLatencyTable = [](const std::map<Device, std::map<int, time_us>>&
     }
   }
   LOGD("Latency Table:\n%s", ss.str().c_str());
+};
+
+static auto key_set = [](const std::map<int, int>& map) {
+  std::set<int> keys;
+  for (const auto&[k, v]: map) {
+    keys.insert(k);
+  }
+  return keys;
 };
 
 SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
@@ -54,14 +54,18 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mPatchReconstructor(new PatchReconstructor(
           config.patchReconstructorConfig, mRoIResizer.get())) {
   assert(!config.USE_ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
+  int maxMergeSize = config.USE_EMULATED_BATCH
+                     ? config.ROI_SIZE
+                     : mInputSizes.front();
+  bool runRoIExtractor = mConfig.FULL_FRAME_INTERVAL != 0;
   auto latencyTable = mInferenceEngine->getInferenceTimeTable();
-  logLatencyTable(latencyTable);
+  printLatencyTable(latencyTable);
+  auto inferencePlan = InferencePlanner::getInferencePlan(latencyTable, mScheduleInterval,
+                                                          mConfig.USE_ROI_WISE_INFERENCE);
+  auto vids = key_set(mStartIndices);
   mRoIExtractor = std::make_unique<RoIExtractor>(
-      mConfig.roIExtractorConfig, mInputSizes.front(), mConfig.FULL_FRAME_INTERVAL != 0,
-      mRoIResizer.get(), config.USE_EMULATED_BATCH, config.ROI_SIZE,
-      InferencePlanner::getInferencePlan(latencyTable, mScheduleInterval,
-                                         mConfig.USE_ROI_WISE_INFERENCE),
-      key_set(mStartIndices));
+      mConfig.roIExtractorConfig, maxMergeSize, runRoIExtractor, mRoIResizer.get(),
+      config.USE_EMULATED_BATCH, config.ROI_SIZE, inferencePlan, vids);
 
   if (config.LOG_EXECUTION) {
     mExecutionLogger = std::make_unique<Logger>("/data/data/hcs.offloading.strm/timeline.csv");
@@ -310,7 +314,7 @@ void SpatioTemporalRoIMixer::handleRoIWiseInferenceResults(
     auto[boxes, times, device] = mInferenceEngine->getResults(mixedFrame.getKey());
     assert(mixedFrame.packedRoIs.size() == 1);
     assert(device == mixedFrame.device);
-    auto&[x, y] = (*mixedFrame.packedRoIs.begin())->packedXY;
+    auto[x, y] = (*mixedFrame.packedRoIs.begin())->getPackedXY();
     RoI* pRoI = *mixedFrame.packedRoIs.begin();
     if (pRoI->frame->inferenceDevice == NO_DEVICE) {
       pRoI->frame->inferenceFrameSize = mixedFrame.mixedFrameSize;

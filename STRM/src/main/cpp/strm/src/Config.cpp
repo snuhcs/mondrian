@@ -199,6 +199,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["roi_resizer"].isNull()) {
     config.roiResizerConfig = parseRoIResizerConfig(json["roi_resizer"]);
   }
+  if (config.USE_EMULATED_BATCH || config.USE_ROI_WISE_INFERENCE) {
+    assert(config.roiResizerConfig.NUM_PROBE_STEPS == 0);
+  }
   if (!json["inference_engine"].isNull()) {
     config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
   }

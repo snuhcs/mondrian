@@ -15,16 +15,10 @@ MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixe
   // (e.g. white for YOLOv4, gray for YOLOv5)
   for (RoI* roi: packedRoIs) {
     assert(roi->isPacked());
-    cv::Mat resizedMat = emulatedBatch
-        ? roi->getResizedMat(roiSize)
-        : roi->getResizedMat();
+    cv::Mat resizedMat = roi->getResizedMat(emulatedBatch, roiSize);
     int rw = resizedMat.cols;
     int rh = resizedMat.rows;
-    auto[packX, packY] = roi->packedXY;
-    if (emulatedBatch) {
-      packX += (roiSize - rw) / 2;
-      packY += (roiSize - rh) / 2;
-    }
+    auto[packX, packY] = roi->getPackedXY();
     resizedMat.copyTo(
         packedMat(cv::Rect(packX, packY, rw, rh)));
     roi->packedAbsMixedFrameIndex = mixedFrameIndex;

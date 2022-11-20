@@ -188,11 +188,12 @@ class RoI {
   float targetScale;
   int scaleLevel;
 
- public:
   IntPair packedXY;
+  int packedMixedFrameIndex;
+
+ public:
   static const IntPair INVALID_XY;
 
-  int packedMixedFrameIndex;
   int packedAbsMixedFrameIndex;
   bool isProbingRoI;
   bool isMatchTried; // only valid within parentRoIs
@@ -267,20 +268,50 @@ class RoI {
             paddedLoc.height() * targetScale};
   }
 
+  IntPair getPackedXY() const {
+    return packedXY;
+  }
+
+  int getPackedMixedFrameIndex() const {
+    return packedMixedFrameIndex;
+  }
+
+  void setPackInfo(IntPair xy, int mixedFrameIndex, bool emulatedBatch, int roiSize) {
+    if (emulatedBatch) {
+      auto[rw, rh] = getResizedMatWidthHeight(roiSize);
+      xy.first += (roiSize - rw) / 2;
+      xy.second += (roiSize - rh) / 2;
+    }
+    packedXY = xy;
+    packedMixedFrameIndex = mixedFrameIndex;
+  }
+
   static int toInt(float v) {
     return std::round(v);
   }
 
-  std::pair<int, int> getResizedMatWidthHeight() const {
-    auto[w, h] = getResizedWidthHeight();
-    return {toInt(w), toInt(h)};
+  IntPair getResizedMatWidthHeight(int roiSize = -1) const {
+    if (roiSize == -1) {  // Use scale for resize
+      auto[w, h] = getResizedWidthHeight();
+      return {toInt(w), toInt(h)};
+    } else {  // Use size for resize
+      int w = toInt(paddedLoc.width());
+      int h = toInt(paddedLoc.height());
+      if (std::max(w, h) <= roiSize) {
+        return {w, h};
+      } else if (w >= h) {
+        return {roiSize, roiSize * h / w};
+      } else { // w < h
+        return {roiSize * w / h, roiSize};
+      }
+    }
   }
 
   cv::Mat getOrigMat() const;
 
   cv::Mat getPaddedMat() const;
 
-  cv::Mat getResizedMat(int singleInputSize = -1) const;
+  cv::Mat getResizedMat(bool emulatedBatch, int roiSize) const;
 };
 
 } // namespace rm
