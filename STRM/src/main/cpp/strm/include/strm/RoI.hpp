@@ -278,7 +278,7 @@ class RoI {
 
   void setPackInfo(IntPair xy, int mixedFrameIndex, bool emulatedBatch, int roiSize) {
     if (emulatedBatch) {
-      auto[rw, rh] = getResizedMatWidthHeight(roiSize);
+      auto[rw, rh] = getResizedMatWidthHeight();
       xy.first += (roiSize - rw) / 2;
       xy.second += (roiSize - rh) / 2;
     }
@@ -290,28 +290,16 @@ class RoI {
     return std::round(v);
   }
 
-  IntPair getResizedMatWidthHeight(int roiSize = -1) const {
-    if (roiSize == -1) {  // Use scale for resize
-      auto[w, h] = getResizedWidthHeight();
-      return {toInt(w), toInt(h)};
-    } else {  // Use size for resize
-      int w = toInt(paddedLoc.width());
-      int h = toInt(paddedLoc.height());
-      if (std::max(w, h) <= roiSize) {
-        return {w, h};
-      } else if (w >= h) {
-        return {roiSize, roiSize * h / w};
-      } else { // w < h
-        return {roiSize * w / h, roiSize};
-      }
-    }
+  IntPair getResizedMatWidthHeight() const {
+    auto[w, h] = getResizedWidthHeight();
+    return {toInt(w), toInt(h)};
   }
 
   cv::Mat getOrigMat() const;
 
   cv::Mat getPaddedMat() const;
 
-  cv::Mat getResizedMat(bool emulatedBatch, int roiSize) const;
+  cv::Mat getResizedMat() const;
 };
 
 } // namespace rm

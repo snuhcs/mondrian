@@ -6,8 +6,7 @@ namespace rm {
 
 int MixedFrame::numMixedFrames = 0;
 
-MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixedFrameSize,
-                       bool emulatedBatch, int roiSize)
+MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixedFrameSize)
     : device(device), packedRoIs(packedRoIs), mixedFrameSize(mixedFrameSize),
       packedMat(mixedFrameSize, mixedFrameSize, CV_8UC4, cv::Scalar(114, 114, 114, 255)),
       mixedFrameIndex(numMixedFrames++) {
@@ -15,7 +14,7 @@ MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixe
   // (e.g. white for YOLOv4, gray for YOLOv5)
   for (RoI* roi: packedRoIs) {
     assert(roi->isPacked());
-    cv::Mat resizedMat = roi->getResizedMat(emulatedBatch, roiSize);
+    cv::Mat resizedMat = roi->getResizedMat();
     int rw = resizedMat.cols;
     int rh = resizedMat.rows;
     auto[packX, packY] = roi->getPackedXY();

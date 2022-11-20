@@ -17,14 +17,28 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat mat,
       isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
       inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
 
-void Frame::resizeRoIs(RoIResizer* roiResizer) {
-  for (auto& cRoI: childRoIs) {
-    if (cRoI->type == OF) {
-      auto[scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features);
-      assert(0.0f < scale && scale <= 1.0f);
-      cRoI->setTargetScale(scale, level);
-    } else {
-      cRoI->setTargetScale(roiResizer->maxScale(), roiResizer->maxLevel());
+void Frame::resizeRoIs(RoIResizer* roiResizer, bool emulatedBatch, int roiSize) {
+  if (emulatedBatch) {
+    for (auto& cRoI: childRoIs) {
+      int w = RoI::toInt(cRoI->paddedLoc.width());
+      int h = RoI::toInt(cRoI->paddedLoc.height());
+      if (std::max(w, h) <= roiSize) {
+        cRoI->setTargetScale(1.0f, RoIResizer::INVALID_LEVEL);
+      } else if (w >= h) {
+        cRoI->setTargetScale(float(roiSize) / float(w), RoIResizer::INVALID_LEVEL);
+      } else { // w < h
+        cRoI->setTargetScale(float(roiSize) / float(h), RoIResizer::INVALID_LEVEL);
+      }
+    }
+  } else {
+    for (auto& cRoI: childRoIs) {
+      if (cRoI->type == OF) {
+        auto[scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features);
+        assert(0.0f < scale && scale <= 1.0f);
+        cRoI->setTargetScale(scale, level);
+      } else {
+        cRoI->setTargetScale(roiResizer->maxScale(), roiResizer->maxLevel());
+      }
     }
   }
 }
