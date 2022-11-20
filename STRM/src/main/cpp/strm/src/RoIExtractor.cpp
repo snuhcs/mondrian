@@ -89,7 +89,7 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
     assert(mixedFrameIndex < mInferencePlan.size());
     const auto& info = mInferencePlan[mixedFrameIndex];
     if (!rois.empty()) {
-      mixedFrames.emplace_back(info.device, rois, info.size, mEmulatedBatch, mRoISize);
+      mixedFrames.emplace_back(info.device, rois, info.size);
     }
   }
 
@@ -222,7 +222,7 @@ void RoIExtractor::work(int extractorId) {
 void RoIExtractor::postprocessOF(Frame* currFrame) {
   currFrame->filterPDRoIs(mConfig.PD_FILTER_THRESHOLD, mConfig.EAT_PD);
   currFrame->resizeStartTime = NowMicros();
-  currFrame->resizeRoIs(mRoIResizer);
+  currFrame->resizeRoIs(mRoIResizer, mEmulatedBatch, mRoISize);
   currFrame->resizeEndTime = NowMicros();
   currFrame->mergeRoIStartTime = NowMicros();
   if (mConfig.MERGE) {
@@ -441,7 +441,9 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
   frame->resetProbeRoIs();
   int i = 0;
   for (const auto& pRoI: frame->parentRoIs) {
-    pRoI->setTargetScale(1.0f, mRoIResizer->maxLevel());
+    if (!mEmulatedBatch) {
+      pRoI->setTargetScale(1.0f, mRoIResizer->maxLevel());
+    }
     pRoI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mRoISize);
     i++;
   }

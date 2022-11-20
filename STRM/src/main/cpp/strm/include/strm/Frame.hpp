@@ -73,7 +73,7 @@ class Frame {
   Frame(const int vid, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime);
 
-  void resizeRoIs(RoIResizer* roiResizer);
+  void resizeRoIs(RoIResizer* roiResizer, bool emulatedBatch, int roiSize);
 
   void resetParentRoIs();
 

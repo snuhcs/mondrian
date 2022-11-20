@@ -116,10 +116,8 @@ cv::Mat RoI::getPaddedMat() const {
   return frame->mat.operator()(cv::Rect(left, top, width, height));
 }
 
-cv::Mat RoI::getResizedMat(bool emulatedBatch, int roiSize) const {
-  IntPair rwh = emulatedBatch
-                ? getResizedMatWidthHeight(roiSize) // Resize with size
-                : getResizedMatWidthHeight();       // Resize with scale
+cv::Mat RoI::getResizedMat() const {
+  IntPair rwh = getResizedMatWidthHeight();
   auto[rw, rh] = rwh;
   cv::Mat resizedMat;
   cv::resize(getPaddedMat(), resizedMat, cv::Size(rw, rh));
