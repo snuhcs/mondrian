@@ -139,22 +139,27 @@ void Frame::filterPDRoIs(float threshold, bool eatPD) {
   for (auto it = childRoIs.begin(); it != childRoIs.end();) {
     auto& cRoI = *it;
     if (cRoI->type == PD) {
-      float totalOFCoverage = 0;
-      RoI* maxOverlapRoI = nullptr;
-      float maxInterSection = 0;
-      for (RoI* OFRoI: OFRoIs) {
-        float intersection = cRoI->paddedLoc.intersection(OFRoI->paddedLoc);
-        if (intersection > maxInterSection) {
-          maxOverlapRoI = OFRoI;
-          maxInterSection = intersection;
+      if (eatPD) {
+        RoI* maxOverlapRoI = nullptr;
+        float maxInterSection = 0;
+        for (RoI* OFRoI: OFRoIs) {
+          float intersection = cRoI->paddedLoc.intersection(OFRoI->origLoc);
+          if (intersection > maxInterSection) {
+            maxOverlapRoI = OFRoI;
+            maxInterSection = intersection;
+          }
         }
-        totalOFCoverage += intersection;
-      }
-      if (totalOFCoverage / cRoI->getPaddedArea() >= threshold) {
-        assert(maxOverlapRoI != nullptr);
-        if (eatPD) {
+        if (maxInterSection / cRoI->getPaddedArea() >= threshold) {
+          assert(maxOverlapRoI != nullptr);
           maxOverlapRoI->eatPD(cRoI->paddedLoc);
         }
+      }
+
+      float totalOFCoverage = 0;
+      for (RoI* OFRoI: OFRoIs) {
+        totalOFCoverage += cRoI->paddedLoc.intersection(OFRoI->paddedLoc);
+      }
+      if (totalOFCoverage / cRoI->getPaddedArea() >= threshold) {
         it = childRoIs.erase(it);
         continue;
       }
