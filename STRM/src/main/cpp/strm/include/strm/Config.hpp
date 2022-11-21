@@ -69,6 +69,7 @@ struct STRMConfig {
   bool LOG_EXECUTION = true;
   bool LOG_ROI = true;
   bool ALLOW_INTERPOLATION = false;
+  float INTERPOLATION_THRESHOLD = 0.5f;
   int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int FULL_FRAME_SIZE = 768;
   int BUFFER_SIZE = 500;
