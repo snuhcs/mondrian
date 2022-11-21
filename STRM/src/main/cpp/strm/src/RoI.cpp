@@ -57,34 +57,25 @@ void RoI::setOrigLoc(const Rect& newOrigLoc) {
 }
 
 void RoI::eatPD(const Rect& PDRect) {
-  float newLeft = std::min(origLoc.left, PDRect.left);
-  float newTop = std::min(origLoc.top, PDRect.top);
-  float newRight = std::max(origLoc.right, PDRect.right);
-  float newBottom = std::max(origLoc.bottom, PDRect.bottom);
-  setOrigLoc(Rect(newLeft, newTop, newRight, newBottom));
+  setOrigLoc(Rect::merge(origLoc, PDRect));
 }
 
 std::unique_ptr<RoI> RoI::mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
   assert(pRoI0->frame == pRoI1->frame);
-  float newLeft = std::min(pRoI0->paddedLoc.left, pRoI1->paddedLoc.left);
-  float newTop = std::min(pRoI0->paddedLoc.top, pRoI1->paddedLoc.top);
-  float newRight = std::max(pRoI0->paddedLoc.right, pRoI1->paddedLoc.right);
-  float newBottom = std::max(pRoI0->paddedLoc.bottom, pRoI1->paddedLoc.bottom);
-  Type roiType = pRoI0->type != PD || pRoI1->type != PD
-                 ? OF : PD;
+  Frame* frame = pRoI0->frame;
+  Rect rect = Rect::merge(pRoI0->paddedLoc, pRoI1->paddedLoc);
+  Type roiType = pRoI0->type != PD || pRoI1->type != PD ? OF : PD;
   int roiLabel;
-  if (pRoI0->label == pRoI1->label) {
-    roiLabel = pRoI0->label;
-  } else if (pRoI0->label != -1 && pRoI1->label == -1) {
-    roiLabel = pRoI0->label;
-  } else if (pRoI0->label == -1 && pRoI1->label != -1) {
-    roiLabel = pRoI1->label;
-  } else {
+  if (pRoI0->label == -1 && pRoI1->label == -1) {
     roiLabel = -1;
+  } else if (pRoI0->label != -1) {
+    roiLabel = pRoI0->label;
+  } else { // pRoI1->label != -1
+    roiLabel = pRoI1->label;
   }
   std::unique_ptr<RoI> mergedRoI = std::make_unique<RoI>(
-      nullptr, MERGED_ROI_ID, pRoI0->frame, Rect(newLeft, newTop, newRight, newBottom),
-      roiType, origin_Null, roiLabel, OFFeatures({}, {}, {}), RoI::INVALID_CONF, 0, false);
+      nullptr, MERGED_ROI_ID, frame, rect, roiType, origin_Null, roiLabel,
+      OFFeatures({}, {}, {}), RoI::INVALID_CONF, 0, false);
   float scale = std::max(pRoI0->targetScale, pRoI1->targetScale);
   assert(0.0f < scale && scale <= 1.0f);
   mergedRoI->setTargetScale(scale, RoIResizer::INVALID_LEVEL);

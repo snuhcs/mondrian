@@ -226,7 +226,7 @@ void RoIExtractor::postprocessOF(Frame* currFrame) {
   currFrame->resizeEndTime = NowMicros();
   currFrame->mergeRoIStartTime = NowMicros();
   if (mConfig.MERGE) {
-    currFrame->mergeRoIs(mConfig.MERGE_THRESHOLD, float(mMaxMergeSize));
+    currFrame->mergeRoIs(float(mMaxMergeSize));
   }
   currFrame->mergeRoIEndTime = NowMicros();
 
