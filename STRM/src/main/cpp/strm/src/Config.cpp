@@ -168,6 +168,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["allow_interpolation"].isNull()) {
     config.ALLOW_INTERPOLATION = json["allow_interpolation"].asBool();
   }
+  if (!json["interpolation_threshold"].isNull()) {
+    config.INTERPOLATION_THRESHOLD = json["interpolation_threshold"].asFloat();
+  }
   if (!json["full_frame_interval"].isNull()) {
     config.FULL_FRAME_INTERVAL = json["full_frame_interval"].asInt();
   }

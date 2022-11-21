@@ -176,7 +176,8 @@ void SpatioTemporalRoIMixer::work() {
          logger.getDuration("inf"), toString(inferencePlan).c_str());
 
     // 7. Interpolate results
-    std::set<idType> droppedIDs = Interpolator::interpolate(selectedFrames);
+    std::set<idType> droppedIDs = Interpolator::interpolate(
+        selectedFrames, mConfig.INTERPOLATION_THRESHOLD);
     logger.step("itp");
     LOGD("%-25s took %-7lld us                            // %4lu droppedIDs",
          "Interpolator::interpolate", logger.getDuration("itp"), droppedIDs.size());

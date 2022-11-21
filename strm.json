@@ -11,6 +11,7 @@
     "log_roi": true,
     "draw_output": false,
     "allow_interpolation": false,
+    "interpolation_threshold": 0.5,
     "full_frame_interval": 1,
     "full_frame_size": 768,
     "buffer_size": 500,
