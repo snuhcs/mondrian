@@ -57,10 +57,10 @@ void RoI::setOrigLoc(const Rect& newOrigLoc) {
 }
 
 void RoI::eatPD(const Rect& PDRect) {
-  float newLeft = std::min(this->paddedLoc.left, PDRect.left);
-  float newTop = std::min(this->paddedLoc.top, PDRect.top);
-  float newRight = std::max(this->paddedLoc.right, PDRect.right);
-  float newBottom = std::max(this->paddedLoc.bottom, PDRect.bottom);
+  float newLeft = std::min(origLoc.left, PDRect.left);
+  float newTop = std::min(origLoc.top, PDRect.top);
+  float newRight = std::max(origLoc.right, PDRect.right);
+  float newBottom = std::max(origLoc.bottom, PDRect.bottom);
   setOrigLoc(Rect(newLeft, newTop, newRight, newBottom));
 }
 
