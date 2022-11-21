@@ -2,7 +2,7 @@
     "video_configs": [
         {
             "path": "/data/local/tmp/video/MTA/test_cam_3.mp4",
-            "frame_range": [1000, 1450],
+            "frame_range": [0, -1],
             "fps": 0
         }
     ],
@@ -25,8 +25,8 @@
         "extraction_resize_width": 960,
         "extraction_resize_height": 540,
         "min_roi_area": 0,
-        "eat_pd": false,
-        "roi_padding": 10,
+        "eat_pd": true,
+        "roi_padding": 0,
         "optical_flow_roi_confidence_threshold": 0.1,
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
