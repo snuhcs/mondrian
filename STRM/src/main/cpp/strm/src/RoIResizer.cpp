@@ -25,7 +25,7 @@ RoIResizer::RoIResizer(const RoIResizerConfig& config)
 std::pair<float, int> RoIResizer::getTargetScale(const idType id,
                                                  const Features& features) {
   assert(features.type == OF);
-  if (mConfig.RESIZE_SMOOTHING_FACTOR == 0) {
+  if (mConfig.STATIC_SCALE) {
     return {mConfig.STATIC_TARGET_SCALE, 0};
   }
   int targetLevel = getMaxVotedLevel(id, features);

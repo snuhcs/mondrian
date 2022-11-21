@@ -54,8 +54,8 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   assert(config.TRAIN_DATA == "VIRAT" ||
          config.TRAIN_DATA == "MTA" ||
          config.TRAIN_DATA == "YouTube");
-  if (!json["resize_smoothing_factor"].isNull()) {
-    config.RESIZE_SMOOTHING_FACTOR = json["resize_smoothing_factor"].asFloat();
+  if (!json["static_scale"].isNull()) {
+    config.STATIC_SCALE = json["static_scale"].asBool();
   }
   if (!json["static_target_scale"].isNull()) {
     config.STATIC_TARGET_SCALE = json["static_target_scale"].asFloat();

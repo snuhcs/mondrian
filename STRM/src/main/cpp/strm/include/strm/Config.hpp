@@ -30,7 +30,7 @@ struct RoIExtractorConfig {
 struct RoIResizerConfig {
   // Predictive model configs
   std::string TRAIN_DATA;
-  float RESIZE_SMOOTHING_FACTOR = 0.1; // static resize when RESIZE_SMOOTHING_FACTOR == 0.0
+  bool STATIC_SCALE = false;
   float STATIC_TARGET_SCALE = 1.0;
 
   // Reactive probing configs
