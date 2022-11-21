@@ -11,7 +11,8 @@ std::set<idType> Interpolator::interpolate(MultiStream& frames, float threshold)
     for (auto id : roIIds) {
       std::vector<RoI*> childRoIs = getRoIStream(it.second, id);
       std::vector<int> validIndices = findValidRoIs(childRoIs);
-      if (float(validIndices.size()) / float(childRoIs.size()) < threshold) {
+      if (validIndices.empty() ||
+          float(validIndices.size()) / float(childRoIs.size()) < threshold) {
         droppedIDs.insert(id);
         continue;
       }
