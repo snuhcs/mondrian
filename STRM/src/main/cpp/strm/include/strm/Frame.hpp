@@ -77,7 +77,7 @@ class Frame {
 
   void resetParentRoIs();
 
-  void mergeRoIs(float mergeThreshold, float maxSize);
+  void mergeRoIs(float maxSize);
 
   void resetProbeRoIs();
 

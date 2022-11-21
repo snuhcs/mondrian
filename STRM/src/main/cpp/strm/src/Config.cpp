@@ -41,9 +41,6 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["merge"].isNull()) {
     config.MERGE = json["merge"].asBool();
   }
-  if (!json["merge_threshold"].isNull()) {
-    config.MERGE_THRESHOLD = json["merge_threshold"].asFloat();
-  }
   return config;
 }
 

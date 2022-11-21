@@ -58,37 +58,22 @@ void Frame::resetParentRoIs() {
   }
 }
 
-void Frame::mergeRoIs(float mergeThreshold, float maxSize) {
+void Frame::mergeRoIs(float maxSize) {
   resetParentRoIs();
   while (true) {
     bool updated = false;
     int i, j;
     for (i = 0; i < parentRoIs.size(); i++) {
       for (j = i + 1; j < parentRoIs.size(); j++) {
-        const std::unique_ptr<RoI>& roi0 = parentRoIs[i];
-        const std::unique_ptr<RoI>& roi1 = parentRoIs[j];
-        float intersection = roi0->paddedLoc.intersection(roi1->paddedLoc);
-        if (intersection / roi0->getPaddedArea() < mergeThreshold &&
-            intersection / roi1->getPaddedArea() < mergeThreshold) {
+        const auto& roi0 = parentRoIs[i];
+        const auto& roi1 = parentRoIs[j];
+        Rect newRect = Rect::merge(roi0->paddedLoc, roi1->paddedLoc);
+        if (std::max(newRect.width(), newRect.height()) > maxSize) {
           continue;
         }
-        float newLeft = std::min(roi0->paddedLoc.left, roi1->paddedLoc.left);
-        float newTop = std::min(roi0->paddedLoc.top, roi1->paddedLoc.top);
-        float newRight = std::max(roi0->paddedLoc.right, roi1->paddedLoc.right);
-        float newBottom = std::max(roi0->paddedLoc.bottom, roi1->paddedLoc.bottom);
-        if (newRight - newLeft > maxSize || newBottom - newTop > maxSize) {
-          continue;
-        }
-        float newArea = (newRight - newLeft) * (newBottom - newLeft);
-        if (roi0->getTargetScale() > roi1->getTargetScale()) {
-          // If roi0 resizes conservatively than roi1
-          newArea = newArea * roi0->getTargetScale() * roi0->getTargetScale();
-        } else {
-          // If roi1 resizes conservatively than roi0
-          newArea = newArea * roi1->getTargetScale() * roi1->getTargetScale();
-        }
-        float originalArea = roi0->getResizedArea() + roi1->getResizedArea();
-        if (newArea >= originalArea) {
+        float newScale = std::max(roi0->getTargetScale(), roi1->getTargetScale());
+        float origArea = roi0->getResizedArea() + roi1->getResizedArea();
+        if (newRect.area() * newScale * newScale >= origArea) {
           continue;
         }
         updated = true;

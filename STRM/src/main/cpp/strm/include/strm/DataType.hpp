@@ -80,6 +80,13 @@ struct Rect {
     float inter = intersection(other);
     return inter / (area() + other.area() - inter);
   }
+
+  static Rect merge(const Rect& rect0, const Rect& rect1) {
+    return {std::min(rect0.left, rect1.left),
+            std::min(rect0.top, rect1.top),
+            std::max(rect0.right, rect1.right),
+            std::max(rect0.bottom, rect1.bottom)};
+  }
 };
 
 class RoI;
@@ -103,12 +110,6 @@ struct InferenceInfo {
   int size;
   time_us latency;
   time_us accumulatedLatency = -1;
-};
-
-struct FreeRects {
-  Device device;
-  int frameSize;
-  std::vector<Rect> rects;
 };
 
 std::string toString(const std::vector<InferenceInfo>& inferencePlan);

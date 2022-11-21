@@ -24,7 +24,6 @@ struct RoIExtractorConfig {
   float PD_FILTER_THRESHOLD = 0.5;
   int PD_INTERVAL = 5;
   bool MERGE = true;
-  float MERGE_THRESHOLD = 0.5;
 };
 
 struct RoIResizerConfig {
