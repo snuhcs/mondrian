@@ -41,6 +41,9 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["merge"].isNull()) {
     config.MERGE = json["merge"].asBool();
   }
+  if (!json["no_downsampling_for_last_frame"].isNull()) {
+    config.NO_DOWNSAMPLING_FOR_LAST_FRAME = json["no_downsampling_for_last_frame"].asBool();
+  }
   return config;
 }
 

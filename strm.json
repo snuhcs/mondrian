@@ -30,7 +30,8 @@
         "optical_flow_roi_confidence_threshold": 0.1,
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
-        "merge": true
+        "merge": true,
+        "no_downsampling_for_last_frame": true
     },
     "roi_resizer": {
         "train_data": "MTA",
