@@ -419,9 +419,14 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
   IntPairs boxesIfLast;
   for (const auto& pRoI: frame->parentRoIs) {
-    int w = RoI::toInt(pRoI->paddedLoc.width());
-    int h = RoI::toInt(pRoI->paddedLoc.height());
-    boxesIfLast.emplace_back(w, h);
+    if (mConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
+      int w = RoI::toInt(pRoI->paddedLoc.width());
+      int h = RoI::toInt(pRoI->paddedLoc.height());
+      boxesIfLast.emplace_back(w, h);
+    } else {
+      auto[w, h] = pRoI->getResizedMatWidthHeight();
+      boxesIfLast.emplace_back(w, h);
+    }
   }
   for (const auto& cRoI: frame->childRoIs) {
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
@@ -441,7 +446,7 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
   frame->resetProbeRoIs();
   int i = 0;
   for (const auto& pRoI: frame->parentRoIs) {
-    if (!mEmulatedBatch) {
+    if (!mEmulatedBatch && mConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
       pRoI->setTargetScale(1.0f, mRoIResizer->maxLevel());
     }
     pRoI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mRoISize);
