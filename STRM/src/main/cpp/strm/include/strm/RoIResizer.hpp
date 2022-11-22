@@ -8,7 +8,6 @@
 #include "strm/RoI.hpp"
 #include "strm/tree/VIRAT.hpp"
 #include "strm/tree/MTA.hpp"
-#include "strm/tree/YouTube.hpp"
 
 namespace rm {
 

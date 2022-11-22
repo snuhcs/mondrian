@@ -6,14 +6,12 @@ namespace rm {
 const int RoIResizer::INVALID_LEVEL = -1;
 
 const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
-//    {"VIRAT",   VIRAT},
-//    {"YouTube", YouTube},
-    {"MTA", MTA}
+    {"MTA",   MTA},
+    {"VIRAT", VIRAT}
 };
 
 const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
-//    {"VIRAT",   {0.3f, 0.35f, 0.4f, 0.45f, 0.5f, 0.55f, 0.6f, 0.65f, 0.7f, 0.75f, 0.8f, 0.85f, 0.9f, 0.95f, 1.0f}},
-//    {"YouTube", {0.3f, 0.35f, 0.4f, 0.45f, 0.5f, 0.55f, 0.6f, 0.65f, 0.7f, 0.75f, 0.8f, 0.85f, 0.9f, 0.95f, 1.0f}},
+    {"VIRAT", {0.25f, 0.45f, 0.95f, 1.0f}},
     {"MTA", {0.25f, 0.35f, 0.45f, 0.75f, 1.0f}}
 };
 
