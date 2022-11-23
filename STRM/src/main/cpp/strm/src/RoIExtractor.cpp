@@ -70,11 +70,15 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
   }
 
   Frame* fullFrameTarget = mFullFrameTarget;
+  if (mFullFrameTarget != nullptr) {
+    mFullFrameTarget->useInferenceResultForOF = true;
+  }
 
   std::map<int, std::set<RoI*>> groupedRoIs;
   for (const auto&[vid, frames]: mPackedFrames) {
     for (Frame* frame: frames) {
       assert(frame != fullFrameTarget);
+      frame->useInferenceResultForOF = true;
       for (auto& pRoI: frame->parentRoIs) {
         groupedRoIs[pRoI->getPackedMixedFrameIndex()].insert(pRoI.get());
       }
