@@ -62,6 +62,8 @@ void RoIExtractor::notify() {
 
 std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::prepareInference(
     std::vector<InferenceInfo>& nextInferencePlan, bool runFull) {
+  // Should be packLock => queueLock order.
+  // See postprocessOF() for detail
   std::unique_lock<std::mutex> packLock(packMtx);
   std::unique_lock<std::mutex> queueLock(queueMtx);
 
@@ -70,15 +72,11 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
   }
 
   Frame* fullFrameTarget = mFullFrameTarget;
-  if (mFullFrameTarget != nullptr) {
-    mFullFrameTarget->useInferenceResultForOF = true;
-  }
 
   std::map<int, std::set<RoI*>> groupedRoIs;
   for (const auto&[vid, frames]: mPackedFrames) {
     for (Frame* frame: frames) {
       assert(frame != fullFrameTarget);
-      frame->useInferenceResultForOF = true;
       for (auto& pRoI: frame->parentRoIs) {
         groupedRoIs[pRoI->getPackedMixedFrameIndex()].insert(pRoI.get());
       }
@@ -108,10 +106,12 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
   for (auto&[vid, frames]: selectedFrames) {
     for (auto& frame: frames) {
       frame->scheduledTime = scheduledTime;
+      frame->useInferenceResultForOF = true;
     }
   }
   if (fullFrameTarget != nullptr) {
     fullFrameTarget->scheduledTime = scheduledTime;
+    fullFrameTarget->useInferenceResultForOF = true;
   }
 
   for (Frame* frame: mOFProcessing) {
@@ -154,10 +154,6 @@ void RoIExtractor::work(int extractorId) {
     }
   };
   auto getOFJob = [this]() {
-    if (mOFWaiting.empty()) {
-    } else {
-      Frame* firstFrame = *mOFWaiting.begin();
-    }
     if (!mOFWaiting.empty()
         && notFullyPacked
         && (*mOFWaiting.begin())->readyForOFExtraction()) {
@@ -433,6 +429,9 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
     }
   }
   for (const auto& cRoI: frame->childRoIs) {
+    if (cRoI->type == PD) {
+      continue;
+    }
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
         cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
     for (auto scale: probingCandidates) {
@@ -457,6 +456,9 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
     i++;
   }
   for (const auto& cRoI: frame->childRoIs) {
+    if (cRoI->type == PD) {
+      continue;
+    }
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
         cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
     for (auto scale: probingCandidates) {
@@ -690,8 +692,8 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
     }
   }
 
-  for (const Rect& box : boxes) {
-    if (box.width() >= 1.0f && box.height() >= 1.0f) {
+  for (const Rect& box: boxes) {
+    if (std::min(box.width(), box.height()) >= 1.0f) {
       outChildRoIs.push_back(std::make_unique<RoI>(
           nullptr,
           UNASSIGNED_ID,
