@@ -20,8 +20,11 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["extraction_resize_height"].isNull()) {
     config.EXTRACTION_RESIZE_HEIGHT = json["extraction_resize_height"].asFloat();
   }
-  if (!json["min_roi_area"].isNull()) {
-    config.MIN_ROI_AREA = json["min_roi_area"].asFloat();
+  if (!json["max_pd_roi_size"].isNull()) {
+    config.MAX_PD_ROI_SIZE = json["max_pd_roi_size"].asFloat();
+  }
+  if (!json["min_pd_roi_size"].isNull()) {
+    config.MIN_PD_ROI_SIZE = json["min_pd_roi_size"].asFloat();
   }
   if (!json["eat_pd"].isNull()) {
     config.EAT_PD = json["eat_pd"].asBool();

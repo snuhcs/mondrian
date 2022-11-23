@@ -17,7 +17,8 @@ struct RoIExtractorConfig {
   int NUM_WORKERS = 2;
   float EXTRACTION_RESIZE_WIDTH = 960;
   float EXTRACTION_RESIZE_HEIGHT = 540;
-  float MIN_ROI_AREA = 0;
+  float MAX_PD_ROI_SIZE = 206;
+  float MIN_PD_ROI_SIZE = 5;
   bool EAT_PD = true;
   float ROI_PADDING = 0;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;

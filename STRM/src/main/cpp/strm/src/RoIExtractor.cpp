@@ -500,7 +500,9 @@ void RoIExtractor::prepareScaledFrame(Frame* frame,
 
 void RoIExtractor::processPD(Frame* currFrame) {
   currFrame->pixelDiffRoIProcessStartTime = NowMicros();
-  getPixelDiffRoIs(currFrame, mTargetSize, mConfig.MIN_ROI_AREA, currFrame->childRoIs);
+  getPixelDiffRoIs(currFrame, mTargetSize,
+                   mConfig.MAX_PD_ROI_SIZE, mConfig.MIN_PD_ROI_SIZE,
+                   currFrame->childRoIs);
   currFrame->pixelDiffRoIProcessEndTime = NowMicros();
   LOGD("%-25s took %-7lld us for video %-5d frame %-4d // %4lu PD RoIs",
        "RoIExtractor::processPD",
@@ -652,7 +654,7 @@ std::vector<OFFeatures> RoIExtractor::opticalFlowTracking(
 }
 
 void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize,
-                                    const float minRoIArea,
+                                    const float maxPDRoISize, const float minPDRoISize,
                                     std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
 
   // Find {PD_INTERVAL}th previous frame. If not available, use farthest frame.
@@ -683,7 +685,8 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
     std::vector<cv::Point> approxCurve;
     cv::approxPolyDP(contour, approxCurve, approxDistance, true);
     cv::Rect2f box = cv::boundingRect(approxCurve);
-    if (box.area() >= minRoIArea) {
+    if (minPDRoISize <= std::min(box.width, box.height)
+        && std::max(box.width, box.height) <= maxPDRoISize) {
       boxes.push_back(Rect(
           box.x * float(currFrame->mat.cols) / float(targetSize.width),
           box.y * float(currFrame->mat.rows) / float(targetSize.height),
