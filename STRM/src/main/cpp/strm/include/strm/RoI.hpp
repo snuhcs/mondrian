@@ -164,7 +164,7 @@ class RoI {
   static const int INVALID_CONF;
 
   Frame* frame;
-  Rect origLoc;
+  const Rect origLoc;
   Rect paddedLoc;
   const float roiPadding;
 
@@ -212,7 +212,7 @@ class RoI {
       float roiPadding,
       bool isProbingRoI);
 
-  void setOrigLoc(const Rect& origLoc);
+  void setPaddedLoc(const Rect& newOrigLoc);
 
   void eatPD(const Rect& PDRect);
 

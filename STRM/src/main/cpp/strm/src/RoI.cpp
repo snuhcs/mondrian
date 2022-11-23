@@ -20,7 +20,7 @@ RoI::RoI(RoI* prevRoI,
          const float confidence,
          float roiPadding,
          bool isProbingRoI)
-    : prevRoI(prevRoI), id(id), frame(frame),
+    : prevRoI(prevRoI), id(id), frame(frame), origLoc(origLoc),
       type(type), origin(origin), label(label), features{
         -1,
         -1,
@@ -38,26 +38,22 @@ RoI::RoI(RoI* prevRoI,
   if (prevRoI != nullptr) {
     prevRoI->nextRoI = this;
   }
-  setOrigLoc(origLoc);
+  setPaddedLoc({std::max(0.0f, origLoc.left - roiPadding),
+                std::max(0.0f, origLoc.top - roiPadding),
+                std::min(float(frame->mat.cols), origLoc.right + roiPadding),
+                std::min(float(frame->mat.rows), origLoc.bottom + roiPadding)});
 }
 
-void RoI::setOrigLoc(const Rect& newOrigLoc) {
-  origLoc = newOrigLoc;
-
-  paddedLoc = Rect(std::max(0.0f, origLoc.left - roiPadding),
-                   std::max(0.0f, origLoc.top - roiPadding),
-                   std::min(float(frame->mat.cols), origLoc.right + roiPadding),
-                   std::min(float(frame->mat.rows), origLoc.bottom + roiPadding));
-
+void RoI::setPaddedLoc(const Rect& newPaddedLoc) {
+  paddedLoc = newPaddedLoc;
   features.width = paddedLoc.width();
   features.height = paddedLoc.height();
   features.xyRatio = (float) paddedLoc.width() / (float) paddedLoc.height();
-
   maxEdgeLength = std::max(paddedLoc.width(), paddedLoc.height());
 }
 
 void RoI::eatPD(const Rect& PDRect) {
-  setOrigLoc(Rect::merge(origLoc, PDRect));
+  setPaddedLoc(Rect::merge(paddedLoc, PDRect));
 }
 
 std::unique_ptr<RoI> RoI::mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
