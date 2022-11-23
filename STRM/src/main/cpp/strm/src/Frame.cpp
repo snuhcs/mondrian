@@ -166,17 +166,17 @@ void Frame::filterPDRoIs(float threshold, bool eatPD) {
 }
 
 bool Frame::isReadyToMarry(int mixedFrameIndex) const {
-  bool atLeastOneIndexIsSame = false;
-  for (const auto& pRoI: parentRoIs) {
-    if (!pRoI->isPacked()) {
-      continue;
-    }
-    if (pRoI->getPackedMixedFrameIndex() > mixedFrameIndex) {
-      return false;
-    }
-    atLeastOneIndexIsSame |= (pRoI->getPackedMixedFrameIndex() == mixedFrameIndex);
-  }
-  return atLeastOneIndexIsSame;
+  auto isRoIPacked = [&mixedFrameIndex](const std::unique_ptr<RoI>& roi) {
+    return roi->isPacked() && roi->getPackedMixedFrameIndex() <= mixedFrameIndex;
+  };
+  bool isAllReady = std::all_of(parentRoIs.begin(), parentRoIs.end(), isRoIPacked)
+                    && std::all_of(probingRoIs.begin(), probingRoIs.end(), isRoIPacked);
+  bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
+                                     [](auto& box) { return box->id == UNASSIGNED_ID; });
+  bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),
+                                   [](auto& box) { return box->id != UNASSIGNED_ID; });
+  assert(isAllUnassigned || isAllAssigned);
+  return isAllReady && isAllUnassigned;
 }
 
 bool Frame::readyForOFExtraction() const {

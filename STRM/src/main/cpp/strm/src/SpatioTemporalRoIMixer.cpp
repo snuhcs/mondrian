@@ -275,37 +275,16 @@ void SpatioTemporalRoIMixer::handleMixedFrameInferenceResults(
     mixedFrames[i].packedMat.release();
     mPatchReconstructor->assignBoxesToFrame(mixedFrames[i], boxes);
 
-    // Notify results of processed frames
     for (Frame* frame: mixedFrames[i].getPackedFrames()) {
-      if (frame->isReadyToMarry(i)) {
+      if (frame->isReadyToMarry(i)) { // If all pRoIs packed and inference ended
         // Match boxes with RoIs (per frame)
         nms(frame->boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold());
         mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, false);
-
-        bool allMarried = true;
-        for (auto& cRoI: frame->childRoIs) {
-          allMarried &= (cRoI->box != nullptr);
-        }
-        if (allMarried) {
-          frame->isBoxesReady = true;
-        }
+        frame->isBoxesReady = true;
       }
     }
+    // Notify results of processed frames
     mRoIExtractor->notify();
-  }
-  for (auto& mixedFrame: mixedFrames) {
-    for (Frame* frame: mixedFrame.getPackedFrames()) {
-      bool isAllUnassigned = std::all_of(frame->boxes.begin(), frame->boxes.end(),
-                                         [](auto& box) { return box->id == UNASSIGNED_ID; });
-      bool isAllAssigned = std::all_of(frame->boxes.begin(), frame->boxes.end(),
-                                       [](auto& box) { return box->id != UNASSIGNED_ID; });
-      assert(isAllUnassigned || isAllAssigned);
-      if (isAllUnassigned) {
-        // Match boxes with RoIs (per frame)
-        nms(frame->boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold());
-        mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, false);
-      }
-    }
   }
 }
 
