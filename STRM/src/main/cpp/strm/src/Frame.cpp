@@ -20,14 +20,15 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat mat,
 void Frame::resizeRoIs(RoIResizer* roiResizer, bool emulatedBatch, int roiSize) {
   if (emulatedBatch) {
     for (auto& cRoI: childRoIs) {
-      int w = RoI::toInt(cRoI->paddedLoc.width());
-      int h = RoI::toInt(cRoI->paddedLoc.height());
-      if (std::max(w, h) <= roiSize) {
-        cRoI->setTargetScale(1.0f, RoIResizer::INVALID_LEVEL);
-      } else if (w >= h) {
-        cRoI->setTargetScale(float(roiSize) / float(w), RoIResizer::INVALID_LEVEL);
-      } else { // w < h
-        cRoI->setTargetScale(float(roiSize) / float(h), RoIResizer::INVALID_LEVEL);
+      float w = cRoI->paddedLoc.width();
+      float h = cRoI->paddedLoc.height();
+      float scale = std::min(1.0f, float(roiSize) / std::max(h, w));
+      cRoI->setTargetScale(scale, RoIResizer::INVALID_LEVEL);
+      auto rwh = cRoI->getResizedMatWidthHeight();
+      if (roiSize < std::max(rwh.first, rwh.second)) {
+        LOGE("Frame::resizeRoIs: roiSize=%3d | %4.2f*%4.2f=%4.2f => %3d | %4.2f*%4.2f=%4.2f => %3d",
+             roiSize, w, scale, w * scale, rwh.first, h, scale, h * scale, rwh.second);
+        assert(false);
       }
     }
   } else {
@@ -72,8 +73,9 @@ void Frame::mergeRoIs(float maxSize) {
           continue;
         }
         float newScale = std::max(roi0->getTargetScale(), roi1->getTargetScale());
-        float origArea = roi0->getResizedArea() + roi1->getResizedArea();
-        if (newRect.area() * newScale * newScale >= origArea) {
+        int newArea = RoI::getResizedArea(newRect.width(), newRect.height(), newScale);
+        int origArea = roi0->getResizedArea() + roi1->getResizedArea();
+        if (newArea >= origArea) {
           continue;
         }
         updated = true;

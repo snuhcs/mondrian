@@ -420,8 +420,8 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
   IntPairs boxesIfLast;
   for (const auto& pRoI: frame->parentRoIs) {
     if (mConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
-      int w = RoI::toInt(pRoI->paddedLoc.width());
-      int h = RoI::toInt(pRoI->paddedLoc.height());
+      int w = RoI::getResizedMatEdgeLength(pRoI->paddedLoc.width(), 1.0f);
+      int h = RoI::getResizedMatEdgeLength(pRoI->paddedLoc.height(), 1.0f);
       boxesIfLast.emplace_back(w, h);
     } else {
       auto[w, h] = pRoI->getResizedMatWidthHeight();
@@ -432,8 +432,8 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
         cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
     for (auto scale: probingCandidates) {
-      int w = RoI::toInt(cRoI->paddedLoc.width() * scale);
-      int h = RoI::toInt(cRoI->paddedLoc.height() * scale);
+      int w = RoI::getResizedMatEdgeLength(cRoI->paddedLoc.width(), scale);
+      int h = RoI::getResizedMatEdgeLength(cRoI->paddedLoc.height(), scale);
       boxesIfLast.emplace_back(w, h);
     }
   }

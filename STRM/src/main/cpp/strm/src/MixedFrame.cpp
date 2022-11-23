@@ -1,5 +1,6 @@
 #include "strm/MixedFrame.hpp"
 
+#include "strm/Log.hpp"
 #include "strm/RoI.hpp"
 
 namespace rm {
@@ -18,8 +19,16 @@ MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixe
     int rw = resizedMat.cols;
     int rh = resizedMat.rows;
     auto[packX, packY] = roi->getPackedXY();
-    resizedMat.copyTo(
-        packedMat(cv::Rect(packX, packY, rw, rh)));
+
+    cv::Rect rect(packX, packY, rw, rh);
+    auto& m = packedMat;
+    if (!(0 <= rect.x && 0 <= rect.width && rect.x + rect.width <= m.cols && 0 <= rect.y &&
+          0 <= rect.height && rect.y + rect.height <= m.rows)) {
+      LOGE("MixedFrame packedMat(%4d, %4d), RoI(x=%4d, y=%4d, w=%4d, h=%4d)",
+           m.cols, m.rows, rect.x, rect.y, rect.width, rect.height);
+      assert(false);
+    }
+    resizedMat.copyTo(packedMat(rect));
     roi->packedAbsMixedFrameIndex = mixedFrameIndex;
   }
 }

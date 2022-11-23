@@ -248,9 +248,14 @@ class RoI {
     return paddedLoc.area();
   }
 
-  float getResizedArea() const {
-    const std::pair<float, float> resizedWH = getResizedWidthHeight();
-    return resizedWH.first * resizedWH.second;
+  static int getResizedArea(float width, float height, float scale) {
+    int rw = getResizedMatEdgeLength(width, scale);
+    int rh = getResizedMatEdgeLength(height, scale);
+    return rw * rh;
+  }
+
+  int getResizedArea() const {
+    return getResizedArea(paddedLoc.width(), paddedLoc.height(), targetScale);
   }
 
   float getTargetScale() const {
@@ -262,11 +267,6 @@ class RoI {
   }
 
   void setTargetScale(float newTargetScale, int newScaleLevel);
-
-  std::pair<float, float> getResizedWidthHeight() const {
-    return {paddedLoc.width() * targetScale,
-            paddedLoc.height() * targetScale};
-  }
 
   IntPair getPackedXY() const {
     return packedXY;
@@ -290,12 +290,14 @@ class RoI {
     return std::round(v);
   }
 
-  IntPair getResizedMatWidthHeight() const {
-    auto[w, h] = getResizedWidthHeight();
-    return {toInt(w), toInt(h)};
+  static int getResizedMatEdgeLength(float edgeLength, float scale) {
+    return std::max(1, toInt(edgeLength * scale));
   }
 
-  cv::Mat getOrigMat() const;
+  IntPair getResizedMatWidthHeight() const {
+    return {getResizedMatEdgeLength(paddedLoc.width(), targetScale),
+            getResizedMatEdgeLength(paddedLoc.height(), targetScale)};
+  }
 
   cv::Mat getPaddedMat() const;
 

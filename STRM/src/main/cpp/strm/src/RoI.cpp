@@ -85,18 +85,8 @@ std::unique_ptr<RoI> RoI::mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
 void RoI::setTargetScale(float newTargetScale, int newScaleLevel) {
   assert(0.0f < newTargetScale);
   assert(newTargetScale <= 1.0f);
-  float minEdgeLength = std::min(paddedLoc.width(), paddedLoc.height());
-  // compare with 1/minEdgeLength to prevent shorter edge being even shorter than 1 after downscaling
-  targetScale = std::max(1.0f / minEdgeLength, newTargetScale);
+  targetScale = newTargetScale;
   scaleLevel = newScaleLevel;
-}
-
-cv::Mat RoI::getOrigMat() const {
-  int left = std::max(0, std::min(frame->mat.cols, int(origLoc.left)));
-  int top = std::max(0, std::min(frame->mat.rows, int(origLoc.top)));
-  int width = std::max(0, std::min(frame->mat.cols - left, int(origLoc.width())));
-  int height = std::max(0, std::min(frame->mat.rows - top, int(origLoc.height())));
-  return frame->mat.operator()(cv::Rect(left, top, width, height));
 }
 
 cv::Mat RoI::getPaddedMat() const {

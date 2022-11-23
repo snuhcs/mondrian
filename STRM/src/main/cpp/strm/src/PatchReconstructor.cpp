@@ -14,11 +14,11 @@ PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
     : mConfig(config), mRoIResizer(roiResizer) {}
 
 static Rect moveResizeRoIPos(const RoI* roi) {
-  std::pair<float, float> wh = roi->getResizedWidthHeight();
-  return Rect(roi->getPackedXY().first,
-              roi->getPackedXY().second,
-              roi->getPackedXY().first + wh.first,
-              roi->getPackedXY().second + wh.second);
+  IntPair wh = roi->getResizedMatWidthHeight();
+  return {float(roi->getPackedXY().first),
+          float(roi->getPackedXY().second),
+          float(roi->getPackedXY().first + wh.first),
+          float(roi->getPackedXY().second + wh.second)};
 }
 
 static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
