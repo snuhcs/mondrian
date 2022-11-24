@@ -103,6 +103,10 @@ void Frame::mergeRoIs(float maxSize) {
     parentRoIs.erase(parentRoIs.begin() + j);
     parentRoIs.erase(parentRoIs.begin() + i);
   }
+  std::sort(parentRoIs.begin(), parentRoIs.end(),
+            [](const std::unique_ptr<RoI>& l, const std::unique_ptr<RoI>& r) {
+              return l->maxEdgeLength > r->maxEdgeLength;
+            });
   testAssignedUniqueRoIID(childRoIs);
   testParentChildrenIDsAndChildIDsSame(childRoIs, parentRoIs);
   testChildRoIsFrameRelation(childRoIs);
