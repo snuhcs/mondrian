@@ -21,6 +21,18 @@ RoIResizer::RoIResizer(const RoIResizerConfig& config)
       mTargetSize(scalesForLevels.at(config.TRAIN_DATA)) {}
 
 std::pair<float, int> RoIResizer::getTargetScale(const idType id,
+                                                 const Features& features,
+                                                 const float maxEdgeLength) {
+  auto[targetScale, targetLevel] = getTargetScale(id, features);
+  int resizedEdgeLength = RoI::getResizedMatEdgeLength(maxEdgeLength, targetScale);
+  if (float(resizedEdgeLength) > mConfig.MAX_OF_ROI_SIZE) {
+    targetScale = mConfig.MAX_OF_ROI_SIZE / maxEdgeLength;
+    targetLevel = INVALID_LEVEL;
+  }
+  return {targetScale, targetLevel};
+}
+
+std::pair<float, int> RoIResizer::getTargetScale(const idType id,
                                                  const Features& features) {
   assert(features.type == OF);
   if (mConfig.STATIC_SCALE) {

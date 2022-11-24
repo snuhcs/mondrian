@@ -429,7 +429,7 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
     }
   }
   for (const auto& cRoI: frame->childRoIs) {
-    if (cRoI->type == PD) {
+    if (cRoI->getScaleLevel() == RoIResizer::INVALID_LEVEL) {
       continue;
     }
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
@@ -450,13 +450,13 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
   int i = 0;
   for (const auto& pRoI: frame->parentRoIs) {
     if (!mEmulatedBatch && mConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
-      pRoI->setTargetScale(1.0f, mRoIResizer->maxLevel());
+      pRoI->setTargetScale(1.0f, RoIResizer::INVALID_LEVEL);
     }
     pRoI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mRoISize);
     i++;
   }
   for (const auto& cRoI: frame->childRoIs) {
-    if (cRoI->type == PD) {
+    if (cRoI->getScaleLevel() == RoIResizer::INVALID_LEVEL) {
       continue;
     }
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(

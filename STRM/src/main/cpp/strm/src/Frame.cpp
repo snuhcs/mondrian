@@ -34,11 +34,12 @@ void Frame::resizeRoIs(RoIResizer* roiResizer, bool emulatedBatch, int roiSize) 
   } else {
     for (auto& cRoI: childRoIs) {
       if (cRoI->type == OF) {
-        auto[scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features);
+        auto[scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features,
+                                                        cRoI->maxEdgeLength);
         assert(0.0f < scale && scale <= 1.0f);
         cRoI->setTargetScale(scale, level);
       } else {
-        cRoI->setTargetScale(roiResizer->maxScale(), roiResizer->maxLevel());
+        cRoI->setTargetScale(1.0f, RoIResizer::INVALID_LEVEL);
       }
     }
   }

@@ -22,7 +22,8 @@ class RoIResizer {
 
   RoIResizer(const RoIResizerConfig& config);
 
-  std::pair<float, int> getTargetScale(const idType id, const Features& features);
+  std::pair<float, int> getTargetScale(const idType id, const Features& features,
+                                       const float maxEdgeLength);
 
   void updateTable(RoI* roi);
 
@@ -30,20 +31,8 @@ class RoIResizer {
     return mConfig.NUM_PROBE_STEPS;
   }
 
-  int isProbing() const {
-    return mConfig.PROBE_STEP_SIZE != 0;
-  }
-
   std::vector<float> getProbingCandidates(
       float scale, int level, int numProbeSteps);
-
-  float maxScale() const {
-    return 1.0f;
-  }
-
-  int maxLevel() const {
-    return mTargetSize.size() - 1;
-  }
 
  private:
   class CircularBuffer {
@@ -61,6 +50,8 @@ class RoIResizer {
     size_t capacity_, oldest_index, size_;
     std::vector<int> data_;
   };
+
+  std::pair<float, int> getTargetScale(const idType id, const Features& features);
 
   int getMaxVotedLevel(const idType id, const Features& features);
 

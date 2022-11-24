@@ -33,6 +33,7 @@ struct RoIResizerConfig {
   std::string TRAIN_DATA;
   bool STATIC_SCALE = false;
   float STATIC_TARGET_SCALE = 1.0;
+  float MAX_OF_ROI_SIZE = 206;
 
   // Reactive probing configs
   float PROBE_STEP_SIZE = 0.05; // No probing when PROBE_STEP_SIZE == 0

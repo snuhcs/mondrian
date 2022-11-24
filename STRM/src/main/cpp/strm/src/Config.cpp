@@ -63,6 +63,9 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   if (!json["static_target_scale"].isNull()) {
     config.STATIC_TARGET_SCALE = json["static_target_scale"].asFloat();
   }
+  if (!json["max_of_roi_size"].isNull()) {
+    config.MAX_OF_ROI_SIZE = json["max_of_roi_size"].asFloat();
+  }
   if (!json["probe_step_size"].isNull()) {
     config.PROBE_STEP_SIZE = json["probe_step_size"].asFloat();
   }
