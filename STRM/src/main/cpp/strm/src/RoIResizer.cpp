@@ -11,8 +11,8 @@ const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
 };
 
 const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
-    {"VIRAT", {0.25f, 0.45f, 0.95f, 1.0f}},
-    {"MTA", {0.25f, 0.35f, 0.45f, 0.75f, 1.0f}}
+    {"VIRAT", {0.2f, 0.4f, 0.9f, 1.0f}},
+    {"MTA",   {0.2f, 0.3f, 0.5f, 0.7f, 1.0f}}
 };
 
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
@@ -40,7 +40,7 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
   }
   int targetLevel = getMaxVotedLevel(id, features);
   assert(0 <= targetLevel && targetLevel < mTargetSize.size());
-  float targetScale = mTargetSize[targetLevel];
+  float targetScale = std::min(1.0f, mTargetSize[targetLevel] + mConfig.SCALE_SHIFT);
 
   auto it = calibrationTable.find(id);
   if (it != calibrationTable.end()) {

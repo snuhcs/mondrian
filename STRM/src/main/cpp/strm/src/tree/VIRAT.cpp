@@ -70,13 +70,13 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
             if (xyRatio <= 0.47612) {
               if (confidence <= 0.12507) {
                 if (area <= 79.016) {
-                  if (area <= 79.013) {
-                    if (maxEdgeLength <= 12.99) {
-                      return 2;
-                    } else {  // if maxEdgeLength > 12.99
+                  if (xyRatio <= 0.46779) {
+                    if (avgErr <= 2.296) {
                       return 3;
+                    } else {  // if avgErr > 2.296
+                      return 2;
                     }
-                  } else {  // if area > 79.013
+                  } else {  // if xyRatio > 0.46779
                     return 2;
                   }
                 } else {  // if area > 79.016
@@ -103,9 +103,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if confidence > 0.1251
                   if (area <= 78.837) {
-                    if (avgErr <= 0.78042) {
+                    if (shiftAvg <= 0.0056438) {
                       return 2;
-                    } else {  // if avgErr > 0.78042
+                    } else {  // if shiftAvg > 0.0056438
                       return 3;
                     }
                   } else {  // if area > 78.837
@@ -227,9 +227,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if avgErr > 0.6159
                   if (area <= 73.15) {
-                    if (area <= 65.061) {
+                    if (xyRatio <= 0.36989) {
                       return 3;
-                    } else {  // if area > 65.061
+                    } else {  // if xyRatio > 0.36989
                       return 3;
                     }
                   } else {  // if area > 73.15
@@ -243,9 +243,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
               } else {  // if xyRatio > 0.41437
                 if (area <= 76.1) {
                   if (xyRatio <= 0.42212) {
-                    if (xyRatio <= 0.42202) {
+                    if (shiftAvg <= 0.12089) {
                       return 3;
-                    } else {  // if xyRatio > 0.42202
+                    } else {  // if shiftAvg > 0.12089
                       return 2;
                     }
                   } else {  // if xyRatio > 0.42212
@@ -257,10 +257,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if area > 76.1
                   if (confidence <= 0.17642) {
-                    if (maxEdgeLength <= 13.836) {
-                      return 2;
-                    } else {  // if maxEdgeLength > 13.836
+                    if (confidence <= 0.17639) {
                       return 3;
+                    } else {  // if confidence > 0.17639
+                      return 2;
                     }
                   } else {  // if confidence > 0.17642
                     if (area <= 76.166) {
@@ -301,9 +301,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if shiftAvg > 0.013394
                   if (shiftAvg <= 0.041036) {
-                    if (maxEdgeLength <= 12.829) {
+                    if (xyRatio <= 0.46065) {
                       return 3;
-                    } else {  // if maxEdgeLength > 12.829
+                    } else {  // if xyRatio > 0.46065
                       return 2;
                     }
                   } else {  // if shiftAvg > 0.041036
@@ -318,20 +318,20 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
             } else {  // if area > 79.745
               if (confidence <= 0.17021) {
                 if (area <= 89.184) {
-                  if (avgErr <= 2.3697) {
-                    if (maxEdgeLength <= 12.21) {
-                      return 2;
-                    } else {  // if maxEdgeLength > 12.21
-                      return 3;
-                    }
-                  } else {  // if avgErr > 2.3697
+                  if (maxEdgeLength <= 12.21) {
                     return 2;
+                  } else {  // if maxEdgeLength > 12.21
+                    if (avgErr <= 2.3697) {
+                      return 3;
+                    } else {  // if avgErr > 2.3697
+                      return 2;
+                    }
                   }
                 } else {  // if area > 89.184
                   if (confidence <= 0.15501) {
-                    if (avgErr <= 0.55174) {
+                    if (maxEdgeLength <= 13.335) {
                       return 3;
-                    } else {  // if avgErr > 0.55174
+                    } else {  // if maxEdgeLength > 13.335
                       return 2;
                     }
                   } else {  // if confidence > 0.15501
@@ -411,17 +411,25 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 }
               } else {  // if shiftAvg > 0.27057
-                if (confidence <= 0.13265) {
-                  if (shiftStd <= 1.2758) {
+                if (maxEdgeLength <= 43.683) {
+                  if (maxEdgeLength <= 33.559) {
+                    if (confidence <= 0.10122) {
+                      return 3;
+                    } else {  // if confidence > 0.10122
+                      return 2;
+                    }
+                  } else {  // if maxEdgeLength > 33.559
                     return 3;
-                  } else {  // if shiftStd > 1.2758
-                    return 2;
                   }
-                } else {  // if confidence > 0.13265
-                  if (area <= 477.09) {
+                } else {  // if maxEdgeLength > 43.683
+                  if (xyRatio <= 0.18565) {
                     return 2;
-                  } else {  // if area > 477.09
-                    return 1;
+                  } else {  // if xyRatio > 0.18565
+                    if (shiftAvg <= 9.8914) {
+                      return 1;
+                    } else {  // if shiftAvg > 9.8914
+                      return 2;
+                    }
                   }
                 }
               }
@@ -443,10 +451,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if shiftStd > 0.013485
                   if (xyRatio <= 0.59288) {
-                    if (avgErr <= 1.7167) {
-                      return 1;
-                    } else {  // if avgErr > 1.7167
+                    if (area <= 525.44) {
                       return 3;
+                    } else {  // if area > 525.44
+                      return 1;
                     }
                   } else {  // if xyRatio > 0.59288
                     if (xyRatio <= 0.72102) {
@@ -537,10 +545,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                       return 1;
                     }
                   } else {  // if avgErr > 0.58655
-                    if (area <= 1694.9) {
-                      return 2;
-                    } else {  // if area > 1694.9
+                    if (xyRatio <= 0.49963) {
                       return 1;
+                    } else {  // if xyRatio > 0.49963
+                      return 2;
                     }
                   }
                 } else {  // if shiftStd > 0.00096823
@@ -763,14 +771,14 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
               }
             } else {  // if maxEdgeLength > 79.646
               if (shiftNcc <= -0.015464) {
-                if (shiftNcc <= -0.062538) {
-                  return 1;
-                } else {  // if shiftNcc > -0.062538
-                  if (shiftAvg <= 1.0619) {
+                if (confidence <= 0.18114) {
+                  if (shiftStd <= 15.824) {
                     return 3;
-                  } else {  // if shiftAvg > 1.0619
+                  } else {  // if shiftStd > 15.824
                     return 0;
                   }
+                } else {  // if confidence > 0.18114
+                  return 1;
                 }
               } else {  // if shiftNcc > -0.015464
                 if (xyRatio <= 0.22358) {
@@ -781,10 +789,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                       return 2;
                     }
                   } else {  // if shiftStd > 3.7386
-                    if (confidence <= 0.17119) {
-                      return 0;
-                    } else {  // if confidence > 0.17119
+                    if (area <= 2476.6) {
                       return 1;
+                    } else {  // if area > 2476.6
+                      return 0;
                     }
                   }
                 } else {  // if xyRatio > 0.22358
@@ -895,9 +903,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
               } else {  // if xyRatio > 0.44191
                 if (avgErr <= 0.34028) {
                   if (confidence <= 0.24437) {
-                    if (shiftAvg <= 5.5773e-05) {
+                    if (xyRatio <= 0.44761) {
                       return 3;
-                    } else {  // if shiftAvg > 5.5773e-05
+                    } else {  // if xyRatio > 0.44761
                       return 2;
                     }
                   } else {  // if confidence > 0.24437
@@ -911,9 +919,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                       return 3;
                     }
                   } else {  // if avgErr > 1.5886
-                    if (shiftAvg <= 0.070731) {
+                    if (maxEdgeLength <= 14.061) {
                       return 3;
-                    } else {  // if shiftAvg > 0.070731
+                    } else {  // if maxEdgeLength > 14.061
                       return 2;
                     }
                   }
@@ -1001,9 +1009,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
               } else {  // if area > 80.373
                 if (confidence <= 0.23326) {
                   if (shiftAvg <= 0.0031003) {
-                    if (shiftAvg <= 0.0030416) {
+                    if (maxEdgeLength <= 14.003) {
                       return 2;
-                    } else {  // if shiftAvg > 0.0030416
+                    } else {  // if maxEdgeLength > 14.003
                       return 2;
                     }
                   } else {  // if shiftAvg > 0.0031003
@@ -1093,9 +1101,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   return 2;
                 } else {  // if avgErr > 0.45486
                   if (area <= 72.411) {
-                    if (confidence <= 0.32746) {
+                    if (xyRatio <= 0.40585) {
                       return 2;
-                    } else {  // if confidence > 0.32746
+                    } else {  // if xyRatio > 0.40585
                       return 2;
                     }
                   } else {  // if area > 72.411
@@ -1109,9 +1117,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
               } else {  // if area > 74.635
                 if (maxEdgeLength <= 13.469) {
                   if (confidence <= 0.31921) {
-                    if (area <= 80.599) {
+                    if (avgErr <= 0.50417) {
                       return 3;
-                    } else {  // if area > 80.599
+                    } else {  // if avgErr > 0.50417
                       return 2;
                     }
                   } else {  // if confidence > 0.31921
@@ -1156,14 +1164,14 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
             } else {  // if xyRatio > 0.43994
               if (shiftStd <= 0.00022378) {
                 if (shiftAvg <= 3.6012e-05) {
-                  if (xyRatio <= 0.45875) {
-                    return 3;
-                  } else {  // if xyRatio > 0.45875
+                  if (maxEdgeLength <= 13.884) {
                     if (avgErr <= 0.2792) {
                       return 2;
                     } else {  // if avgErr > 0.2792
                       return 3;
                     }
+                  } else {  // if maxEdgeLength > 13.884
+                    return 3;
                   }
                 } else {  // if shiftAvg > 3.6012e-05
                   if (shiftAvg <= 0.0058592) {
@@ -1181,9 +1189,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 }
               } else {  // if shiftStd > 0.00022378
-                if (maxEdgeLength <= 13.991) {
+                if (shiftStd <= 0.001995) {
                   return 3;
-                } else {  // if maxEdgeLength > 13.991
+                } else {  // if shiftStd > 0.001995
                   return 2;
                 }
               }
@@ -1291,10 +1299,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                       return 2;
                     }
                   } else {  // if area > 102.28
-                    if (shiftNcc <= 0.9937) {
-                      return 3;
-                    } else {  // if shiftNcc > 0.9937
+                    if (xyRatio <= 0.46925) {
                       return 2;
+                    } else {  // if xyRatio > 0.46925
+                      return 3;
                     }
                   }
                 } else {  // if xyRatio > 0.4861
@@ -1318,14 +1326,14 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
             if (area <= 1250.8) {
               if (shiftAvg <= 9.71) {
                 if (avgErr <= 2.8295) {
-                  if (xyRatio <= 0.37596) {
-                    if (shiftAvg <= 0.14623) {
+                  if (shiftAvg <= 0.14623) {
+                    if (xyRatio <= 0.37596) {
                       return 2;
-                    } else {  // if shiftAvg > 0.14623
-                      return 1;
+                    } else {  // if xyRatio > 0.37596
+                      return 3;
                     }
-                  } else {  // if xyRatio > 0.37596
-                    return 3;
+                  } else {  // if shiftAvg > 0.14623
+                    return 1;
                   }
                 } else {  // if avgErr > 2.8295
                   if (avgErr <= 4.4167) {
@@ -1363,10 +1371,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if maxEdgeLength > 81.215
                   if (xyRatio <= 0.49147) {
-                    if (xyRatio <= 0.27996) {
-                      return 2;
-                    } else {  // if xyRatio > 0.27996
+                    if (maxEdgeLength <= 139.82) {
                       return 1;
+                    } else {  // if maxEdgeLength > 139.82
+                      return 2;
                     }
                   } else {  // if xyRatio > 0.49147
                     return 3;
@@ -1519,10 +1527,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                       return 2;
                     }
                   } else {  // if maxEdgeLength > 42.433
-                    if (xyRatio <= 0.53627) {
-                      return 1;
-                    } else {  // if xyRatio > 0.53627
+                    if (shiftStd <= 0.74156) {
                       return 3;
+                    } else {  // if shiftStd > 0.74156
+                      return 1;
                     }
                   }
                 }
@@ -1562,14 +1570,14 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                 }
               } else {  // if avgErr > 6.1642
                 if (area <= 1291.5) {
-                  if (xyRatio <= 0.26499) {
-                    return 2;
-                  } else {  // if xyRatio > 0.26499
+                  if (maxEdgeLength <= 67.866) {
                     if (xyRatio <= 1.296) {
                       return 1;
                     } else {  // if xyRatio > 1.296
                       return 2;
                     }
+                  } else {  // if maxEdgeLength > 67.866
+                    return 2;
                   }
                 } else {  // if area > 1291.5
                   if (confidence <= 0.29301) {
@@ -1579,10 +1587,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                       return 2;
                     }
                   } else {  // if confidence > 0.29301
-                    if (confidence <= 0.32188) {
-                      return 1;
-                    } else {  // if confidence > 0.32188
+                    if (maxEdgeLength <= 64.418) {
                       return 2;
+                    } else {  // if maxEdgeLength > 64.418
+                      return 1;
                     }
                   }
                 }
@@ -1668,14 +1676,14 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                     }
                   }
                 } else {  // if maxEdgeLength > 65.816
-                  if (area <= 1014) {
-                    if (avgErr <= 1.4107) {
-                      return 3;
-                    } else {  // if avgErr > 1.4107
-                      return 2;
-                    }
-                  } else {  // if area > 1014
+                  if (shiftStd <= 0.001141) {
                     return 3;
+                  } else {  // if shiftStd > 0.001141
+                    if (area <= 1014) {
+                      return 2;
+                    } else {  // if area > 1014
+                      return 3;
+                    }
                   }
                 }
               } else {  // if area > 1042.8
@@ -1751,10 +1759,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                       return 2;
                     }
                   } else {  // if area > 1147.7
-                    if (maxEdgeLength <= 61.452) {
-                      return 2;
-                    } else {  // if maxEdgeLength > 61.452
+                    if (avgErr <= 53.952) {
                       return 1;
+                    } else {  // if avgErr > 53.952
+                      return 2;
                     }
                   }
                 }
@@ -1765,9 +1773,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
               if (area <= 1395.2) {
                 if (shiftAvg <= 0.041393) {
                   if (xyRatio <= 0.27968) {
-                    if (area <= 1185.9) {
+                    if (shiftAvg <= 0.0006331) {
                       return 1;
-                    } else {  // if area > 1185.9
+                    } else {  // if shiftAvg > 0.0006331
                       return 2;
                     }
                   } else {  // if xyRatio > 0.27968
@@ -1863,9 +1871,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                       return 2;
                     }
                   } else {  // if shiftAvg > 23.95
-                    if (maxEdgeLength <= 49.182) {
+                    if (area <= 2103.7) {
                       return 1;
-                    } else {  // if maxEdgeLength > 49.182
+                    } else {  // if area > 2103.7
                       return 0;
                     }
                   }
@@ -1892,14 +1900,14 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
             if (avgErr <= 13.586) {
               if (area <= 1779.7) {
                 if (area <= 647.64) {
-                  if (maxEdgeLength <= 50.067) {
+                  if (xyRatio <= 0.23283) {
+                    return 1;
+                  } else {  // if xyRatio > 0.23283
                     if (confidence <= 0.66132) {
                       return 1;
                     } else {  // if confidence > 0.66132
                       return 2;
                     }
-                  } else {  // if maxEdgeLength > 50.067
-                    return 1;
                   }
                 } else {  // if area > 647.64
                   if (xyRatio <= 0.42209) {
@@ -1973,9 +1981,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
               } else {  // if area > 1032.7
                 if (xyRatio <= 0.37679) {
                   if (xyRatio <= 0.31714) {
-                    if (confidence <= 0.69378) {
+                    if (maxEdgeLength <= 58.261) {
                       return 1;
-                    } else {  // if confidence > 0.69378
+                    } else {  // if maxEdgeLength > 58.261
                       return 2;
                     }
                   } else {  // if xyRatio > 0.31714
@@ -2097,9 +2105,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if area > 1669
                   if (shiftStd <= 0.0045114) {
-                    if (shiftNcc <= 0.98276) {
+                    if (shiftAvg <= 0.060615) {
                       return 2;
-                    } else {  // if shiftNcc > 0.98276
+                    } else {  // if shiftAvg > 0.060615
                       return 1;
                     }
                   } else {  // if shiftStd > 0.0045114
@@ -2135,9 +2143,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if confidence > 0.55136
                   if (maxEdgeLength <= 66.636) {
-                    if (confidence <= 0.58477) {
+                    if (avgErr <= 2.2678) {
                       return 3;
-                    } else {  // if confidence > 0.58477
+                    } else {  // if avgErr > 2.2678
                       return 2;
                     }
                   } else {  // if maxEdgeLength > 66.636
@@ -2173,10 +2181,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
               }
             } else {  // if area > 1067.2
               if (maxEdgeLength <= 66.469) {
-                if (area <= 1180.9) {
-                  return 1;
-                } else {  // if area > 1180.9
+                if (maxEdgeLength <= 66.309) {
                   return 2;
+                } else {  // if maxEdgeLength > 66.309
+                  return 1;
                 }
               } else {  // if maxEdgeLength > 66.469
                 if (xyRatio <= 0.14364) {
@@ -2484,9 +2492,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                     }
                   }
                 } else {  // if maxEdgeLength > 139.38
-                  if (xyRatio <= 0.46653) {
+                  if (area <= 9155.4) {
                     return 2;
-                  } else {  // if xyRatio > 0.46653
+                  } else {  // if area > 9155.4
                     if (shiftStd <= 0.43722) {
                       return 1;
                     } else {  // if shiftStd > 0.43722
@@ -2507,10 +2515,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                       return 3;
                     }
                   } else {  // if maxEdgeLength > 236.56
-                    if (confidence <= 0.65846) {
-                      return 2;
-                    } else {  // if confidence > 0.65846
+                    if (area <= 12700) {
                       return 0;
+                    } else {  // if area > 12700
+                      return 2;
                     }
                   }
                 }
@@ -2531,10 +2539,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if shiftAvg > 3.7561
                   if (shiftAvg <= 13.367) {
-                    if (confidence <= 0.65051) {
-                      return 3;
-                    } else {  // if confidence > 0.65051
+                    if (area <= 12090) {
                       return 1;
+                    } else {  // if area > 12090
+                      return 3;
                     }
                   } else {  // if shiftAvg > 13.367
                     return 0;
@@ -2680,9 +2688,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                     }
                   }
                 } else {  // if maxEdgeLength > 62.91
-                  if (confidence <= 0.8043) {
+                  if (avgErr <= 0.98727) {
                     return 1;
-                  } else {  // if confidence > 0.8043
+                  } else {  // if avgErr > 0.98727
                     return 2;
                   }
                 }
@@ -2801,10 +2809,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if xyRatio > 0.52792
                   if (confidence <= 0.9015) {
-                    if (area <= 2920.1) {
-                      return 2;
-                    } else {  // if area > 2920.1
+                    if (xyRatio <= 0.83064) {
                       return 1;
+                    } else {  // if xyRatio > 0.83064
+                      return 2;
                     }
                   } else {  // if confidence > 0.9015
                     return 0;
@@ -2815,10 +2823,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   if (area <= 3137.9) {
                     return 0;
                   } else {  // if area > 3137.9
-                    if (maxEdgeLength <= 77.589) {
-                      return 2;
-                    } else {  // if maxEdgeLength > 77.589
+                    if (xyRatio <= 0.69104) {
                       return 1;
+                    } else {  // if xyRatio > 0.69104
+                      return 2;
                     }
                   }
                 } else {  // if area > 5201.5
@@ -2921,17 +2929,17 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 }
               } else {  // if xyRatio > 0.99582
-                if (area <= 4044.8) {
-                  if (maxEdgeLength <= 59.624) {
+                if (maxEdgeLength <= 68.59) {
+                  if (xyRatio <= 1.0852) {
                     return 2;
-                  } else {  // if maxEdgeLength > 59.624
-                    if (xyRatio <= 1.1933) {
+                  } else {  // if xyRatio > 1.0852
+                    if (maxEdgeLength <= 67.778) {
                       return 1;
-                    } else {  // if xyRatio > 1.1933
+                    } else {  // if maxEdgeLength > 67.778
                       return 1;
                     }
                   }
-                } else {  // if area > 4044.8
+                } else {  // if maxEdgeLength > 68.59
                   return 2;
                 }
               }
@@ -3241,9 +3249,9 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                       return 1;
                     }
                   } else {  // if shiftAvg > 8.2827
-                    if (confidence <= 0.85866) {
+                    if (shiftAvg <= 25.945) {
                       return 0;
-                    } else {  // if confidence > 0.85866
+                    } else {  // if shiftAvg > 25.945
                       return 1;
                     }
                   }
@@ -3271,15 +3279,15 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if maxEdgeLength > 142.34
                   if (xyRatio <= 0.297) {
-                    if (area <= 6065.6) {
+                    if (confidence <= 0.87015) {
                       return 1;
-                    } else {  // if area > 6065.6
+                    } else {  // if confidence > 0.87015
                       return 0;
                     }
                   } else {  // if xyRatio > 0.297
-                    if (shiftStd <= 0.079546) {
+                    if (avgErr <= 3.0276) {
                       return 1;
-                    } else {  // if shiftStd > 0.079546
+                    } else {  // if avgErr > 3.0276
                       return 0;
                     }
                   }
@@ -3301,10 +3309,10 @@ int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float 
                   }
                 } else {  // if avgErr > 6.5405
                   if (confidence <= 0.89043) {
-                    if (xyRatio <= 0.31261) {
-                      return 1;
-                    } else {  // if xyRatio > 0.31261
+                    if (maxEdgeLength <= 122.26) {
                       return 0;
+                    } else {  // if maxEdgeLength > 122.26
+                      return 1;
                     }
                   } else {  // if confidence > 0.89043
                     if (maxEdgeLength <= 156.47) {
