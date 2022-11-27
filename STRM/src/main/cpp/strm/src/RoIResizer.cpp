@@ -35,9 +35,6 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
 std::pair<float, int> RoIResizer::getTargetScale(const idType id,
                                                  const Features& features) {
   assert(features.type == OF);
-  if (mConfig.STATIC_SCALE) {
-    return {mConfig.STATIC_TARGET_SCALE, 0};
-  }
   const int targetLevel = getMaxVotedLevel(id, features);
   assert(0 <= targetLevel && targetLevel < mTargetSize.size());
   float targetScale = getTargetScale(targetLevel);
@@ -56,6 +53,9 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
 }
 
 float RoIResizer::getTargetScale(const int scaleLevel) {
+  if (mConfig.STATIC_SCALE) {
+    return mConfig.STATIC_TARGET_SCALE;
+  }
   return std::min(1.0f, mTargetSize[scaleLevel] + mConfig.SCALE_SHIFT);
 }
 
@@ -69,6 +69,9 @@ int RoIResizer::getMaxVotedLevel(const idType id, const Features& features) {
 }
 
 int RoIResizer::predictLevelWithFeatures(const Features& features) const {
+  if (mConfig.STATIC_SCALE) {
+    return 0;
+  }
   assert(features.type == OF);
   auto&[shiftAvgX, shiftAvgY] = features.ofFeatures.shiftAvg;
   auto&[shiftStdX, shiftStdY] = features.ofFeatures.shiftStd;
