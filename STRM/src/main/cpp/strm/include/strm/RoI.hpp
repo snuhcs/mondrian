@@ -196,7 +196,6 @@ class RoI {
 
   int packedAbsMixedFrameIndex;
   bool isProbingRoI;
-  bool isMatchTried; // only valid within parentRoIs
   BoundingBox* box;
   BoundingBox* probingBox;
 
@@ -223,17 +222,6 @@ class RoI {
     idType maxId = minId + num;
     // [minId, maxId)
     return std::pair<idType, idType>(minId, maxId);
-  }
-
-  bool isProbingReady() const {
-    if (roisForProbing.empty()) {
-      return false;
-    }
-    bool ready = true;
-    for (auto& pRoI: roisForProbing) {
-      ready &= pRoI->isMatchTried;
-    }
-    return ready;
   }
 
   bool isPacked() const {

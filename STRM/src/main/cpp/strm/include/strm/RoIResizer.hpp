@@ -25,7 +25,7 @@ class RoIResizer {
   std::pair<float, int> getTargetScale(const idType id, const Features& features,
                                        const float maxEdgeLength);
 
-  void updateTable(RoI* roi);
+  void updateTable(RoI* cRoI);
 
   int getNumProbeSteps() const {
     return mConfig.NUM_PROBE_STEPS;
@@ -52,6 +52,8 @@ class RoIResizer {
   };
 
   std::pair<float, int> getTargetScale(const idType id, const Features& features);
+
+  float getTargetScale(const int scaleLevel);
 
   int getMaxVotedLevel(const idType id, const Features& features);
 

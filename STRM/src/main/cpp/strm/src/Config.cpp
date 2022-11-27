@@ -69,6 +69,7 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   }
   if (!json["probe_step_size"].isNull()) {
     config.PROBE_STEP_SIZE = json["probe_step_size"].asFloat();
+    assert(config.PROBE_STEP_SIZE > 0);
   }
   if (!json["num_probe_steps"].isNull()) {
     config.NUM_PROBE_STEPS = json["num_probe_steps"].asInt();

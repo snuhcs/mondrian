@@ -31,10 +31,10 @@ static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
                    / scale + pRoI->paddedLoc.left;
   float newBottom = (packedBox.location.bottom - pRoI->getPackedXY().second)
                     / scale + pRoI->paddedLoc.top;
-  return Rect(std::max(0.0f, newLeft),
-              std::max(0.0f, newTop),
-              std::min(float(pRoI->frame->mat.cols), newRight),
-              std::min(float(pRoI->frame->mat.rows), newBottom));
+  return {std::max(0.0f, newLeft),
+          std::max(0.0f, newTop),
+          std::min(float(pRoI->frame->mat.cols), newRight),
+          std::min(float(pRoI->frame->mat.rows), newBottom)};
 }
 
 void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
@@ -164,7 +164,6 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
           unassignedBoxes.push_back(roiToBoxesMap[cRoIPtr][i]);
         }
       }
-      cRoI->isMatchTried = true;
     }
   }
   // End of 2
@@ -191,7 +190,7 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
 
   // 2. Update resize profile
   for (auto& cRoI : childRoIs) {
-    if (cRoI->isProbingReady()) {
+    if (!cRoI->roisForProbing.empty()) {
       mRoIResizer->updateTable(cRoI.get());
     }
   }

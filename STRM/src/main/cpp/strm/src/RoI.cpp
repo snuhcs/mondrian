@@ -32,7 +32,7 @@ RoI::RoI(RoI* prevRoI,
         confidence
     }, roiPadding(roiPadding),
       targetScale(1.0f), scaleLevel(RoIResizer::INVALID_LEVEL), packedXY(INVALID_XY),
-      isMatchTried(false), nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
+      nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
       packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1),
       isProbingRoI(isProbingRoI), priority(-1) {
   if (prevRoI != nullptr) {
