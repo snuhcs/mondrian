@@ -31,7 +31,7 @@ struct RoIExtractorConfig {
 struct RoIResizerConfig {
   // Predictive model configs
   std::string TRAIN_DATA;
-  float SCALE_SHIFT = 0.05;
+  float SCALE_SHIFT = 0.2;
   bool STATIC_SCALE = false;
   float STATIC_TARGET_SCALE = 1.0;
   float MAX_OF_ROI_SIZE = 206;
@@ -54,6 +54,8 @@ struct InferenceEngineConfig {
   int PROFILE_WARMUPS = 5;
   int PROFILE_RUNS = 5;
   std::vector<int> INPUT_SIZES = {
+      256,
+      512,
       768
   };
   std::vector<Device> DEVICES = {
@@ -74,7 +76,7 @@ struct STRMConfig {
   bool LOG_ROI = true;
   bool ALLOW_INTERPOLATION = false;
   float INTERPOLATION_THRESHOLD = 1.0;
-  int FULL_FRAME_INTERVAL = 1; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
+  int FULL_FRAME_INTERVAL = 2; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int FULL_FRAME_SIZE = 768;
   int BUFFER_SIZE = 500;
   int LATENCY_SLO_MS = 10000;
