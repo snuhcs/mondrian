@@ -18,7 +18,7 @@ const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
     : mConfig(config),
       mPredictor(candidatePredictors.at(config.TRAIN_DATA)),
-      mTargetSize(scalesForLevels.at(config.TRAIN_DATA)) {}
+      mTargetScales(scalesForLevels.at(config.TRAIN_DATA)) {}
 
 std::pair<float, int> RoIResizer::getTargetScale(const idType id,
                                                  const Features& features,
@@ -26,8 +26,14 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
   auto[targetScale, targetLevel] = getTargetScale(id, features);
   int resizedEdgeLength = RoI::getResizedMatEdgeLength(maxEdgeLength, targetScale);
   if (float(resizedEdgeLength) > mConfig.MAX_OF_ROI_SIZE) {
-    targetScale = mConfig.MAX_OF_ROI_SIZE / maxEdgeLength;
-    targetLevel = INVALID_LEVEL;
+    for (int level = int(mTargetScales.size()) - 1; level >= 0; level--) {
+      if (mTargetScales[level] <= mConfig.MAX_OF_ROI_SIZE / maxEdgeLength) {
+        targetScale = mTargetScales[level];
+        targetLevel = level;
+        break;
+      }
+    }
+    assert(targetScale <= mConfig.MAX_OF_ROI_SIZE / maxEdgeLength);
   }
   return {targetScale, targetLevel};
 }
@@ -36,7 +42,7 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
                                                  const Features& features) {
   assert(features.type == OF);
   const int targetLevel = getMaxVotedLevel(id, features);
-  assert(0 <= targetLevel && targetLevel < mTargetSize.size());
+  assert(0 <= targetLevel && targetLevel < mTargetScales.size());
   float targetScale = getTargetScale(targetLevel);
 
   auto it = calibrationTable.find(id);
@@ -56,13 +62,13 @@ float RoIResizer::getTargetScale(const int scaleLevel) {
   if (mConfig.STATIC_SCALE) {
     return mConfig.STATIC_TARGET_SCALE;
   }
-  return std::min(1.0f, mTargetSize[scaleLevel] + mConfig.SCALE_SHIFT);
+  return std::min(1.0f, mTargetScales[scaleLevel] + mConfig.SCALE_SHIFT);
 }
 
 int RoIResizer::getMaxVotedLevel(const idType id, const Features& features) {
   auto record = prevPredictionBuffer.find(id);
   if (record == prevPredictionBuffer.end()) {
-    prevPredictionBuffer[id] = CircularBuffer(mTargetSize.size());
+    prevPredictionBuffer[id] = CircularBuffer(mTargetScales.size());
   }
   prevPredictionBuffer[id].push(predictLevelWithFeatures(features));
   return prevPredictionBuffer[id].maxVote();

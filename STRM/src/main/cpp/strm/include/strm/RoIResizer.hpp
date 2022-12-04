@@ -68,7 +68,7 @@ class RoIResizer {
 
   const RoIResizerConfig mConfig;
   const Predictor mPredictor;
-  const std::vector<float> mTargetSize;
+  const std::vector<float> mTargetScales;
 
   // Save prev prediction to smooth the predicted size
   std::map<idType, CircularBuffer> prevPredictionBuffer;
