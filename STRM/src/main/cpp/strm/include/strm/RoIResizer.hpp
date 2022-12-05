@@ -18,6 +18,7 @@ using Predictor = std::function<int(
 
 class RoIResizer {
  public:
+  static const int STATIC_LEVEL;
   static const int INVALID_LEVEL;
 
   RoIResizer(const RoIResizerConfig& config);

@@ -39,9 +39,8 @@ struct RoIResizerConfig {
   // Reactive probing configs
   float PROBE_STEP_SIZE = 0.05;
   int NUM_PROBE_STEPS = 1;
-  float OVERLAP_THRESHOLD = 0.8;
-  float ABSOLUTE_CONFIDENCE_THRESHOLD = 0.3;
-  float RELATIVE_CONFIDENCE_THRESHOLD = 0.1;
+  float PROBE_CONF_THRESHOLD = 0.3;
+  float PROBE_IOU_THRESHOLD = 0.75;
 };
 
 struct InferenceEngineConfig {

@@ -68,7 +68,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
       }
     }
     if (maxRoI != nullptr && maxOverlap >= mConfig.BOX_FILTER_OVERLAP_THRESHOLD) {
-      // filter overly large boxes from mixed frame inference by OVERLAP_THRESHOLD
+      // filter overly large boxes from mixed frame inference by PROBE_IOU_THRESHOLD
       if (maxRoI->isProbingRoI) {
         maxRoI->frame->probingBoxes.push_back(std::make_unique<BoundingBox>(
             UNASSIGNED_ID, reconstructBoxPos(box, maxRoI),

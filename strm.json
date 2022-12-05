@@ -42,9 +42,8 @@
         "max_of_roi_size": 206.0,
         "probe_step_size": 0.05,
         "num_probe_steps": 1,
-        "overlap_threshold": 0.8,
-        "absolute_confidence_threshold": 0.3,
-        "relative_confidence_threshold": 0.1
+        "probe_conf_threshold": 0.3,
+        "probe_iou_threshold": 0.75
     },
     "inference_engine": {
         "draw_inference_result": true,

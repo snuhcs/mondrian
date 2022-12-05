@@ -74,14 +74,11 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   if (!json["num_probe_steps"].isNull()) {
     config.NUM_PROBE_STEPS = json["num_probe_steps"].asInt();
   }
-  if (!json["overlap_threshold"].isNull()) {
-    config.OVERLAP_THRESHOLD = json["overlap_threshold"].asFloat();
+  if (!json["probe_conf_threshold"].isNull()) {
+    config.PROBE_CONF_THRESHOLD = json["probe_conf_threshold"].asFloat();
   }
-  if (!json["absolute_confidence_threshold"].isNull()) {
-    config.ABSOLUTE_CONFIDENCE_THRESHOLD = json["absolute_confidence_threshold"].asFloat();
-  }
-  if (!json["relative_confidence_threshold"].isNull()) {
-    config.RELATIVE_CONFIDENCE_THRESHOLD = json["relative_confidence_threshold"].asFloat();
+  if (!json["probe_iou_threshold"].isNull()) {
+    config.PROBE_IOU_THRESHOLD = json["probe_iou_threshold"].asFloat();
   }
   return config;
 }
