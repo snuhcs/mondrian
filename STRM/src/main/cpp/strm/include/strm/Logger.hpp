@@ -23,7 +23,7 @@ class Logger {
 
   void logRoIHeader();
 
-  void logRoI(const RoI* roi);
+  void logRoI(const RoI* roi, bool lock = true);
 
   void logResult(int vid, int frameIndex, time_us time,
                  const std::vector<BoundingBox>& boxes);

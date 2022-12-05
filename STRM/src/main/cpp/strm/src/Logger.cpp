@@ -174,10 +174,10 @@ void Logger::logRoIHeader() {
       << "avgErr" << delim
 
       << "numProbingRoIs" << delim
-      << "priority" << delim
       << "id" << delim
 
       // Packing info
+      << "priority" << delim
       << "packedLoc_l" << delim
       << "packedLoc_t" << delim
       << "packedLoc_r" << delim
@@ -193,11 +193,22 @@ void Logger::logRoIHeader() {
   logFile.flush();
 }
 
-void Logger::logRoI(const RoI* roi) {
+void Logger::logRoI(const RoI* roi, bool lock) {
   if (!logFile.is_open() || roi == nullptr) {
     return;
   }
-  std::lock_guard<std::mutex> lock(mtx);
+  std::unique_lock<std::mutex> logLock(mtx, std::defer_lock);
+  if (lock) {
+    logLock.lock();
+  }
+  if (!roi->isProbingRoI) {
+    for (auto& probeRoI : roi->roisForProbing) {
+      assert(probeRoI->isProbingRoI);
+      logRoI(probeRoI, false);
+    }
+  }
+  const RoI* pRoI = roi->isProbingRoI ? roi : roi->parentRoI;
+
   logFile
       // frame
       << roi->frame->vid << delim
@@ -234,17 +245,17 @@ void Logger::logRoI(const RoI* roi) {
       << roi->features.ofFeatures.avgErr << delim
 
       << roi->roisForProbing.size() << delim
-      << roi->parentRoI->priority << delim
       << roi->id << delim
 
-      << roi->parentRoI->paddedLoc.left << delim
-      << roi->parentRoI->paddedLoc.top << delim
-      << roi->parentRoI->paddedLoc.right << delim
-      << roi->parentRoI->paddedLoc.bottom << delim
-      << roi->parentRoI->getPackedXY().first << delim
-      << roi->parentRoI->getPackedXY().second << delim
-      << roi->parentRoI->getTargetScale() << delim
-      << roi->parentRoI->packedAbsMixedFrameIndex << delim
+      << pRoI->priority << delim
+      << pRoI->paddedLoc.left << delim
+      << pRoI->paddedLoc.top << delim
+      << pRoI->paddedLoc.right << delim
+      << pRoI->paddedLoc.bottom << delim
+      << pRoI->getPackedXY().first << delim
+      << pRoI->getPackedXY().second << delim
+      << pRoI->getTargetScale() << delim
+      << pRoI->packedAbsMixedFrameIndex << delim
 
       << roi->maxEdgeLength << delim
       << roi->getTargetScale() << delim
