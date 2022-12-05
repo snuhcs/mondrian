@@ -189,7 +189,25 @@ void PatchReconstructor::matchBoxesWithChildRoIs(Frame* frame, bool isFullFrame)
   }
   // End of 3
 
+  const auto testRoIBoxConnection = [&boxes, &childRoIs](){
+    for (const std::unique_ptr<BoundingBox>& box : boxes) {
+      assert(box->id != UNASSIGNED_ID);
+      if (box->srcRoI != nullptr) {
+        assert(box->srcRoI->box == box.get());
+        assert(box->srcRoI->label == box->label);
+        assert(box->srcRoI->id == box->id);
+      }
+    }
+    for (auto& cRoI : childRoIs) {
+      assert(cRoI->id != UNASSIGNED_ID);
+      if (cRoI->box != nullptr) {
+        assert(cRoI->box->id == cRoI->id);
+      }
+    }
+  };
+
   // 2. Update resize profile
+  testRoIBoxConnection();
   if (frame->isLastFrame) {
     for (auto& cRoI : childRoIs) {
       mRoIResizer->updateTable(cRoI.get());
@@ -198,22 +216,7 @@ void PatchReconstructor::matchBoxesWithChildRoIs(Frame* frame, bool isFullFrame)
     assert(std::all_of(childRoIs.begin(), childRoIs.end(),
                        [](const auto& cRoI) { return cRoI->roisForProbing.empty(); }));
   }
-
-  for (auto& cRoI : childRoIs) {
-    assert(cRoI->id != UNASSIGNED_ID);
-    if (cRoI->box != nullptr) {
-      assert(cRoI->box->id == cRoI->id);
-    }
-  }
-
-  for (const std::unique_ptr<BoundingBox>& box : boxes) {
-    assert(box->id != UNASSIGNED_ID);
-    if (box->srcRoI != nullptr) {
-      assert(box->srcRoI->box == box.get());
-      assert(box->srcRoI->label == box->label);
-      assert(box->srcRoI->id == box->id);
-    }
-  }
+  testRoIBoxConnection();
 }
 
 float PatchReconstructor::getIoUThreshold() const {

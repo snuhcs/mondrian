@@ -119,6 +119,7 @@ void RoIResizer::updateTable(RoI* cRoI) {
     auto copiedBox = std::make_unique<BoundingBox>(
         cRoI->id, probeBox->location, probeBox->confidence, probeBox->label, cRoI->origin);
     copiedBox->srcRoI = cRoI;
+    cRoI->label = copiedBox->label;
     cRoI->box = copiedBox.get();
     cRoI->frame->boxes.push_back(std::move(copiedBox));
   };
@@ -190,6 +191,7 @@ std::vector<float> RoIResizer::getProbingCandidates(
 
 bool RoIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
   return box != nullptr && referenceBox != nullptr
+         && box->label == referenceBox->label
          && box->location.iou(referenceBox->location) > mConfig.PROBE_IOU_THRESHOLD
          && box->confidence > mConfig.PROBE_CONF_THRESHOLD;
 }
