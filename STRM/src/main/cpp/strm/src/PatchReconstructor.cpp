@@ -92,9 +92,10 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
        mixedFrame.mixedFrameIndex, packedFrames.size(), results.size());
 }
 
-void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,
-                                            std::vector<std::unique_ptr<BoundingBox>>& boxes,
-                                            bool isFullFrame) const {
+void PatchReconstructor::matchBoxesWithChildRoIs(Frame* frame, bool isFullFrame) const {
+  std::vector<std::unique_ptr<RoI>>& childRoIs = frame->childRoIs;
+  std::vector<std::unique_ptr<BoundingBox>>& boxes = frame->boxes;
+
   std::vector<BoundingBox*> unassignedBoxes;
 
   assert(std::all_of(childRoIs.begin(), childRoIs.end(),
@@ -189,10 +190,13 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
   // End of 3
 
   // 2. Update resize profile
-  for (auto& cRoI : childRoIs) {
-    if (!cRoI->roisForProbing.empty()) {
+  if (frame->isLastFrame) {
+    for (auto& cRoI : childRoIs) {
       mRoIResizer->updateTable(cRoI.get());
     }
+  } else {
+    assert(std::all_of(childRoIs.begin(), childRoIs.end(),
+                       [](const auto& cRoI) { return cRoI->roisForProbing.empty(); }));
   }
 
   for (auto& cRoI : childRoIs) {

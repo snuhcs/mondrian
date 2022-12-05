@@ -8,6 +8,7 @@
 
 namespace rm {
 
+class Frame;
 class MixedFrame;
 class RoIResizer;
 
@@ -17,9 +18,7 @@ class PatchReconstructor {
 
   void assignBoxesToFrame(MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const;
 
-  void matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,
-                          std::vector<std::unique_ptr<BoundingBox>>& boxes,
-                          bool isFullFrame) const;
+  void matchBoxesWithChildRoIs(Frame* frame, bool isFullFrame) const;
 
   float getIoUThreshold() const;
 

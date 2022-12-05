@@ -44,6 +44,7 @@ class Frame {
   std::vector<std::unique_ptr<RoI>> childRoIs; // => box
   std::vector<std::unique_ptr<RoI>> parentRoIs;
 
+  bool isLastFrame;
   IntPairs boxesIfLast;
   IntPairs boxesIfScaled;
 

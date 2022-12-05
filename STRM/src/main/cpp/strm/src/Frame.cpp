@@ -15,7 +15,7 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat mat,
       width(mat.cols), height(mat.rows), prevFrame(prevFrame), nextFrame(nullptr),
       useInferenceResultForOF(false), extractOFAgain(false), enqueueTime(enqueueTime),
       isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
-      inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
+      isLastFrame(false), inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
 
 void Frame::resizeRoIs(RoIResizer* roiResizer, bool emulatedBatch, int roiSize) {
   if (emulatedBatch) {

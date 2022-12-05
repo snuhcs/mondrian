@@ -232,7 +232,7 @@ void SpatioTemporalRoIMixer::handleFullFrameInferenceResults(Frame* frame) {
     frame->boxes.push_back(std::make_unique<BoundingBox>(
         UNASSIGNED_ID, box.location, box.confidence, box.label, origin_FF));
   }
-  mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, true);
+  mPatchReconstructor->matchBoxesWithChildRoIs(frame, true);
 
   for (auto& box: frame->boxes) {
     assert(box->id != UNASSIGNED_ID);
@@ -279,7 +279,7 @@ void SpatioTemporalRoIMixer::handleMixedFrameInferenceResults(
       if (frame->isReadyToMarry(i)) { // If all pRoIs packed and inference ended
         // Match boxes with RoIs (per frame)
         nms(frame->boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold());
-        mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, false);
+        mPatchReconstructor->matchBoxesWithChildRoIs(frame, false);
         frame->isBoxesReady = true;
       }
     }
@@ -317,7 +317,7 @@ void SpatioTemporalRoIMixer::handleRoIWiseInferenceResults(
 
   for (Frame* frame: inferenceFrames) {
     nms(frame->boxes, NUM_LABELS, mPatchReconstructor->getIoUThreshold());
-    mPatchReconstructor->matchBoxesWithRoIs(frame->childRoIs, frame->boxes, false);
+    mPatchReconstructor->matchBoxesWithChildRoIs(frame, false);
   }
 }
 

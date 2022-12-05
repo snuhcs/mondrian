@@ -446,6 +446,7 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
 void RoIExtractor::prepareFrameLast(Frame* frame,
                                     const Indices& indices, const Locations& locations) {
   assert(indices.size() == locations.size());
+  frame->isLastFrame = true;
   frame->resetProbeRoIs();
   int i = 0;
   for (const auto& pRoI: frame->parentRoIs) {
