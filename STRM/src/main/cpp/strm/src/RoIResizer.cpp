@@ -155,7 +155,8 @@ void RoIResizer::updateTable(RoI* cRoI) {
     // When cRoI is merged and all of probing RoIs fail
     // newScale can be larger than getTargetScale(cRoI->getScaleLevel())
     if (selectedRoI == cRoI && isCalibrated(cRoI->id, cRoI->getScaleLevel())) {
-      newScale = std::min(newScale, calibrationTable[cRoI->id].second);
+      newScale = std::min(newScale, calibrationTable[cRoI->id].second
+                                    + cRoI->getTargetScale() * mConfig.PROBE_STEP_SIZE);
     } else {
       newScale = std::min(newScale, getTargetScale(cRoI->getScaleLevel()));
     }
@@ -191,8 +192,6 @@ std::vector<float> RoIResizer::getProbingCandidates(
                                     }), candidates.end());
   } else {
     for (int i = 0; i < numProbeSteps; i++) {
-      candidates.push_back(scale - float(i + 1) * mConfig.PROBE_STEP_SIZE);
-
       candidates.push_back(scale * (1 - float(i + 1) * mConfig.PROBE_STEP_SIZE));
     }
     float lowerBound = level == 0 ? float(1e-5) : getTargetScale(level - 1);
