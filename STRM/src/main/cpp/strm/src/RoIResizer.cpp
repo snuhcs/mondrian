@@ -59,21 +59,22 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
   assert(0 <= targetLevel && targetLevel < mTargetScales.size());
   float targetScale = getTargetScale(targetLevel);
 
-  auto it = calibrationTable.find(id);
-  if (it != calibrationTable.end()) {
-    if (targetLevel == calibrationTable[id].first) {
-      // in same Level
-      targetScale = calibrationTable[id].second;
-    } else {
-      // out of threshold range
-      calibrationTable.erase(it);
-    }
+  if (isCalibrated(id, targetLevel)) {
+    targetScale = calibrationTable[id].second;
+  } else if (calibrationTable.find(id) != calibrationTable.end()) {
+    calibrationTable.erase(id);
   }
   return {targetScale, targetLevel};
 }
 
 float RoIResizer::getTargetScale(const int scaleLevel) {
   return std::min(1.0f, mTargetScales[scaleLevel] + mConfig.SCALE_SHIFT);
+}
+
+bool RoIResizer::isCalibrated(const idType id, const int scaleLevel) const {
+  [](){}();
+  return calibrationTable.find(id) != calibrationTable.end()
+         && calibrationTable.at(id).first == scaleLevel;
 }
 
 int RoIResizer::getMaxVotedLevel(const idType id, const Features& features) {
@@ -138,23 +139,26 @@ void RoIResizer::updateTable(RoI* cRoI) {
   auto[largestScale, largestRoI] = (*probingRoIs.rbegin());
   BoundingBox* referenceBox = largestRoI->probingBox;
   float newScale = std::min(1.0f, largestScale + mConfig.PROBE_STEP_SIZE);
+  RoI* selectedRoI = largestRoI;
   for (auto it = probingRoIs.rbegin(); it != probingRoIs.rend(); it++) {
     auto[scale, probeRoI] = *it;
     BoundingBox* probeBox = probeRoI->probingBox;
     if (isUsable(probeBox, referenceBox)) {
       newScale = scale;
+      selectedRoI = probeRoI;
     } else {
       break;
     }
   }
 
-  // When cRoI is merged and all of probing RoIs fail
-  // newScale can be larger than getTargetScale(cRoI->getScaleLevel())
-  if (calibrationTable.find(cRoI->id) != calibrationTable.end()
-      && calibrationTable[cRoI->id].first == cRoI->getScaleLevel()) {
-    newScale = std::min(newScale, calibrationTable[cRoI->id].second);
-  } else {
-    newScale = std::min(newScale, getTargetScale(cRoI->getScaleLevel()));
+  if (!mConfig.STATIC_SCALE) {
+    // When cRoI is merged and all of probing RoIs fail
+    // newScale can be larger than getTargetScale(cRoI->getScaleLevel())
+    if (selectedRoI == cRoI && isCalibrated(cRoI->id, cRoI->getScaleLevel())) {
+      newScale = std::min(newScale, calibrationTable[cRoI->id].second);
+    } else {
+      newScale = std::min(newScale, getTargetScale(cRoI->getScaleLevel()));
+    }
   }
 
   if (cRoI->box != referenceBox && isUsable(referenceBox, referenceBox)) {
@@ -178,8 +182,8 @@ std::vector<float> RoIResizer::getProbingCandidates(
   std::vector<float> candidates;
   if (mConfig.STATIC_SCALE) {
     for (int i = 0; i < numProbeSteps; i++) {
-      candidates.push_back(scale - float(i + 1) * mConfig.PROBE_STEP_SIZE);
-      candidates.push_back(scale + float(i + 1) * mConfig.PROBE_STEP_SIZE);
+      candidates.push_back(scale * (1 - float(i + 1) * mConfig.PROBE_STEP_SIZE));
+      candidates.push_back(scale * (1 + float(i + 1) * mConfig.PROBE_STEP_SIZE));
     }
     candidates.erase(std::remove_if(candidates.begin(), candidates.end(),
                                     [](float candidate) {
@@ -188,6 +192,8 @@ std::vector<float> RoIResizer::getProbingCandidates(
   } else {
     for (int i = 0; i < numProbeSteps; i++) {
       candidates.push_back(scale - float(i + 1) * mConfig.PROBE_STEP_SIZE);
+
+      candidates.push_back(scale * (1 - float(i + 1) * mConfig.PROBE_STEP_SIZE));
     }
     float lowerBound = level == 0 ? float(1e-5) : getTargetScale(level - 1);
     candidates.erase(std::remove_if(candidates.begin(), candidates.end(),

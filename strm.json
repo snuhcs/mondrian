@@ -40,7 +40,7 @@
         "static_scale": false,
         "static_target_scale": 1.0,
         "max_of_roi_size": 206.0,
-        "probe_step_size": 0.05,
+        "probe_step_size": 0.1,
         "num_probe_steps": 1,
         "probe_conf_threshold": 0.3,
         "probe_iou_threshold": 0.75

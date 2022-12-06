@@ -56,13 +56,13 @@ class RoIResizer {
 
   float getTargetScale(const int scaleLevel);
 
+  bool isCalibrated(const idType id, const int scaleLevel) const;
+
   int getMaxVotedLevel(const idType id, const Features& features);
 
   int predictLevelWithFeatures(const Features& features) const;
 
   bool isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const;
-
-  static float getOverlap(Rect& targetRect, Rect& baseRect);
 
   static const std::map<std::string, Predictor> candidatePredictors;
   static const std::map<std::string, std::vector<float>> scalesForLevels;

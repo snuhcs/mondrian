@@ -37,7 +37,7 @@ struct RoIResizerConfig {
   float MAX_OF_ROI_SIZE = 206;
 
   // Reactive probing configs
-  float PROBE_STEP_SIZE = 0.05;
+  float PROBE_STEP_SIZE = 0.1;
   int NUM_PROBE_STEPS = 1;
   float PROBE_CONF_THRESHOLD = 0.3;
   float PROBE_IOU_THRESHOLD = 0.75;
