@@ -173,6 +173,7 @@ void Logger::logRoIHeader() {
       << "shiftNcc" << delim
       << "avgErr" << delim
 
+      << "isProbingRoI" << delim
       << "numProbingRoIs" << delim
       << "id" << delim
 
@@ -244,6 +245,7 @@ void Logger::logRoI(const RoI* roi, bool lock) {
       << roi->features.ofFeatures.shiftNcc << delim
       << roi->features.ofFeatures.avgErr << delim
 
+      << roi->isProbingRoI << delim
       << roi->roisForProbing.size() << delim
       << roi->id << delim
 
