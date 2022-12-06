@@ -115,16 +115,7 @@ void Logger::logResult(int vid, int frameIndex, time_us time,
           << frameIndex << ','
           << fromBaseTime(time) * 1000 << ',';
   for (int i = 0; i < boxes.size(); i++) {
-    const BoundingBox& box = boxes[i];
-    logFile << box.id << ','
-            << box.location.left << ','
-            << box.location.top << ','
-            << box.location.right << ','
-            << box.location.bottom << ','
-            << box.confidence << ','
-            << box.origin << ','
-            << box.choiceOfBox << ','
-            << COCO_LABELS[box.label];
+    logFile << boxes[i].str();
     if (i != boxes.size() - 1) {
       logFile << ',';
     }
@@ -188,6 +179,9 @@ void Logger::logRoIHeader() {
       << "packedScale" << delim
       << "packedAbsMixedFrameIndex" << delim
       << "packedMixedFrameSize" << delim
+
+      << "box" << delim
+      << "probingBox" << delim
 
       << "maxEdgeLength" << delim
       << "targetScale" << delim
@@ -260,6 +254,9 @@ void Logger::logRoI(const RoI* roi) {
       << pRoI->getTargetScale() << delim
       << pRoI->packedAbsMixedFrameIndex << delim
       << pRoI->packedMixedFrameSize << delim
+
+      << (roi->box == nullptr ? "" : roi->box->str().c_str()) << delim
+      << (roi->probingBox == nullptr ? "" : roi->probingBox->str().c_str()) << delim
 
       << roi->maxEdgeLength << delim
       << roi->getTargetScale() << delim
