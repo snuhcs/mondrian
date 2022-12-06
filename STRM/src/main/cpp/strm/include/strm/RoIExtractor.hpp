@@ -31,7 +31,7 @@ class RoIExtractor {
   void notify();
 
   std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> prepareInference(
-      std::vector<InferenceInfo>& nextInferencePlan, bool runFull);
+      std::vector<InferenceInfo>& nextInferencePlan, bool runFull, int scheduleID);
 
  private:
   void work(int extractorId);

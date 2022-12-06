@@ -22,6 +22,7 @@ class Frame {
  public:
   const int vid;
   const int frameIndex;
+  int scheduleID;
   cv::Mat mat;
   Frame* prevFrame;
   Frame* nextFrame;

@@ -61,7 +61,7 @@ void RoIExtractor::notify() {
 }
 
 std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::prepareInference(
-    std::vector<InferenceInfo>& nextInferencePlan, bool runFull) {
+    std::vector<InferenceInfo>& nextInferencePlan, bool runFull, int scheduleID) {
   // Should be packLock => queueLock order.
   // See postprocessOF() for detail
   std::unique_lock<std::mutex> packLock(packMtx);
@@ -106,11 +106,13 @@ std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> RoIExtractor::p
   for (auto&[vid, frames]: selectedFrames) {
     for (auto& frame: frames) {
       frame->scheduledTime = scheduledTime;
+      frame->scheduleID = scheduleID;
       frame->useInferenceResultForOF = true;
     }
   }
   if (fullFrameTarget != nullptr) {
     fullFrameTarget->scheduledTime = scheduledTime;
+    fullFrameTarget->scheduleID = scheduleID;
     fullFrameTarget->useInferenceResultForOF = true;
   }
 

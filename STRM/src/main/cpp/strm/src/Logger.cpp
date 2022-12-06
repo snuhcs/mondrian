@@ -36,6 +36,7 @@ void Logger::logExecutionHeader() {
   std::lock_guard<std::mutex> lock(mtx);
   logFile << "videoId" << delim
           << "frameIndex" << delim
+          << "scheduleID" << delim
           << "PDExtractorID" << delim
           << "OFExtractorID" << delim
           << "numBoxes" << delim
@@ -72,6 +73,7 @@ void Logger::logExecution(const Frame* frame) {
   std::lock_guard<std::mutex> lock(mtx);
   logFile << frame->vid << delim
           << frame->frameIndex << delim
+          << frame->scheduleID << delim
           << frame->PDExtractorID << delim
           << frame->OFExtractorID << delim
           << frame->boxes.size() << delim

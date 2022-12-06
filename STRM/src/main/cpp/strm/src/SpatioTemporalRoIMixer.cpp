@@ -122,7 +122,7 @@ void SpatioTemporalRoIMixer::work() {
     assert(!inferencePlan.empty());
 
     // 2. Prepare inference
-    auto results = mRoIExtractor->prepareInference(inferencePlan, fullFramePlan);
+    auto results = mRoIExtractor->prepareInference(inferencePlan, fullFramePlan, scheduleID);
     auto&[mixedFrames, fullFrameTarget, selectedFrames, droppedFrames] = results;
     logger.step("prep");
     LOGD("%-25s took %-7lld us                            "
