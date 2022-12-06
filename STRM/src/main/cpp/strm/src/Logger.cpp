@@ -187,6 +187,7 @@ void Logger::logRoIHeader() {
       << "packedXY_y" << delim
       << "packedScale" << delim
       << "packedAbsMixedFrameIndex" << delim
+      << "packedMixedFrameSize" << delim
 
       << "maxEdgeLength" << delim
       << "targetScale" << delim
@@ -258,6 +259,7 @@ void Logger::logRoI(const RoI* roi) {
       << pRoI->getPackedXY().second << delim
       << pRoI->getTargetScale() << delim
       << pRoI->packedAbsMixedFrameIndex << delim
+      << pRoI->packedMixedFrameSize << delim
 
       << roi->maxEdgeLength << delim
       << roi->getTargetScale() << delim

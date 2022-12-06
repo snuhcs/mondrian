@@ -195,6 +195,7 @@ class RoI {
   static const IntPair INVALID_XY;
 
   int packedAbsMixedFrameIndex;
+  int packedMixedFrameSize;
   bool isProbingRoI;
   BoundingBox* box;
   BoundingBox* probingBox;

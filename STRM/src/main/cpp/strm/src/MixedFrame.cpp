@@ -30,6 +30,7 @@ MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixe
     }
     resizedMat.copyTo(packedMat(rect));
     roi->packedAbsMixedFrameIndex = mixedFrameIndex;
+    roi->packedMixedFrameSize = mixedFrameSize;
   }
 }
 
