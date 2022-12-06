@@ -194,19 +194,19 @@ void Logger::logRoIHeader() {
   logFile.flush();
 }
 
-void Logger::logRoI(const RoI* roi, bool lock) {
+void Logger::logRoI(const RoI* roi) {
   if (!logFile.is_open() || roi == nullptr) {
     return;
   }
   std::unique_lock<std::mutex> logLock(mtx, std::defer_lock);
-  if (lock) {
-    logLock.lock();
-  }
   if (!roi->isProbingRoI) {
+    logLock.lock();
     for (auto& probeRoI : roi->roisForProbing) {
       assert(probeRoI->isProbingRoI);
-      logRoI(probeRoI, false);
+      logRoI(probeRoI);
     }
+  } else {
+    assert(roi->roisForProbing.empty());
   }
   const RoI* pRoI = roi->isProbingRoI ? roi : roi->parentRoI;
 
