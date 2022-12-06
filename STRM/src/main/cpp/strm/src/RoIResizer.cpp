@@ -150,7 +150,12 @@ void RoIResizer::updateTable(RoI* cRoI) {
 
   // When cRoI is merged and all of probing RoIs fail
   // newScale can be larger than getTargetScale(cRoI->getScaleLevel())
-  newScale = std::min(newScale, getTargetScale(cRoI->getScaleLevel()));
+  if (calibrationTable.find(cRoI->id) != calibrationTable.end()
+      && calibrationTable[cRoI->id].first == cRoI->getScaleLevel()) {
+    newScale = std::min(newScale, calibrationTable[cRoI->id].second);
+  } else {
+    newScale = std::min(newScale, getTargetScale(cRoI->getScaleLevel()));
+  }
 
   if (cRoI->box != referenceBox && isUsable(referenceBox, referenceBox)) {
     if (cRoI->box != nullptr) {
