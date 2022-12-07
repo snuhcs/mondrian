@@ -181,6 +181,7 @@ std::vector<float> RoIResizer::getProbingCandidates(
     float scale, int level, int numProbeSteps) {
   assert(0.0f <= scale && scale <= 1.0f);
   std::vector<float> candidates;
+  candidates.push_back(scale);
   if (mConfig.STATIC_SCALE) {
     for (int i = 0; i < numProbeSteps; i++) {
       candidates.push_back(scale * (1 - float(i + 1) * mConfig.PROBE_STEP_SIZE));
