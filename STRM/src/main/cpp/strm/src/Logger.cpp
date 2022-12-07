@@ -257,8 +257,8 @@ void Logger::logRoI(const RoI* roi) {
       << pRoI->packedAbsMixedFrameIndex << delim
       << pRoI->packedMixedFrameSize << delim
 
-      << (roi->box == nullptr ? "" : roi->box->str().c_str()) << delim
-      << (roi->probingBox == nullptr ? "" : roi->probingBox->str().c_str()) << delim
+      << (roi->box == nullptr ? "X" : roi->box->str().c_str()) << delim
+      << (roi->probingBox == nullptr ? "X" : roi->probingBox->str().c_str()) << delim
 
       << roi->maxEdgeLength << delim
       << roi->getTargetScale() << delim
