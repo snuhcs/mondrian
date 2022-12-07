@@ -106,7 +106,6 @@ int RoIResizer::predictLevelWithFeatures(const Features& features) const {
 }
 
 void RoIResizer::updateTable(RoI* cRoI) {
-  assert(prevPredictionBuffer.find(cRoI->id) != prevPredictionBuffer.end());
   if (cRoI->roisForProbing.empty()) {
     return;
   }
