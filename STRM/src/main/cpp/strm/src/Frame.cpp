@@ -39,7 +39,11 @@ void Frame::resizeRoIs(RoIResizer* roiResizer, bool emulatedBatch, int roiSize) 
         assert(0.0f < scale && scale <= 1.0f);
         cRoI->setTargetScale(scale, level);
       } else {
-        cRoI->setTargetScale(1.0f, RoIResizer::INVALID_LEVEL);
+        if (cRoI->nextRoI != nullptr) {
+          cRoI->setTargetScale(cRoI->nextRoI->getTargetScale(), cRoI->nextRoI->getScaleLevel());
+        } else {
+          cRoI->setTargetScale(1.0f, RoIResizer::INVALID_LEVEL);
+        }
       }
     }
   }
