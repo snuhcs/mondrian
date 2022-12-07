@@ -25,7 +25,7 @@ struct RoIExtractorConfig {
   float PD_FILTER_THRESHOLD = 0.5;
   int PD_INTERVAL = 5;
   bool MERGE = true;
-  bool NO_DOWNSAMPLING_FOR_LAST_FRAME = true;
+  bool NO_DOWNSAMPLING_FOR_LAST_FRAME = false;
 };
 
 struct RoIResizerConfig {

@@ -32,7 +32,7 @@
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
         "merge": true,
-        "no_downsampling_for_last_frame": true
+        "no_downsampling_for_last_frame": false
     },
     "roi_resizer": {
         "train_data": "MTA",
