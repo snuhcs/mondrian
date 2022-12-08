@@ -67,8 +67,8 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
   return {targetScale, targetLevel};
 }
 
-float RoIResizer::getTargetScale(const int scaleLevel) {
-  return std::min(1.0f, mTargetScales[scaleLevel] + mConfig.SCALE_SHIFT);
+float RoIResizer::getTargetScale(const int scaleLevel) const {
+  return std::min(1.0f, mTargetScales.at(scaleLevel) + mConfig.SCALE_SHIFT);
 }
 
 bool RoIResizer::isCalibrated(const idType id, const int scaleLevel) const {
@@ -176,15 +176,19 @@ void RoIResizer::updateTable(RoI* cRoI) {
   calibrationTable[cRoI->id] = {cRoI->getScaleLevel(), newScale};
 }
 
-std::vector<float> RoIResizer::getProbingCandidates(
-    float scale, int level, int numProbeSteps) {
+std::vector<float> RoIResizer::getProbingCandidates(float scale,
+                                                    int level,
+                                                    int numProbeSteps) const {
   assert(0.0f <= scale && scale <= 1.0f);
   std::vector<float> candidates;
-  candidates.push_back(scale);
   if (mConfig.STATIC_SCALE) {
     for (int i = 0; i < numProbeSteps; i++) {
-      candidates.push_back(scale * (1 - float(i + 1) * mConfig.PROBE_STEP_SIZE));
-      candidates.push_back(scale * (1 + float(i + 1) * mConfig.PROBE_STEP_SIZE));
+      if (i == 0) {
+        candidates.push_back(scale);
+      } else {
+        candidates.push_back(scale * (1 - float(i) * mConfig.PROBE_STEP_SIZE));
+        candidates.push_back(scale * (1 + float(i) * mConfig.PROBE_STEP_SIZE));
+      }
     }
     candidates.erase(std::remove_if(candidates.begin(), candidates.end(),
                                     [](float candidate) {
@@ -192,7 +196,7 @@ std::vector<float> RoIResizer::getProbingCandidates(
                                     }), candidates.end());
   } else {
     for (int i = 0; i < numProbeSteps; i++) {
-      candidates.push_back(scale * (1 - float(i + 1) * mConfig.PROBE_STEP_SIZE));
+      candidates.push_back(scale * (1 - float(i) * mConfig.PROBE_STEP_SIZE));
     }
     float lowerBound = level == 0 ? float(1e-5) : getTargetScale(level - 1);
     candidates.erase(std::remove_if(candidates.begin(), candidates.end(),

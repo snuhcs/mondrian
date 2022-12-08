@@ -32,8 +32,7 @@ class RoIResizer {
     return mConfig.NUM_PROBE_STEPS;
   }
 
-  std::vector<float> getProbingCandidates(
-      float scale, int level, int numProbeSteps);
+  std::vector<float> getProbingCandidates(float scale, int level, int numProbeSteps) const;
 
  private:
   class CircularBuffer {
@@ -54,7 +53,7 @@ class RoIResizer {
 
   std::pair<float, int> getTargetScale(const idType id, const Features& features);
 
-  float getTargetScale(const int scaleLevel);
+  float getTargetScale(const int scaleLevel) const;
 
   bool isCalibrated(const idType id, const int scaleLevel) const;
 
