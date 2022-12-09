@@ -68,7 +68,8 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
 }
 
 float RoIResizer::getTargetScale(const int scaleLevel) const {
-  return std::min(1.0f, mTargetScales.at(scaleLevel) + mConfig.SCALE_SHIFT);
+  float shift = mConfig.STATIC_SCALE ? 0 : mConfig.SCALE_SHIFT;
+  return std::min(1.0f, mTargetScales.at(scaleLevel) + shift);
 }
 
 bool RoIResizer::isCalibrated(const idType id, const int scaleLevel) const {
