@@ -9,6 +9,7 @@ import org.json.JSONException;
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -47,7 +48,8 @@ public class MainActivity extends AppCompatActivity implements InferenceViewCall
         Mat mat = new Mat(addr);
         Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bitmap);
-        mOutputView0.post(() -> mOutputView0.setImageBitmap(DrawUtil.drawBoxes(bitmap, results, false)));
+        Bitmap outputBitmap = DrawUtil.drawBoxes(bitmap, results, false);
+        mOutputView0.post(() -> mOutputView0.setImageBitmap(outputBitmap));
     }
 
     @Override
@@ -55,6 +57,16 @@ public class MainActivity extends AppCompatActivity implements InferenceViewCall
         Mat mat = new Mat(addr);
         Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bitmap);
-        mOutputView1.post(() -> mOutputView1.setImageBitmap(DrawUtil.drawBoxes(bitmap, results, false)));
+        Bitmap outputBitmap = DrawUtil.drawBoxes(bitmap, results, false);
+        mOutputView1.post(() -> mOutputView1.setImageBitmap(outputBitmap));
+    }
+
+    private void saveBitmap(Bitmap bmp, String filepath) {
+        try (FileOutputStream out = new FileOutputStream(filepath)) {
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
+            // PNG is a lossless format, the compression factor (100) is ignored
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
