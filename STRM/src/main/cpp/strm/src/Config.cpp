@@ -122,16 +122,8 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
     const Json::Value devices = json["devices"];
     config.DEVICES.clear();
     for (const auto& device : devices) {
-      std::string deviceStr = device.asString();
-      if (deviceStr == "GPU") {
-        config.DEVICES.push_back(GPU);
-      } else if (deviceStr == "DSP") {
-        config.DEVICES.push_back(DSP);
-      } else {
-        LOGD("%s device is not supported", deviceStr.c_str());
-      }
+      config.DEVICES.push_back(toDevice(device.asString()));
     }
-    assert(std::find(config.DEVICES.begin(), config.DEVICES.end(), GPU) != config.DEVICES.end());
   }
   return config;
 }
@@ -185,6 +177,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["full_frame_size"].isNull()) {
     config.FULL_FRAME_SIZE = json["full_frame_size"].asInt();
   }
+  if (!json["full_device"].isNull()) {
+    config.FULL_DEVICE = toDevice(json["full_device"].asString());
+  }
   if (!json["buffer_size"].isNull()) {
     config.BUFFER_SIZE = json["buffer_size"].asInt();
   }
@@ -213,6 +208,8 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["inference_engine"].isNull()) {
     config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
   }
+  auto& devices = config.inferenceEngineConfig.DEVICES;
+  assert(std::find(devices.begin(), devices.end(), config.FULL_DEVICE) != devices.end());
   auto& input_sizes = config.inferenceEngineConfig.INPUT_SIZES;
   assert(std::find(input_sizes.begin(), input_sizes.end(),
                    config.FULL_FRAME_SIZE) != input_sizes.end());

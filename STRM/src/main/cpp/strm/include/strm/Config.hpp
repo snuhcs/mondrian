@@ -77,6 +77,7 @@ struct STRMConfig {
   float INTERPOLATION_THRESHOLD = 1.0;
   int FULL_FRAME_INTERVAL = 3; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int FULL_FRAME_SIZE = 768;
+  Device FULL_DEVICE = GPU;
   int BUFFER_SIZE = 500;
   int LATENCY_SLO_MS = 10000;
   bool USE_EMULATED_BATCH = false;

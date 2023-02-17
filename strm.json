@@ -14,6 +14,7 @@
     "interpolation_threshold": 1,
     "full_frame_interval": 3,
     "full_frame_size": 768,
+    "full_device": "GPU",
     "buffer_size": 500,
     "latency_slo_ms": 10000,
     "use_emulated_batch": false,

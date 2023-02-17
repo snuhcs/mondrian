@@ -22,6 +22,10 @@ enum Device {
   DSP = 1,
 };
 
+Device toDevice(std::string deviceStr);
+
+const char* toConstStr(Device device);
+
 enum Origin {
   origin_Null = 0,  // null value for initialization
   origin_FF = 1,    // (Box) matched Box from full frame
