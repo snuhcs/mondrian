@@ -467,7 +467,7 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
     for (auto scale: probingCandidates) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
-          cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, true);
+          cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, mConfig.ROI_BORDER, true);
       assert(0.0f < scale && scale <= 1.0f);
       probeRoI->setTargetScale(scale, cRoI->getScaleLevel());
       probeRoI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mRoISize);
@@ -578,7 +578,8 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       if (newRight - newLeft >= 1.0f && newBottom - newTop >= 1.0f) {
         outChildRoIs.push_back(std::make_unique<RoI>(
             box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-            OF, box.origin, box.label, of, box.confidence, mConfig.ROI_PADDING, false));
+            OF, box.origin, box.label, of, box.confidence,
+            mConfig.ROI_PADDING, mConfig.ROI_BORDER, false));
       }
     }
   }
@@ -701,17 +702,9 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
   for (const Rect& box: boxes) {
     if (std::min(box.width(), box.height()) >= 1.0f) {
       outChildRoIs.push_back(std::make_unique<RoI>(
-          nullptr,
-          UNASSIGNED_ID,
-          currFrame,
-          box,
-          PD,
-          origin_PD,
-          -1,
-          OFFeatures({}, {}, {}),
-          RoI::INVALID_CONF,
-          mConfig.ROI_PADDING,
-          false));
+          nullptr, UNASSIGNED_ID, currFrame, box,
+          PD, origin_PD, -1, OFFeatures({}, {}, {}), RoI::INVALID_CONF,
+          mConfig.ROI_PADDING, mConfig.ROI_BORDER, false));
     }
   }
 }

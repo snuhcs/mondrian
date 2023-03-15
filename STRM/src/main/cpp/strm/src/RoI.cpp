@@ -18,8 +18,9 @@ RoI::RoI(RoI* prevRoI,
          const int label,
          const OFFeatures ofFeatures,
          const float confidence,
-         float roiPadding,
-         bool isProbingRoI)
+         const float roiPadding,
+         const float roiBorder,
+         const bool isProbingRoI)
     : prevRoI(prevRoI), id(id), frame(frame), origLoc(origLoc),
       type(type), origin(origin), label(label), features{
         -1,
@@ -30,7 +31,7 @@ RoI::RoI(RoI* prevRoI,
         -1,
         ofFeatures,
         confidence
-    }, roiPadding(roiPadding),
+    }, roiPadding(roiPadding), roiBorder(roiBorder),
       targetScale(1.0f), scaleLevel(RoIResizer::INVALID_LEVEL), packedXY(INVALID_XY),
       nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
       packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1), packedMixedFrameSize(-1),
@@ -58,6 +59,7 @@ void RoI::eatPD(const Rect& PDRect) {
 
 std::unique_ptr<RoI> RoI::mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
   assert(pRoI0->frame == pRoI1->frame);
+  assert(pRoI0->roiBorder == pRoI1->roiBorder);
   Frame* frame = pRoI0->frame;
   Rect rect = Rect::merge(pRoI0->paddedLoc, pRoI1->paddedLoc);
   Type roiType = pRoI0->type != PD || pRoI1->type != PD ? OF : PD;
@@ -71,7 +73,7 @@ std::unique_ptr<RoI> RoI::mergeRoIs(const RoI* pRoI0, const RoI* pRoI1) {
   }
   std::unique_ptr<RoI> mergedRoI = std::make_unique<RoI>(
       nullptr, MERGED_ROI_ID, frame, rect, roiType, origin_Null, roiLabel,
-      OFFeatures({}, {}, {}), RoI::INVALID_CONF, 0, false);
+      OFFeatures({}, {}, {}), RoI::INVALID_CONF, 0, pRoI0->roiBorder, false);
   float scale = std::max(pRoI0->targetScale, pRoI1->targetScale);
   assert(0.0f < scale && scale <= 1.0f);
   mergedRoI->setTargetScale(scale, RoIResizer::INVALID_LEVEL);

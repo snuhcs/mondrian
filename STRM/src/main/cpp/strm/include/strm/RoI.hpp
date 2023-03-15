@@ -167,6 +167,7 @@ class RoI {
   const Rect origLoc;
   Rect paddedLoc;
   const float roiPadding;
+  const float roiBorder;
 
   Type type;
   Origin origin;
@@ -209,8 +210,9 @@ class RoI {
       const int label,
       const OFFeatures ofFeatures,
       const float confidence,
-      float roiPadding,
-      bool isProbingRoI);
+      const float roiPadding,
+      const float roiBorder,
+      const bool isProbingRoI);
 
   void setPaddedLoc(const Rect& newOrigLoc);
 
