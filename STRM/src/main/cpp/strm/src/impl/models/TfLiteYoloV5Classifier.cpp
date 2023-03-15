@@ -20,9 +20,10 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(int inputSize, float confidenceTh
                  confidenceThreshold, iouThreshold, GPU) {
   std::stringstream ss;
   if (forFullFrame) {
-    ss << "/data/local/tmp/models/yolov5m-" << inputSize << "-fp16.tflite";
+    ss << "/data/local/tmp/models/yolov5l-" << inputSize << "-fp16-full.tflite";
   } else {
-    ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "m-") << inputSize << "-fp16.tflite";
+    ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "m-") << inputSize << "-fp16-pack.tflite";
+    // Note: currently not using isTiny. It's just placeholder.
   }
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
   if (model == nullptr) {

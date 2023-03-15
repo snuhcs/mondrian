@@ -212,8 +212,6 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   auto& devices = config.inferenceEngineConfig.DEVICES;
   assert(std::find(devices.begin(), devices.end(), config.FULL_DEVICE) != devices.end());
   auto& input_sizes = config.inferenceEngineConfig.INPUT_SIZES;
-  assert(std::find(input_sizes.begin(), input_sizes.end(),
-                   config.FULL_FRAME_SIZE) != input_sizes.end());
   if (config.USE_EMULATED_BATCH) {
     assert(std::all_of(input_sizes.begin(), input_sizes.end(), [&config](int input_size) {
       return input_size % config.ROI_SIZE == 0;
