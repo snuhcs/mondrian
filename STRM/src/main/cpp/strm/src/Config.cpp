@@ -33,7 +33,7 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
     config.ROI_PADDING = json["roi_padding"].asFloat();
   }
   if (!json["roi_border"].isNull()) {
-    config.ROI_BORDER = json["roi_border"].asFloat();
+    config.ROI_BORDER = json["roi_border"].asInt();
   }
   if (!json["optical_flow_roi_confidence_threshold"].isNull()) {
     config.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = json["optical_flow_roi_confidence_threshold"].asFloat();

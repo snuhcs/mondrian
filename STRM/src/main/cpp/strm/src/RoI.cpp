@@ -9,6 +9,8 @@ const IntPair RoI::INVALID_XY{-1, -1};
 
 const int RoI::INVALID_CONF = -1;
 
+const cv::Scalar RoI::BORDER_COLOR(255, 255, 255);
+
 RoI::RoI(RoI* prevRoI,
          const idType id,
          Frame* frame,
@@ -19,7 +21,7 @@ RoI::RoI(RoI* prevRoI,
          const OFFeatures ofFeatures,
          const float confidence,
          const float roiPadding,
-         const float roiBorder,
+         const int roiBorder,
          const bool isProbingRoI)
     : prevRoI(prevRoI), id(id), frame(frame), origLoc(origLoc),
       type(type), origin(origin), label(label), features{
@@ -31,8 +33,8 @@ RoI::RoI(RoI* prevRoI,
         -1,
         ofFeatures,
         confidence
-    }, roiPadding(roiPadding), roiBorder(roiBorder),
-      targetScale(1.0f), scaleLevel(RoIResizer::INVALID_LEVEL), packedXY(INVALID_XY),
+    }, roiBorder(roiBorder), targetScale(1.0f), // TODO: Start with targetScale(-1) and assert
+      scaleLevel(RoIResizer::INVALID_LEVEL), packedXY(INVALID_XY),
       nextRoI(nullptr), parentRoI(nullptr), box(nullptr), probingBox(nullptr),
       packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1), packedMixedFrameSize(-1),
       isProbingRoI(isProbingRoI), priority(-1) {
@@ -96,11 +98,20 @@ cv::Mat RoI::getPaddedMat() const {
 }
 
 cv::Mat RoI::getResizedMat() const {
-  IntPair rwh = getResizedMatWidthHeight();
-  auto[rw, rh] = rwh;
-  cv::Mat resizedMat;
-  cv::resize(getPaddedMat(), resizedMat, cv::Size(rw, rh));
-  return resizedMat;
+  auto[rw, rh] = getResizedMatWidthHeight();
+  cv::Mat mat;
+  cv::resize(getPaddedMat(), mat, cv::Size(rw, rh));
+  return mat;
+}
+
+cv::Mat RoI::getBorderMat() const {
+  cv::Mat mat = getResizedMat();
+  cv::copyMakeBorder(mat, mat,
+                     roiBorder, roiBorder, roiBorder, roiBorder,
+                     cv::BORDER_CONSTANT, BORDER_COLOR);
+  auto[bw, bh] = getBorderMatWidthHeight();
+  assert(bw == mat.cols && bh == mat.rows);
+  return mat;
 }
 
 } // namespace rm

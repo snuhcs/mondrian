@@ -422,12 +422,9 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
   IntPairs boxesIfLast;
   for (const auto& pRoI: frame->parentRoIs) {
     if (mConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
-      int w = RoI::getResizedMatEdgeLength(pRoI->paddedLoc.width(), 1.0f);
-      int h = RoI::getResizedMatEdgeLength(pRoI->paddedLoc.height(), 1.0f);
-      boxesIfLast.emplace_back(w, h);
+      boxesIfLast.push_back(pRoI->getBorderMatWidthHeight(1.0f));
     } else {
-      auto[w, h] = pRoI->getResizedMatWidthHeight();
-      boxesIfLast.emplace_back(w, h);
+      boxesIfLast.push_back(pRoI->getBorderMatWidthHeight());
     }
   }
   for (const auto& cRoI: frame->childRoIs) {
@@ -437,9 +434,7 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
         cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
     for (auto scale: probingCandidates) {
-      int w = RoI::getResizedMatEdgeLength(cRoI->paddedLoc.width(), scale);
-      int h = RoI::getResizedMatEdgeLength(cRoI->paddedLoc.height(), scale);
-      boxesIfLast.emplace_back(w, h);
+      boxesIfLast.push_back(cRoI->getBorderMatWidthHeight(scale));
     }
   }
   return boxesIfLast;
@@ -482,9 +477,8 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
 IntPairs RoIExtractor::getBoxesIfScaled(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
   IntPairs BoxesIfIntermediate;
-  for (const auto& pRoI : frame->parentRoIs) {
-    auto[w, h] = pRoI->getResizedMatWidthHeight();
-    BoxesIfIntermediate.emplace_back(w, h);
+  for (const auto& pRoI: frame->parentRoIs) {
+    BoxesIfIntermediate.push_back(pRoI->getBorderMatWidthHeight());
   }
   return BoxesIfIntermediate;
 }

@@ -22,12 +22,12 @@ void Frame::resizeRoIs(RoIResizer* roiResizer, bool emulatedBatch, int roiSize) 
     for (auto& cRoI: childRoIs) {
       float w = cRoI->paddedLoc.width();
       float h = cRoI->paddedLoc.height();
-      float scale = std::min(1.0f, float(roiSize) / std::max(h, w));
+      float scale = std::min(1.0f, float(roiSize - 2 * cRoI->roiBorder) / std::max(h, w));
       cRoI->setTargetScale(scale, RoIResizer::INVALID_LEVEL);
-      auto rwh = cRoI->getResizedMatWidthHeight();
-      if (roiSize < std::max(rwh.first, rwh.second)) {
+      auto[bw, bh] = cRoI->getBorderMatWidthHeight();
+      if (roiSize < std::max(bw, bh)) {
         LOGE("Frame::resizeRoIs: roiSize=%3d | %4.2f*%4.2f=%4.2f => %3d | %4.2f*%4.2f=%4.2f => %3d",
-             roiSize, w, scale, w * scale, rwh.first, h, scale, h * scale, rwh.second);
+             roiSize, w, scale, w * scale, bw, h, scale, h * scale, bh);
         assert(false);
       }
     }

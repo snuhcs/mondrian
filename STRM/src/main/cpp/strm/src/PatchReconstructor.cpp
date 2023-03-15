@@ -9,32 +9,33 @@
 
 namespace rm {
 
-PatchReconstructor::PatchReconstructor(
-    const PatchReconstructorConfig& config, RoIResizer* roiResizer, int border)
-    : mConfig(config), mRoIResizer(roiResizer), mBorder(border) {}
+PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
+                                       RoIResizer* roiResizer)
+    : mConfig(config), mRoIResizer(roiResizer) {}
 
-static Rect moveResizeRoIPos(const RoI* roi) {
-  IntPair wh = roi->getResizedMatWidthHeight();
-  return {float(roi->getPackedXY().first),
-          float(roi->getPackedXY().second),
-          float(roi->getPackedXY().first + wh.first),
-          float(roi->getPackedXY().second + wh.second)};
+static Rect moveResizeRoIPos(const RoI* pRoI) {
+  auto[rw, rh] = pRoI->getResizedMatWidthHeight();
+  auto[x, y] = pRoI->getPackedXY();
+  auto packX = float(x + pRoI->roiBorder);
+  auto packY = float(y + pRoI->roiBorder);
+  return {float(packX), float(packY), float(packX + rw), float(packY + rh)};
 }
 
 static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
   float scale = pRoI->getTargetScale();
-  float newLeft = (packedBox.location.left - pRoI->getPackedXY().first)
-                  / scale + pRoI->paddedLoc.left;
-  float newTop = (packedBox.location.top - pRoI->getPackedXY().second)
-                 / scale + pRoI->paddedLoc.top;
-  float newRight = (packedBox.location.right - pRoI->getPackedXY().first)
-                   / scale + pRoI->paddedLoc.left;
-  float newBottom = (packedBox.location.bottom - pRoI->getPackedXY().second)
-                    / scale + pRoI->paddedLoc.top;
-  return {std::max(0.0f, newLeft),
-          std::max(0.0f, newTop),
-          std::min(float(pRoI->frame->mat.cols), newRight),
-          std::min(float(pRoI->frame->mat.rows), newBottom)};
+  const Rect& packedBoxLoc = packedBox.location;
+  const Rect& pRoILoc = pRoI->paddedLoc;
+  auto[x, y] = pRoI->getPackedXY();
+  auto packX = float(x + pRoI->roiBorder);
+  auto packY = float(y + pRoI->roiBorder);
+  float newL = (packedBoxLoc.left - packX) / scale + pRoILoc.left;
+  float newT = (packedBoxLoc.top - packY) / scale + pRoILoc.top;
+  float newR = (packedBoxLoc.right - packX) / scale + pRoILoc.left;
+  float newB = (packedBoxLoc.bottom - packY) / scale + pRoILoc.top;
+  return {std::max(0.0f, newL),
+          std::max(0.0f, newT),
+          std::min(float(pRoI->frame->mat.cols), newR),
+          std::min(float(pRoI->frame->mat.rows), newB)};
 }
 
 void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,

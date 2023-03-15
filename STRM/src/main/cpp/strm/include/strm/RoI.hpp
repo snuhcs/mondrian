@@ -166,8 +166,7 @@ class RoI {
   Frame* frame;
   const Rect origLoc;
   Rect paddedLoc;
-  const float roiPadding;
-  const float roiBorder;
+  const int roiBorder;
 
   Type type;
   Origin origin;
@@ -194,6 +193,7 @@ class RoI {
 
  public:
   static const IntPair INVALID_XY;
+  static const cv::Scalar BORDER_COLOR;
 
   int packedAbsMixedFrameIndex;
   int packedMixedFrameSize;
@@ -211,7 +211,7 @@ class RoI {
       const OFFeatures ofFeatures,
       const float confidence,
       const float roiPadding,
-      const float roiBorder,
+      const int roiBorder,
       const bool isProbingRoI);
 
   void setPaddedLoc(const Rect& newOrigLoc);
@@ -269,9 +269,9 @@ class RoI {
 
   void setPackInfo(IntPair xy, int mixedFrameIndex, bool emulatedBatch, int roiSize) {
     if (emulatedBatch) {
-      auto[rw, rh] = getResizedMatWidthHeight();
-      xy.first += (roiSize - rw) / 2;
-      xy.second += (roiSize - rh) / 2;
+      auto[bw, bh] = getBorderMatWidthHeight();
+      xy.first += (roiSize - bw) / 2;
+      xy.second += (roiSize - bh) / 2;
     }
     packedXY = xy;
     packedMixedFrameIndex = mixedFrameIndex;
@@ -285,14 +285,24 @@ class RoI {
     return std::max(1, toInt(edgeLength * scale));
   }
 
-  IntPair getResizedMatWidthHeight() const {
-    return {getResizedMatEdgeLength(paddedLoc.width(), targetScale),
-            getResizedMatEdgeLength(paddedLoc.height(), targetScale)};
+  IntPair getResizedMatWidthHeight(float scale = -1) const {
+    if (scale == -1) {
+      scale = targetScale;
+    }
+    return {getResizedMatEdgeLength(paddedLoc.width(), scale),
+            getResizedMatEdgeLength(paddedLoc.height(), scale)};
+  }
+
+  IntPair getBorderMatWidthHeight(float scale = -1) const {
+    auto[rw, rh] = getResizedMatWidthHeight(scale);
+    return {rw + 2 * roiBorder, rh + 2 * roiBorder};
   }
 
   cv::Mat getPaddedMat() const;
 
   cv::Mat getResizedMat() const;
+
+  cv::Mat getBorderMat() const;
 };
 
 } // namespace rm
