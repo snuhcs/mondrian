@@ -31,7 +31,7 @@ struct RoIExtractorConfig {
 struct RoIResizerConfig {
   // Predictive model configs
   std::string TRAIN_DATA;
-  float SCALE_SHIFT = 0.2;
+  float AREA_SHIFT = 0;
   bool STATIC_SCALE = false;
   float STATIC_TARGET_SCALE = 1.0;
   float MAX_OF_ROI_SIZE = 206;

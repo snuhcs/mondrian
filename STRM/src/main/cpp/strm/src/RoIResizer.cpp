@@ -1,6 +1,7 @@
 #include "strm/RoIResizer.hpp"
 
 #include <set>
+#include <cmath>
 
 #include "strm/DataType.hpp"
 #include "strm/Frame.hpp"
@@ -13,13 +14,13 @@ const int RoIResizer::STATIC_LEVEL = 0;
 const int RoIResizer::INVALID_LEVEL = -1;
 
 const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
+    //{"VIRAT", VIRAT},
     {"MTA",   MTA},
-    {"VIRAT", VIRAT}
 };
 
 const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
-    {"VIRAT", {0.2f, 0.4f, 0.9f, 1.0f}},
-    {"MTA",   {0.2f, 0.3f, 0.5f, 0.7f, 1.0f}}
+    //{"VIRAT", {0.2f, 0.4f, 0.9f, 1.0f}},
+    {"MTA",   {1368.9552973342445f, 2596.4f, 4015.347368421053f, 5624.0f, 1e10}}
 };
 
 static const auto toVec = [](float staticScale) -> std::vector<float> {
@@ -29,7 +30,7 @@ static const auto toVec = [](float staticScale) -> std::vector<float> {
 RoIResizer::RoIResizer(const RoIResizerConfig& config)
     : mConfig(config),
       mPredictor(candidatePredictors.at(config.TRAIN_DATA)),
-      mTargetScales(config.STATIC_SCALE
+      mTargetAreas(config.STATIC_SCALE
                     ? toVec(config.STATIC_TARGET_SCALE)
                     : scalesForLevels.at(config.TRAIN_DATA)) {}
 
@@ -37,10 +38,12 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
                                                  const Features& features,
                                                  const float maxEdgeLength) {
   auto[targetScale, targetLevel] = getTargetScale(id, features);
+  float originalArea = features.width * features.height;
   if (maxEdgeLength * targetScale > mConfig.MAX_OF_ROI_SIZE) {
-    for (int level = int(mTargetScales.size()) - 1; level >= 0; level--) {
-      if (maxEdgeLength * getTargetScale(level) <= mConfig.MAX_OF_ROI_SIZE) {
-        targetScale = mTargetScales[level];
+    for (int level = int(mTargetAreas.size()) - 1; level >= 0; level--) {
+      float scale = getTargetScale(level, originalArea);
+      if (maxEdgeLength * scale <= mConfig.MAX_OF_ROI_SIZE) {
+        targetScale = scale;
         break;
       }
     }
@@ -56,8 +59,8 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
                                                  const Features& features) {
   assert(features.type == OF);
   const int targetLevel = getMaxVotedLevel(id, features);
-  assert(0 <= targetLevel && targetLevel < mTargetScales.size());
-  float targetScale = getTargetScale(targetLevel);
+  assert(0 <= targetLevel && targetLevel < mTargetAreas.size());
+  float targetScale = getTargetScale(targetLevel, features.width * features.height);
 
   if (isCalibrated(id, targetLevel)) {
     targetScale = calibrationTable[id].second;
@@ -67,9 +70,9 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
   return {targetScale, targetLevel};
 }
 
-float RoIResizer::getTargetScale(const int scaleLevel) const {
-  float shift = mConfig.STATIC_SCALE ? 0 : mConfig.SCALE_SHIFT;
-  return std::min(1.0f, mTargetScales.at(scaleLevel) + shift);
+float RoIResizer::getTargetScale(const int scaleLevel, const float originalArea) const {
+  float areaShift = mConfig.STATIC_SCALE ? 0 : mConfig.AREA_SHIFT;
+  return std::min(1.0f, calculateTargetScale(mTargetAreas.at(scaleLevel) + areaShift, originalArea));
 }
 
 bool RoIResizer::isCalibrated(const idType id, const int scaleLevel) const {
@@ -81,7 +84,7 @@ bool RoIResizer::isCalibrated(const idType id, const int scaleLevel) const {
 int RoIResizer::getMaxVotedLevel(const idType id, const Features& features) {
   auto record = prevPredictionBuffer.find(id);
   if (record == prevPredictionBuffer.end()) {
-    prevPredictionBuffer[id] = CircularBuffer(int(mTargetScales.size()));
+    prevPredictionBuffer[id] = CircularBuffer(int(mTargetAreas.size()));
   }
   prevPredictionBuffer[id].push(predictLevelWithFeatures(features));
   return prevPredictionBuffer[id].maxVote();
@@ -158,7 +161,7 @@ void RoIResizer::updateTable(RoI* cRoI) {
       newScale = std::min(newScale, calibrationTable[cRoI->id].second
                                     + cRoI->getTargetScale() * mConfig.PROBE_STEP_SIZE);
     } else {
-      newScale = std::min(newScale, getTargetScale(cRoI->getScaleLevel()));
+      newScale = std::min(newScale, getTargetScale(cRoI->getScaleLevel(), cRoI->features.width * cRoI->features.height));
     }
   }
 
@@ -177,9 +180,8 @@ void RoIResizer::updateTable(RoI* cRoI) {
   calibrationTable[cRoI->id] = {cRoI->getScaleLevel(), newScale};
 }
 
-std::vector<float> RoIResizer::getProbingCandidates(float scale,
-                                                    int level,
-                                                    int numProbeSteps) const {
+std::vector<float> RoIResizer::getProbingCandidates(float scale, int level, int numProbeSteps,
+                                                    float originalArea) const {
   assert(0.0f <= scale && scale <= 1.0f);
   std::vector<float> candidates;
   if (mConfig.STATIC_SCALE) {
@@ -199,7 +201,7 @@ std::vector<float> RoIResizer::getProbingCandidates(float scale,
     for (int i = 0; i < numProbeSteps; i++) {
       candidates.push_back(scale * (1 - float(i) * mConfig.PROBE_STEP_SIZE));
     }
-    float lowerBound = level == 0 ? float(1e-5) : getTargetScale(level - 1);
+    float lowerBound = level == 0 ? float(1e-5) : getTargetScale(level - 1, originalArea);
     candidates.erase(std::remove_if(candidates.begin(), candidates.end(),
                                     [lowerBound](float candidate) {
                                       return candidate <= lowerBound;
@@ -213,6 +215,11 @@ bool RoIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
          && box->label == referenceBox->label
          && box->location.iou(referenceBox->location) > mConfig.PROBE_IOU_THRESHOLD
          && box->confidence > mConfig.PROBE_CONF_THRESHOLD;
+}
+
+float RoIResizer::calculateTargetScale(float targetArea, float originalArea) const {
+  float scale = sqrt(targetArea / originalArea);
+  return std::min(scale, 1.0f);
 }
 
 RoIResizer::CircularBuffer::CircularBuffer(int numLevels)

@@ -435,7 +435,8 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
       continue;
     }
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
-        cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
+        cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps(),
+        cRoI->features.width * cRoI->features.height);
     for (auto scale: probingCandidates) {
       int w = RoI::getResizedMatEdgeLength(cRoI->paddedLoc.width(), scale);
       int h = RoI::getResizedMatEdgeLength(cRoI->paddedLoc.height(), scale);
@@ -463,7 +464,8 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
       continue;
     }
     std::vector<float> probingCandidates = mRoIResizer->getProbingCandidates(
-        cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps());
+        cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps(),
+        cRoI->features.width * cRoI->features.height);
     for (auto scale: probingCandidates) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,

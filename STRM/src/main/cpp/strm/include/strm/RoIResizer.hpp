@@ -32,7 +32,8 @@ class RoIResizer {
     return mConfig.NUM_PROBE_STEPS;
   }
 
-  std::vector<float> getProbingCandidates(float scale, int level, int numProbeSteps) const;
+  std::vector<float>
+  getProbingCandidates(float scale, int level, int numProbeSteps, float originalArea) const;
 
  private:
   class CircularBuffer {
@@ -53,7 +54,7 @@ class RoIResizer {
 
   std::pair<float, int> getTargetScale(const idType id, const Features& features);
 
-  float getTargetScale(const int scaleLevel) const;
+  float getTargetScale(const int scaleLevel, const float originalArea) const;
 
   bool isCalibrated(const idType id, const int scaleLevel) const;
 
@@ -63,12 +64,14 @@ class RoIResizer {
 
   bool isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const;
 
+  float calculateTargetScale(float targetArea, float originalArea) const;
+
   static const std::map<std::string, Predictor> candidatePredictors;
   static const std::map<std::string, std::vector<float>> scalesForLevels;
 
   const RoIResizerConfig mConfig;
   const Predictor mPredictor;
-  const std::vector<float> mTargetScales;
+  const std::vector<float> mTargetAreas;
 
   // Save prev prediction to smooth the predicted size
   std::map<idType, CircularBuffer> prevPredictionBuffer;
