@@ -29,6 +29,7 @@
         "min_pd_roi_size": 5,
         "eat_pd": true,
         "roi_padding": 0,
+        "roi_border": 2,
         "optical_flow_roi_confidence_threshold": 0.1,
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,

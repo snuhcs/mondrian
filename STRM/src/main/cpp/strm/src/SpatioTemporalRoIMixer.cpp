@@ -52,8 +52,8 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mScheduleInterval(mConfig.LATENCY_SLO_MS * 1000 / 2),
       mRoIResizer(new RoIResizer(config.roiResizerConfig)),
       mInferenceEngine(new InferenceEngine(config.inferenceEngineConfig, vm, env, emulator)),
-      mPatchReconstructor(new PatchReconstructor(
-          config.patchReconstructorConfig, mRoIResizer.get())) {
+      mPatchReconstructor(new PatchReconstructor(config.patchReconstructorConfig,
+                                                 mRoIResizer.get())) {
   assert(!config.USE_ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
   int maxMergeSize = config.USE_EMULATED_BATCH
                      ? config.ROI_SIZE

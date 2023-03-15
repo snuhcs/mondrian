@@ -422,12 +422,9 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
   IntPairs boxesIfLast;
   for (const auto& pRoI: frame->parentRoIs) {
     if (mConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
-      int w = RoI::getResizedMatEdgeLength(pRoI->paddedLoc.width(), 1.0f);
-      int h = RoI::getResizedMatEdgeLength(pRoI->paddedLoc.height(), 1.0f);
-      boxesIfLast.emplace_back(w, h);
+      boxesIfLast.push_back(pRoI->getBorderMatWidthHeight(1.0f));
     } else {
-      auto[w, h] = pRoI->getResizedMatWidthHeight();
-      boxesIfLast.emplace_back(w, h);
+      boxesIfLast.push_back(pRoI->getBorderMatWidthHeight());
     }
   }
   for (const auto& cRoI: frame->childRoIs) {
@@ -438,9 +435,7 @@ IntPairs RoIExtractor::getBoxesIfLast(const Frame* frame) {
         cRoI->getTargetScale(), cRoI->getScaleLevel(), mRoIResizer->getNumProbeSteps(),
         cRoI->features.width * cRoI->features.height);
     for (auto scale: probingCandidates) {
-      int w = RoI::getResizedMatEdgeLength(cRoI->paddedLoc.width(), scale);
-      int h = RoI::getResizedMatEdgeLength(cRoI->paddedLoc.height(), scale);
-      boxesIfLast.emplace_back(w, h);
+      boxesIfLast.push_back(cRoI->getBorderMatWidthHeight(scale));
     }
   }
   return boxesIfLast;
@@ -469,7 +464,7 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
     for (auto scale: probingCandidates) {
       std::unique_ptr<RoI> probeRoI = std::make_unique<RoI>(
           nullptr, cRoI->id, cRoI->frame, cRoI->paddedLoc, cRoI->type, cRoI->origin, cRoI->label,
-          cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, true);
+          cRoI->features.ofFeatures, RoI::INVALID_CONF, 0, mConfig.ROI_BORDER, true);
       assert(0.0f < scale && scale <= 1.0f);
       probeRoI->setTargetScale(scale, cRoI->getScaleLevel());
       probeRoI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mRoISize);
@@ -484,9 +479,8 @@ void RoIExtractor::prepareFrameLast(Frame* frame,
 IntPairs RoIExtractor::getBoxesIfScaled(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
   IntPairs BoxesIfIntermediate;
-  for (const auto& pRoI : frame->parentRoIs) {
-    auto[w, h] = pRoI->getResizedMatWidthHeight();
-    BoxesIfIntermediate.emplace_back(w, h);
+  for (const auto& pRoI: frame->parentRoIs) {
+    BoxesIfIntermediate.push_back(pRoI->getBorderMatWidthHeight());
   }
   return BoxesIfIntermediate;
 }
@@ -580,7 +574,8 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
       if (newRight - newLeft >= 1.0f && newBottom - newTop >= 1.0f) {
         outChildRoIs.push_back(std::make_unique<RoI>(
             box.srcRoI, box.id, currFrame, Rect(newLeft, newTop, newRight, newBottom),
-            OF, box.origin, box.label, of, box.confidence, mConfig.ROI_PADDING, false));
+            OF, box.origin, box.label, of, box.confidence,
+            mConfig.ROI_PADDING, mConfig.ROI_BORDER, false));
       }
     }
   }
@@ -703,17 +698,9 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
   for (const Rect& box: boxes) {
     if (std::min(box.width(), box.height()) >= 1.0f) {
       outChildRoIs.push_back(std::make_unique<RoI>(
-          nullptr,
-          UNASSIGNED_ID,
-          currFrame,
-          box,
-          PD,
-          origin_PD,
-          -1,
-          OFFeatures({}, {}, {}),
-          RoI::INVALID_CONF,
-          mConfig.ROI_PADDING,
-          false));
+          nullptr, UNASSIGNED_ID, currFrame, box,
+          PD, origin_PD, -1, OFFeatures({}, {}, {}), RoI::INVALID_CONF,
+          mConfig.ROI_PADDING, mConfig.ROI_BORDER, false));
     }
   }
 }
