@@ -10,7 +10,8 @@ namespace rm {
 
 class TfLiteYoloV5ClassifierDSP : public Classifier {
  public:
-  TfLiteYoloV5ClassifierDSP(int inputSize, float confidenceThreshold, float iouThreshold, bool isTiny);
+  TfLiteYoloV5ClassifierDSP(int inputSize, float confidenceThreshold, float iouThreshold,
+                            bool isTiny, bool forFullFrame);
 
   Result recognizeImage(const cv::Mat& mat) override;
 

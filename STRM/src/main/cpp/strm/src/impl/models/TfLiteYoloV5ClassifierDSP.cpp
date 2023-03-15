@@ -17,10 +17,12 @@
 namespace rm {
 
 TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(int inputSize, float confidenceThreshold,
-                                                     float iouThreshold, bool isTiny)
+                                                     float iouThreshold,
+                                                     bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
                  confidenceThreshold, iouThreshold, DSP),
       delegate(nullptr, [](TfLiteDelegate* d) {}) {
+  // TODO : use forFullFrame
   std::stringstream ss;
   ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "x-") << inputSize << "-int8.tflite";
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());

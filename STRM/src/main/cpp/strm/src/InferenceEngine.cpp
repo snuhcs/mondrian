@@ -42,25 +42,44 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
 template<typename T>
 void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig& config,
                                      JavaVM* vm, JNIEnv* env, jobject emulator) {
-  std::map<int, Classifier*> classifierMap;
+  std::map<std::tuple<int, bool>, Classifier*> classifierMap;
+
+  // classifiers for packed canvas inference
+  bool forFullFrame = false;
   for (const auto& inputSize : config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-        inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY);
+        inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY, forFullFrame);
     LOGD("Profiling %s %d size started", device == GPU ? "GPU" : "DSP", inputSize);
     time_us initialLatency = classifier->profileInferenceTime(config.PROFILE_WARMUPS,
                                                               config.PROFILE_RUNS);
     LOGD("Profiling %s %d size ended    // %lld", device == GPU ? "GPU" : "DSP", inputSize,
          initialLatency);
     classifier->setInferenceTime(initialLatency);
-    classifierMap[inputSize] = classifier.get();
+    classifierMap[{inputSize, forFullFrame}] = classifier.get();
     classifiers.push_back(std::move(classifier));
   }
+
+  // classifier for full frame inference
+  // identical with above code block inside the for loop
+  int inputSize = config.FULL_FRAME_SIZE;
+  std::unique_ptr<Classifier> classifier = std::make_unique<T>(
+          inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY, forFullFrame);
+  LOGD("Profiling %s %d size started", device == GPU ? "GPU" : "DSP", inputSize);
+  time_us initialLatency = classifier->profileInferenceTime(config.PROFILE_WARMUPS,
+                                                            config.PROFILE_RUNS);
+  LOGD("Profiling %s %d size ended    // %lld", device == GPU ? "GPU" : "DSP", inputSize,
+       initialLatency);
+  classifier->setInferenceTime(initialLatency);
+  classifierMap[{inputSize, forFullFrame}] = classifier.get();
+  classifiers.push_back(std::move(classifier));
+
   workers[device] = std::make_unique<Worker>(this, device, classifierMap,
                                              mConfig.DRAW_INFERENCE_RESULT, vm, env, emulator);
 }
 
-void InferenceEngine::enqueue(const cv::Mat& mat, Device device, int inputSize, int key) {
-  workers[device]->enqueue(mat, inputSize, key);
+void InferenceEngine::enqueue(const cv::Mat& mat, Device device, int inputSize, bool isFullFrame,
+                              int key) {
+  workers[device]->enqueue(mat, inputSize, isFullFrame, key);
 }
 
 Result InferenceEngine::getResults(int key) {

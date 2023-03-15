@@ -134,7 +134,7 @@ void SpatioTemporalRoIMixer::work() {
     // 3. Enqueue full frame
     if (fullFrameTarget != nullptr) {
       mInferenceEngine->enqueue(fullFrameTarget->mat, mConfig.FULL_DEVICE, mConfig.FULL_FRAME_SIZE,
-                                fullFrameTarget->getKey());
+                                true, fullFrameTarget->getKey());
       fullFrameTarget->inferenceFrameSize = mConfig.FULL_FRAME_SIZE;
       fullFrameTarget->inferenceDevice = mConfig.FULL_DEVICE;
       LOGD("mInferenceEngine->enqueue %d sized fullFrame to %s | %d",
@@ -148,7 +148,7 @@ void SpatioTemporalRoIMixer::work() {
     for (const auto& mixedFrame: mixedFrames) {
       assert(mixedFrame.device != NO_DEVICE);
       mInferenceEngine->enqueue(mixedFrame.packedMat, mixedFrame.device,
-                                mixedFrame.mixedFrameSize, mixedFrame.getKey());
+                                mixedFrame.mixedFrameSize, false, mixedFrame.getKey());
       LOGD("mInferenceEngine->enqueue %d sized %d mixedFrame to %s | %s",
            mixedFrame.mixedFrameSize, mixedFrame.mixedFrameIndex, toConstStr(mixedFrame.device),
            toString(mixedFrame.getPackedFrames()).c_str());
@@ -402,7 +402,8 @@ int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& mat) {
        "STRM::preprocess", NowMicros() - startTime, frame->vid, frame->frameIndex);
   if (mConfig.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == mStartIndices[vid]) {
     frame->useInferenceResultForOF = true;
-    mInferenceEngine->enqueue(frame->mat, mConfig.FULL_DEVICE, mConfig.FULL_FRAME_SIZE, frame->getKey());
+    mInferenceEngine->enqueue(frame->mat, mConfig.FULL_DEVICE, mConfig.FULL_FRAME_SIZE, true,
+                              frame->getKey());
     frame->inferenceFrameSize = mConfig.FULL_FRAME_SIZE;
     frame->inferenceDevice = mConfig.FULL_DEVICE;
     LOGD("mInferenceEngine->enqueue %d sized fullFrame to %s | %d",

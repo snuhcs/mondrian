@@ -12,7 +12,7 @@
     "draw_output": false,
     "allow_interpolation": false,
     "interpolation_threshold": 1,
-    "full_frame_interval": 3,
+    "full_frame_interval": 1,
     "full_frame_size": 832,
     "full_device": "GPU",
     "buffer_size": 200,

@@ -52,6 +52,7 @@ struct InferenceEngineConfig {
   float IOU_THRESHOLD = 0.5;
   int PROFILE_WARMUPS = 5;
   int PROFILE_RUNS = 5;
+  int FULL_FRAME_SIZE = 768; // far TODO : remove redundancy
   std::vector<int> INPUT_SIZES = {
       256,
       512,

@@ -207,6 +207,7 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   }
   if (!json["inference_engine"].isNull()) {
     config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
+    config.inferenceEngineConfig.FULL_FRAME_SIZE = config.FULL_FRAME_SIZE;
   }
   auto& devices = config.inferenceEngineConfig.DEVICES;
   assert(std::find(devices.begin(), devices.end(), config.FULL_DEVICE) != devices.end());

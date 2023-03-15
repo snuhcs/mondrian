@@ -14,9 +14,12 @@
 namespace rm {
 
 TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceThreshold,
-                                               float iouThreshold, bool isTiny)
+                                               float iouThreshold,
+                                               bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
                  confidenceThreshold, iouThreshold, GPU) {
+
+  // TODO : use forFullFrame
   std::stringstream ss;
   ss << "/data/local/tmp/models/yolov4-";
   if (isTiny) {

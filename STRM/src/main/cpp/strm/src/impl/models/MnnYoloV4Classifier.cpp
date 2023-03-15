@@ -11,10 +11,11 @@
 namespace rm {
 
 MnnYoloV4Classifier::MnnYoloV4Classifier(int inputSize, float confidenceThreshold,
-                                         float iouThreshold, bool isTiny)
+                                         float iouThreshold, bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * (isTiny ? 15 : 63),
                  confidenceThreshold, iouThreshold, GPU) {
   std::string filepath = "/data/local/tmp/models/yolov4-";
+  // TODO : use forFullFrame
   filepath += (isTiny ? "tiny-" : "") + std::to_string(inputSize) + "-fp16.mnn";
   interpreter = MNN::Interpreter::createFromFile(filepath.c_str());
   if (interpreter == nullptr) {

@@ -14,12 +14,12 @@ class InferenceEngine;
 
 class Worker {
  public:
-  Worker(InferenceEngine* engine, Device device, std::map<int, Classifier*> classifierMap,
+  Worker(InferenceEngine* engine, Device device, std::map<std::tuple<int, bool>, Classifier*> classifierMap,
          bool draw, JavaVM* vm, JNIEnv* env, jobject emulator);
 
   ~Worker();
 
-  void enqueue(const cv::Mat& mat, int inputSize, int key);
+  void enqueue(const cv::Mat& mat, int inputSize, bool isFullFrame, int key);
 
   std::map<int, time_us> getInferenceTimes();
 
@@ -33,10 +33,10 @@ class Worker {
 
   std::mutex mtx;
   std::condition_variable cv;
-  std::queue<std::tuple<const cv::Mat, int, int>> inputs;
+  std::queue<std::tuple<const cv::Mat, int, bool, int>> inputs;
 
   InferenceEngine* engine;
-  std::map<int, Classifier*> classifierMap;
+  std::map<std::tuple<int, bool>, Classifier*> classifierMap;
 
   std::atomic_bool isClosed;
   std::thread thread;

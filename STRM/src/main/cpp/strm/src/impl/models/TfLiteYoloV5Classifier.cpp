@@ -14,11 +14,16 @@
 namespace rm {
 
 TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(int inputSize, float confidenceThreshold,
-                                               float iouThreshold, bool isTiny)
+                                               float iouThreshold, bool isTiny,
+                                               bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
                  confidenceThreshold, iouThreshold, GPU) {
   std::stringstream ss;
-  ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "m-") << inputSize << "-fp16.tflite";
+  if (forFullFrame) {
+    ss << "/data/local/tmp/models/yolov5m-" << inputSize << "-fp16.tflite";
+  } else {
+    ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "m-") << inputSize << "-fp16.tflite";
+  }
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
   if (model == nullptr) {
     LOGE("YoloV5 model load failed");
