@@ -20,12 +20,13 @@ namespace rm {
 
 const bool SpatioTemporalRoIMixer::FAIR = true;
 
-static auto printLatencyTable = [](const std::map<Device, std::map<int, time_us>>& latencyTable) {
+static auto printLatencyTable = [](const std::map<Device, std::map<std::tuple<int, bool>, time_us>>& latencyTable) {
   std::stringstream ss;
   for (const auto&[device, size_latency]: latencyTable) {
-    for (const auto&[size, latency]: size_latency) {
+    for (const auto&[size_forFullFrame, latency]: size_latency) {
       assert(device != NO_DEVICE);
-      ss << toConstStr(device) << " " << size << " " << latency << " us" << std::endl;
+      auto [size, forFullFrame] = size_forFullFrame;
+      ss << toConstStr(device) << " " << forFullFrame << " " << size << " " << latency << " us" << std::endl;
     }
   }
   LOGD("Latency Table:\n%s", ss.str().c_str());
@@ -115,7 +116,7 @@ void SpatioTemporalRoIMixer::work() {
     auto latencyTable = mInferenceEngine->getInferenceTimeTable();
     std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
         latencyTable, mScheduleInterval, mConfig.USE_ROI_WISE_INFERENCE,
-        {{mConfig.FULL_DEVICE, fullFramePlan ? mConfig.FULL_FRAME_SIZE : 0L}});
+        {{mConfig.FULL_DEVICE, fullFramePlan ? latencyTable[mConfig.FULL_DEVICE][{mConfig.FULL_FRAME_SIZE, true}] : 0L}});
     logger.step("plan");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
          "STRM::getInferencePlan", logger.getDuration("plan"), toString(inferencePlan).c_str());

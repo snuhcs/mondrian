@@ -21,7 +21,7 @@ class Worker {
 
   void enqueue(const cv::Mat& mat, int inputSize, bool isFullFrame, int key);
 
-  std::map<int, time_us> getInferenceTimes();
+  std::map<std::tuple<int, bool>, time_us> getInferenceTimes();
 
  private:
   void work();

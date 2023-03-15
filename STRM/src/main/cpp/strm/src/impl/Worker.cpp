@@ -66,12 +66,12 @@ void Worker::enqueue(const cv::Mat& mat, int inputSize, bool isFullFrame, int ke
   cv.notify_one();
 }
 
-std::map<int, time_us> Worker::getInferenceTimes() {
-  std::map<int, time_us> timeTable;
+std::map<std::tuple<int, bool>, time_us> Worker::getInferenceTimes() {
+  std::map<std::tuple<int, bool>, time_us> timeTable;
   for (auto&[inputSize_isFullFrame, classifier] : classifierMap) {
     auto [inputSize, isFullFrame] = inputSize_isFullFrame;
     assert (classifier->getInferenceTime() > 0);
-    timeTable[inputSize] = classifier->getInferenceTime();
+    timeTable[{inputSize, isFullFrame}] = classifier->getInferenceTime();
   }
   return timeTable;
 }

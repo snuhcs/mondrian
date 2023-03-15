@@ -24,7 +24,7 @@ class InferenceEngine {
 
   Result getResults(int key);
 
-  std::map<Device, std::map<int, time_us>> getInferenceTimeTable() const;
+  std::map<Device, std::map<std::tuple<int, bool>, time_us>> getInferenceTimeTable() const;
 
   std::vector<int> getInputSizes() const;
 

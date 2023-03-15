@@ -100,8 +100,8 @@ void InferenceEngine::enqueueResults(int key, const Result& boxTimes) {
   resultCv.notify_all();
 }
 
-std::map<Device, std::map<int, time_us>> InferenceEngine::getInferenceTimeTable() const {
-  std::map<Device, std::map<int, time_us>> inferenceTimeTable;
+std::map<Device, std::map<std::tuple<int, bool>, time_us>> InferenceEngine::getInferenceTimeTable() const {
+  std::map<Device, std::map<std::tuple<int, bool>, time_us>> inferenceTimeTable;
   for (const auto&[device, worker] : workers) {
     inferenceTimeTable[device] = worker->getInferenceTimes();
   }
