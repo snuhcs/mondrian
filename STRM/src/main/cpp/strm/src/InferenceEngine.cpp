@@ -62,6 +62,7 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
   // classifier for full frame inference
   // identical with above code block inside the for loop
   int inputSize = config.FULL_FRAME_SIZE;
+  forFullFrame = true;
   std::unique_ptr<Classifier> classifier = std::make_unique<T>(
           inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY, forFullFrame);
   LOGD("Profiling %s %d size started", device == GPU ? "GPU" : "DSP", inputSize);
