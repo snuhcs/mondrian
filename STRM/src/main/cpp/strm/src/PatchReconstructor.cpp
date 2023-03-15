@@ -9,9 +9,9 @@
 
 namespace rm {
 
-PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
-                                       RoIResizer* roiResizer)
-    : mConfig(config), mRoIResizer(roiResizer) {}
+PatchReconstructor::PatchReconstructor(
+    const PatchReconstructorConfig& config, RoIResizer* roiResizer, int border)
+    : mConfig(config), mRoIResizer(roiResizer), mBorder(border) {}
 
 static Rect moveResizeRoIPos(const RoI* roi) {
   IntPair wh = roi->getResizedMatWidthHeight();

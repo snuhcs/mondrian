@@ -21,6 +21,7 @@ struct RoIExtractorConfig {
   float MIN_PD_ROI_SIZE = 5;
   bool EAT_PD = true;
   float ROI_PADDING = 0;
+  float ROI_BORDER = 2;
   float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
   float PD_FILTER_THRESHOLD = 0.5;
   int PD_INTERVAL = 5;

@@ -14,7 +14,7 @@ class RoIResizer;
 
 class PatchReconstructor {
  public:
-  PatchReconstructor(const PatchReconstructorConfig& config, RoIResizer* roiResizer);
+  PatchReconstructor(const PatchReconstructorConfig& config, RoIResizer* roiResizer, int border);
 
   void assignBoxesToFrame(MixedFrame& mixedFrame, const std::vector<BoundingBox>& results) const;
 
@@ -25,6 +25,7 @@ class PatchReconstructor {
  private:
   PatchReconstructorConfig mConfig;
   RoIResizer* mRoIResizer;
+  const int mBorder;
 };
 
 } // namespace rm
