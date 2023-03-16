@@ -529,6 +529,9 @@ void RoIExtractor::processOF(Frame* currFrame) {
     }
   } else {
     for (auto& cRoI : currFrame->prevFrame->childRoIs) {
+      if (cRoI->type == PD) {
+        continue;
+      }
       BoundingBox reliableBox(cRoI->id, cRoI->origLoc, 1, cRoI->label, cRoI->origin);
       reliableBox.srcRoI = cRoI.get();
       reliablePrevBoxes.push_back(reliableBox);

@@ -1,7 +1,7 @@
 {
     "video_configs": [
         {
-            "path": "/data/local/tmp/video/MTA/test_cam_3.mp4",
+            "path": "/data/local/tmp/video/MTA/test_cam_4.mp4",
             "frame_range": [0, 500],
             "fps": 0
         }
@@ -30,7 +30,7 @@
         "eat_pd": true,
         "roi_padding": 0,
         "roi_border": 2,
-        "optical_flow_roi_confidence_threshold": 0.1,
+        "optical_flow_roi_confidence_threshold": 0.0,
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
         "merge": true,
@@ -44,15 +44,15 @@
         "max_of_roi_size": 206.0,
         "probe_step_size": 0.1,
         "num_probe_steps": 1,
-        "probe_conf_threshold": 0.3,
-        "probe_iou_threshold": 0.75
+        "probe_conf_threshold": 0.0,
+        "probe_iou_threshold": 0.5
     },
     "inference_engine": {
         "draw_inference_result": true,
         "model": "YOLO_V5",
         "runtime": "TFLITE",
         "use_tiny": false,
-        "conf_threshold": 0.1,
+        "conf_threshold": 0.4,
         "iou_threshold": 0.5,
         "profile_warmups": 5,
         "profile_runs": 5,
