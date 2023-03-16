@@ -12,7 +12,7 @@
     "draw_output": false,
     "allow_interpolation": false,
     "interpolation_threshold": 1,
-    "full_frame_interval": 5,
+    "full_frame_interval": 3,
     "full_frame_size": 1024,
     "full_device": "GPU",
     "buffer_size": 200,
@@ -34,7 +34,7 @@
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
         "merge": true,
-        "no_downsampling_for_last_frame": false
+        "no_downsampling_for_last_frame": true
     },
     "roi_resizer": {
         "train_data": "MTA",
@@ -57,7 +57,6 @@
         "profile_warmups": 5,
         "profile_runs": 5,
         "input_sizes": [
-            320,
             640,
             1280
         ],
