@@ -1,6 +1,7 @@
 #include "strm/impl/Worker.hpp"
 
 #include "strm/InferenceEngine.hpp"
+#include "strm/Log.hpp"
 
 namespace rm {
 

@@ -76,17 +76,27 @@ std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
         time_us interval, bool roiWiseInference,
         const std::map<Device, time_us>& startTimes) {
   std::vector<InferenceInfo> inferencePlan;
+
+  std::map<Device, std::map<int, time_us>> latencyTableWoFullFrame;
   for (const auto&[device, size_forFullFrame_latency]: latencyTable) {
+    for (const auto&[size_forFullFrame, latency]: size_forFullFrame_latency) {
+      auto [size, forFullFrame] = size_forFullFrame;
+      if (!forFullFrame) {
+        latencyTableWoFullFrame[device][size] = latency;
+      }
+    }
+  }
+
+  for (const auto&[device, size_latency]: latencyTableWoFullFrame) {
     std::map<time_us, double> profile;
     std::vector<time_us> bars;
     std::map<time_us, int> latency_size;
-    int min_size = std::get<0>(std::min_element(
-            size_forFullFrame_latency.begin(), size_forFullFrame_latency.end(),
+    int min_size = std::min_element(
+            size_latency.begin(), size_latency.end(),
             [](const auto& it0, const auto& it1) {
-                return std::get<0>(it0.first) < std::get<0>(it1.first);
-        })->first);
-    for (const auto&[size_forFullFrame, latency]: size_forFullFrame_latency) {
-      int size = std::get<0>(size_forFullFrame);
+                return it0.first < it1.first;
+        })->first;
+    for (const auto&[size, latency]: size_latency) {
       if (roiWiseInference && size != min_size) {
         continue;
       }
@@ -105,7 +115,7 @@ std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
       inferencePlan.push_back({device, latency_size[l], l, 0});
     }
   }
-  for (const auto& deviceLatency: latencyTable) {
+  for (const auto& deviceLatency: latencyTableWoFullFrame) {
     std::vector<InferenceInfo*> devicePlan;
     for (auto& info: inferencePlan) {
       if (info.device == deviceLatency.first) {
