@@ -148,6 +148,7 @@ void Frame::filterPDRoIs(float threshold, bool eatPD) {
         if (maxInterSection / cRoI->getPaddedArea() >= threshold) {
           assert(maxOverlapRoI != nullptr);
           maxOverlapRoI->eatPD(cRoI->paddedLoc);
+          it = childRoIs.erase(it);
         }
       }
 
