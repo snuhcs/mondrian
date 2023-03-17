@@ -38,7 +38,7 @@
     },
     "roi_resizer": {
         "train_data": "MTA",
-        "area_shift": 0,
+        "area_shift": 1600,
         "static_scale": false,
         "static_target_scale": 1.0,
         "max_of_roi_size": 206.0,
