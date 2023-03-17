@@ -8,6 +8,8 @@
 
 #include "strm/DataType.hpp"
 
+#include "strm/Log.hpp"
+
 namespace rm {
 
 class Frame;
@@ -270,6 +272,10 @@ class RoI {
   void setPackInfo(IntPair xy, int mixedFrameIndex, bool emulatedBatch, int roiSize) {
     if (emulatedBatch) {
       auto[bw, bh] = getBorderMatWidthHeight();
+      if (roiSize < std::max(bw, bh)) {
+        LOGE("RoiSize %d < bw %d or bh %d", roiSize, bw, bh);
+        assert(false);
+      }
       xy.first += (roiSize - bw) / 2;
       xy.second += (roiSize - bh) / 2;
     }

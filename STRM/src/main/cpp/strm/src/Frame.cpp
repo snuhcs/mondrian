@@ -74,10 +74,15 @@ void Frame::mergeRoIs(float maxSize) {
         const auto& roi0 = parentRoIs[i];
         const auto& roi1 = parentRoIs[j];
         Rect newRect = Rect::merge(roi0->paddedLoc, roi1->paddedLoc);
-        if (std::max(newRect.width(), newRect.height()) > maxSize) {
+        float newScale = std::max(roi0->getTargetScale(), roi1->getTargetScale());
+
+        int nw = RoI::getResizedMatEdgeLength(newRect.width(), newScale);
+        int nh = RoI::getResizedMatEdgeLength(newRect.height(), newScale);
+        if (std::max(nw + 2*roi0->roiBorder, nh + 2*roi0->roiBorder) > maxSize) {
+          // would be little more conservative for the general case
           continue;
         }
-        float newScale = std::max(roi0->getTargetScale(), roi1->getTargetScale());
+
         int newArea = RoI::getResizedArea(newRect.width(), newRect.height(), newScale);
         int origArea = roi0->getResizedArea() + roi1->getResizedArea();
         if (newArea >= origArea) {
