@@ -13,8 +13,8 @@
 
 namespace rm {
 
-TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(int inputSize, float confidenceThreshold,
-                                               float iouThreshold,
+TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(std::string dataset, int inputSize,
+                                               float confidenceThreshold, float iouThreshold,
                                                bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
                  confidenceThreshold, iouThreshold, GPU) {

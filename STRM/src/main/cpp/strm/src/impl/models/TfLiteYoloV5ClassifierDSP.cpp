@@ -16,8 +16,8 @@
 
 namespace rm {
 
-TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(int inputSize, float confidenceThreshold,
-                                                     float iouThreshold,
+TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int inputSize,
+                                                     float confidenceThreshold, float iouThreshold,
                                                      bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
                  confidenceThreshold, iouThreshold, DSP),

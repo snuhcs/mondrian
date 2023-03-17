@@ -9,8 +9,9 @@ namespace rm {
 
 class MnnYoloV4Classifier : public Classifier {
  public:
-  MnnYoloV4Classifier(int inputSize, float confidenceThreshold,
-                      float iouThreshold, bool isTiny, bool forFullFrame);
+  MnnYoloV4Classifier(std::string dataset, int inputSize,
+                      float confidenceThreshold, float iouThreshold,
+                      bool isTiny, bool forFullFrame);
 
   ~MnnYoloV4Classifier();
 

@@ -48,7 +48,8 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
   bool forFullFrame = false;
   for (const auto& inputSize : config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-        inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY, forFullFrame);
+            config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
+            config.USE_TINY, forFullFrame);
     LOGD("Profiling %s %d size started", device == GPU ? "GPU" : "DSP", inputSize);
     time_us initialLatency = classifier->profileInferenceTime(config.PROFILE_WARMUPS,
                                                               config.PROFILE_RUNS);
@@ -64,7 +65,8 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
   int inputSize = config.FULL_FRAME_SIZE;
   forFullFrame = true;
   std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-          inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD, config.USE_TINY, forFullFrame);
+          config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
+          config.USE_TINY, forFullFrame);
   LOGD("Profiling %s %d size started", device == GPU ? "GPU" : "DSP", inputSize);
   time_us initialLatency = classifier->profileInferenceTime(config.PROFILE_WARMUPS,
                                                             config.PROFILE_RUNS);

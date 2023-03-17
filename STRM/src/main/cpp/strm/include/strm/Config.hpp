@@ -48,6 +48,7 @@ struct RoIResizerConfig {
 
 struct InferenceEngineConfig {
   bool DRAW_INFERENCE_RESULT = true;
+  std::string DATASET;
   std::string MODEL = "YOLO_V5";
   std::string RUNTIME = "TFLITE";
   bool USE_TINY = false;

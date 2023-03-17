@@ -10,8 +10,9 @@
 
 namespace rm {
 
-MnnYoloV4Classifier::MnnYoloV4Classifier(int inputSize, float confidenceThreshold,
-                                         float iouThreshold, bool isTiny, bool forFullFrame)
+MnnYoloV4Classifier::MnnYoloV4Classifier(std::string dataset, int inputSize,
+                                         float confidenceThreshold, float iouThreshold,
+                                         bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * (isTiny ? 15 : 63),
                  confidenceThreshold, iouThreshold, GPU) {
   std::string filepath = "/data/local/tmp/models/yolov4-";

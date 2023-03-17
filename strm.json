@@ -37,7 +37,7 @@
         "no_downsampling_for_last_frame": true
     },
     "roi_resizer": {
-        "train_data": "MTA",
+        "train_data": "mta",
         "voting_window": 5,
         "scale_shift": 0.0,
         "area_shift": 1600,

@@ -14,23 +14,23 @@ const int RoIResizer::STATIC_LEVEL = 0;
 const int RoIResizer::INVALID_LEVEL = -1;
 
 const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
-    {"VIRAT", VIRAT},
-    {"MTA",   MTA},
+    {"virat", VIRAT},
+    {"mta",   MTA},
 };
 
 const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
-        {"VIRAT", {
-                          345.96336448598134,
-                          659.0035650623886,
-                          783.4468085106382,
-                          932.0153617501932,
+        {"virat", {
+                          333.913147627257,
+                          638.5106976744186,
+                          764.6907839189453,
+                          880.0315355329949,
                           1e10
                   }},
-        {"MTA",   {
-                          400.1304607673028,
-                          505.6792982456142,
-                          644.4805484608147,
-                          1794.0,
+        {"mta",   {
+                          368.62745098039215,
+                          459.33734939759046,
+                          558.7062937062936,
+                          848.4255998838352,
                           1e10
                   }}
 };
