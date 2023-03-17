@@ -1,7 +1,7 @@
 {
     "video_configs": [
         {
-            "path": "/data/local/tmp/video/MTA/test_cam_4.mp4",
+            "path": "/data/local/tmp/video/MTA/test_cam_3.mp4",
             "frame_range": [0, 500],
             "fps": 0
         }
@@ -12,11 +12,11 @@
     "draw_output": false,
     "allow_interpolation": false,
     "interpolation_threshold": 1,
-    "full_frame_interval": 1,
+    "full_frame_interval": 3,
     "full_frame_size": 1024,
     "full_device": "GPU",
     "buffer_size": 200,
-    "latency_slo_ms": 6000,
+    "latency_slo_ms": 5000,
     "use_emulated_batch": false,
     "use_roi_wise_inference": false,
     "roi_size": 64,
@@ -34,7 +34,7 @@
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
         "merge": true,
-        "no_downsampling_for_last_frame": false
+        "no_downsampling_for_last_frame": true
     },
     "roi_resizer": {
         "train_data": "MTA",
@@ -43,20 +43,21 @@
         "static_target_scale": 1.0,
         "max_of_roi_size": 206.0,
         "probe_step_size": 0.1,
-        "num_probe_steps": 1,
+        "num_probe_steps": 5,
         "probe_conf_threshold": 0.0,
         "probe_iou_threshold": 0.5
     },
     "inference_engine": {
-        "draw_inference_result": true,
+        "draw_inference_result": false,
         "model": "YOLO_V5",
         "runtime": "TFLITE",
         "use_tiny": false,
-        "conf_threshold": 0.4,
+        "conf_threshold": 0.5,
         "iou_threshold": 0.5,
         "profile_warmups": 5,
         "profile_runs": 5,
         "input_sizes": [
+            640,
             1280
         ],
         "devices": [
