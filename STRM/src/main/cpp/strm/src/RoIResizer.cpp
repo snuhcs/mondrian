@@ -14,13 +14,25 @@ const int RoIResizer::STATIC_LEVEL = 0;
 const int RoIResizer::INVALID_LEVEL = -1;
 
 const std::map<std::string, Predictor> RoIResizer::candidatePredictors = {
-    //{"VIRAT", VIRAT},
+    {"VIRAT", VIRAT},
     {"MTA",   MTA},
 };
 
 const std::map<std::string, std::vector<float>> RoIResizer::scalesForLevels = {
-    //{"VIRAT", {0.2f, 0.4f, 0.9f, 1.0f}},
-    {"MTA",   {1368.9552973342445f, 2596.4f, 4015.347368421053f, 5624.0f, 1e10}}
+        {"VIRAT", {
+                          345.96336448598134,
+                          659.0035650623886,
+                          783.4468085106382,
+                          932.0153617501932,
+                          1e10
+                  }},
+        {"MTA",   {
+                          400.1304607673028,
+                          505.6792982456142,
+                          644.4805484608147,
+                          1794.0,
+                          1e10
+                  }}
 };
 
 static const auto toVec = [](float staticScale) -> std::vector<float> {
