@@ -32,6 +32,8 @@ struct RoIExtractorConfig {
 struct RoIResizerConfig {
   // Predictive model configs
   std::string TRAIN_DATA;
+  int VOTING_WINDOW = 5;
+  float SCALE_SHIFT = 0;
   float AREA_SHIFT = 0;
   bool STATIC_SCALE = false;
   float STATIC_TARGET_SCALE = 1.0;

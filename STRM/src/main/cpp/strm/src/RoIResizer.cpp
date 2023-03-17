@@ -83,8 +83,7 @@ std::pair<float, int> RoIResizer::getTargetScale(const idType id,
 }
 
 float RoIResizer::getTargetScale(const int scaleLevel, const float originalArea) const {
-  float areaShift = mConfig.STATIC_SCALE ? 0 : mConfig.AREA_SHIFT;
-  return std::min(1.0f, calculateTargetScale(mTargetAreas.at(scaleLevel) + areaShift, originalArea));
+  return std::min(1.0f, calculateTargetScale(mTargetAreas.at(scaleLevel), originalArea));
 }
 
 bool RoIResizer::isCalibrated(const idType id, const int scaleLevel) const {
@@ -96,7 +95,8 @@ bool RoIResizer::isCalibrated(const idType id, const int scaleLevel) const {
 int RoIResizer::getMaxVotedLevel(const idType id, const Features& features) {
   auto record = prevPredictionBuffer.find(id);
   if (record == prevPredictionBuffer.end()) {
-    prevPredictionBuffer[id] = CircularBuffer(int(mTargetAreas.size()));
+    prevPredictionBuffer[id] = CircularBuffer(int(mTargetAreas.size()),
+                                              mConfig.VOTING_WINDOW);
   }
   prevPredictionBuffer[id].push(predictLevelWithFeatures(features));
   return prevPredictionBuffer[id].maxVote();
@@ -230,12 +230,16 @@ bool RoIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
 }
 
 float RoIResizer::calculateTargetScale(float targetArea, float originalArea) const {
-  float scale = sqrt(targetArea / originalArea);
-  return std::min(scale, 1.0f);
+  if (mConfig.STATIC_SCALE) {
+    return std::min(1.0f, sqrt(targetArea / originalArea));
+  } else {
+    float scale = sqrt((targetArea + mConfig.AREA_SHIFT) / originalArea) + mConfig.SCALE_SHIFT;
+    return std::min(1.0f, scale);
+  }
 }
 
-RoIResizer::CircularBuffer::CircularBuffer(int numLevels)
-    : capacity_(5), oldest_index(0), size_(0), numLevels(numLevels) {
+RoIResizer::CircularBuffer::CircularBuffer(int numLevels, int capacity)
+    : capacity_(capacity), oldest_index(0), size_(0), numLevels(numLevels) {
   // NOTE that capacity should be even number to avoid tie
   data_.resize(capacity_);
 }

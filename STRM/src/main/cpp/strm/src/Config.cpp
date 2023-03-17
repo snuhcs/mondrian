@@ -58,6 +58,12 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   assert(!json["train_data"].isNull());
   config.TRAIN_DATA = json["train_data"].asString();
   assert(config.TRAIN_DATA == "VIRAT" || config.TRAIN_DATA == "MTA");
+  if (!json["scale_shift"].isNull()) {
+    config.SCALE_SHIFT = json["scale_shift"].asFloat();
+  }
+  if (!json["voting_window"].isNull()) {
+    config.VOTING_WINDOW = json["voting_window"].asInt();
+  }
   if (!json["area_shift"].isNull()) {
     config.AREA_SHIFT = json["area_shift"].asFloat();
   }

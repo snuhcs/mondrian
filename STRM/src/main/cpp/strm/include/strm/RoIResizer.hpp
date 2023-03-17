@@ -40,7 +40,7 @@ class RoIResizer {
    public:
     CircularBuffer() {}; // Default ctor for std::map
 
-    CircularBuffer(int numLevels);
+    CircularBuffer(int numLevels, int capacity);
 
     void push(int data);
 

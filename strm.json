@@ -38,6 +38,8 @@
     },
     "roi_resizer": {
         "train_data": "MTA",
+        "voting_window": 5,
+        "scale_shift": 0.0,
         "area_shift": 1600,
         "static_scale": false,
         "static_target_scale": 1.0,
