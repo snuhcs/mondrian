@@ -55,9 +55,9 @@ SpatioTemporalRoIMixer::SpatioTemporalRoIMixer(const STRMConfig& config,
       mPatchReconstructor(new PatchReconstructor(config.patchReconstructorConfig,
                                                  mRoIResizer.get())) {
   assert(!config.USE_ROI_WISE_INFERENCE || mInputSizes.size() >= 2);
-  int maxMergeSize = config.USE_EMULATED_BATCH
-                     ? config.ROI_SIZE
-                     : mInputSizes.front();
+  int maxMergeSize = config.FULL_FRAME_INTERVAL == 0 ? 0 : (config.USE_EMULATED_BATCH
+                                                            ? config.ROI_SIZE
+                                                            : mInputSizes.front());
   bool runRoIExtractor = mConfig.FULL_FRAME_INTERVAL != 0;
   auto latencyTable = mInferenceEngine->getInferenceTimeTable();
   printLatencyTable(latencyTable);
