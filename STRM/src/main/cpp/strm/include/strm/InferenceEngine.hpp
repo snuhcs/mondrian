@@ -19,11 +19,12 @@ class InferenceEngine {
   InferenceEngine(const InferenceEngineConfig& config,
                   JavaVM* vm, JNIEnv* env, jobject emulator);
 
-  void enqueue(const cv::Mat& mat, Device device, int inputSize, int key);
+  void enqueue(const cv::Mat& mat, Device device, int inputSize, bool isFullFrame,
+               int key);
 
   Result getResults(int key);
 
-  std::map<Device, std::map<int, time_us>> getInferenceTimeTable() const;
+  std::map<Device, std::map<std::tuple<int, bool>, time_us>> getInferenceTimeTable() const;
 
   std::vector<int> getInputSizes() const;
 

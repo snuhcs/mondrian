@@ -36,6 +36,7 @@ void Logger::logExecutionHeader() {
   std::lock_guard<std::mutex> lock(mtx);
   logFile << "videoId" << delim
           << "frameIndex" << delim
+          << "scheduleID" << delim
           << "PDExtractorID" << delim
           << "OFExtractorID" << delim
           << "numBoxes" << delim
@@ -72,6 +73,7 @@ void Logger::logExecution(const Frame* frame) {
   std::lock_guard<std::mutex> lock(mtx);
   logFile << frame->vid << delim
           << frame->frameIndex << delim
+          << frame->scheduleID << delim
           << frame->PDExtractorID << delim
           << frame->OFExtractorID << delim
           << frame->boxes.size() << delim
@@ -115,16 +117,7 @@ void Logger::logResult(int vid, int frameIndex, time_us time,
           << frameIndex << ','
           << fromBaseTime(time) * 1000 << ',';
   for (int i = 0; i < boxes.size(); i++) {
-    const BoundingBox& box = boxes[i];
-    logFile << box.id << ','
-            << box.location.left << ','
-            << box.location.top << ','
-            << box.location.right << ','
-            << box.location.bottom << ','
-            << box.confidence << ','
-            << box.origin << ','
-            << box.choiceOfBox << ','
-            << COCO_LABELS[box.label];
+    logFile << boxes[i].str();
     if (i != boxes.size() - 1) {
       logFile << ',';
     }
@@ -173,11 +166,12 @@ void Logger::logRoIHeader() {
       << "shiftNcc" << delim
       << "avgErr" << delim
 
+      << "isProbingRoI" << delim
       << "numProbingRoIs" << delim
-      << "priority" << delim
       << "id" << delim
 
       // Packing info
+      << "priority" << delim
       << "packedLoc_l" << delim
       << "packedLoc_t" << delim
       << "packedLoc_r" << delim
@@ -186,6 +180,10 @@ void Logger::logRoIHeader() {
       << "packedXY_y" << delim
       << "packedScale" << delim
       << "packedAbsMixedFrameIndex" << delim
+      << "packedMixedFrameSize" << delim
+
+      << "box" << delim
+      << "probingBox" << delim
 
       << "maxEdgeLength" << delim
       << "targetScale" << delim
@@ -197,7 +195,18 @@ void Logger::logRoI(const RoI* roi) {
   if (!logFile.is_open() || roi == nullptr) {
     return;
   }
-  std::lock_guard<std::mutex> lock(mtx);
+  std::unique_lock<std::mutex> logLock(mtx, std::defer_lock);
+  if (!roi->isProbingRoI) {
+    logLock.lock();
+    for (auto& probeRoI : roi->roisForProbing) {
+      assert(probeRoI->isProbingRoI);
+      logRoI(probeRoI);
+    }
+  } else {
+    assert(roi->roisForProbing.empty());
+  }
+  const RoI* pRoI = roi->isProbingRoI ? roi : roi->parentRoI;
+
   logFile
       // frame
       << roi->frame->vid << delim
@@ -233,18 +242,23 @@ void Logger::logRoI(const RoI* roi) {
       << roi->features.ofFeatures.shiftNcc << delim
       << roi->features.ofFeatures.avgErr << delim
 
+      << roi->isProbingRoI << delim
       << roi->roisForProbing.size() << delim
-      << roi->parentRoI->priority << delim
       << roi->id << delim
 
-      << roi->parentRoI->paddedLoc.left << delim
-      << roi->parentRoI->paddedLoc.top << delim
-      << roi->parentRoI->paddedLoc.right << delim
-      << roi->parentRoI->paddedLoc.bottom << delim
-      << roi->parentRoI->getPackedXY().first << delim
-      << roi->parentRoI->getPackedXY().second << delim
-      << roi->parentRoI->getTargetScale() << delim
-      << roi->parentRoI->packedAbsMixedFrameIndex << delim
+      << pRoI->priority << delim
+      << pRoI->paddedLoc.left << delim
+      << pRoI->paddedLoc.top << delim
+      << pRoI->paddedLoc.right << delim
+      << pRoI->paddedLoc.bottom << delim
+      << pRoI->getPackedXY().first << delim
+      << pRoI->getPackedXY().second << delim
+      << pRoI->getTargetScale() << delim
+      << pRoI->packedAbsMixedFrameIndex << delim
+      << pRoI->packedMixedFrameSize << delim
+
+      << (roi->box == nullptr ? "X" : roi->box->str().c_str()) << delim
+      << (roi->probingBox == nullptr ? "X" : roi->probingBox->str().c_str()) << delim
 
       << roi->maxEdgeLength << delim
       << roi->getTargetScale() << delim

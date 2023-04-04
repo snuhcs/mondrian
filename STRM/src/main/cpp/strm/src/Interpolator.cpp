@@ -4,16 +4,14 @@
 
 namespace rm {
 
-std::set<idType> Interpolator::interpolate(MultiStream& frames, float threshold) {
-  std::set<idType> droppedIDs;
-  for (const auto& it : frames) {
-    std::set<idType> roIIds = getRoIIds(it.second);
-    for (auto id : roIIds) {
-      std::vector<RoI*> childRoIs = getRoIStream(it.second, id);
+void Interpolator::interpolate(MultiStream& frames, float threshold) {
+  for (const auto&[vid, aStreamFrames]: frames) {
+    std::set<idType> roIIds = getRoIIds(aStreamFrames);
+    for (auto id: roIIds) {
+      std::vector<RoI*> childRoIs = getRoIStream(aStreamFrames, id);
       std::vector<int> validIndices = findValidRoIs(childRoIs);
       if (validIndices.empty() ||
           float(validIndices.size()) / float(childRoIs.size()) < threshold) {
-        droppedIDs.insert(id);
         continue;
       }
       extrapolateLeft(childRoIs, validIndices.at(0));
@@ -26,7 +24,6 @@ std::set<idType> Interpolator::interpolate(MultiStream& frames, float threshold)
       extrapolateRight(childRoIs, validIndices.at(validIndices.size() - 1));
     }
   }
-  return droppedIDs;
 }
 
 std::set<idType> Interpolator::getRoIIds(const Stream& frames) {

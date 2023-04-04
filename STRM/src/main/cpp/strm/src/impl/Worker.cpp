@@ -1,10 +1,11 @@
 #include "strm/impl/Worker.hpp"
 
 #include "strm/InferenceEngine.hpp"
+#include "strm/Log.hpp"
 
 namespace rm {
 
-Worker::Worker(InferenceEngine* engine, Device device, std::map<int, Classifier*> classifierMap,
+Worker::Worker(InferenceEngine* engine, Device device, std::map<std::tuple<int, bool>, Classifier*> classifierMap,
                bool draw, JavaVM* vm, JNIEnv* env, jobject emulator)
     : engine(engine), device(device), classifierMap(std::move(classifierMap)), isClosed(false),
       jvm(vm), env(env), emulator(reinterpret_cast<jobject>(env->NewGlobalRef(emulator))),
@@ -47,11 +48,11 @@ void Worker::work() {
       lock.unlock();
       break;
     }
-    auto[mat, size, key] = std::move(inputs.front());
+    auto[mat, size, isFullFrame, key] = std::move(inputs.front());
     inputs.pop();
     lock.unlock();
 
-    Result boxTimeDevice = classifierMap[size]->recognizeImage(mat);
+    Result boxTimeDevice = classifierMap[{size, isFullFrame}]->recognizeImage(mat);
     engine->enqueueResults(key, boxTimeDevice);
     if (draw) {
       drawInferenceResult(mat, std::get<0>(boxTimeDevice));
@@ -59,18 +60,19 @@ void Worker::work() {
   }
 }
 
-void Worker::enqueue(const cv::Mat& mat, int inputSize, int key) {
+void Worker::enqueue(const cv::Mat& mat, int inputSize, bool isFullFrame, int key) {
   std::unique_lock<std::mutex> lock(mtx);
-  inputs.push({mat, inputSize, key});
+  inputs.push({mat, inputSize, isFullFrame, key});
   lock.unlock();
   cv.notify_one();
 }
 
-std::map<int, time_us> Worker::getInferenceTimes() {
-  std::map<int, time_us> timeTable;
-  for (auto&[inputSize, classifier] : classifierMap) {
+std::map<std::tuple<int, bool>, time_us> Worker::getInferenceTimes() {
+  std::map<std::tuple<int, bool>, time_us> timeTable;
+  for (auto&[inputSize_isFullFrame, classifier] : classifierMap) {
+    auto [inputSize, isFullFrame] = inputSize_isFullFrame;
     assert (classifier->getInferenceTime() > 0);
-    timeTable[inputSize] = classifier->getInferenceTime();
+    timeTable[{inputSize, isFullFrame}] = classifier->getInferenceTime();
   }
   return timeTable;
 }

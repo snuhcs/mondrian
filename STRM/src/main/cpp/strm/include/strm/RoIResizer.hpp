@@ -8,7 +8,6 @@
 #include "strm/RoI.hpp"
 #include "strm/tree/VIRAT.hpp"
 #include "strm/tree/MTA.hpp"
-#include "strm/tree/YouTube.hpp"
 
 namespace rm {
 
@@ -19,39 +18,29 @@ using Predictor = std::function<int(
 
 class RoIResizer {
  public:
+  static const int STATIC_LEVEL;
   static const int INVALID_LEVEL;
 
   RoIResizer(const RoIResizerConfig& config);
 
-  std::pair<float, int> getTargetScale(const idType id, const Features& features);
+  std::pair<float, int> getTargetScale(const idType id, const Features& features,
+                                       const float maxEdgeLength);
 
-  void updateTable(RoI* roi);
+  void updateTable(RoI* cRoI);
 
   int getNumProbeSteps() const {
     return mConfig.NUM_PROBE_STEPS;
   }
 
-  int isProbing() const {
-    return mConfig.PROBE_STEP_SIZE != 0;
-  }
-
-  std::vector<float> getProbingCandidates(
-      float scale, int level, int numProbeSteps);
-
-  float maxScale() const {
-    return 1.0f;
-  }
-
-  int maxLevel() const {
-    return mTargetSize.size() - 1;
-  }
+  std::vector<float>
+  getProbingCandidates(float scale, int level, int numProbeSteps, float originalArea) const;
 
  private:
   class CircularBuffer {
    public:
     CircularBuffer() {}; // Default ctor for std::map
 
-    CircularBuffer(int numLevels);
+    CircularBuffer(int numLevels, int capacity);
 
     void push(int data);
 
@@ -63,20 +52,26 @@ class RoIResizer {
     std::vector<int> data_;
   };
 
+  std::pair<float, int> getTargetScale(const idType id, const Features& features);
+
+  float getTargetScale(const int scaleLevel, const float originalArea) const;
+
+  bool isCalibrated(const idType id, const int scaleLevel) const;
+
   int getMaxVotedLevel(const idType id, const Features& features);
 
   int predictLevelWithFeatures(const Features& features) const;
 
   bool isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const;
 
-  static float getOverlap(Rect& targetRect, Rect& baseRect);
+  float calculateTargetScale(float targetArea, float originalArea) const;
 
   static const std::map<std::string, Predictor> candidatePredictors;
   static const std::map<std::string, std::vector<float>> scalesForLevels;
 
   const RoIResizerConfig mConfig;
   const Predictor mPredictor;
-  const std::vector<float> mTargetSize;
+  const std::vector<float> mTargetAreas;
 
   // Save prev prediction to smooth the predicted size
   std::map<idType, CircularBuffer> prevPredictionBuffer;

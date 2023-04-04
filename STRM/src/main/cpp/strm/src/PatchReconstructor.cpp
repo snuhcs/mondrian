@@ -13,28 +13,29 @@ PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
                                        RoIResizer* roiResizer)
     : mConfig(config), mRoIResizer(roiResizer) {}
 
-static Rect moveResizeRoIPos(const RoI* roi) {
-  std::pair<float, float> wh = roi->getResizedWidthHeight();
-  return Rect(roi->getPackedXY().first,
-              roi->getPackedXY().second,
-              roi->getPackedXY().first + wh.first,
-              roi->getPackedXY().second + wh.second);
+static Rect moveResizeRoIPos(const RoI* pRoI) {
+  auto[rw, rh] = pRoI->getResizedMatWidthHeight();
+  auto[x, y] = pRoI->getPackedXY();
+  auto packX = float(x + pRoI->roiBorder);
+  auto packY = float(y + pRoI->roiBorder);
+  return {float(packX), float(packY), float(packX + rw), float(packY + rh)};
 }
 
 static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
   float scale = pRoI->getTargetScale();
-  float newLeft = (packedBox.location.left - pRoI->getPackedXY().first)
-                  / scale + pRoI->paddedLoc.left;
-  float newTop = (packedBox.location.top - pRoI->getPackedXY().second)
-                 / scale + pRoI->paddedLoc.top;
-  float newRight = (packedBox.location.right - pRoI->getPackedXY().first)
-                   / scale + pRoI->paddedLoc.left;
-  float newBottom = (packedBox.location.bottom - pRoI->getPackedXY().second)
-                    / scale + pRoI->paddedLoc.top;
-  return Rect(std::max(0.0f, newLeft),
-              std::max(0.0f, newTop),
-              std::min(float(pRoI->frame->mat.cols), newRight),
-              std::min(float(pRoI->frame->mat.rows), newBottom));
+  const Rect& packedBoxLoc = packedBox.location;
+  const Rect& pRoILoc = pRoI->paddedLoc;
+  auto[x, y] = pRoI->getPackedXY();
+  auto packX = float(x + pRoI->roiBorder);
+  auto packY = float(y + pRoI->roiBorder);
+  float newL = (packedBoxLoc.left - packX) / scale + pRoILoc.left;
+  float newT = (packedBoxLoc.top - packY) / scale + pRoILoc.top;
+  float newR = (packedBoxLoc.right - packX) / scale + pRoILoc.left;
+  float newB = (packedBoxLoc.bottom - packY) / scale + pRoILoc.top;
+  return {std::max(0.0f, newL),
+          std::max(0.0f, newT),
+          std::min(float(pRoI->frame->mat.cols), newR),
+          std::min(float(pRoI->frame->mat.rows), newB)};
 }
 
 void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
@@ -68,7 +69,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
       }
     }
     if (maxRoI != nullptr && maxOverlap >= mConfig.BOX_FILTER_OVERLAP_THRESHOLD) {
-      // filter overly large boxes from mixed frame inference by OVERLAP_THRESHOLD
+      // filter overly large boxes from mixed frame inference by PROBE_IOU_THRESHOLD
       if (maxRoI->isProbingRoI) {
         maxRoI->frame->probingBoxes.push_back(std::make_unique<BoundingBox>(
             UNASSIGNED_ID, reconstructBoxPos(box, maxRoI),
@@ -92,9 +93,10 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
        mixedFrame.mixedFrameIndex, packedFrames.size(), results.size());
 }
 
-void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& childRoIs,
-                                            std::vector<std::unique_ptr<BoundingBox>>& boxes,
-                                            bool isFullFrame) const {
+void PatchReconstructor::matchBoxesWithChildRoIs(Frame* frame, bool isFullFrame) const {
+  std::vector<std::unique_ptr<RoI>>& childRoIs = frame->childRoIs;
+  std::vector<std::unique_ptr<BoundingBox>>& boxes = frame->boxes;
+
   std::vector<BoundingBox*> unassignedBoxes;
 
   assert(std::all_of(childRoIs.begin(), childRoIs.end(),
@@ -164,7 +166,6 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
           unassignedBoxes.push_back(roiToBoxesMap[cRoIPtr][i]);
         }
       }
-      cRoI->isMatchTried = true;
     }
   }
   // End of 2
@@ -189,28 +190,34 @@ void PatchReconstructor::matchBoxesWithRoIs(std::vector<std::unique_ptr<RoI>>& c
   }
   // End of 3
 
+  const auto testRoIBoxConnection = [&boxes, &childRoIs](){
+    for (const std::unique_ptr<BoundingBox>& box : boxes) {
+      assert(box->id != UNASSIGNED_ID);
+      if (box->srcRoI != nullptr) {
+        assert(box->srcRoI->box == box.get());
+        assert(box->srcRoI->label == box->label);
+        assert(box->srcRoI->id == box->id);
+      }
+    }
+    for (auto& cRoI : childRoIs) {
+      assert(cRoI->id != UNASSIGNED_ID);
+      if (cRoI->box != nullptr) {
+        assert(cRoI->box->id == cRoI->id);
+      }
+    }
+  };
+
   // 2. Update resize profile
-  for (auto& cRoI : childRoIs) {
-    if (cRoI->isProbingReady()) {
+  testRoIBoxConnection();
+  if (frame->isLastFrame) {
+    for (auto& cRoI : childRoIs) {
       mRoIResizer->updateTable(cRoI.get());
     }
+  } else {
+    assert(std::all_of(childRoIs.begin(), childRoIs.end(),
+                       [](const auto& cRoI) { return cRoI->roisForProbing.empty(); }));
   }
-
-  for (auto& cRoI : childRoIs) {
-    assert(cRoI->id != UNASSIGNED_ID);
-    if (cRoI->box != nullptr) {
-      assert(cRoI->box->id == cRoI->id);
-    }
-  }
-
-  for (const std::unique_ptr<BoundingBox>& box : boxes) {
-    assert(box->id != UNASSIGNED_ID);
-    if (box->srcRoI != nullptr) {
-      assert(box->srcRoI->box == box.get());
-      assert(box->srcRoI->label == box->label);
-      assert(box->srcRoI->id == box->id);
-    }
-  }
+  testRoIBoxConnection();
 }
 
 float PatchReconstructor::getIoUThreshold() const {

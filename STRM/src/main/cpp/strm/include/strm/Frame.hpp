@@ -22,6 +22,7 @@ class Frame {
  public:
   const int vid;
   const int frameIndex;
+  int scheduleID;
   cv::Mat mat;
   Frame* prevFrame;
   Frame* nextFrame;
@@ -44,6 +45,7 @@ class Frame {
   std::vector<std::unique_ptr<RoI>> childRoIs; // => box
   std::vector<std::unique_ptr<RoI>> parentRoIs;
 
+  bool isLastFrame;
   IntPairs boxesIfLast;
   IntPairs boxesIfScaled;
 

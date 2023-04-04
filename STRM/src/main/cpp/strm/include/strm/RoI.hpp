@@ -8,6 +8,8 @@
 
 #include "strm/DataType.hpp"
 
+#include "strm/Log.hpp"
+
 namespace rm {
 
 class Frame;
@@ -164,9 +166,9 @@ class RoI {
   static const int INVALID_CONF;
 
   Frame* frame;
-  Rect origLoc;
+  const Rect origLoc;
   Rect paddedLoc;
-  const float roiPadding;
+  const int roiBorder;
 
   Type type;
   Origin origin;
@@ -193,10 +195,11 @@ class RoI {
 
  public:
   static const IntPair INVALID_XY;
+  static const cv::Scalar BORDER_COLOR;
 
   int packedAbsMixedFrameIndex;
+  int packedMixedFrameSize;
   bool isProbingRoI;
-  bool isMatchTried; // only valid within parentRoIs
   BoundingBox* box;
   BoundingBox* probingBox;
 
@@ -209,10 +212,11 @@ class RoI {
       const int label,
       const OFFeatures ofFeatures,
       const float confidence,
-      float roiPadding,
-      bool isProbingRoI);
+      const float roiPadding,
+      const int roiBorder,
+      const bool isProbingRoI);
 
-  void setOrigLoc(const Rect& origLoc);
+  void setPaddedLoc(const Rect& newOrigLoc);
 
   void eatPD(const Rect& PDRect);
 
@@ -223,17 +227,6 @@ class RoI {
     idType maxId = minId + num;
     // [minId, maxId)
     return std::pair<idType, idType>(minId, maxId);
-  }
-
-  bool isProbingReady() const {
-    if (roisForProbing.empty()) {
-      return false;
-    }
-    bool ready = true;
-    for (auto& pRoI: roisForProbing) {
-      ready &= pRoI->isMatchTried;
-    }
-    return ready;
   }
 
   bool isPacked() const {
@@ -248,9 +241,14 @@ class RoI {
     return paddedLoc.area();
   }
 
-  float getResizedArea() const {
-    const std::pair<float, float> resizedWH = getResizedWidthHeight();
-    return resizedWH.first * resizedWH.second;
+  static int getResizedArea(float width, float height, float scale) {
+    int rw = getResizedMatEdgeLength(width, scale);
+    int rh = getResizedMatEdgeLength(height, scale);
+    return rw * rh;
+  }
+
+  int getResizedArea() const {
+    return getResizedArea(paddedLoc.width(), paddedLoc.height(), targetScale);
   }
 
   float getTargetScale() const {
@@ -263,11 +261,6 @@ class RoI {
 
   void setTargetScale(float newTargetScale, int newScaleLevel);
 
-  std::pair<float, float> getResizedWidthHeight() const {
-    return {paddedLoc.width() * targetScale,
-            paddedLoc.height() * targetScale};
-  }
-
   IntPair getPackedXY() const {
     return packedXY;
   }
@@ -278,9 +271,13 @@ class RoI {
 
   void setPackInfo(IntPair xy, int mixedFrameIndex, bool emulatedBatch, int roiSize) {
     if (emulatedBatch) {
-      auto[rw, rh] = getResizedMatWidthHeight();
-      xy.first += (roiSize - rw) / 2;
-      xy.second += (roiSize - rh) / 2;
+      auto[bw, bh] = getBorderMatWidthHeight();
+      if (roiSize < std::max(bw, bh)) {
+        LOGE("RoiSize %d < bw %d or bh %d", roiSize, bw, bh);
+        assert(false);
+      }
+      xy.first += (roiSize - bw) / 2;
+      xy.second += (roiSize - bh) / 2;
     }
     packedXY = xy;
     packedMixedFrameIndex = mixedFrameIndex;
@@ -290,16 +287,28 @@ class RoI {
     return std::round(v);
   }
 
-  IntPair getResizedMatWidthHeight() const {
-    auto[w, h] = getResizedWidthHeight();
-    return {toInt(w), toInt(h)};
+  static int getResizedMatEdgeLength(float edgeLength, float scale) {
+    return std::max(1, toInt(edgeLength * scale));
   }
 
-  cv::Mat getOrigMat() const;
+  IntPair getResizedMatWidthHeight(float scale = -1) const {
+    if (scale == -1) {
+      scale = targetScale;
+    }
+    return {getResizedMatEdgeLength(paddedLoc.width(), scale),
+            getResizedMatEdgeLength(paddedLoc.height(), scale)};
+  }
+
+  IntPair getBorderMatWidthHeight(float scale = -1) const {
+    auto[rw, rh] = getResizedMatWidthHeight(scale);
+    return {rw + 2 * roiBorder, rh + 2 * roiBorder};
+  }
 
   cv::Mat getPaddedMat() const;
 
   cv::Mat getResizedMat() const;
+
+  cv::Mat getBorderMat() const;
 };
 
 } // namespace rm

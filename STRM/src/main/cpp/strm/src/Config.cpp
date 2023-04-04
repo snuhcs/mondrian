@@ -20,14 +20,20 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   if (!json["extraction_resize_height"].isNull()) {
     config.EXTRACTION_RESIZE_HEIGHT = json["extraction_resize_height"].asFloat();
   }
-  if (!json["min_roi_area"].isNull()) {
-    config.MIN_ROI_AREA = json["min_roi_area"].asFloat();
+  if (!json["max_pd_roi_size"].isNull()) {
+    config.MAX_PD_ROI_SIZE = json["max_pd_roi_size"].asFloat();
+  }
+  if (!json["min_pd_roi_size"].isNull()) {
+    config.MIN_PD_ROI_SIZE = json["min_pd_roi_size"].asFloat();
   }
   if (!json["eat_pd"].isNull()) {
     config.EAT_PD = json["eat_pd"].asBool();
   }
   if (!json["roi_padding"].isNull()) {
     config.ROI_PADDING = json["roi_padding"].asFloat();
+  }
+  if (!json["roi_border"].isNull()) {
+    config.ROI_BORDER = json["roi_border"].asInt();
   }
   if (!json["optical_flow_roi_confidence_threshold"].isNull()) {
     config.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = json["optical_flow_roi_confidence_threshold"].asFloat();
@@ -51,29 +57,37 @@ RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
   RoIResizerConfig config;
   assert(!json["train_data"].isNull());
   config.TRAIN_DATA = json["train_data"].asString();
-  assert(config.TRAIN_DATA == "VIRAT" ||
-         config.TRAIN_DATA == "MTA" ||
-         config.TRAIN_DATA == "YouTube");
-  if (!json["resize_smoothing_factor"].isNull()) {
-    config.RESIZE_SMOOTHING_FACTOR = json["resize_smoothing_factor"].asFloat();
+  assert(config.TRAIN_DATA == "virat" || config.TRAIN_DATA == "mta");
+  if (!json["scale_shift"].isNull()) {
+    config.SCALE_SHIFT = json["scale_shift"].asFloat();
+  }
+  if (!json["voting_window"].isNull()) {
+    config.VOTING_WINDOW = json["voting_window"].asInt();
+  }
+  if (!json["area_shift"].isNull()) {
+    config.AREA_SHIFT = json["area_shift"].asFloat();
+  }
+  if (!json["static_scale"].isNull()) {
+    config.STATIC_SCALE = json["static_scale"].asBool();
   }
   if (!json["static_target_scale"].isNull()) {
     config.STATIC_TARGET_SCALE = json["static_target_scale"].asFloat();
   }
+  if (!json["max_of_roi_size"].isNull()) {
+    config.MAX_OF_ROI_SIZE = json["max_of_roi_size"].asFloat();
+  }
   if (!json["probe_step_size"].isNull()) {
     config.PROBE_STEP_SIZE = json["probe_step_size"].asFloat();
+    assert(config.PROBE_STEP_SIZE > 0);
   }
   if (!json["num_probe_steps"].isNull()) {
     config.NUM_PROBE_STEPS = json["num_probe_steps"].asInt();
   }
-  if (!json["overlap_threshold"].isNull()) {
-    config.OVERLAP_THRESHOLD = json["overlap_threshold"].asFloat();
+  if (!json["probe_conf_threshold"].isNull()) {
+    config.PROBE_CONF_THRESHOLD = json["probe_conf_threshold"].asFloat();
   }
-  if (!json["absolute_confidence_threshold"].isNull()) {
-    config.ABSOLUTE_CONFIDENCE_THRESHOLD = json["absolute_confidence_threshold"].asFloat();
-  }
-  if (!json["relative_confidence_threshold"].isNull()) {
-    config.RELATIVE_CONFIDENCE_THRESHOLD = json["relative_confidence_threshold"].asFloat();
+  if (!json["probe_iou_threshold"].isNull()) {
+    config.PROBE_IOU_THRESHOLD = json["probe_iou_threshold"].asFloat();
   }
   return config;
 }
@@ -117,16 +131,8 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
     const Json::Value devices = json["devices"];
     config.DEVICES.clear();
     for (const auto& device : devices) {
-      std::string deviceStr = device.asString();
-      if (deviceStr == "GPU") {
-        config.DEVICES.push_back(GPU);
-      } else if (deviceStr == "DSP") {
-        config.DEVICES.push_back(DSP);
-      } else {
-        LOGD("%s device is not supported", deviceStr.c_str());
-      }
+      config.DEVICES.push_back(toDevice(device.asString()));
     }
-    assert(std::find(config.DEVICES.begin(), config.DEVICES.end(), GPU) != config.DEVICES.end());
   }
   return config;
 }
@@ -180,6 +186,9 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   if (!json["full_frame_size"].isNull()) {
     config.FULL_FRAME_SIZE = json["full_frame_size"].asInt();
   }
+  if (!json["full_device"].isNull()) {
+    config.FULL_DEVICE = toDevice(json["full_device"].asString());
+  }
   if (!json["buffer_size"].isNull()) {
     config.BUFFER_SIZE = json["buffer_size"].asInt();
   }
@@ -207,10 +216,12 @@ STRMConfig parseSTRMConfig(const std::string& jsonPath) {
   }
   if (!json["inference_engine"].isNull()) {
     config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
+    config.inferenceEngineConfig.FULL_FRAME_SIZE = config.FULL_FRAME_SIZE;
   }
+  config.inferenceEngineConfig.DATASET = config.roiResizerConfig.TRAIN_DATA;
+  auto& devices = config.inferenceEngineConfig.DEVICES;
+  assert(std::find(devices.begin(), devices.end(), config.FULL_DEVICE) != devices.end());
   auto& input_sizes = config.inferenceEngineConfig.INPUT_SIZES;
-  assert(std::find(input_sizes.begin(), input_sizes.end(),
-                   config.FULL_FRAME_SIZE) != input_sizes.end());
   if (config.USE_EMULATED_BATCH) {
     assert(std::all_of(input_sizes.begin(), input_sizes.end(), [&config](int input_size) {
       return input_size % config.ROI_SIZE == 0;

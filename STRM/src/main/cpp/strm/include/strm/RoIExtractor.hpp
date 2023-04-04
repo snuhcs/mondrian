@@ -31,7 +31,7 @@ class RoIExtractor {
   void notify();
 
   std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> prepareInference(
-      std::vector<InferenceInfo>& nextInferencePlan, bool runFull);
+      std::vector<InferenceInfo>& nextInferencePlan, bool runFull, int scheduleID);
 
  private:
   void work(int extractorId);
@@ -57,7 +57,8 @@ class RoIExtractor {
       const Frame* prevFrame, const Frame* currFrame, const std::vector<Rect>& boundingBoxes,
       const cv::Size& targetSize);
 
-  void getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize, const float minRoIArea,
+  void getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize,
+                        const float maxPDRoISize, const float minPDRoISize,
                         std::vector<std::unique_ptr<RoI>>& outChildRoIs) const;
 
   static cv::Mat calculateDiffAndThreshold(

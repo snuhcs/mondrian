@@ -1,7 +1,10 @@
 #ifndef DATA_TYPE_HPP_
 #define DATA_TYPE_HPP_
 
+#include <sstream>
+
 #include "strm/Time.hpp"
+#include "strm/Utils.hpp"
 
 namespace rm {
 
@@ -18,6 +21,10 @@ enum Device {
   GPU = 0,
   DSP = 1,
 };
+
+Device toDevice(std::string deviceStr);
+
+const char* toConstStr(Device device);
 
 enum Origin {
   origin_Null = 0,  // null value for initialization
@@ -103,6 +110,20 @@ struct BoundingBox {
   BoundingBox(idType id, const Rect location, const float confidence, int label, Origin origin)
       : id(id), location(location), confidence(confidence), label(label), origin(origin),
         srcRoI(nullptr), choiceOfBox(UNASSIGNED_ID) {}
+
+  std::string str() const {
+    std::stringstream ss;
+    ss << id << ','
+       << location.left << ','
+       << location.top << ','
+       << location.right << ','
+       << location.bottom << ','
+       << confidence << ','
+       << origin << ','
+       << choiceOfBox << ','
+       << COCO_LABELS[label];
+    return ss.str();
+  }
 };
 
 struct InferenceInfo {

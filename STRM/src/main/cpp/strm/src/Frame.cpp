@@ -15,29 +15,35 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat mat,
       width(mat.cols), height(mat.rows), prevFrame(prevFrame), nextFrame(nullptr),
       useInferenceResultForOF(false), extractOFAgain(false), enqueueTime(enqueueTime),
       isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
-      inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
+      isLastFrame(false), inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
 
 void Frame::resizeRoIs(RoIResizer* roiResizer, bool emulatedBatch, int roiSize) {
   if (emulatedBatch) {
     for (auto& cRoI: childRoIs) {
-      int w = RoI::toInt(cRoI->paddedLoc.width());
-      int h = RoI::toInt(cRoI->paddedLoc.height());
-      if (std::max(w, h) <= roiSize) {
-        cRoI->setTargetScale(1.0f, RoIResizer::INVALID_LEVEL);
-      } else if (w >= h) {
-        cRoI->setTargetScale(float(roiSize) / float(w), RoIResizer::INVALID_LEVEL);
-      } else { // w < h
-        cRoI->setTargetScale(float(roiSize) / float(h), RoIResizer::INVALID_LEVEL);
+      float w = cRoI->paddedLoc.width();
+      float h = cRoI->paddedLoc.height();
+      float scale = std::min(1.0f, float(roiSize - 2 * cRoI->roiBorder) / std::max(h, w));
+      cRoI->setTargetScale(scale, RoIResizer::INVALID_LEVEL);
+      auto[bw, bh] = cRoI->getBorderMatWidthHeight();
+      if (roiSize < std::max(bw, bh)) {
+        LOGE("Frame::resizeRoIs: roiSize=%3d | %4.2f*%4.2f=%4.2f => %3d | %4.2f*%4.2f=%4.2f => %3d",
+             roiSize, w, scale, w * scale, bw, h, scale, h * scale, bh);
+        assert(false);
       }
     }
   } else {
     for (auto& cRoI: childRoIs) {
       if (cRoI->type == OF) {
-        auto[scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features);
+        auto[scale, level] = roiResizer->getTargetScale(cRoI->id, cRoI->features,
+                                                        cRoI->maxEdgeLength);
         assert(0.0f < scale && scale <= 1.0f);
         cRoI->setTargetScale(scale, level);
       } else {
-        cRoI->setTargetScale(roiResizer->maxScale(), roiResizer->maxLevel());
+        if (cRoI->nextRoI != nullptr) {
+          cRoI->setTargetScale(cRoI->nextRoI->getTargetScale(), cRoI->nextRoI->getScaleLevel());
+        } else {
+          cRoI->setTargetScale(1.0f, RoIResizer::INVALID_LEVEL);
+        }
       }
     }
   }
@@ -68,12 +74,18 @@ void Frame::mergeRoIs(float maxSize) {
         const auto& roi0 = parentRoIs[i];
         const auto& roi1 = parentRoIs[j];
         Rect newRect = Rect::merge(roi0->paddedLoc, roi1->paddedLoc);
-        if (std::max(newRect.width(), newRect.height()) > maxSize) {
+        float newScale = std::max(roi0->getTargetScale(), roi1->getTargetScale());
+
+        int nw = RoI::getResizedMatEdgeLength(newRect.width(), newScale);
+        int nh = RoI::getResizedMatEdgeLength(newRect.height(), newScale);
+        if (std::max(nw + 2*roi0->roiBorder, nh + 2*roi0->roiBorder) > maxSize) {
+          // would be little more conservative for the general case
           continue;
         }
-        float newScale = std::max(roi0->getTargetScale(), roi1->getTargetScale());
-        float origArea = roi0->getResizedArea() + roi1->getResizedArea();
-        if (newRect.area() * newScale * newScale >= origArea) {
+
+        int newArea = RoI::getResizedArea(newRect.width(), newRect.height(), newScale);
+        int origArea = roi0->getResizedArea() + roi1->getResizedArea();
+        if (newArea >= origArea) {
           continue;
         }
         updated = true;
@@ -100,6 +112,10 @@ void Frame::mergeRoIs(float maxSize) {
     parentRoIs.erase(parentRoIs.begin() + j);
     parentRoIs.erase(parentRoIs.begin() + i);
   }
+  std::sort(parentRoIs.begin(), parentRoIs.end(),
+            [](const std::unique_ptr<RoI>& l, const std::unique_ptr<RoI>& r) {
+              return l->maxEdgeLength > r->maxEdgeLength;
+            });
   testAssignedUniqueRoIID(childRoIs);
   testParentChildrenIDsAndChildIDsSame(childRoIs, parentRoIs);
   testChildRoIsFrameRelation(childRoIs);
@@ -137,6 +153,7 @@ void Frame::filterPDRoIs(float threshold, bool eatPD) {
         if (maxInterSection / cRoI->getPaddedArea() >= threshold) {
           assert(maxOverlapRoI != nullptr);
           maxOverlapRoI->eatPD(cRoI->paddedLoc);
+          it = childRoIs.erase(it);
         }
       }
 
@@ -164,17 +181,17 @@ void Frame::filterPDRoIs(float threshold, bool eatPD) {
 }
 
 bool Frame::isReadyToMarry(int mixedFrameIndex) const {
-  bool atLeastOneIndexIsSame = false;
-  for (const auto& pRoI: parentRoIs) {
-    if (!pRoI->isPacked()) {
-      continue;
-    }
-    if (pRoI->getPackedMixedFrameIndex() > mixedFrameIndex) {
-      return false;
-    }
-    atLeastOneIndexIsSame |= (pRoI->getPackedMixedFrameIndex() == mixedFrameIndex);
-  }
-  return atLeastOneIndexIsSame;
+  auto isRoIPacked = [&mixedFrameIndex](const std::unique_ptr<RoI>& roi) {
+    return roi->isPacked() && roi->getPackedMixedFrameIndex() <= mixedFrameIndex;
+  };
+  bool isAllReady = std::all_of(parentRoIs.begin(), parentRoIs.end(), isRoIPacked)
+                    && std::all_of(probingRoIs.begin(), probingRoIs.end(), isRoIPacked);
+  bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
+                                     [](auto& box) { return box->id == UNASSIGNED_ID; });
+  bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),
+                                   [](auto& box) { return box->id != UNASSIGNED_ID; });
+  assert(isAllUnassigned || isAllAssigned);
+  return isAllReady && isAllUnassigned;
 }
 
 bool Frame::readyForOFExtraction() const {

@@ -2,7 +2,7 @@
     "video_configs": [
         {
             "path": "/data/local/tmp/video/MTA/test_cam_3.mp4",
-            "frame_range": [0, -1],
+            "frame_range": [0, 500],
             "fps": 0
         }
     ],
@@ -11,11 +11,12 @@
     "log_roi": true,
     "draw_output": false,
     "allow_interpolation": false,
-    "interpolation_threshold": 0.5,
-    "full_frame_interval": 1,
-    "full_frame_size": 768,
-    "buffer_size": 500,
-    "latency_slo_ms": 10000,
+    "interpolation_threshold": 1,
+    "full_frame_interval": 3,
+    "full_frame_size": 1024,
+    "full_device": "GPU",
+    "buffer_size": 200,
+    "latency_slo_ms": 5000,
     "use_emulated_batch": false,
     "use_roi_wise_inference": false,
     "roi_size": 64,
@@ -24,38 +25,44 @@
         "num_workers": 2,
         "extraction_resize_width": 960,
         "extraction_resize_height": 540,
-        "min_roi_area": 0,
+        "max_pd_roi_size": 206,
+        "min_pd_roi_size": 5,
         "eat_pd": true,
         "roi_padding": 0,
-        "optical_flow_roi_confidence_threshold": 0.1,
+        "roi_border": 2,
+        "optical_flow_roi_confidence_threshold": 0.0,
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
         "merge": true,
         "no_downsampling_for_last_frame": true
     },
     "roi_resizer": {
-        "train_data": "MTA",
-        "resize_smoothing_factor": 0.1,
+        "train_data": "mta",
+        "voting_window": 5,
+        "scale_shift": 0.0,
+        "area_shift": 1600,
+        "static_scale": false,
         "static_target_scale": 1.0,
-        "probe_step_size": 0.05,
-        "num_probe_steps": 1,
-        "overlap_threshold": 0.8,
-        "absolute_confidence_threshold": 0.3,
-        "relative_confidence_threshold": 0.1
+        "max_of_roi_size": 206.0,
+        "probe_step_size": 0.1,
+        "num_probe_steps": 5,
+        "probe_conf_threshold": 0.0,
+        "probe_iou_threshold": 0.5
     },
     "inference_engine": {
-        "draw_inference_result": true,
+        "draw_inference_result": false,
         "model": "YOLO_V5",
         "runtime": "TFLITE",
         "use_tiny": false,
-        "conf_threshold": 0.1,
+        "conf_threshold": 0.5,
         "iou_threshold": 0.5,
         "profile_warmups": 5,
         "profile_runs": 5,
         "input_sizes": [
-            768
+            640,
+            1280
         ],
-        "devices" : [
+        "devices": [
             "GPU"
         ]
     },
