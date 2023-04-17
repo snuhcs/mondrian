@@ -12,23 +12,23 @@
 namespace md {
 
 InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
-                                 JavaVM* vm, JNIEnv* env, jobject emulator)
+                                 JNIEnv* env, jobject app)
     : mConfig(config) {
   for (Device device: config.DEVICES) {
     if (device == GPU) {
       if (config.MODEL == "YOLO_V4" && config.RUNTIME == "MNN") {
-        addClassifiers<MnnYoloV4Classifier>(device, config, vm, env, emulator);
+        addClassifiers<MnnYoloV4Classifier>(device, config, env, app);
       } else if (config.MODEL == "YOLO_V4" && config.RUNTIME == "TFLITE") {
-        addClassifiers<TfLiteYoloV4Classifier>(device, config, vm, env, emulator);
+        addClassifiers<TfLiteYoloV4Classifier>(device, config, env, app);
       } else if (config.MODEL == "YOLO_V5" && config.RUNTIME == "TFLITE") {
-        addClassifiers<TfLiteYoloV5Classifier>(device, config, vm, env, emulator);
+        addClassifiers<TfLiteYoloV5Classifier>(device, config, env, app);
       } else {
         LOGE("Running %s model with %s runtime on GPU is not supported yet",
              config.MODEL.c_str(), config.RUNTIME.c_str());
       }
     } else if (device == DSP) {
       if (config.MODEL == "YOLO_V5" && config.RUNTIME == "TFLITE") {
-        addClassifiers<TfLiteYoloV5ClassifierDSP>(device, config, vm, env, emulator);
+        addClassifiers<TfLiteYoloV5ClassifierDSP>(device, config, env, app);
       } else {
         LOGE("Running %s model with %s runtime on DSP is not supported yet",
              config.MODEL.c_str(), config.RUNTIME.c_str());
@@ -41,7 +41,7 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
 
 template<typename T>
 void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig& config,
-                                     JavaVM* vm, JNIEnv* env, jobject emulator) {
+                                     JNIEnv* env, jobject app) {
   std::map<std::tuple<int, bool>, Classifier*> classifierMap;
 
   // classifiers for packed canvas inference
@@ -76,8 +76,8 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
   classifierMap[{inputSize, forFullFrame}] = classifier.get();
   classifiers.push_back(std::move(classifier));
 
-  workers[device] = std::make_unique<Worker>(this, device, classifierMap,
-                                             mConfig.DRAW_INFERENCE_RESULT, vm, env, emulator);
+  workers[device] = std::make_unique<Worker>(
+          this, device, classifierMap, mConfig.DRAW_INFERENCE_RESULT, env, app);
 }
 
 void InferenceEngine::enqueue(const cv::Mat& rgbMat, Device device, int inputSize, bool isFullFrame,

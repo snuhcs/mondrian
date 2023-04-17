@@ -39,7 +39,7 @@ static auto key_set = [](const std::map<int, int>& map) {
 };
 
 Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices,
-                   JavaVM* vm, JNIEnv* env, jobject emulator)
+                   JNIEnv* env, jobject app)
     : mConfig(config), mbStop(false),
       mResultLogger(new Logger("/data/data/hcs.offloading.mondrian/boxes.txt")),
       mStartIndices(std::move(startIndices)),
@@ -48,7 +48,7 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
       mInputSizes(mConfig.inferenceEngineConfig.INPUT_SIZES),
       mScheduleInterval(mConfig.LATENCY_SLO_MS * 1000 / 2),
       mRoIResizer(new RoIResizer(config.roiResizerConfig)),
-      mInferenceEngine(new InferenceEngine(config.inferenceEngineConfig, vm, env, emulator)),
+      mInferenceEngine(new InferenceEngine(config.inferenceEngineConfig, env, app)),
       mPatchReconstructor(new PatchReconstructor(config.patchReconstructorConfig,
                                                  mRoIResizer.get())) {
   assert(!config.USE_ROI_WISE_INFERENCE || mInputSizes.size() >= 2);

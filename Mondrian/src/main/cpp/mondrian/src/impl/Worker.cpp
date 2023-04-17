@@ -5,15 +5,17 @@
 
 namespace md {
 
-Worker::Worker(InferenceEngine* engine, Device device, std::map<std::tuple<int, bool>, Classifier*> classifierMap,
-               bool draw, JavaVM* vm, JNIEnv* env, jobject emulator)
+Worker::Worker(InferenceEngine* engine, Device device,
+               std::map<std::tuple<int, bool>, Classifier*> classifierMap,
+               bool draw, JNIEnv* env, jobject app)
         : engine(engine), device(device), classifierMap(std::move(classifierMap)), isClosed(false),
-          jvm(vm), env(env), emulator(reinterpret_cast<jobject>(env->NewGlobalRef(emulator))),
+          env(env), app(reinterpret_cast<jobject>(env->NewGlobalRef(app))),
           draw(draw) {
   if (draw) {
-    class_Emulator = reinterpret_cast<jclass>(env->NewGlobalRef(
+    env->GetJavaVM(&jvm);
+    class_MondrianApp = reinterpret_cast<jclass>(env->NewGlobalRef(
             env->FindClass("hcs/offloading/mondrian/MondrianApp")));
-    Emulator_drawOutput = env->GetMethodID(class_Emulator, "drawOutput", "(JLjava/util/List;)V");
+    MondrianApp_drawOutput = env->GetMethodID(class_MondrianApp, "drawOutput", "(JLjava/util/List;)V");
     class_ArrayList = reinterpret_cast<jclass>(env->NewGlobalRef(
             env->FindClass("java/util/ArrayList")));
     ArrayList_init = env->GetMethodID(class_ArrayList, "<init>", "()V");
@@ -86,7 +88,7 @@ void Worker::drawInferenceResult(const cv::Mat& rgbMat, const std::vector<Boundi
   }
   auto* jRgbMat = new cv::Mat();
   rgbMat.copyTo(*jRgbMat);
-  env->CallVoidMethod(emulator, Emulator_drawOutput, (long) jRgbMat, jBoxes);
+  env->CallVoidMethod(app, MondrianApp_drawOutput, (long) jRgbMat, jBoxes);
   jvm->DetachCurrentThread();
 }
 

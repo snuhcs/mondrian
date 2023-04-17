@@ -24,9 +24,8 @@ using FrameResult = std::pair<time_us, std::vector<BoundingBox>>;
 
 class Mondrian {
  public:
-  Mondrian(const MondrianConfig& config,
-           std::map<int, int> startIndices,
-           JavaVM* vm, JNIEnv* env, jobject mondrian);
+  Mondrian(const MondrianConfig& config, std::map<int, int> startIndices,
+           JNIEnv* env, jobject app);
 
   ~Mondrian();
 

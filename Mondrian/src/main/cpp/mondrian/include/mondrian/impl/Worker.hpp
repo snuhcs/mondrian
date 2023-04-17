@@ -15,7 +15,7 @@ class InferenceEngine;
 class Worker {
  public:
   Worker(InferenceEngine* engine, Device device, std::map<std::tuple<int, bool>, Classifier*> classifierMap,
-         bool draw, JavaVM* vm, JNIEnv* env, jobject emulator);
+         bool draw, JNIEnv* env, jobject app);
 
   ~Worker();
 
@@ -43,9 +43,9 @@ class Worker {
 
   JavaVM* jvm;
   JNIEnv* env;
-  jobject emulator;
-  jclass class_Emulator;
-  jmethodID Emulator_drawOutput;
+  jobject app;
+  jclass class_MondrianApp;
+  jmethodID MondrianApp_drawOutput;
   jclass class_ArrayList;
   jmethodID ArrayList_init;
   jmethodID ArrayList_add;

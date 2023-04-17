@@ -16,8 +16,7 @@ class InferenceEngine {
   friend Worker;
 
  public:
-  InferenceEngine(const InferenceEngineConfig& config,
-                  JavaVM* vm, JNIEnv* env, jobject emulator);
+  InferenceEngine(const InferenceEngineConfig& config, JNIEnv* env, jobject app);
 
   void enqueue(const cv::Mat& rgbMat, Device device, int inputSize, bool isFullFrame,
                int key);
@@ -33,7 +32,7 @@ class InferenceEngine {
 
   template<typename T>
   void addClassifiers(Device device, const InferenceEngineConfig& config,
-                      JavaVM* vm, JNIEnv* env, jobject emulator);
+                      JNIEnv* env, jobject app);
 
   const InferenceEngineConfig mConfig;
 
