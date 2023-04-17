@@ -127,7 +127,6 @@ void Mondrian::work() {
          "// %4lu MixedFrames with %s, %lu droppedFrames",
          "RE::prepareInference", logger.getDuration("prep"),
          mixedFrames.size(), toString(selectedFrames).c_str(), droppedFrames.size());
-    assert(fullFrameTarget != nullptr || !mixedFrames.empty());
 
     // 3. Enqueue full frame
     if (fullFrameTarget != nullptr) {
