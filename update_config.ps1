@@ -1,1 +1,1 @@
-adb push ./strm.json /data/local/tmp
+adb push ./mondrian.json /data/local/tmp

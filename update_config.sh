@@ -9,7 +9,7 @@ then
 else
     echo "### CONFIG UPDATE START"
     echo ""
-    adb push strm.json /data/local/tmp/strm.json
+    adb push mondrian.json /data/local/tmp/mondrian.json
     echo ""
     echo "### CONFIG UPDATE DONE"
 fi

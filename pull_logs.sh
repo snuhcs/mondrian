@@ -2,11 +2,11 @@
 base="logs"
 dir="$(date '+%Y-%m-%d_%H-%M-%S')_h$(openssl rand -hex 2)"
 
-adb shell run-as hcs.offloading.strm cat /data/data/hcs.offloading.strm/roi.csv > $base/roi.csv
+adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/roi.csv > $base/roi.csv
 r1=$?
-adb shell run-as hcs.offloading.strm cat /data/data/hcs.offloading.strm/timeline.csv > $base/timeline.csv
+adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/timeline.csv > $base/timeline.csv
 r2=$?
-adb shell run-as hcs.offloading.strm cat /data/data/hcs.offloading.strm/boxes.txt > $base/boxes.txt
+adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/boxes.txt > $base/boxes.txt
 r3=$?
 
 if [ $r1 -eq 0 ]
