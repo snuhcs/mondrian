@@ -17,7 +17,7 @@ class Classifier {
 
   virtual ~Classifier() {};
 
-  virtual Result recognizeImage(const cv::Mat& mat);
+  virtual Result recognizeImage(const cv::Mat& rgbMat);
 
   const cv::Size& getInputSize() const;
 

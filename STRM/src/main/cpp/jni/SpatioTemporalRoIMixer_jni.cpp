@@ -4,6 +4,7 @@
 #include <thread>
 #include <vector>
 
+#include "opencv2/opencv.hpp"
 #include "opencv2/videoio.hpp"
 
 #include "strm/Config.hpp"
@@ -32,10 +33,10 @@ Java_hcs_offloading_strm_Emulator_createSpatioTemporalRoIMixer(JNIEnv* env, jobj
 extern "C"
 JNIEXPORT void JNICALL
 Java_hcs_offloading_strm_Emulator_enqueueImage(JNIEnv* env, jobject thiz,
-                                               jlong handle, jint vid, jlong matAddr) {
+                                               jlong handle, jint vid, jlong rgbMatAddr) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  auto* image = (cv::Mat*) matAddr;
-  strm->enqueueImage(vid, *image);
+  auto* rgbMat = (cv::Mat*) rgbMatAddr;
+  strm->enqueueImage(vid, *rgbMat);
 }
 
 extern "C"

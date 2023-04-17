@@ -195,7 +195,7 @@ public class ImageUtils {
         return bitmap;
     }
 
-    private void saveBitmap(Bitmap bmp, String filepath) {
+    public static void saveBitmap(Bitmap bmp, String filepath) {
         try (FileOutputStream out = new FileOutputStream(filepath)) {
             bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
             // PNG is a lossless format, the compression factor (100) is ignored

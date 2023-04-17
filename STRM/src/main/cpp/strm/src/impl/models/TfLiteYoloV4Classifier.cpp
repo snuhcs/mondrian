@@ -88,9 +88,6 @@ cv::Mat TfLiteYoloV4Classifier::preprocess(const cv::Mat& mat) {
   cv::Mat preprocessedMat;
   if (mat.cols != inputSize.width || mat.rows != inputSize.height) {
     cv::resize(mat, preprocessedMat, inputSize);
-    cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
-  } else {
-    cv::cvtColor(mat, preprocessedMat, CV_BGRA2RGB);
   }
   preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
   return preprocessedMat;

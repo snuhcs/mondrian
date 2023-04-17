@@ -96,7 +96,6 @@ cv::Mat TfLiteYoloV5Classifier::preprocess(const cv::Mat& mat) {
   cv::resize(mat, preprocessedMat, cv::Size(resizeWidth, resizeHeight));
   cv::copyMakeBorder(preprocessedMat, preprocessedMat, top, bottom, left, right,
                      cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
-  cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
   preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
   return preprocessedMat;
 }

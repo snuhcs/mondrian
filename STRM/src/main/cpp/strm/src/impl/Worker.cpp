@@ -33,7 +33,6 @@ Worker::~Worker() {
 }
 
 void Worker::work() {
-  auto startTime = NowMicros();
   while (!isClosed.load()) {
     std::unique_lock<std::mutex> lock(mtx);
     cv.wait(lock, [this]() { return isClosed.load() || !inputs.empty(); });
@@ -41,21 +40,21 @@ void Worker::work() {
       lock.unlock();
       break;
     }
-    auto[mat, size, isFullFrame, key] = std::move(inputs.front());
+    auto[rgbMat, size, isFullFrame, key] = std::move(inputs.front());
     inputs.pop();
     lock.unlock();
 
-    Result boxTimeDevice = classifierMap[{size, isFullFrame}]->recognizeImage(mat);
+    Result boxTimeDevice = classifierMap[{size, isFullFrame}]->recognizeImage(rgbMat);
     engine->enqueueResults(key, boxTimeDevice);
     if (draw) {
-      drawInferenceResult(mat, std::get<0>(boxTimeDevice));
+      drawInferenceResult(rgbMat, std::get<0>(boxTimeDevice));
     }
   }
 }
 
-void Worker::enqueue(const cv::Mat& mat, int inputSize, bool isFullFrame, int key) {
+void Worker::enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, int key) {
   std::unique_lock<std::mutex> lock(mtx);
-  inputs.push({mat, inputSize, isFullFrame, key});
+  inputs.push({rgbMat, inputSize, isFullFrame, key});
   lock.unlock();
   cv.notify_one();
 }
@@ -70,7 +69,7 @@ std::map<std::tuple<int, bool>, time_us> Worker::getInferenceTimes() {
   return timeTable;
 }
 
-void Worker::drawInferenceResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes) {
+void Worker::drawInferenceResult(const cv::Mat& rgbMat, const std::vector<BoundingBox>& boxes) {
   if (jvm->AttachCurrentThread(&env, nullptr) != 0) {
     return;
   }
@@ -85,9 +84,9 @@ void Worker::drawInferenceResult(const cv::Mat& mat, const std::vector<BoundingB
                                  b.confidence, b.label, int(b.origin), (b.srcRoI == nullptr));
     env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
   }
-  auto* jMat = new cv::Mat();
-  mat.copyTo(*jMat);
-  env->CallVoidMethod(emulator, Emulator_drawOutput, (long) jMat, jBoxes);
+  auto* jRgbMat = new cv::Mat();
+  rgbMat.copyTo(*jRgbMat);
+  env->CallVoidMethod(emulator, Emulator_drawOutput, (long) jRgbMat, jBoxes);
   jvm->DetachCurrentThread();
 }
 

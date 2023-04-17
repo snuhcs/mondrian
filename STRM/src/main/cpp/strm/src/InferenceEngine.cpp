@@ -80,9 +80,9 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
                                              mConfig.DRAW_INFERENCE_RESULT, vm, env, emulator);
 }
 
-void InferenceEngine::enqueue(const cv::Mat& mat, Device device, int inputSize, bool isFullFrame,
+void InferenceEngine::enqueue(const cv::Mat& rgbMat, Device device, int inputSize, bool isFullFrame,
                               int key) {
-  workers[device]->enqueue(mat, inputSize, isFullFrame, key);
+  workers[device]->enqueue(rgbMat, inputSize, isFullFrame, key);
 }
 
 Result InferenceEngine::getResults(int key) {

@@ -375,8 +375,8 @@ void SpatioTemporalRoIMixer::waitForStart() {
   mEnqueueCv.notify_all();
 }
 
-int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& mat) {
-  assert(!mat.empty());
+int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& rgbMat) {
+  assert(!rgbMat.empty());
 
   if (FAIR) {
     std::unique_lock<std::mutex> fairLock(mFairEnqueueMtx);
@@ -396,7 +396,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& mat) {
   FrameBuffer* frameBuffer = mFrameBuffers.at(vid).get();
   lock.unlock();
 
-  Frame* frame = frameBuffer->enqueue(mat);
+  Frame* frame = frameBuffer->enqueue(rgbMat);
   time_us startTime = NowMicros();
   preprocess(frame);
   LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
@@ -431,7 +431,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& mat) {
 
 void SpatioTemporalRoIMixer::preprocess(Frame* frame) const {
   cv::resize(frame->mat, frame->preProcessedMat, mTargetSize, 0, 0, CV_INTER_LINEAR);
-  cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_BGRA2GRAY);
+  cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_RGB2GRAY);
 }
 
 void SpatioTemporalRoIMixer::outputWork() {
