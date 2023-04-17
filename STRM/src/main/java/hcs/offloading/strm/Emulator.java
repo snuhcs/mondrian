@@ -62,8 +62,8 @@ public class Emulator implements VideoLoader.Callback {
     }
 
     @Override
-    public void onFrame(int vid, Mat rgbMat) {
-        enqueueImage(handle, vid, rgbMat.getNativeObjAddr());
+    public void onFrame(int vid, Mat yuvMat) {
+        enqueueImage(handle, vid, yuvMat.getNativeObjAddr());
     }
 
     public void close() {
@@ -127,7 +127,7 @@ public class Emulator implements VideoLoader.Callback {
 
     private native long createSpatioTemporalRoIMixer();
 
-    private native void enqueueImage(long handle, int vid, long rgbMatAddr);
+    private native void enqueueImage(long handle, int vid, long yuvMatAddr);
 
     private native void close(long handle);
 }

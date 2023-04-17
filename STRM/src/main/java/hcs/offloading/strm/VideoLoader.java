@@ -27,9 +27,10 @@ public class VideoLoader implements Runnable {
     private final int width;
     private final int height;
     private final byte[] yuvBytes;
+    private final Mat yuvMat;
 
     public interface Callback {
-        void onFrame(int vid, Mat rgbMat);
+        void onFrame(int vid, Mat yuvMat);
     }
 
     public VideoLoader(int vid, String videoPath, int fps, Callback callback) throws IOException {
@@ -46,6 +47,7 @@ public class VideoLoader implements Runnable {
         width = format.getInteger(MediaFormat.KEY_WIDTH);
         height = format.getInteger(MediaFormat.KEY_HEIGHT);
         yuvBytes = new byte[width * height * 12 / 8]; // 12 bit for each YUV420 pixel
+        yuvMat = new Mat(height + height / 2, width, CvType.CV_8UC1);
 
         extractor.selectTrack(videoTrackIndex);
         String mime = format.getString(MediaFormat.KEY_MIME);
@@ -86,12 +88,10 @@ public class VideoLoader implements Runnable {
         long frameIndex = 0;
         boolean eof = false;
         boolean decodingEnd = false;
-        long frameStartNs = System.nanoTime();
         while (!decodingEnd) {
             if (!eof) {
                 eof = enqueueStream(decoder, extractor);
             }
-            long enqueueNs = System.nanoTime();
 
             int outputIndex = decoder.dequeueOutputBuffer(bufferInfo, MEDIACODEC_TIMEOUT_US);
             if (bufferInfo.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM) {
@@ -101,28 +101,12 @@ public class VideoLoader implements Runnable {
             if (outputIndex < 0) { // if no available output buffer
                 continue;
             }
-            long dequeueNs = System.nanoTime();
 
             ByteBuffer outputBuffer = decoder.getOutputBuffer(outputIndex);
-            long outputBufferNs = System.nanoTime();
             outputBuffer.get(yuvBytes);
-            long yuvBytesNs = System.nanoTime();
-            Mat rgbMat = yuv2rgbMat(yuvBytes, width, height);
-            long yuv2rgbNs = System.nanoTime();
-            callback.onFrame(vid, rgbMat);
-            long callbackNs = System.nanoTime();
+            yuvMat.put(0, 0, yuvBytes);
+            callback.onFrame(vid, yuvMat);
             decoder.releaseOutputBuffer(outputIndex, false);
-            long releaseNs = System.nanoTime();
-            Log.d(TAG, "XXX Frame " + frameIndex +
-                    " enqueue " + (enqueueNs - frameStartNs) / 1000 +
-                    " dequeue " + (dequeueNs - enqueueNs) / 1000 +
-                    " outputBuffer " + (outputBufferNs - dequeueNs) / 1000 +
-                    " yuvBytes " + (yuvBytesNs - outputBufferNs) / 1000 +
-                    " yuv2rgb " + (yuv2rgbNs - yuvBytesNs) / 1000 +
-                    " callback " + (callbackNs - yuv2rgbNs) / 1000 +
-                    " release " + (releaseNs - callbackNs) / 1000);
-
-            frameStartNs = System.nanoTime();
 
             frameIndex++;
             if (fps > 0) {
@@ -147,14 +131,6 @@ public class VideoLoader implements Runnable {
         decoder.queueInputBuffer(inputIndex, 0, sampleSize, extractor.getSampleTime(), 0);
         extractor.advance();
         return false;
-    }
-
-    private static Mat yuv2rgbMat(byte[] data, int width, int height) {
-        Mat yuvMat = new Mat(height + height / 2, width, CvType.CV_8UC1);
-        yuvMat.put(0, 0, data);
-        Mat rgbMat = new Mat();
-        Imgproc.cvtColor(yuvMat, rgbMat, Imgproc.COLOR_YUV2RGB_NV12, 3);
-        return rgbMat;
     }
 
     private void sleepFor(long sleepNs) {

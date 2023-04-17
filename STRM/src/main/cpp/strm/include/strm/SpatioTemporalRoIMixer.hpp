@@ -30,7 +30,7 @@ class SpatioTemporalRoIMixer {
 
   ~SpatioTemporalRoIMixer();
 
-  int enqueueImage(const int vid, const cv::Mat& mat);
+  int enqueueImage(const int vid, const cv::Mat& yuvMat);
 
  private:
   void waitForStart();
