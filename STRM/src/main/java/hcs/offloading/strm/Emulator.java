@@ -67,7 +67,7 @@ public class Emulator implements Runnable {
     private int height;
     private int fps;
 
-    public Emulator(ImageView outputView) throws JSONException, IOException {
+    public Emulator(ImageView outputView) {
         this.outputView = outputView;
 //        handle = createSpatioTemporalRoIMixer();
 
