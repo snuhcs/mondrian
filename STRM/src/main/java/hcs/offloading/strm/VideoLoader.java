@@ -3,6 +3,7 @@ package hcs.offloading.strm;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.util.Log;
 
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -85,10 +86,12 @@ public class VideoLoader implements Runnable {
         long frameIndex = 0;
         boolean eof = false;
         boolean decodingEnd = false;
+        long frameStartNs = System.nanoTime();
         while (!decodingEnd) {
             if (!eof) {
                 eof = enqueueStream(decoder, extractor);
             }
+            long enqueueNs = System.nanoTime();
 
             int outputIndex = decoder.dequeueOutputBuffer(bufferInfo, MEDIACODEC_TIMEOUT_US);
             if (bufferInfo.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM) {
@@ -98,12 +101,28 @@ public class VideoLoader implements Runnable {
             if (outputIndex < 0) { // if no available output buffer
                 continue;
             }
+            long dequeueNs = System.nanoTime();
 
             ByteBuffer outputBuffer = decoder.getOutputBuffer(outputIndex);
+            long outputBufferNs = System.nanoTime();
             outputBuffer.get(yuvBytes);
+            long yuvBytesNs = System.nanoTime();
             Mat rgbMat = yuv2rgbMat(yuvBytes, width, height);
+            long yuv2rgbNs = System.nanoTime();
             callback.onFrame(vid, rgbMat);
+            long callbackNs = System.nanoTime();
             decoder.releaseOutputBuffer(outputIndex, false);
+            long releaseNs = System.nanoTime();
+            Log.d(TAG, "XXX Frame " + frameIndex +
+                    " enqueue " + (enqueueNs - frameStartNs) / 1000 +
+                    " dequeue " + (dequeueNs - enqueueNs) / 1000 +
+                    " outputBuffer " + (outputBufferNs - dequeueNs) / 1000 +
+                    " yuvBytes " + (yuvBytesNs - outputBufferNs) / 1000 +
+                    " yuv2rgb " + (yuv2rgbNs - yuvBytesNs) / 1000 +
+                    " callback " + (callbackNs - yuv2rgbNs) / 1000 +
+                    " release " + (releaseNs - callbackNs) / 1000);
+
+            frameStartNs = System.nanoTime();
 
             frameIndex++;
             if (fps > 0) {
