@@ -7,21 +7,13 @@
     android:orientation="vertical">
 
     <ImageView
-        android:id="@+id/outputView0"
+        android:id="@+id/outputView"
         android:layout_width="fill_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:layout_gravity="center"
         android:layout_margin="5dp"
-        tools:srcCompat="@tools:sample/avatars" />
-
-    <ImageView
-        android:id="@+id/outputView1"
-        android:layout_width="fill_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_gravity="center"
-        android:layout_margin="5dp"
-        tools:srcCompat="@tools:sample/avatars" />
+        tools:srcCompat="@tools:sample/avatars"
+        android:contentDescription="@string/inference_output" />
 
 </LinearLayout>

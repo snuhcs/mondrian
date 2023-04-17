@@ -7,26 +7,19 @@ namespace rm {
 
 Worker::Worker(InferenceEngine* engine, Device device, std::map<std::tuple<int, bool>, Classifier*> classifierMap,
                bool draw, JavaVM* vm, JNIEnv* env, jobject emulator)
-    : engine(engine), device(device), classifierMap(std::move(classifierMap)), isClosed(false),
-      jvm(vm), env(env), emulator(reinterpret_cast<jobject>(env->NewGlobalRef(emulator))),
-      draw(draw) {
+        : engine(engine), device(device), classifierMap(std::move(classifierMap)), isClosed(false),
+          jvm(vm), env(env), emulator(reinterpret_cast<jobject>(env->NewGlobalRef(emulator))),
+          draw(draw) {
   if (draw) {
     class_Emulator = reinterpret_cast<jclass>(env->NewGlobalRef(
-        env->FindClass("hcs/offloading/strm/Emulator")));
-    assert(device == GPU || device == DSP);
-    if (device == GPU) {
-      Emulator_drawOutput = env->GetMethodID(
-          class_Emulator, "drawOutput0", "(JLjava/util/List;)V");
-    } else {
-      Emulator_drawOutput = env->GetMethodID(
-          class_Emulator, "drawOutput1", "(JLjava/util/List;)V");
-    }
+            env->FindClass("hcs/offloading/strm/Emulator")));
+    Emulator_drawOutput = env->GetMethodID(class_Emulator, "drawOutput", "(JLjava/util/List;)V");
     class_ArrayList = reinterpret_cast<jclass>(env->NewGlobalRef(
-        env->FindClass("java/util/ArrayList")));
+            env->FindClass("java/util/ArrayList")));
     ArrayList_init = env->GetMethodID(class_ArrayList, "<init>", "()V");
     ArrayList_add = env->GetMethodID(class_ArrayList, "add", "(ILjava/lang/Object;)V");
     class_BoundingBox = reinterpret_cast<jclass>(env->NewGlobalRef(
-        env->FindClass("hcs/offloading/strm/BoundingBox")));
+            env->FindClass("hcs/offloading/strm/BoundingBox")));
     BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIIFIIZ)V");
   }
 

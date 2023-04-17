@@ -1,7 +1,7 @@
 {
     "video_configs": [
         {
-            "path": "/data/local/tmp/video/MTA/test_cam_3.mp4",
+            "path": "/data/local/tmp/video/mta/test_cam_3.mp4",
             "frame_range": [0, 500],
             "fps": 0
         }
@@ -9,7 +9,6 @@
     "log_internal": true,
     "log_execution": true,
     "log_roi": true,
-    "draw_output": false,
     "allow_interpolation": false,
     "interpolation_threshold": 1,
     "full_frame_interval": 3,
@@ -50,7 +49,7 @@
         "probe_iou_threshold": 0.5
     },
     "inference_engine": {
-        "draw_inference_result": false,
+        "draw_inference_result": true,
         "model": "YOLO_V5",
         "runtime": "TFLITE",
         "use_tiny": false,
