@@ -1,7 +1,7 @@
-#ifndef IMPL_MNN_YOLO_V4_CLASSIFIER_HPP_
-#define IMPL_MNN_YOLO_V4_CLASSIFIER_HPP_
+#ifndef MODEL_MNN_YOLO_V4_CLASSIFIER_HPP_
+#define MODEL_MNN_YOLO_V4_CLASSIFIER_HPP_
 
-#include "mondrian/impl/models/Classifier.hpp"
+#include "mondrian/model/Classifier.hpp"
 
 #include "MNN/Interpreter.hpp"
 
@@ -45,4 +45,4 @@ class MnnYoloV4Classifier : public Classifier {
 
 } // namespace md
 
-#endif // IMPL_MNN_YOLO_V4_CLASSIFIER_HPP_
+#endif // MODEL_MNN_YOLO_V4_CLASSIFIER_HPP_

@@ -1,4 +1,4 @@
-#include "mondrian/impl/Worker.hpp"
+#include "mondrian/Worker.hpp"
 
 #include "mondrian/InferenceEngine.hpp"
 #include "mondrian/Log.hpp"

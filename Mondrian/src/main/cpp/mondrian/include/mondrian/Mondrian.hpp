@@ -50,8 +50,6 @@ class Mondrian {
 
   void log(const Frame* frame);
 
-  static const bool FAIR;
-
   const MondrianConfig mConfig;
   const time_us mScheduleInterval;
   std::thread mThread;

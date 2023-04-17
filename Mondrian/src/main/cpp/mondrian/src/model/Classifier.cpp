@@ -1,4 +1,4 @@
-#include "mondrian/impl/models/Classifier.hpp"
+#include "mondrian/model/Classifier.hpp"
 
 #include <set>
 

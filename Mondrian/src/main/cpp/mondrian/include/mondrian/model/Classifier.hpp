@@ -1,5 +1,5 @@
-#ifndef IMPL_MODELS_CLASSIFIER_HPP_
-#define IMPL_MODELS_CLASSIFIER_HPP_
+#ifndef MODEL_CLASSIFIER_HPP_
+#define MODEL_CLASSIFIER_HPP_
 
 #include "opencv2/core/mat.hpp"
 
@@ -54,4 +54,4 @@ class Classifier {
 
 } // namespace md
 
-#endif // IMPL_MODELS_CLASSIFIER_HPP_
+#endif // MODEL_CLASSIFIER_HPP_

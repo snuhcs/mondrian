@@ -1,4 +1,4 @@
-#include "mondrian/impl/models/TfLiteYoloV5Classifier.hpp"
+#include "mondrian/model/TfLiteYoloV5Classifier.hpp"
 
 #include <map>
 #include <set>

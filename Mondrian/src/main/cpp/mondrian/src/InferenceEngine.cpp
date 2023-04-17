@@ -1,11 +1,11 @@
 #include "mondrian/InferenceEngine.hpp"
 
 #include "mondrian/Log.hpp"
-#include "mondrian/impl/Worker.hpp"
-#include "mondrian/impl/models/MnnYoloV4Classifier.hpp"
-#include "mondrian/impl/models/TfLiteYoloV4Classifier.hpp"
-#include "mondrian/impl/models/TfLiteYoloV5Classifier.hpp"
-#include "mondrian/impl/models/TfLiteYoloV5ClassifierDSP.hpp"
+#include "mondrian/Worker.hpp"
+#include "mondrian/model/MnnYoloV4Classifier.hpp"
+#include "mondrian/model/TfLiteYoloV4Classifier.hpp"
+#include "mondrian/model/TfLiteYoloV5Classifier.hpp"
+#include "mondrian/model/TfLiteYoloV5ClassifierDSP.hpp"
 
 #include <cmath>
 

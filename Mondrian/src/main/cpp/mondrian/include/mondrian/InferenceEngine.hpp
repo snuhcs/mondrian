@@ -7,8 +7,8 @@
 #include <queue>
 
 #include "mondrian/Config.hpp"
-#include "mondrian/impl/Worker.hpp"
-#include "mondrian/impl/models/Classifier.hpp"
+#include "mondrian/Worker.hpp"
+#include "mondrian/model/Classifier.hpp"
 
 namespace md {
 

@@ -1,4 +1,4 @@
-#include "mondrian/impl/models/MnnYoloV4Classifier.hpp"
+#include "mondrian/model/MnnYoloV4Classifier.hpp"
 
 #include <map>
 #include <set>

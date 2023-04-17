@@ -1,7 +1,7 @@
-#ifndef IMPL_TFLITE_YOLO_V5_CLASSIFIER_DSP_HPP_
-#define IMPL_TFLITE_YOLO_V5_CLASSIFIER_DSP_HPP_
+#ifndef MODEL_TFLITE_YOLO_V5_CLASSIFIER_DSP_HPP_
+#define MODEL_TFLITE_YOLO_V5_CLASSIFIER_DSP_HPP_
 
-#include "mondrian/impl/models/Classifier.hpp"
+#include "mondrian/model/Classifier.hpp"
 
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/c/common.h"
@@ -46,4 +46,4 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
 
 } // namespace md
 
-#endif // IMPL_TFLITE_YOLO_V5_CLASSIFIER_DSP_HPP_
+#endif // MODEL_TFLITE_YOLO_V5_CLASSIFIER_DSP_HPP_
