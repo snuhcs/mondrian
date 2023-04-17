@@ -9,10 +9,10 @@ namespace rm {
 
 const int Frame::FULL_KEY_OFFSET = 1000000;
 
-Frame::Frame(const int vid, const int frameIndex, const cv::Mat mat,
+Frame::Frame(const int vid, const int frameIndex, const cv::Mat rgbMat,
              Frame* prevFrame, const time_us& enqueueTime)
-    : vid(vid), frameIndex(frameIndex), mat(mat),
-      width(mat.cols), height(mat.rows), prevFrame(prevFrame), nextFrame(nullptr),
+    : vid(vid), frameIndex(frameIndex), rgbMat(rgbMat),
+      width(rgbMat.cols), height(rgbMat.rows), prevFrame(prevFrame), nextFrame(nullptr),
       useInferenceResultForOF(false), extractOFAgain(false), enqueueTime(enqueueTime),
       isBoxesReady(false), isRoIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
       isLastFrame(false), inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}

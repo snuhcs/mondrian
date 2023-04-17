@@ -23,10 +23,10 @@ class Frame {
   const int vid;
   const int frameIndex;
   int scheduleID;
-  cv::Mat mat;
+  cv::Mat rgbMat;
+  cv::Mat resizedGrayMat;
   Frame* prevFrame;
   Frame* nextFrame;
-  cv::Mat preProcessedMat;
   int PDExtractorID;
   int OFExtractorID;
 

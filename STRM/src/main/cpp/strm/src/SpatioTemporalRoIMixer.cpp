@@ -134,7 +134,7 @@ void SpatioTemporalRoIMixer::work() {
 
     // 3. Enqueue full frame
     if (fullFrameTarget != nullptr) {
-      mInferenceEngine->enqueue(fullFrameTarget->mat, mConfig.FULL_DEVICE, mConfig.FULL_FRAME_SIZE,
+      mInferenceEngine->enqueue(fullFrameTarget->rgbMat, mConfig.FULL_DEVICE, mConfig.FULL_FRAME_SIZE,
                                 true, fullFrameTarget->getKey());
       fullFrameTarget->inferenceFrameSize = mConfig.FULL_FRAME_SIZE;
       fullFrameTarget->inferenceDevice = mConfig.FULL_DEVICE;
@@ -405,7 +405,7 @@ int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& yuvMat) {
        "STRM::preprocess", NowMicros() - startTime, frame->vid, frame->frameIndex);
   if (mConfig.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == mStartIndices[vid]) {
     frame->useInferenceResultForOF = true;
-    mInferenceEngine->enqueue(frame->mat, mConfig.FULL_DEVICE, mConfig.FULL_FRAME_SIZE, true,
+    mInferenceEngine->enqueue(frame->rgbMat, mConfig.FULL_DEVICE, mConfig.FULL_FRAME_SIZE, true,
                               frame->getKey());
     frame->inferenceFrameSize = mConfig.FULL_FRAME_SIZE;
     frame->inferenceDevice = mConfig.FULL_DEVICE;
@@ -432,8 +432,8 @@ int SpatioTemporalRoIMixer::enqueueImage(const int vid, const cv::Mat& yuvMat) {
 }
 
 void SpatioTemporalRoIMixer::preprocess(Frame* frame) const {
-  cv::resize(frame->mat, frame->preProcessedMat, mTargetSize, 0, 0, CV_INTER_LINEAR);
-  cv::cvtColor(frame->preProcessedMat, frame->preProcessedMat, cv::COLOR_RGB2GRAY);
+  cv::resize(frame->rgbMat, frame->resizedGrayMat, mTargetSize, 0, 0, CV_INTER_LINEAR);
+  cv::cvtColor(frame->resizedGrayMat, frame->resizedGrayMat, cv::COLOR_RGB2GRAY);
 }
 
 void SpatioTemporalRoIMixer::outputWork() {

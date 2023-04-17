@@ -43,8 +43,8 @@ RoI::RoI(RoI* prevRoI,
   }
   setPaddedLoc({std::max(0.0f, origLoc.left - roiPadding),
                 std::max(0.0f, origLoc.top - roiPadding),
-                std::min(float(frame->mat.cols), origLoc.right + roiPadding),
-                std::min(float(frame->mat.rows), origLoc.bottom + roiPadding)});
+                std::min(float(frame->rgbMat.cols), origLoc.right + roiPadding),
+                std::min(float(frame->rgbMat.rows), origLoc.bottom + roiPadding)});
 }
 
 void RoI::setPaddedLoc(const Rect& newPaddedLoc) {
@@ -90,28 +90,28 @@ void RoI::setTargetScale(float newTargetScale, int newScaleLevel) {
 }
 
 cv::Mat RoI::getPaddedMat() const {
-  int left = std::max(0, std::min(frame->mat.cols, int(paddedLoc.left)));
-  int top = std::max(0, std::min(frame->mat.rows, int(paddedLoc.top)));
-  int width = std::max(0, std::min(frame->mat.cols - left, int(paddedLoc.width())));
-  int height = std::max(0, std::min(frame->mat.rows - top, int(paddedLoc.height())));
-  return frame->mat.operator()(cv::Rect(left, top, width, height));
+  int left = std::max(0, std::min(frame->rgbMat.cols, int(paddedLoc.left)));
+  int top = std::max(0, std::min(frame->rgbMat.rows, int(paddedLoc.top)));
+  int width = std::max(0, std::min(frame->rgbMat.cols - left, int(paddedLoc.width())));
+  int height = std::max(0, std::min(frame->rgbMat.rows - top, int(paddedLoc.height())));
+  return frame->rgbMat.operator()(cv::Rect(left, top, width, height));
 }
 
 cv::Mat RoI::getResizedMat() const {
   auto[rw, rh] = getResizedMatWidthHeight();
-  cv::Mat mat;
-  cv::resize(getPaddedMat(), mat, cv::Size(rw, rh));
-  return mat;
+  cv::Mat rgbMat;
+  cv::resize(getPaddedMat(), rgbMat, cv::Size(rw, rh));
+  return rgbMat;
 }
 
 cv::Mat RoI::getBorderMat() const {
-  cv::Mat mat = getResizedMat();
-  cv::copyMakeBorder(mat, mat,
+  cv::Mat rgbMat = getResizedMat();
+  cv::copyMakeBorder(rgbMat, rgbMat,
                      roiBorder, roiBorder, roiBorder, roiBorder,
                      cv::BORDER_CONSTANT, BORDER_COLOR);
   auto[bw, bh] = getBorderMatWidthHeight();
-  assert(bw == mat.cols && bh == mat.rows);
-  return mat;
+  assert(bw == rgbMat.cols && bh == rgbMat.rows);
+  return rgbMat;
 }
 
 } // namespace rm

@@ -84,13 +84,13 @@ MnnYoloV4Classifier::MnnYoloV4Classifier(std::string dataset, int inputSize,
 
 MnnYoloV4Classifier::~MnnYoloV4Classifier() = default;
 
-cv::Mat MnnYoloV4Classifier::preprocess(const cv::Mat& mat) {
-  cv::Mat preprocessedMat;
-  if (mat.cols != inputSize.width || mat.rows != inputSize.height) {
-    cv::resize(mat, preprocessedMat, inputSize);
+cv::Mat MnnYoloV4Classifier::preprocess(const cv::Mat& rgbMat) {
+  cv::Mat mat;
+  if (rgbMat.cols != inputSize.width || rgbMat.rows != inputSize.height) {
+    cv::resize(rgbMat, mat, inputSize);
   }
-  preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
-  return preprocessedMat;
+  mat.convertTo(mat, CV_32FC3, 1.f / 255);
+  return mat;
 }
 
 void MnnYoloV4Classifier::inference(const cv::Mat& mat) {

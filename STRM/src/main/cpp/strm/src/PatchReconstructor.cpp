@@ -34,8 +34,8 @@ static Rect reconstructBoxPos(const BoundingBox& packedBox, const RoI* pRoI) {
   float newB = (packedBoxLoc.bottom - packY) / scale + pRoILoc.top;
   return {std::max(0.0f, newL),
           std::max(0.0f, newT),
-          std::min(float(pRoI->frame->mat.cols), newR),
-          std::min(float(pRoI->frame->mat.rows), newB)};
+          std::min(float(pRoI->frame->rgbMat.cols), newR),
+          std::min(float(pRoI->frame->rgbMat.rows), newB)};
 }
 
 void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,

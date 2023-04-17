@@ -12,8 +12,8 @@ Classifier::Classifier(const int numLabels, const int inputSize, const int outpu
     : numLabels(numLabels), inputSize(inputSize, inputSize), outputSize(outputSize),
       confidenceThreshold(confidenceThreshold), iouThreshold(iouThreshold), device(device) {}
 
-Result Classifier::recognizeImage(const cv::Mat& mat) {
-  cv::Mat preprocessedMat = preprocess(mat);
+Result Classifier::recognizeImage(const cv::Mat& rgbMat) {
+  cv::Mat preprocessedMat = preprocess(rgbMat);
 
   time_us start = NowMicros();
   inference(preprocessedMat);
@@ -43,7 +43,7 @@ Result Classifier::recognizeImage(const cv::Mat& mat) {
                          float(box[1]),
                          float(box[2]),
                          float(box[3]),
-                         mat.cols, mat.rows),
+                         rgbMat.cols, rgbMat.rows),
           maxConfidence, maxLabel, origin_Null));
     }
   }
