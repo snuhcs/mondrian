@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">STRM</string>
+    <string name="inference_output">Inference Output</string>
 </resources>

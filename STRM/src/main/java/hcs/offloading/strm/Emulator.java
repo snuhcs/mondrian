@@ -4,6 +4,7 @@ import android.graphics.Bitmap;
 import android.media.MediaMetadataRetriever;
 import android.util.Log;
 import android.util.Pair;
+import android.widget.ImageView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -44,16 +45,20 @@ public class Emulator {
     }
 
     private static final String TAG = Emulator.class.getName();
+    private static final String IMPL_CONFIG_PATH = "/data/local/tmp/strm.json";
+
+    private final ImageView outputView;
 
     private final long handle;
-    private final InferenceViewCallback inferenceViewCallback;
+
     private final List<Thread> videoThreads;
 
-    public Emulator(InferenceViewCallback inferenceViewCallback) throws JSONException, IOException {
-        this.inferenceViewCallback = inferenceViewCallback;
+    public Emulator(ImageView outputView) throws JSONException, IOException {
+        this.outputView = outputView;
+
         handle = createSpatioTemporalRoIMixer();
 
-        videoThreads = createAndStartVideoThreads(parseVideoConfigs("/data/local/tmp/strm.json"));
+        videoThreads = createAndStartVideoThreads(parseVideoConfigs());
     }
 
     public void close() {
@@ -106,9 +111,9 @@ public class Emulator {
         return videoThreads;
     }
 
-    private List<VideoConfig> parseVideoConfigs(String configPath) throws JSONException, IOException {
+    private static List<VideoConfig> parseVideoConfigs() throws JSONException, IOException {
         List<VideoConfig> videoConfigs = new ArrayList<>();
-        JSONObject jsonObject = new JSONObject(getStringFromFile(configPath));
+        JSONObject jsonObject = new JSONObject(getStringFromFile(IMPL_CONFIG_PATH));
         JSONArray jsonVideoConfigs = jsonObject.getJSONArray("video_configs");
         for (int i = 0; i < jsonVideoConfigs.length(); i++) {
             VideoConfig videoConfig = new VideoConfig();
@@ -150,12 +155,12 @@ public class Emulator {
         return sb.toString();
     }
 
-    public void drawOutput0(long addr, List<BoundingBox> results) {
-        inferenceViewCallback.drawOutput0(addr, results);
-    }
-
-    public void drawOutput1(long addr, List<BoundingBox> results) {
-        inferenceViewCallback.drawOutput1(addr, results);
+    public void drawOutput(long rgbMatAddr, List<BoundingBox> results) {
+        Mat mat = new Mat(rgbMatAddr);
+        Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(mat, bitmap);
+        Bitmap outputBitmap = DrawUtil.drawBoxes(bitmap, results, false);
+        outputView.post(() -> outputView.setImageBitmap(outputBitmap));
     }
 
     private native long createSpatioTemporalRoIMixer();
