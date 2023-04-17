@@ -29,8 +29,8 @@ const char* toConstStr(Device device);
 enum Origin {
   origin_Null = 0,  // null value for initialization
   origin_FF = 1,    // (Box) matched Box from full frame
-  origin_BB = 2,    // (RoI, Box) OF RoI from bounding box, Box from those RoIs
-  origin_PD = 3,    // (RoI, Box) PD RoI, OF RoI originated from PD RoI, Box from those RoIs
+  origin_BB = 2,    // (ROI, Box) OF ROI from bounding box, Box from those ROIs
+  origin_PD = 3,    // (ROI, Box) PD ROI, OF ROI originated from PD ROI, Box from those ROIs
   origin_IP = 4,    // (Box) interpolated Box
   origin_NewFF = 5, // (Box) unmatched Box from full frame
   origin_NewMF = 6, // (Box) unmatched Box from mixed frame
@@ -96,7 +96,7 @@ struct Rect {
   }
 };
 
-class RoI;
+class ROI;
 
 struct BoundingBox {
   Rect location;
@@ -104,12 +104,12 @@ struct BoundingBox {
   int label;
   idType choiceOfBox;
   idType id;
-  RoI* srcRoI;
+  ROI* srcROI;
   Origin origin;
 
   BoundingBox(idType id, const Rect location, const float confidence, int label, Origin origin)
       : id(id), location(location), confidence(confidence), label(label), origin(origin),
-        srcRoI(nullptr), choiceOfBox(UNASSIGNED_ID) {}
+        srcROI(nullptr), choiceOfBox(UNASSIGNED_ID) {}
 
   std::string str() const {
     std::stringstream ss;

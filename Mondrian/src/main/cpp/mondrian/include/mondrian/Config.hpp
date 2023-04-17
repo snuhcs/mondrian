@@ -12,7 +12,7 @@ namespace md {
 
 constexpr int NUM_LABELS = 80;
 
-struct RoIExtractorConfig {
+struct ROIExtractorConfig {
   int MAX_QUEUE_SIZE = 200;
   int NUM_WORKERS = 2;
   float EXTRACTION_RESIZE_WIDTH = 960;
@@ -29,7 +29,7 @@ struct RoIExtractorConfig {
   bool NO_DOWNSAMPLING_FOR_LAST_FRAME = false;
 };
 
-struct RoIResizerConfig {
+struct ROIResizerConfig {
   // Predictive model configs
   std::string TRAIN_DATA;
   int VOTING_WINDOW = 5;
@@ -87,15 +87,15 @@ struct MondrianConfig {
   int LATENCY_SLO_MS = 10000;
   bool USE_EMULATED_BATCH = false;
   bool USE_ROI_WISE_INFERENCE = false;
-  int ROI_SIZE = 64; // Used for Emulated Batch or RoI-wise Inference
-  RoIExtractorConfig roIExtractorConfig;
-  RoIResizerConfig roiResizerConfig;
+  int ROI_SIZE = 64; // Used for Emulated Batch or ROI-wise Inference
+  ROIExtractorConfig roiExtractorConfig;
+  ROIResizerConfig roiResizerConfig;
   InferenceEngineConfig inferenceEngineConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 };
 
-RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json);
-RoIResizerConfig parseRoIResizerConfig(const Json::Value& json);
+ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json);
+ROIResizerConfig parseROIResizerConfig(const Json::Value& json);
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
 MondrianConfig parseMondrianConfig(const std::string& jsonPath);

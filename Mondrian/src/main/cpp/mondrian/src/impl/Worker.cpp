@@ -83,7 +83,7 @@ void Worker::drawInferenceResult(const cv::Mat& rgbMat, const std::vector<Boundi
                                  int(std::round(b.location.left)), int(std::round(b.location.top)),
                                  int(std::round(b.location.right)),
                                  int(std::round(b.location.bottom)),
-                                 b.confidence, b.label, int(b.origin), (b.srcRoI == nullptr));
+                                 b.confidence, b.label, int(b.origin), (b.srcROI == nullptr));
     env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
   }
   auto* jRgbMat = new cv::Mat();

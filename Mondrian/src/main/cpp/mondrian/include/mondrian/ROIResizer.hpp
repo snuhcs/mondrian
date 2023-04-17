@@ -5,28 +5,28 @@
 #include <map>
 
 #include "mondrian/Config.hpp"
-#include "mondrian/RoI.hpp"
+#include "mondrian/ROI.hpp"
 #include "mondrian/tree/VIRAT.hpp"
 #include "mondrian/tree/MTA.hpp"
 
 namespace md {
 
-class RoI;
+class ROI;
 
 using Predictor = std::function<int(
     float, float, float, float, float, float, float, float)>;
 
-class RoIResizer {
+class ROIResizer {
  public:
   static const int STATIC_LEVEL;
   static const int INVALID_LEVEL;
 
-  RoIResizer(const RoIResizerConfig& config);
+  ROIResizer(const ROIResizerConfig& config);
 
   std::pair<float, int> getTargetScale(const idType id, const Features& features,
                                        const float maxEdgeLength);
 
-  void updateTable(RoI* cRoI);
+  void updateTable(ROI* cROI);
 
   int getNumProbeSteps() const {
     return mConfig.NUM_PROBE_STEPS;
@@ -69,14 +69,14 @@ class RoIResizer {
   static const std::map<std::string, Predictor> candidatePredictors;
   static const std::map<std::string, std::vector<float>> scalesForLevels;
 
-  const RoIResizerConfig mConfig;
+  const ROIResizerConfig mConfig;
   const Predictor mPredictor;
   const std::vector<float> mTargetAreas;
 
   // Save prev prediction to smooth the predicted size
   std::map<idType, CircularBuffer> prevPredictionBuffer;
 
-  // Save <targetScale of RoI, calibration for that targetScale>
+  // Save <targetScale of ROI, calibration for that targetScale>
   std::map<idType, std::pair<int, float>> calibrationTable;
 };
 

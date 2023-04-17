@@ -15,7 +15,7 @@ void testAssignedUniqueBoxID(const std::vector<std::unique_ptr<BoundingBox>>& bo
   }
 }
 
-void testAssignedUniqueRoIID(const std::vector<std::unique_ptr<RoI>>& rois) {
+void testAssignedUniqueROIID(const std::vector<std::unique_ptr<ROI>>& rois) {
   std::set<idType> IDs;
   for (const auto& roi : rois) {
     assert(IDs.find(roi->id) == IDs.end());
@@ -23,27 +23,27 @@ void testAssignedUniqueRoIID(const std::vector<std::unique_ptr<RoI>>& rois) {
   }
 }
 
-void testParentChildrenIDsAndChildIDsSame(const std::vector<std::unique_ptr<RoI>>& childRoIs,
-                                          const std::vector<std::unique_ptr<RoI>>& parentRoIs) {
-  for (const auto& pRoI : parentRoIs) {
-    for (const RoI* cRoI : pRoI->childRoIs) {
-      assert(cRoI->parentRoI == pRoI.get());
+void testParentChildrenIDsAndChildIDsSame(const std::vector<std::unique_ptr<ROI>>& childROIs,
+                                          const std::vector<std::unique_ptr<ROI>>& parentROIs) {
+  for (const auto& pROI : parentROIs) {
+    for (const ROI* cROI : pROI->childROIs) {
+      assert(cROI->parentROI == pROI.get());
     }
   }
 }
 
-void testChildRoIsFrameRelation(const std::vector<std::unique_ptr<RoI>>& childRoIs) {
-  for (const auto& cRoI : childRoIs) {
-    assert(std::any_of(cRoI->frame->childRoIs.begin(), cRoI->frame->childRoIs.end(),
-                       [&cRoI](auto& cRoICandidate) { return cRoICandidate.get() == cRoI.get(); }));
+void testChildROIsFrameRelation(const std::vector<std::unique_ptr<ROI>>& childROIs) {
+  for (const auto& cROI : childROIs) {
+    assert(std::any_of(cROI->frame->childROIs.begin(), cROI->frame->childROIs.end(),
+                       [&cROI](auto& cROICandidate) { return cROICandidate.get() == cROI.get(); }));
   }
 }
 
-void testParentRoIsFrameRelation(const std::vector<std::unique_ptr<RoI>>& parentRoIs) {
-  for (const auto& pRoI : parentRoIs) {
-    assert(std::any_of(pRoI->frame->parentRoIs.begin(), pRoI->frame->parentRoIs.end(),
-                       [&pRoI](const auto& pRoICandidate) {
-                         return pRoICandidate.get() == pRoI.get();
+void testParentROIsFrameRelation(const std::vector<std::unique_ptr<ROI>>& parentROIs) {
+  for (const auto& pROI : parentROIs) {
+    assert(std::any_of(pROI->frame->parentROIs.begin(), pROI->frame->parentROIs.end(),
+                       [&pROI](const auto& pROICandidate) {
+                         return pROICandidate.get() == pROI.get();
                        }));
   }
 }
