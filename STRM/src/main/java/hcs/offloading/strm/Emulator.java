@@ -1,6 +1,9 @@
 package hcs.offloading.strm;
 
 import android.graphics.Bitmap;
+import android.media.MediaCodec;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
 import android.util.Log;
 import android.util.Pair;
@@ -11,7 +14,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.imgproc.Imgproc;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -19,10 +24,11 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Emulator {
+public class Emulator implements Runnable {
     static {
         if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
         else Log.d("OpenCV", "OpenCV loaded Successfully");
@@ -47,28 +53,120 @@ public class Emulator {
     private static final String TAG = Emulator.class.getName();
     private static final String IMPL_CONFIG_PATH = "/data/local/tmp/strm.json";
 
+    private static final int TIMEOUT_US = 1000;
+    private long startTime = -1;
+
+    private long handle;
     private final ImageView outputView;
+//    private final List<Thread> videoThreads;
 
-    private final long handle;
-
-    private final List<Thread> videoThreads;
+    private MediaExtractor extractor;
+    private MediaCodec decoder;
+    private MediaFormat format;
+    private int width;
+    private int height;
+    private int fps;
 
     public Emulator(ImageView outputView) throws JSONException, IOException {
         this.outputView = outputView;
+//        handle = createSpatioTemporalRoIMixer();
 
-        handle = createSpatioTemporalRoIMixer();
+//        videoThreads = createAndStartVideoThreads(parseVideoConfigs("/data/local/tmp/strm.json"));
 
-        videoThreads = createAndStartVideoThreads(parseVideoConfigs());
+        init();
+
+        Thread thread = new Thread(this);
+        thread.start();
+    }
+
+    private void init() {
+        try {
+            extractor = new MediaExtractor();
+            extractor.setDataSource("/data/local/tmp/video/mta/test_cam_0.mp4");
+            for (int trackIndex = 0; trackIndex < extractor.getTrackCount(); trackIndex++) {
+                format = extractor.getTrackFormat(trackIndex);
+                String mime = format.getString(MediaFormat.KEY_MIME);
+                if (mime.startsWith("video/")) {
+                    width = format.getInteger(MediaFormat.KEY_WIDTH);
+                    height = format.getInteger(MediaFormat.KEY_HEIGHT);
+                    fps = format.getInteger(MediaFormat.KEY_FRAME_RATE);
+
+                    extractor.selectTrack(trackIndex);
+                    decoder = MediaCodec.createDecoderByType(mime);
+                    decoder.configure(format, null, null, 0);
+                    decoder.start();
+                    return;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void run() {
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+        byte[] yuvBytes = new byte[width * height * 12 / 8]; // 12 bit for each YUV420 pixel
+        int frameIndex = 0;
+        while (true) {
+            long start = System.currentTimeMillis();
+            int inputIndex = decoder.dequeueInputBuffer(TIMEOUT_US);
+            if (inputIndex < 0) {
+                Log.e(TAG, "index < 0");
+            } else {
+                ByteBuffer inputBuffer = decoder.getInputBuffer(inputIndex);
+                int sampleSize = extractor.readSampleData(inputBuffer, 0);
+                if (sampleSize < 0) {
+                    Log.d(TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM");
+                    decoder.queueInputBuffer(inputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                } else {
+                    frameIndex++;
+                    decoder.queueInputBuffer(inputIndex, 0, sampleSize, extractor.getSampleTime(), 0);
+                    extractor.advance();
+                }
+            }
+
+            int outputIndex = decoder.dequeueOutputBuffer(bufferInfo, TIMEOUT_US);
+            if (outputIndex < 0) {
+                Log.e(TAG, "index " + outputIndex + " < 0");
+            } else {
+                if (startTime == -1) {
+                    startTime = System.currentTimeMillis();
+                }
+                ByteBuffer outputBuffer = decoder.getOutputBuffer(outputIndex);
+                outputBuffer.get(yuvBytes);
+                draw(yuvBytes);
+                decoder.releaseOutputBuffer(outputIndex, false);
+            }
+            long end = System.currentTimeMillis();
+            Log.d(TAG, "XXX frame " + frameIndex + " decode time: " + (end - start));
+        }
+    }
+
+    private void draw(byte[] yuvBytes) {
+        long start = System.currentTimeMillis();
+        Mat rgbMat = yuv2rgbMat(yuvBytes);
+        long yuv2rgbEnd = System.currentTimeMillis();
+        Bitmap bitmap = Bitmap.createBitmap(rgbMat.cols(), rgbMat.rows(), Bitmap.Config.ARGB_8888);
+        long createBitmapEnd = System.currentTimeMillis();
+        Utils.matToBitmap(rgbMat, bitmap);
+        long matToBitmapEnd = System.currentTimeMillis();
+        Log.d(TAG, "XXX yuv2rgb time: " + (yuv2rgbEnd - start) + " createBitmap time: " + (createBitmapEnd - yuv2rgbEnd) + " matToBitmap time: " + (matToBitmapEnd - createBitmapEnd));
+//        outputView.post(() -> outputView.setImageBitmap(bitmap));
+    }
+
+    private Mat yuv2rgbMat(byte[] data) {
+        Mat yuvMat = new Mat(height + height / 2, width, CvType.CV_8UC1);
+        yuvMat.put(0, 0, data);
+        Mat rgbMat = new Mat();
+        Imgproc.cvtColor(yuvMat, rgbMat, Imgproc.COLOR_YUV2RGB_NV21, 3);
+        return rgbMat;
     }
 
     public void close() {
-        try {
-            for (Thread videoThread : videoThreads) {
-                videoThread.join();
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        decoder.stop();
+        decoder.release();
+        extractor.release();
         close(handle);
     }
 
