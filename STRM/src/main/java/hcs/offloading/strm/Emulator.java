@@ -257,7 +257,7 @@ public class Emulator implements Runnable {
         Mat mat = new Mat(rgbMatAddr);
         Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bitmap);
-        Bitmap outputBitmap = DrawUtil.drawBoxes(bitmap, results, false);
+        Bitmap outputBitmap = ImageUtils.drawBoxes(bitmap, results, false);
         outputView.post(() -> outputView.setImageBitmap(outputBitmap));
     }
 
