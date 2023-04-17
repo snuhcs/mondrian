@@ -3,7 +3,6 @@ package hcs.offloading.strm;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
-import android.util.Log;
 
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -135,7 +134,7 @@ public class VideoLoader implements Runnable {
         Mat yuvMat = new Mat(height + height / 2, width, CvType.CV_8UC1);
         yuvMat.put(0, 0, data);
         Mat rgbMat = new Mat();
-        Imgproc.cvtColor(yuvMat, rgbMat, Imgproc.COLOR_YUV2RGB_NV21, 3);
+        Imgproc.cvtColor(yuvMat, rgbMat, Imgproc.COLOR_YUV2RGB_NV12, 3);
         return rgbMat;
     }
 
