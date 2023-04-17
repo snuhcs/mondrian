@@ -44,7 +44,7 @@ public class MondrianApp implements VideoLoader.Callback {
     }
 
     private static final String TAG = MondrianApp.class.getName();
-    private static final String VIDEO_CONFIG_PATH = "/data/local/tmp/mondrian.json";
+    private static final String VIDEO_CONFIG_PATH = "/data/local/tmp/config.json";
 
     private final long handle;
     private final ImageView outputView;

@@ -38,11 +38,11 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 
 ### How to Run
 1. Build and install `Mondrian` application.
-2. Upload `mondrian.json` into `/data/local/tmp`.
-    * `adb push <host mondrian.json path> /data/local/tmp/mondrian.json`
+2. Upload `config.json` into `/data/local/tmp`.
+    * `adb push <host config.json path> /data/local/tmp/config.json`
 3. Upload models to use into `/data/local/tmp/models/`.
     * `adb push <host model path> /data/local/tmp/models`
-4. Upload videos specified in `mondrian.json`.
+4. Upload videos specified in `config.json`.
     * `adb push <host video path> <adb video path>`
 5. Run `Mondrian`.
 

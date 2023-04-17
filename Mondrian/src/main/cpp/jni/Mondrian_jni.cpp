@@ -17,9 +17,9 @@ static JavaVM* vm;
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_hcs_offloading_mondrian_MondrianApp_createHandle(JNIEnv* env, jobject thiz) {
-  md::IMPLConfig implConfig = md::parseIMPLConfig("/data/local/tmp/mondrian.json");
+  md::IMPLConfig implConfig = md::parseIMPLConfig("/data/local/tmp/config.json");
   env->GetJavaVM(&vm);
-  md::MondrianConfig config = md::parseMondrianConfig("/data/local/tmp/mondrian.json");
+  md::MondrianConfig config = md::parseMondrianConfig("/data/local/tmp/config.json");
   std::map<int, int> startIndices;
   for (int vid = 0; vid < implConfig.videoConfigs.size(); vid++) {
     startIndices[vid] = implConfig.videoConfigs[vid].FRAME_RANGE.first;
