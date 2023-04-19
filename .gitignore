@@ -8,8 +8,9 @@ third_party/
 desktop.ini
 .DS_STORE
 
-*.csv
-*.txt
+roi.csv
+timeline.csv
+boxes.txt
 logs/
 tags
 
