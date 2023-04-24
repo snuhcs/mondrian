@@ -7,7 +7,6 @@
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
-#include "mondrian/Log.hpp"
 #include "mondrian/Mondrian.hpp"
 
 static std::map<int, int> parseStartIndexMap(const std::string& jsonPath) {
