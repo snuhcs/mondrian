@@ -41,11 +41,14 @@ struct Rect {
   float t;
   float r;
   float b;
+  float w;
+  float h;
+  float area;
 
   Rect() {}
 
   Rect(float l, float t, float r, float b)
-      : l(l), t(t), r(r), b(b) {};
+      : l(l), t(t), r(r), b(b), w(r - l), h(b - t), area((r - l) * (b - t)) {};
 
   Rect(const Rect& r) : Rect(r.l, r.t, r.r, r.b) {};
 
@@ -54,18 +57,6 @@ struct Rect {
            center.first + width / 2,
            center.second - height / 2,
            center.second + height / 2) {}
-
-  float width() const {
-    return r - l;
-  }
-
-  float height() const {
-    return b - t;
-  }
-
-  float area() const {
-    return width() * height();
-  }
 
   std::pair<float, float> center() const {
     return std::make_pair((r + l) / 2, (b + t) / 2);
@@ -83,7 +74,7 @@ struct Rect {
 
   float iou(const Rect& other) const {
     float inter = intersection(other);
-    return inter / (area() + other.area() - inter);
+    return inter / (area + other.area - inter);
   }
 
   static Rect merge(const Rect& rect0, const Rect& rect1) {

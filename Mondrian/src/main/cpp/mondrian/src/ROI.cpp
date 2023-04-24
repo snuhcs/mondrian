@@ -49,10 +49,10 @@ ROI::ROI(ROI* prevROI,
 
 void ROI::setPaddedLoc(const Rect& newPaddedLoc) {
   paddedLoc = newPaddedLoc;
-  features.width = paddedLoc.width();
-  features.height = paddedLoc.height();
-  features.xyRatio = (float) paddedLoc.width() / (float) paddedLoc.height();
-  maxEdgeLength = std::max(paddedLoc.width(), paddedLoc.height());
+  features.width = paddedLoc.w;
+  features.height = paddedLoc.h;
+  features.xyRatio = (float) paddedLoc.w / (float) paddedLoc.h;
+  maxEdgeLength = std::max(paddedLoc.w, paddedLoc.h);
 }
 
 void ROI::eatPD(const Rect& PDRect) {
@@ -92,9 +92,9 @@ void ROI::setTargetScale(float newTargetScale, int newScaleLevel) {
 cv::Mat ROI::getPaddedMat() const {
   int l = std::max(0, std::min(frame->rgbMat.cols, int(paddedLoc.l)));
   int t = std::max(0, std::min(frame->rgbMat.rows, int(paddedLoc.t)));
-  int width = std::max(0, std::min(frame->rgbMat.cols - l, int(paddedLoc.width())));
-  int height = std::max(0, std::min(frame->rgbMat.rows - t, int(paddedLoc.height())));
-  return frame->rgbMat.operator()(cv::Rect(l, t, width, height));
+  int w = std::max(0, std::min(frame->rgbMat.cols - l, int(paddedLoc.w)));
+  int h = std::max(0, std::min(frame->rgbMat.rows - t, int(paddedLoc.h)));
+  return frame->rgbMat.operator()(cv::Rect(l, t, w, h));
 }
 
 cv::Mat ROI::getResizedMat() const {

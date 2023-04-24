@@ -62,7 +62,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
     for (ROI* pROI : packedROIs) {
       assert(pROI->isPacked());
       float intersection = box.location.intersection(moveResizeROIPos(pROI));
-      float overlapRatio = intersection / box.location.area();
+      float overlapRatio = intersection / box.location.area;
       if (maxOverlap < overlapRatio) {
         maxOverlap = overlapRatio;
         maxROI = pROI;
@@ -115,7 +115,7 @@ void PatchReconstructor::matchBoxesWithChildROIs(Frame* frame, bool isFullFrame)
     for (auto& cROI : childROIs) {
       if (isFullFrame || cROI->parentROI->isPacked()) {
         float iou = cROI->paddedLoc.iou(box->location);
-        assert(box->location.area() != 0);
+        assert(box->location.area != 0);
         if (maxIoU < iou) {
           maxIoU = iou;
           maxROI = cROI.get();

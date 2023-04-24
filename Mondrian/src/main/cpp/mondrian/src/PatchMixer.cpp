@@ -66,7 +66,7 @@ int PatchMixer::getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, i
   for (int i = 0; i < freeRects.size(); i++) {
     const IntRect& freeRect = freeRects[i];
     if (canFit(w, h, freeRect)) {
-      int remainingArea = freeRect.area() - w * h;
+      int remainingArea = freeRect.area - w * h;
       if (minRemainingArea > remainingArea) {
         minRemainingArea = remainingArea;
         best_index = i;
@@ -82,20 +82,20 @@ void PatchMixer::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
   IntRect freeRectToPack = freeRectsVec[pack_i][pack_j];
   freeRectsVec[pack_i].erase(freeRectsVec[pack_i].begin() + pack_j);
   auto[rect0, rect1] = splitFreeRect(w, h, freeRectToPack);
-  if (rect0.area() > 0) {
+  if (rect0.area > 0) {
     freeRectsVec[pack_i].push_back(rect0);
   }
-  if (rect1.area() > 0) {
+  if (rect1.area > 0) {
     freeRectsVec[pack_i].push_back(rect1);
   }
 }
 
 bool PatchMixer::canFit(int w, int h, const IntRect& freeRect) {
-  return w <= freeRect.width() && h <= freeRect.height();
+  return w <= freeRect.w && h <= freeRect.h;
 }
 
 std::pair<IntRect, IntRect> PatchMixer::splitFreeRect(int w, int h, const IntRect& freeRect) {
-  if (freeRect.width() > freeRect.height()) {
+  if (freeRect.w > freeRect.h) {
     return {IntRect(freeRect.l + w, freeRect.t, freeRect.r, freeRect.b),
             IntRect(freeRect.l, freeRect.t + h, freeRect.l + w, freeRect.b)};
   } else {

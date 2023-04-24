@@ -623,8 +623,8 @@ std::vector<OFFeatures> ROIExtractor::opticalFlowTracking(
     if (points.empty()) {
       startEndIndices.push_back(startEndIndices.back() + 1);
       inputPoints.push_back(cv::Point2f(
-          ((float) bbx.l + (float) bbx.width() / 2) * xRatio,
-          ((float) bbx.t + (float) bbx.height() / 2) * yRatio));
+          ((float) bbx.l + (float) bbx.w / 2) * xRatio,
+          ((float) bbx.t + (float) bbx.h / 2) * yRatio));
     } else {
       startEndIndices.push_back(startEndIndices.back() + int(points.size()));
       inputPoints.insert(inputPoints.end(), points.begin(), points.end());
@@ -704,7 +704,7 @@ void ROIExtractor::getPixelDiffROIs(Frame* currFrame, const cv::Size& targetSize
   }
 
   for (const Rect& box: boxes) {
-    if (std::min(box.width(), box.height()) >= 1.0f) {
+    if (std::min(box.w, box.h) >= 1.0f) {
       outChildROIs.push_back(std::make_unique<ROI>(
               nullptr, UNASSIGNED_ID, currFrame, box,
               PD, origin_PD, -1, OFFeatures({}, {}, {}), ROI::INVALID_CONF,

@@ -19,21 +19,12 @@ struct IntRect {
   int t;
   int r;
   int b;
+  int w;
+  int h;
+  int area;
 
   IntRect(int l, int t, int r, int b)
-      : l(l), t(t), r(r), b(b) {};
-
-  int width() const {
-    return r - l;
-  }
-
-  int height() const {
-    return b - t;
-  }
-
-  int area() const {
-    return width() * height();
-  }
+      : l(l), t(t), r(r), b(b), w(r - l), h(b - t), area((r - l) * (b - t)) {};
 
   std::string toString() const {
     std::stringstream ss;
