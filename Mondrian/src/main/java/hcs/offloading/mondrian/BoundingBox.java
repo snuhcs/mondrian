@@ -1,25 +1,19 @@
 package hcs.offloading.mondrian;
 
 public class BoundingBox {
-    public final int id;
-    public final int left;
-    public final int top;
-    public final int right;
-    public final int bottom;
+    public final int l;
+    public final int t;
+    public final int r;
+    public final int b;
     public final float confidence;
     public final int label;
-    public final int origin;
-    public final boolean isNew;
 
-    public BoundingBox(int id, int left, int top, int right, int bottom, float confidence, int label, int origin, boolean isNew) {
-        this.id = id;
-        this.left = left;
-        this.top = top;
-        this.right = right;
-        this.bottom = bottom;
+    public BoundingBox(int l, int t, int r, int b, float confidence, int label) {
+        this.l = l;
+        this.t = t;
+        this.r = r;
+        this.b = b;
         this.confidence = confidence;
         this.label = label;
-        this.origin = origin;
-        this.isNew = isNew;
     }
 }
