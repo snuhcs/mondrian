@@ -67,32 +67,30 @@ public class VideoLoader implements Runnable {
     }
 
     public void close() {
-        decoder.stop();
-        decoder.release();
-        extractor.release();
         thread.interrupt();
         try {
             thread.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        decoder.stop();
+        decoder.release();
+        extractor.release();
     }
 
     @Override
     public void run() {
         long startNs = System.nanoTime();
         long frameIndex = 0;
-        boolean eof = false;
-        boolean decodingEnd = false;
-        while (!decodingEnd) {
-            if (!eof) {
-                eof = enqueueStream(decoder, extractor);
+        boolean enqueueEnd = false;
+        while (true) {
+            if (!enqueueEnd) {
+                enqueueEnd = enqueueStream(decoder, extractor);
             }
 
             int outputIndex = decoder.dequeueOutputBuffer(bufferInfo, MEDIACODEC_TIMEOUT_US);
             if (bufferInfo.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM) {
-                decodingEnd = true;
-                continue;
+                break; // decoding end
             }
             if (outputIndex < 0) { // if no available output buffer
                 continue;
