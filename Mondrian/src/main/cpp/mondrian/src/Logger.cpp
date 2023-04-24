@@ -213,16 +213,16 @@ void Logger::logROI(const ROI* roi) {
       << roi->frame->frameIndex << delim
 
       // origLoc
-      << roi->origLoc.left << delim
-      << roi->origLoc.top << delim
-      << roi->origLoc.right << delim
-      << roi->origLoc.bottom << delim
+      << roi->origLoc.l << delim
+      << roi->origLoc.t << delim
+      << roi->origLoc.r << delim
+      << roi->origLoc.b << delim
 
       // paddedLoc
-      << roi->paddedLoc.left << delim
-      << roi->paddedLoc.top << delim
-      << roi->paddedLoc.right << delim
-      << roi->paddedLoc.bottom << delim
+      << roi->paddedLoc.l << delim
+      << roi->paddedLoc.t << delim
+      << roi->paddedLoc.r << delim
+      << roi->paddedLoc.b << delim
 
       // type & origin
       << roi->type << delim
@@ -247,10 +247,10 @@ void Logger::logROI(const ROI* roi) {
       << roi->id << delim
 
       << pROI->priority << delim
-      << pROI->paddedLoc.left << delim
-      << pROI->paddedLoc.top << delim
-      << pROI->paddedLoc.right << delim
-      << pROI->paddedLoc.bottom << delim
+      << pROI->paddedLoc.l << delim
+      << pROI->paddedLoc.t << delim
+      << pROI->paddedLoc.r << delim
+      << pROI->paddedLoc.b << delim
       << pROI->getPackedXY().first << delim
       << pROI->getPackedXY().second << delim
       << pROI->getTargetScale() << delim

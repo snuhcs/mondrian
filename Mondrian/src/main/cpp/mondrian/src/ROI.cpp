@@ -41,10 +41,10 @@ ROI::ROI(ROI* prevROI,
   if (prevROI != nullptr) {
     prevROI->nextROI = this;
   }
-  setPaddedLoc({std::max(0.0f, origLoc.left - roiPadding),
-                std::max(0.0f, origLoc.top - roiPadding),
-                std::min(float(frame->rgbMat.cols), origLoc.right + roiPadding),
-                std::min(float(frame->rgbMat.rows), origLoc.bottom + roiPadding)});
+  setPaddedLoc({std::max(0.0f, origLoc.l - roiPadding),
+                std::max(0.0f, origLoc.t - roiPadding),
+                std::min(float(frame->rgbMat.cols), origLoc.r + roiPadding),
+                std::min(float(frame->rgbMat.rows), origLoc.b + roiPadding)});
 }
 
 void ROI::setPaddedLoc(const Rect& newPaddedLoc) {
@@ -90,11 +90,11 @@ void ROI::setTargetScale(float newTargetScale, int newScaleLevel) {
 }
 
 cv::Mat ROI::getPaddedMat() const {
-  int left = std::max(0, std::min(frame->rgbMat.cols, int(paddedLoc.left)));
-  int top = std::max(0, std::min(frame->rgbMat.rows, int(paddedLoc.top)));
-  int width = std::max(0, std::min(frame->rgbMat.cols - left, int(paddedLoc.width())));
-  int height = std::max(0, std::min(frame->rgbMat.rows - top, int(paddedLoc.height())));
-  return frame->rgbMat.operator()(cv::Rect(left, top, width, height));
+  int l = std::max(0, std::min(frame->rgbMat.cols, int(paddedLoc.l)));
+  int t = std::max(0, std::min(frame->rgbMat.rows, int(paddedLoc.t)));
+  int width = std::max(0, std::min(frame->rgbMat.cols - l, int(paddedLoc.width())));
+  int height = std::max(0, std::min(frame->rgbMat.rows - t, int(paddedLoc.height())));
+  return frame->rgbMat.operator()(cv::Rect(l, t, width, height));
 }
 
 cv::Mat ROI::getResizedMat() const {

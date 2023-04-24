@@ -28,10 +28,10 @@ static Rect reconstructBoxPos(const BoundingBox& packedBox, const ROI* pROI) {
   auto[x, y] = pROI->getPackedXY();
   auto packX = float(x + pROI->roiBorder);
   auto packY = float(y + pROI->roiBorder);
-  float newL = (packedBoxLoc.left - packX) / scale + pROILoc.left;
-  float newT = (packedBoxLoc.top - packY) / scale + pROILoc.top;
-  float newR = (packedBoxLoc.right - packX) / scale + pROILoc.left;
-  float newB = (packedBoxLoc.bottom - packY) / scale + pROILoc.top;
+  float newL = (packedBoxLoc.l - packX) / scale + pROILoc.l;
+  float newT = (packedBoxLoc.t - packY) / scale + pROILoc.t;
+  float newR = (packedBoxLoc.r - packX) / scale + pROILoc.l;
+  float newB = (packedBoxLoc.b - packY) / scale + pROILoc.t;
   return {std::max(0.0f, newL),
           std::max(0.0f, newT),
           std::min(float(pROI->frame->rgbMat.cols), newR),

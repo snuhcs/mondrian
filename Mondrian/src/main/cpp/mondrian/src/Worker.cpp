@@ -79,10 +79,10 @@ void Worker::drawInferenceResult(const cv::Mat& rgbMat, const std::vector<Boundi
   for (int i = 0; i < boxes.size(); i++) {
     const md::BoundingBox& b = boxes.at(i);
     jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
-                                 int(std::round(b.location.left)),
-                                 int(std::round(b.location.top)),
-                                 int(std::round(b.location.right)),
-                                 int(std::round(b.location.bottom)),
+                                 int(std::round(b.location.l)),
+                                 int(std::round(b.location.t)),
+                                 int(std::round(b.location.r)),
+                                 int(std::round(b.location.b)),
                                  b.confidence, b.label);
     env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
   }

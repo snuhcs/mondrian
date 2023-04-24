@@ -34,7 +34,7 @@ std::tuple<IntPairs, IntPairs> PatchMixer::pack(
     }
     const IntRect& rect = copiedFreeRectsVec[pack_i][pack_j];
     packIndices.emplace_back(pack_i, pack_j);
-    packLocations.emplace_back(rect.left, rect.top);
+    packLocations.emplace_back(rect.l, rect.t);
     if (emulatedBatch) {
       packBox(copiedFreeRectsVec, roiSize, roiSize, pack_i, pack_j);
     } else {
@@ -96,11 +96,11 @@ bool PatchMixer::canFit(int w, int h, const IntRect& freeRect) {
 
 std::pair<IntRect, IntRect> PatchMixer::splitFreeRect(int w, int h, const IntRect& freeRect) {
   if (freeRect.width() > freeRect.height()) {
-    return {IntRect(freeRect.left + w, freeRect.top, freeRect.right, freeRect.bottom),
-            IntRect(freeRect.left, freeRect.top + h, freeRect.left + w, freeRect.bottom)};
+    return {IntRect(freeRect.l + w, freeRect.t, freeRect.r, freeRect.b),
+            IntRect(freeRect.l, freeRect.t + h, freeRect.l + w, freeRect.b)};
   } else {
-    return {IntRect(freeRect.left, freeRect.top + h, freeRect.right, freeRect.bottom),
-            IntRect(freeRect.left + w, freeRect.top, freeRect.right, freeRect.top + h)};
+    return {IntRect(freeRect.l, freeRect.t + h, freeRect.r, freeRect.b),
+            IntRect(freeRect.l + w, freeRect.t, freeRect.r, freeRect.t + h)};
   }
 }
 
