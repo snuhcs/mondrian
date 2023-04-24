@@ -27,13 +27,13 @@ Device toDevice(std::string deviceStr);
 const char* toConstStr(Device device);
 
 enum Origin {
-  origin_Null = 0,  // null value for initialization
-  origin_FF = 1,    // (Box) matched Box from full frame
-  origin_BB = 2,    // (ROI, Box) OF ROI from bounding box, Box from those ROIs
-  origin_PD = 3,    // (ROI, Box) PD ROI, OF ROI originated from PD ROI, Box from those ROIs
-  origin_IP = 4,    // (Box) interpolated Box
-  origin_NewFF = 5, // (Box) unmatched Box from full frame
-  origin_NewMF = 6, // (Box) unmatched Box from mixed frame
+  O_NULL = 0,            // null value for initialization
+  O_FULL_FRAME = 1,      // (Box) matched Box from full frame
+  O_PACKED_BBOX = 2,     // (ROI, Box) OF ROI from bounding box, Box from those ROIs
+  O_PD = 3,              // (ROI, Box) PD ROI, OF ROI originated from PD ROI, Box from those ROIs
+  O_INTERPOLATE = 4,     // (Box) interpolated Box
+  O_NEW_FULL_FRAME = 5,  // (Box) unmatched Box from full frame
+  O_NEW_PACKED_BBOX = 6, // (Box) unmatched Box from packed canvas
 };
 
 struct Rect {

@@ -74,8 +74,8 @@ std::unique_ptr<ROI> ROI::mergeROIs(const ROI* pROI0, const ROI* pROI1) {
     roiLabel = pROI1->label;
   }
   std::unique_ptr<ROI> mergedROI = std::make_unique<ROI>(
-          nullptr, MERGED_ROI_ID, frame, rect, roiType, origin_Null, roiLabel,
-          OFFeatures({}, {}, {}), ROI::INVALID_CONF, 0, pROI0->roiBorder, false);
+      nullptr, MERGED_ROI_ID, frame, rect, roiType, O_NULL, roiLabel,
+      OFFeatures({}, {}, {}), ROI::INVALID_CONF, 0, pROI0->roiBorder, false);
   float scale = std::max(pROI0->targetScale, pROI1->targetScale);
   assert(0.0f < scale && scale <= 1.0f);
   mergedROI->setTargetScale(scale, ROIResizer::INVALID_LEVEL);

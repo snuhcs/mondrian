@@ -160,7 +160,7 @@ Result TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& rgbMat) {
                          float(box[2] - outputBias) * outputScale,
                          float(box[3] - outputBias) * outputScale,
                          rgbMat.cols, rgbMat.rows),
-          maxConfidence, maxLabel, origin_Null));
+          maxConfidence, maxLabel, O_NULL));
     }
   }
   return {nms(detections, numLabels, iouThreshold), {start, end}, device};

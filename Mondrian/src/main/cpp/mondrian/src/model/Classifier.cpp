@@ -44,7 +44,7 @@ Result Classifier::recognizeImage(const cv::Mat& rgbMat) {
                          float(box[2]),
                          float(box[3]),
                          rgbMat.cols, rgbMat.rows),
-          maxConfidence, maxLabel, origin_Null));
+          maxConfidence, maxLabel, O_NULL));
     }
   }
   return {nms(detections, numLabels, iouThreshold), {start, end}, device};

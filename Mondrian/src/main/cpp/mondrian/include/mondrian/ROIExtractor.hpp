@@ -79,41 +79,41 @@ class ROIExtractor {
 
   void applyLasts();
 
-  std::vector<std::thread> mThreads;
-  bool mbStop;
+  std::vector<std::thread> threads_;
+  bool stop_;
 
   static const cv::TermCriteria CRITERIA;
 
-  const bool mEmulatedBatch;
-  const int mROISize;
-  const cv::Size mTargetSize;
-  const int mMaxMergeSize;
-  const ROIExtractorConfig mConfig;
-  const std::set<int> mVids;
-  int mFullFrameVid;
-  Frame* mFullFrameTarget;
+  const bool emulatedBatch_;
+  const int ROISize_;
+  const cv::Size targetSize_;
+  const int maxMergeSize_;
+  const ROIExtractorConfig config_;
+  const std::set<int> vids_;
+  int fullFrameVid_;
+  Frame* fullFrameTarget_;
 
-  ROIResizer* mROIResizer;
+  ROIResizer* ROIResizer_;
 
-  int mFullFrameInferenceCount;
-  std::vector<InferenceInfo> mInferencePlan;
+  int fullFrameInferenceCount_;
+  std::vector<InferenceInfo> inferencePlan_;
 
   /*
-   * If you want to acquire queueMtx and packMtx at the same time,
-   * you must acquire packMtx first.
+   * If you want to acquire queueMtx_ and packMtx_ at the same time,
+   * you must acquire packMtx_ first.
    */
-  std::mutex queueMtx;
-  std::mutex packMtx;
-  std::condition_variable queueCv;
+  std::mutex queueMtx_;
+  std::mutex packMtx_;
+  std::condition_variable queueCV_;
 
-  Stream mPDWaiting;
-  Stream mOFWaiting;
-  Stream mOFProcessing;
-  MultiStream mPackedFrames;
+  Stream PDWaiting_;
+  Stream OFWaiting_;
+  Stream OFProcessing_;
+  MultiStream packedFrames_;
 
   // Finalized frames are packed
-  std::vector<std::vector<IntRect>> mFreeRectsVec;
-  bool notFullyPacked;
+  std::vector<std::vector<IntRect>> freeRectsVec_;
+  bool notFullyPacked_;
 
   struct LastPackInfo {
     Frame* frame;
@@ -122,7 +122,7 @@ class ROIExtractor {
   };
 
   // Can be packed as last. Otherwise packed as scaled.
-  std::map<int, LastPackInfo> mCandidateLastFrames;
+  std::map<int, LastPackInfo> candidateLastFrames_;
 };
 
 } // namespace md

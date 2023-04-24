@@ -78,7 +78,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
       } else {
         maxROI->frame->boxes.push_back(std::make_unique<BoundingBox>(
             UNASSIGNED_ID, reconstructBoxPos(box, maxROI),
-            box.confidence, box.label, origin_Null));
+            box.confidence, box.label, O_NULL));
       }
     }
   }
@@ -181,9 +181,9 @@ void PatchReconstructor::matchBoxesWithChildROIs(Frame* frame, bool isFullFrame)
       assert(id < idRange.second);
       box->id = id++;
       if (isFullFrame) {
-        box->origin = origin_NewFF;
+        box->origin = O_NEW_FULL_FRAME;
       } else {
-        box->origin = origin_NewMF;
+        box->origin = O_NEW_PACKED_BBOX;
       }
       assert(box->srcROI == nullptr);
     }

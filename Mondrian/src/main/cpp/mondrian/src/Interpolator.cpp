@@ -148,7 +148,7 @@ void Interpolator::addBoxWithPrevInfo(ROI* currROI, const BoundingBox* prevBox,
   float newH = prevBox->location.h;
   Rect newBox(newCenter, newW, newH);
   currROI->frame->boxes.push_back(
-      std::make_unique<BoundingBox>(prevBox->id, newBox, prevBox->confidence, prevBox->label, origin_IP));
+      std::make_unique<BoundingBox>(prevBox->id, newBox, prevBox->confidence, prevBox->label, O_INTERPOLATE));
 
   BoundingBox* box = currROI->frame->boxes.back().get();
   assert(box->id == prevBox->id);

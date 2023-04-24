@@ -29,7 +29,7 @@ class ROIResizer {
   void updateTable(ROI* cROI);
 
   int getNumProbeSteps() const {
-    return mConfig.NUM_PROBE_STEPS;
+    return config_.NUM_PROBE_STEPS;
   }
 
   void getProbingCandidates(ROI* roi) const;
@@ -46,8 +46,10 @@ class ROIResizer {
     int maxVote();
 
    private:
-    int numLevels;
-    size_t capacity_, oldest_index, size_;
+    int numLevels_;
+    size_t capacity_;
+    size_t oldest_index_;
+    size_t size_;
     std::vector<int> data_;
   };
 
@@ -65,18 +67,18 @@ class ROIResizer {
 
   float calculateTargetScale(float targetArea, float originalArea) const;
 
-  static const std::map<std::string, Predictor> candidatePredictors;
-  static const std::map<std::string, std::vector<float>> scalesForLevels;
+  static const std::map<std::string, Predictor> CANDIDATE_PREDICTORS;
+  static const std::map<std::string, std::vector<float>> SCALE_LEVELS;
 
-  const ROIResizerConfig mConfig;
-  const Predictor mPredictor;
-  const std::vector<float> mTargetAreas;
+  const ROIResizerConfig config_;
+  const Predictor predictor_;
+  const std::vector<float> targetAreas_;
 
   // Save prev prediction to smooth the predicted size
-  std::map<idType, CircularBuffer> prevPredictionBuffer;
+  std::map<idType, CircularBuffer> prevPredictionBuffer_;
 
   // Save <targetScale of ROI, calibration for that targetScale>
-  std::map<idType, std::pair<int, float>> calibrationTable;
+  std::map<idType, std::pair<int, float>> calibrationTable_;
 };
 
 } // namespace md
