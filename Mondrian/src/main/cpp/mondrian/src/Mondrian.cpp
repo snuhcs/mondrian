@@ -179,7 +179,7 @@ void Mondrian::work() {
     // 8. Notify results of rest of the frames
     for (auto& it: selectedFrames) {
       for (Frame* frame: it.second) {
-        for (auto& cROI: frame->childROIs) {
+        for (auto& cROI: frame->rois) {
           if (cROI->box == nullptr) {
             continue;
           }

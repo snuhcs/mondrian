@@ -77,8 +77,8 @@ void Logger::logExecution(const Frame* frame) {
           << frame->PDExtractorID << delim
           << frame->OFExtractorID << delim
           << frame->boxes.size() << delim
-          << frame->childROIs.size() << delim
-          << frame->parentROIs.size() << delim
+          << frame->rois.size() << delim
+          << frame->mergedROIs.size() << delim
           << frame->inferenceFrameSize << delim
           << frame->inferenceDevice << delim
           << fromBaseTime(frame->enqueueTime) << delim
@@ -205,7 +205,7 @@ void Logger::logROI(const ROI* roi) {
   } else {
     assert(roi->roisForProbing.empty());
   }
-  const ROI* pROI = roi->isProbingROI ? roi : roi->parentROI;
+  const ROI* pROI = roi->isProbingROI ? roi : roi->mergedROI;
 
   logFile
       // frame

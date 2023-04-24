@@ -46,7 +46,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
 
   for (ROI* pROI : packedROIs) {
     if (!pROI->isProbingROI) {
-      assert(std::any_of(pROI->frame->parentROIs.begin(), pROI->frame->parentROIs.end(),
+      assert(std::any_of(pROI->frame->mergedROIs.begin(), pROI->frame->mergedROIs.end(),
                          [&pROI](auto& pROICandidate) { return pROICandidate.get() == pROI; }));
     }
   }
@@ -94,7 +94,7 @@ void PatchReconstructor::assignBoxesToFrame(MixedFrame& mixedFrame,
 }
 
 void PatchReconstructor::matchBoxesWithChildROIs(Frame* frame, bool isFullFrame) const {
-  std::vector<std::unique_ptr<ROI>>& childROIs = frame->childROIs;
+  std::vector<std::unique_ptr<ROI>>& childROIs = frame->rois;
   std::vector<std::unique_ptr<BoundingBox>>& boxes = frame->boxes;
 
   std::vector<BoundingBox*> unassignedBoxes;
@@ -113,7 +113,7 @@ void PatchReconstructor::matchBoxesWithChildROIs(Frame* frame, bool isFullFrame)
     float maxIoU = 0;
     ROI* maxROI = nullptr;
     for (auto& cROI : childROIs) {
-      if (isFullFrame || cROI->parentROI->isPacked()) {
+      if (isFullFrame || cROI->mergedROI->isPacked()) {
         float iou = cROI->paddedLoc.iou(box->location);
         assert(box->location.area != 0);
         if (maxIoU < iou) {
@@ -136,7 +136,7 @@ void PatchReconstructor::matchBoxesWithChildROIs(Frame* frame, bool isFullFrame)
   // 2. Let ROIs select their favorite Box
   // - Selection result is saved as ROI with same id
   for (auto& cROI : childROIs) {
-    if (isFullFrame || cROI->parentROI->isPacked()) {
+    if (isFullFrame || cROI->mergedROI->isPacked()) {
       ROI* cROIPtr = cROI.get();
       float maxIntersection = -1.0f;
       int maxIndex = -1;

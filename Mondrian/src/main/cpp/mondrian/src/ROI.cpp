@@ -35,7 +35,7 @@ ROI::ROI(ROI* prevROI,
         confidence
     }, roiBorder(roiBorder), targetScale(1.0f), // TODO: Start with targetScale(-1) and assert
       scaleLevel(ROIResizer::INVALID_LEVEL), packedXY(INVALID_XY),
-      nextROI(nullptr), parentROI(nullptr), box(nullptr), probingBox(nullptr),
+      nextROI(nullptr), mergedROI(nullptr), box(nullptr), probingBox(nullptr),
       packedMixedFrameIndex(INT_MAX), packedAbsMixedFrameIndex(-1), packedMixedFrameSize(-1),
       isProbingROI(isProbingROI), priority(-1) {
   if (prevROI != nullptr) {

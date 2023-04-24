@@ -6,13 +6,13 @@
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/DataType.hpp"
+#include "mondrian/MergedROI.hpp"
 #include "mondrian/PatchMixer.hpp"
 #include "mondrian/ROI.hpp"
 
 namespace md {
 
 class BoundingBox;
-class ROI;
 class ROIResizer;
 
 class Frame {
@@ -42,8 +42,8 @@ class Frame {
   std::vector<std::unique_ptr<ROI>> probingROIs;
 
   bool extractOFAgain;
-  std::vector<std::unique_ptr<ROI>> childROIs; // => box
-  std::vector<std::unique_ptr<ROI>> parentROIs;
+  std::vector<std::unique_ptr<ROI>> rois; // => box
+  std::vector<std::unique_ptr<MergedROI>> mergedROIs;
 
   bool isLastFrame;
   IntPairs boxesIfLast;
@@ -76,10 +76,6 @@ class Frame {
         Frame* prevFrame, const time_us& enqueueTime);
 
   void resizeROIs(ROIResizer* roiResizer, bool emulatedBatch, int roiSize);
-
-  void resetParentROIs();
-
-  void mergeROIs(float maxSize);
 
   void resetProbeROIs();
 

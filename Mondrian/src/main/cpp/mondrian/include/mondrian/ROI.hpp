@@ -7,12 +7,12 @@
 #include "opencv2/imgproc.hpp"
 
 #include "mondrian/DataType.hpp"
-
 #include "mondrian/Log.hpp"
 
 namespace md {
 
 class Frame;
+class MergedROI;
 
 enum Type {
   OF = 1,
@@ -175,15 +175,14 @@ class ROI {
   int label;
   Features features;
   std::vector<float> probeScales;
-  std::vector<ROI*> roisForProbing;
+  std::vector<MergedROI*> roisForProbing;
   float priority;
 
   inline static std::atomic<idType> lastId = 0;
   idType id;
-  ROI* prevROI; // only valid with childROIs
-  ROI* nextROI; // only valid with childROIs
-  std::vector<ROI*> childROIs;
-  ROI* parentROI;
+  ROI* prevROI; // only valid with rois
+  ROI* nextROI; // only valid with rois
+  MergedROI* mergedROI;
 
   float maxEdgeLength;
 

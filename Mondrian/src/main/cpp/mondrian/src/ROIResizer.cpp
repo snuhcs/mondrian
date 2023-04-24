@@ -140,7 +140,7 @@ void ROIResizer::updateTable(ROI* cROI) {
     cROI->frame->boxes.push_back(std::move(copiedBox));
   };
 
-  float originalROIScale = cROI->parentROI->getTargetScale();
+  float originalROIScale = cROI->mergedROI->getTargetScale();
   if (probingROIs.find(originalROIScale) != probingROIs.end()) {
     auto box = probingROIs[originalROIScale]->probingBox;
     if (cROI->box == nullptr && box != nullptr) {

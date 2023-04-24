@@ -1,8 +1,8 @@
 #include "mondrian/Frame.hpp"
 
+#include "mondrian/MergedROI.hpp"
 #include "mondrian/ROI.hpp"
 #include "mondrian/ROIResizer.hpp"
-#include "mondrian/Test.hpp"
 #include "mondrian/Log.hpp"
 
 namespace md {
@@ -32,7 +32,7 @@ void Frame::resizeROIs(ROIResizer* roiResizer, bool emulatedBatch, int roiSize) 
       }
     }
   } else {
-    for (auto& cROI: childROIs) {
+    for (auto& cROI: rois) {
       if (cROI->type == OF) {
         auto[scale, level] = roiResizer->getTargetScale(cROI->id, cROI->features,
                                                         cROI->maxEdgeLength);
@@ -123,7 +123,7 @@ void Frame::mergeROIs(float maxSize) {
 }
 
 void Frame::resetProbeROIs() {
-  for (auto& cROI: childROIs) {
+  for (auto& cROI: rois) {
     cROI->roisForProbing.clear();
     probingROIs.clear();
   }
@@ -131,13 +131,13 @@ void Frame::resetProbeROIs() {
 
 void Frame::filterPDROIs(float threshold, bool eatPD) {
   std::vector<ROI*> OFROIs;
-  for (auto& cROI: childROIs) {
+  for (auto& cROI: rois) {
     if (cROI->type == OF) {
       OFROIs.push_back(cROI.get());
     }
   }
 
-  for (auto it = childROIs.begin(); it != childROIs.end();) {
+  for (auto it = rois.begin(); it != rois.end();) {
     auto& cROI = *it;
     if (cROI->type == PD) {
       if (eatPD) {
@@ -153,7 +153,7 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
         if (maxInterSection / cROI->getPaddedArea() >= threshold) {
           assert(maxOverlapROI != nullptr);
           maxOverlapROI->eatPD(cROI->paddedLoc);
-          it = childROIs.erase(it);
+          it = rois.erase(it);
         }
       }
 
@@ -162,14 +162,14 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
         totalOFCoverage += cROI->paddedLoc.intersection(OFROI->paddedLoc);
       }
       if (totalOFCoverage / cROI->getPaddedArea() >= threshold) {
-        it = childROIs.erase(it);
+        it = rois.erase(it);
         continue;
       }
     }
     it++;
   }
 
-  for (auto& cROI: childROIs) {
+  for (auto& cROI: rois) {
     if (cROI->type == PD) {
       assert(cROI->id == UNASSIGNED_ID);
       cROI->id = ROI::getNewIds(1).first;
@@ -177,14 +177,13 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
       assert(cROI->id != UNASSIGNED_ID);
     }
   }
-  testAssignedUniqueROIID(childROIs);
 }
 
 bool Frame::isReadyToMarry(int mixedFrameIndex) const {
   auto isROIPacked = [&mixedFrameIndex](const std::unique_ptr<ROI>& roi) {
     return roi->isPacked() && roi->getPackedMixedFrameIndex() <= mixedFrameIndex;
   };
-  bool isAllReady = std::all_of(parentROIs.begin(), parentROIs.end(), isROIPacked)
+  bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIPacked)
                     && std::all_of(probingROIs.begin(), probingROIs.end(), isROIPacked);
   bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
                                      [](auto& box) { return box->id == UNASSIGNED_ID; });
@@ -203,10 +202,10 @@ bool Frame::readyForOFExtraction() const {
 }
 
 void Frame::resetOFROIExtraction() {
-  childROIs.erase(std::remove_if(childROIs.begin(), childROIs.end(),
-                                 [](const auto& cROI) { return cROI->type == OF; }),
-                  childROIs.end());
-  std::for_each(childROIs.begin(), childROIs.end(), [](auto& cROI) {
+  rois.erase(std::remove_if(rois.begin(), rois.end(),
+                            [](const auto& cROI) { return cROI->type == OF; }),
+             rois.end());
+  std::for_each(rois.begin(), rois.end(), [](auto& cROI) {
     if (cROI->type == PD) { cROI->id = UNASSIGNED_ID; }
   });
   useInferenceResultForOF = false;

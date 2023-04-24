@@ -29,7 +29,7 @@ void Interpolator::interpolate(MultiStream& frames, float threshold) {
 std::set<idType> Interpolator::getROIIds(const Stream& frames) {
   std::set<idType> childIDs;
   for (const Frame* frame : frames) {
-    for (const auto& cROI : frame->childROIs) {
+    for (const auto& cROI : frame->rois) {
       childIDs.insert(cROI->id);
     }
   }
@@ -39,7 +39,7 @@ std::set<idType> Interpolator::getROIIds(const Stream& frames) {
 std::vector<ROI*> Interpolator::getROIStream(const Stream& frames, idType roiId) {
   std::vector<ROI*> childROIStream;
   for (const Frame* frame : frames) {
-    for (const auto& cROI : frame->childROIs) {
+    for (const auto& cROI : frame->rois) {
       if (cROI->id == roiId) {
         childROIStream.push_back(cROI.get());
       }
