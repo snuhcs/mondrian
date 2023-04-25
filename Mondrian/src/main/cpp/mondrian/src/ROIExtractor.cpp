@@ -241,11 +241,11 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
                        [this](const auto& box) { return std::max(box.first, box.second) <= ROISize_;}));
   }
 
-  currFrame->mixingStartTime = NowMicros();
+  currFrame->packingStartTime = NowMicros();
   std::unique_lock<std::mutex> packLock(packMtx_);
   tryPack(currFrame);
   packLock.unlock();
-  currFrame->mixingEndTime = NowMicros();
+  currFrame->packingEndTime = NowMicros();
 
   std::lock_guard<std::mutex> queueLock(queueMtx_);
   OFProcessing_.erase(currFrame);

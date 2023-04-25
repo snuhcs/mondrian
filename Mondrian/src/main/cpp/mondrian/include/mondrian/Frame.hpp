@@ -63,11 +63,11 @@ class Frame {
   time_us resizeEndTime = 0;
   time_us mergeROIStartTime = 0;
   time_us mergeROIEndTime = 0;
-  time_us mixingStartTime = 0;
-  time_us mixingEndTime = 0;
+  time_us packingStartTime = 0;
+  time_us packingEndTime = 0;
   time_us scheduledTime = 0;
-  time_us mixedInferenceStartTime = 0;
-  time_us mixedInferenceEndTime = 0;
+  time_us packedInferenceStartTime = 0;
+  time_us packedInferenceEndTime = 0;
   time_us reconstructStartTime = 0;
   time_us reconstructEndTime = 0;
   time_us endTime = 0;
@@ -81,7 +81,7 @@ class Frame {
 
   void filterPDROIs(float threshold, bool eatPD);
 
-  bool isReadyToMarry(int mixedFrameIndex) const;
+  bool isReadyToMarry(int packedFrameIndex) const;
 
   bool readyForOFExtraction() const;
 

@@ -42,7 +42,7 @@ class Mondrian {
 
   void handleFullFrameResults(Frame* frame);
 
-  void handlePackedCanvasResults(std::vector<PackedCanvas>& packedCanvases);
+  void handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanvases);
 
   void handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases);
 

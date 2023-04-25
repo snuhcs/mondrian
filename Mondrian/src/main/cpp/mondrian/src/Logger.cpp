@@ -55,11 +55,11 @@ void Logger::logExecutionHeader() {
           << "resizeEndTime" << delim
           << "mergeROIStartTime" << delim
           << "mergeROIEndTime" << delim
-          << "mixingStartTime" << delim
-          << "mixingEndTime" << delim
+          << "packingStartTime" << delim
+          << "packingEndTime" << delim
           << "scheduledTime" << delim
-          << "mixedInferenceStartTime" << delim
-          << "mixedInferenceEndTime" << delim
+          << "packedInferenceStartTime" << delim
+          << "packedInferenceEndTime" << delim
           << "reconstructStartTime" << delim
           << "reconstructEndTime" << delim
           << "endTime" << '\n';
@@ -92,11 +92,11 @@ void Logger::logExecution(const Frame* frame) {
           << fromBaseTime(frame->resizeEndTime) << delim
           << fromBaseTime(frame->mergeROIStartTime) << delim
           << fromBaseTime(frame->mergeROIEndTime) << delim
-          << fromBaseTime(frame->mixingStartTime) << delim
-          << fromBaseTime(frame->mixingEndTime) << delim
+          << fromBaseTime(frame->packingStartTime) << delim
+          << fromBaseTime(frame->packingEndTime) << delim
           << fromBaseTime(frame->scheduledTime) << delim
-          << fromBaseTime(frame->mixedInferenceStartTime) << delim
-          << fromBaseTime(frame->mixedInferenceEndTime) << delim
+          << fromBaseTime(frame->packedInferenceStartTime) << delim
+          << fromBaseTime(frame->packedInferenceEndTime) << delim
           << fromBaseTime(frame->reconstructStartTime) << delim
           << fromBaseTime(frame->reconstructEndTime) << delim
           << fromBaseTime(frame->endTime) << '\n';
