@@ -12,32 +12,13 @@
 #include "mondrian/Log.hpp"
 #include "mondrian/Logger.hpp"
 #include "mondrian/PackedCanvas.hpp"
+#include "mondrian/PatchReconstructor.hpp"
 #include "mondrian/ROI.hpp"
 #include "mondrian/ROIExtractor.hpp"
 #include "mondrian/ROIResizer.hpp"
-#include "mondrian/PatchReconstructor.hpp"
+#include "mondrian/Utils.hpp"
 
 namespace md {
-
-static auto printLatencyTable = [](const std::map<Device, std::map<std::tuple<int, bool>, time_us>>& latencyTable) {
-  std::stringstream ss;
-  for (const auto&[device, size_latency]: latencyTable) {
-    for (const auto&[size_forFullFrame, latency]: size_latency) {
-      assert(device != NO_DEVICE);
-      auto [size, forFullFrame] = size_forFullFrame;
-      ss << toConstStr(device) << " " << forFullFrame << " " << size << " " << latency << " us" << std::endl;
-    }
-  }
-  LOGD("Latency Table:\n%s", ss.str().c_str());
-};
-
-static auto key_set = [](const std::map<int, int>& map) {
-  std::set<int> keys;
-  for (const auto&[k, v]: map) {
-    keys.insert(k);
-  }
-  return keys;
-};
 
 Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices,
                    JNIEnv* env, jobject app)
@@ -60,10 +41,9 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
                                                             : inputSizes_.front());
   bool runROIExtractor = config_.FULL_FRAME_INTERVAL != 0;
   auto latencyTable = inferenceEngine_->latencyTable();
-  printLatencyTable(latencyTable);
   auto inferencePlan = InferencePlanner::getInferencePlan(latencyTable, scheduleInterval_,
                                                           config_.USE_ROI_WISE_INFERENCE);
-  auto vids = key_set(startIndices_);
+  auto vids = keySetOf(startIndices_);
   ROIExtractor_ = std::make_unique<ROIExtractor>(
       config_.roiExtractorConfig, maxMergeSize, runROIExtractor, ROIResizer_.get(),
       config.USE_EMULATED_BATCH, config.ROI_SIZE, inferencePlan, vids);
