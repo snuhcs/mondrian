@@ -65,7 +65,7 @@ void Worker::work() {
     time_us newLatency = end - start;
     time_us estimatedLatency = (3 * newLatency + 7 * origLatency) / 10;
     latencyMap_[{size, isFullFrame}] = estimatedLatency;
-    LOGV("Inference time (%4d x %4d, %s) : %lld us",
+    LOGV("Inference time (%dx%d, %s) : %lld us",
          size, size, isFullFrame ? "Full" : "Pack", estimatedLatency);
   }
 }
@@ -95,7 +95,7 @@ void Worker::profileLatency(int warmupRuns, int numRuns) {
     }
     time_us avg = total / numRuns;
     latencyMap_[{size, isFullFrame}] = avg;
-    LOGV("Profiling latency (%4dx%4d, %s) : %lld",
+    LOGV("Profiling latency (%dx%d, %s) : %lld",
          size, size, isFullFrame ? "Full" : "Pack", avg);
   }
 }
