@@ -8,20 +8,12 @@
 namespace md {
 
 Classifier::Classifier(const int numLabels, const int inputSize, const int outputSize,
-                       const float confidenceThreshold, const float iouThreshold, Device device)
+                       const float confidenceThreshold, const float iouThreshold)
     : numLabels(numLabels), inputSize(inputSize, inputSize), outputSize(outputSize),
-      confidenceThreshold(confidenceThreshold), iouThreshold(iouThreshold), device(device) {}
+      confidenceThreshold(confidenceThreshold), iouThreshold(iouThreshold) {}
 
-Result Classifier::recognizeImage(const cv::Mat& rgbMat) {
-  cv::Mat preprocessedMat = preprocess(rgbMat);
-
-  time_us start = NowMicros();
-  inference(preprocessedMat);
-  time_us end = NowMicros();
-
-  // Exponential smoothing
-  inferenceTime = (3 * (end - start) + 7 * inferenceTime) / 10;
-  LOGV("Inference time: %lld us", inferenceTime);
+std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& rgbMat) {
+  inference(preprocess(rgbMat));
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
@@ -47,19 +39,11 @@ Result Classifier::recognizeImage(const cv::Mat& rgbMat) {
           maxConfidence, maxLabel, O_INVALID));
     }
   }
-  return {nms(detections, numLabels, iouThreshold), {start, end}, device};
+  return nms(detections, numLabels, iouThreshold);
 }
 
 const cv::Size& Classifier::getInputSize() const {
   return inputSize;
-}
-
-time_us Classifier::getInferenceTime() const {
-  return inferenceTime;
-}
-
-void Classifier::setInferenceTime(time_us currInferenceTime) {
-  inferenceTime = currInferenceTime;
 }
 
 const float* Classifier::getBox(const int i) const {
@@ -72,18 +56,6 @@ float Classifier::getObjectConfidence(const int i) const {
 
 const float* Classifier::getClassConfidences(const int i) const {
   return nullptr;
-}
-
-time_us Classifier::profileInferenceTime(int profileWarmups, int profileRuns) const {
-  for (int i = 0; i < profileWarmups; i++) {
-    singleInference();
-  }
-  time_us start = NowMicros();
-  for (int i = 0; i < profileRuns; i++) {
-    singleInference();
-  }
-  time_us end = NowMicros();
-  return (end - start) / profileRuns;
 }
 
 } // namespace md

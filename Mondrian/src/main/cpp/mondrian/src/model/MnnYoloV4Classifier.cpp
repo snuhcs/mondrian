@@ -14,7 +14,7 @@ MnnYoloV4Classifier::MnnYoloV4Classifier(std::string dataset, int inputSize,
                                          float confidenceThreshold, float iouThreshold,
                                          bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * (isTiny ? 15 : 63),
-                 confidenceThreshold, iouThreshold, GPU) {
+                 confidenceThreshold, iouThreshold) {
   std::string filepath = "/data/local/tmp/models/yolov4-";
   // TODO : use forFullFrame
   filepath += (isTiny ? "tiny-" : "") + std::to_string(inputSize) + "-fp16.mnn";
@@ -120,10 +120,6 @@ Rect MnnYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
       std::max(0.0f, ((y - h / 2) * heightRatio)),
       std::min(imageWidth, ((x + w / 2) * widthRatio)),
       std::min(imageHeight, ((y + h / 2) * heightRatio)));
-}
-
-void MnnYoloV4Classifier::singleInference() const {
-  interpreter->runSession(session);
 }
 
 } // namespace md

@@ -20,7 +20,7 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int in
                                                      float confidenceThreshold, float iouThreshold,
                                                      bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
-                 confidenceThreshold, iouThreshold, DSP),
+                 confidenceThreshold, iouThreshold),
       delegate(nullptr, [](TfLiteDelegate* d) {}) {
   // TODO : use forFullFrame
   std::stringstream ss;
@@ -127,16 +127,8 @@ void TfLiteYoloV5ClassifierDSP::inference(const cv::Mat& mat) {
   interpreter->Invoke();
 }
 
-Result TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& rgbMat) {
-  cv::Mat preprocessedMat = preprocess(rgbMat);
-
-  time_us start = NowMicros();
-  inference(preprocessedMat);
-  time_us end = NowMicros();
-
-  // Exponential smoothing
-  inferenceTime = (3 * (end - start) + 7 * inferenceTime) / 10;
-  LOGV("Inference time: %lld us", inferenceTime);
+std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& rgbMat) {
+  inference(preprocess(rgbMat));
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
@@ -163,7 +155,7 @@ Result TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& rgbMat) {
           maxConfidence, maxLabel, O_INVALID));
     }
   }
-  return {nms(detections, numLabels, iouThreshold), {start, end}, device};
+  return nms(detections, numLabels, iouThreshold);
 }
 
 Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float h,
@@ -181,10 +173,6 @@ Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float 
       std::max(0.0f, ((y - h / 2 - yPad) / gain)),
       std::min(imageWidth, ((x + w / 2 - xPad) / gain)),
       std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
-}
-
-void TfLiteYoloV5ClassifierDSP::singleInference() const {
-  interpreter->Invoke();
 }
 
 } // namespace md

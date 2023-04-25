@@ -17,7 +17,7 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(std::string dataset, int inputSiz
                                                float confidenceThreshold, float iouThreshold,
                                                bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
-                 confidenceThreshold, iouThreshold, GPU) {
+                 confidenceThreshold, iouThreshold) {
   std::stringstream ss;
 
   if (forFullFrame) {
@@ -133,10 +133,6 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
       std::max(0.0f, ((y - h / 2 - yPad) / gain)),
       std::min(imageWidth, ((x + w / 2 - xPad) / gain)),
       std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
-}
-
-void TfLiteYoloV5Classifier::singleInference() const {
-  interpreter->Invoke();
 }
 
 } // namespace md

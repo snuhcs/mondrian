@@ -42,15 +42,31 @@ void Worker::work() {
       lock.unlock();
       break;
     }
+    // Prepare input
+    time_us start = NowMicros();
     auto[rgbMat, size, isFullFrame, key] = std::move(inputs.front());
     inputs.pop();
     lock.unlock();
 
-    Result boxTimeDevice = classifierMap[{size, isFullFrame}]->recognizeImage(rgbMat);
-    engine->enqueueResults(key, boxTimeDevice);
+    // Inference
+    time_us inferenceStart = NowMicros();
+    auto boxes = classifierMap[{size, isFullFrame}]->recognizeImage(rgbMat);
+    time_us inferenceEnd = NowMicros();
+
+    // Enqueue & draw result
+    engine->enqueueResult(key, {boxes, {inferenceStart, inferenceEnd}, device});
     if (draw) {
-      drawInferenceResult(rgbMat, std::get<0>(boxTimeDevice));
+      drawInferenceResult(rgbMat, boxes);
     }
+    time_us end = NowMicros();
+
+    // Update latency
+    time_us origLatency = latencyMap_[{size, isFullFrame}];
+    time_us newLatency = end - start;
+    time_us estimatedLatency = (3 * newLatency + 7 * origLatency) / 10;
+    latencyMap_[{size, isFullFrame}] = estimatedLatency;
+    LOGV("Inference time (%4d x %4d, %s) : %lld us",
+         size, size, isFullFrame ? "Full" : "Pack", estimatedLatency);
   }
 }
 
@@ -61,14 +77,27 @@ void Worker::enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, int
   cv.notify_one();
 }
 
-std::map<std::tuple<int, bool>, time_us> Worker::getInferenceTimes() {
-  std::map<std::tuple<int, bool>, time_us> timeTable;
-  for (auto&[inputSize_isFullFrame, classifier] : classifierMap) {
-    auto [inputSize, isFullFrame] = inputSize_isFullFrame;
-    assert (classifier->getInferenceTime() > 0);
-    timeTable[{inputSize, isFullFrame}] = classifier->getInferenceTime();
+void Worker::profileLatency(int warmupRuns, int numRuns) {
+  for (auto& it: classifierMap) {
+    auto&[size, isFullFrame] = it.first;
+    auto* classifier = it.second;
+    for (int i = 0; i < warmupRuns; i++) {
+      cv::Mat rgbMat(size, size, CV_8UC3);
+      classifier->recognizeImage(rgbMat);
+    }
+    cv::Mat rgbMat(size, size, CV_8UC3);
+    time_us total = 0;
+    for (int i = 0; i < numRuns; i++) {
+      time_us start = NowMicros();
+      classifier->recognizeImage(rgbMat);
+      time_us end = NowMicros();
+      total += end - start;
+    }
+    time_us avg = total / numRuns;
+    latencyMap_[{size, isFullFrame}] = avg;
+    LOGV("Profiling latency (%4dx%4d, %s) : %lld",
+         size, size, isFullFrame ? "Full" : "Pack", avg);
   }
-  return timeTable;
 }
 
 void Worker::drawInferenceResult(const cv::Mat& rgbMat, const std::vector<BoundingBox>& boxes) {
