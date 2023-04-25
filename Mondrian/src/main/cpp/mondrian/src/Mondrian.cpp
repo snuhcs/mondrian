@@ -98,7 +98,7 @@ void Mondrian::work() {
   TimeLogger logger;
   logger.start();
 
-  // When FULL_FRAME_INTERVAL == 0, always run full frame_ inference
+  // When FULL_FRAME_INTERVAL == 0, always run full frame inference
   // See Mondrian::enqueueImage(...)
   while (!stop_ && config_.FULL_FRAME_INTERVAL > 0) {
     scheduleID++;
@@ -131,7 +131,7 @@ void Mondrian::work() {
          "RE::prepareInference", logger.getDuration("prep"),
          packedCanvass.size(), toString(selectedFrames).c_str(), droppedFrames.size());
 
-    // 3. Enqueue full frame_
+    // 3. Enqueue full frame
     if (fullFrameTarget != nullptr) {
       inferenceEngine_->enqueue(fullFrameTarget->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE,
                                 true, fullFrameTarget->getKey());
@@ -154,15 +154,15 @@ void Mondrian::work() {
            toString(packedCanvas.getPackedFrames()).c_str());
     }
 
-    // 5. Handle full frame_ inference results
+    // 5. Handle full frame inference results
     if (fullFrameTarget != nullptr) {
       handleFullFrameResults(fullFrameTarget);
-      LOGD("%-25s took %-7lld us for video %-5d frame_ %-4d",
+      LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
            "Mondrian::fullFrameInference", logger.getDuration("full"),
            fullFrameTarget->vid, fullFrameTarget->frameIndex);
     }
 
-    // 6. Handle mixed frame_ or ROI-wise inference results
+    // 6. Handle mixed frame or ROI-wise inference results
     if (config_.USE_ROI_WISE_INFERENCE) {
       handleROIWiseResults(packedCanvass);
     } else {
@@ -275,7 +275,7 @@ void Mondrian::handlePackedCanvasResults(std::vector<PackedCanvas>& packedCanvas
 
     for (Frame* frame: packedCanvas[i].getPackedFrames()) {
       if (frame->isReadyToMarry(i)) { // If all mergedROIs are packed and inferenced
-        // Match boxes with ROIs (per frame_)
+        // Match boxes with ROIs (per frame)
         nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
         patchReconstructor_->matchBoxesROIs(frame, false);
         frame->isBoxesReady = true;
@@ -396,7 +396,7 @@ int Mondrian::enqueueImage(const int vid, const cv::Mat& yuvMat) {
   Frame* frame = frameBuffer->enqueue(rgbMat);
   time_us startTime = NowMicros();
   preprocess(frame);
-  LOGD("%-25s took %-7lld us for video %-5d frame_ %-4d",
+  LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
        "Mondrian::preprocess", NowMicros() - startTime, frame->vid, frame->frameIndex);
   if (config_.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == startIndices_[vid]) {
     frame->useInferenceResultForOF = true;
@@ -468,7 +468,7 @@ void Mondrian::outputWork() {
     resultsCV_.notify_all();
 
     auto&[time, boxes] = result;
-    LOGD("Logger::logResult                         for video %-5d frame_ %-4d // %4lu boxes",
+    LOGD("Logger::logResult                         for video %-5d frame %-4d // %4lu boxes",
          vid, frameIndex, boxes.size());
     resultLogger_->logResult(vid, frameIndex, time, boxes);
   }

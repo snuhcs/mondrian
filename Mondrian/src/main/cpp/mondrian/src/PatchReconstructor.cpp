@@ -58,7 +58,7 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
     assert(box.id == INVALID_ID);
   }
 
-  // Insert boxes to appropriate frame_.boxes
+  // Insert boxes to appropriate Frame::boxes
   for (const BoundingBox& box: results) {
     float maxOverlap = 0;
     MergedROI* maxROI = nullptr;
@@ -72,7 +72,7 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
       }
     }
     if (maxROI != nullptr && maxOverlap >= mConfig.BOX_FILTER_OVERLAP_THRESHOLD) {
-      // filter overly large boxes from mixed frame_ inference by PROBE_IOU_THRESHOLD
+      // filter overly large boxes from packed inference by PROBE_IOU_THRESHOLD
       if (maxROI->isProbing()) {
         maxROI->frame()->probingBoxes.push_back(std::make_unique<BoundingBox>(
             INVALID_ID, reconstructBoxPos(box, maxROI),

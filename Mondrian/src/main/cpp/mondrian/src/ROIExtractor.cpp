@@ -46,7 +46,7 @@ void ROIExtractor::enqueue(Frame* frame) {
   std::unique_lock<std::mutex> queueLock(queueMtx_);
   queueCV_.wait(queueLock, [this]() { return PDWaiting_.size() < config_.MAX_QUEUE_SIZE; });
   PDWaiting_.insert(frame);
-  LOGD("%-25s                 for video %-5d frame_ %-4d // %4lu PD | %4lu OF | %4d Processed",
+  LOGD("%-25s                 for video %-5d frame %-4d // %4lu PD | %4lu OF | %4d Processed",
        "ROIExtractor::enqueue", frame->vid, frame->frameIndex,
        PDWaiting_.size(), OFWaiting_.size(),
        std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
@@ -293,7 +293,7 @@ bool ROIExtractor::tryPackFullVid(Frame* frame) {
     return true;
   }
 
-  // Try pack incoming frame_ as scaled
+  // Try pack incoming frame as scaled
   auto copiedFreeRectsVec = freeRectsVec_;
   auto[fullPackIndices, fullPackLocations] = PatchMixer::pack(
       copiedFreeRectsVec, fullFrameTarget_->boxesIfScaled, /*backward=*/true,
@@ -305,7 +305,7 @@ bool ROIExtractor::tryPackFullVid(Frame* frame) {
     return false;
   }
 
-  // Apply incoming frame_ and try pack last frame_ candidates
+  // Apply incoming frame and try pack last frame candidates
   PatchMixer::apply(copiedFreeRectsVec, fullFrameTarget_->boxesIfScaled, fullPackIndices,
                     emulatedBatch_, ROISize_);
   IntPairs lastBoxes;
@@ -315,13 +315,13 @@ bool ROIExtractor::tryPackFullVid(Frame* frame) {
   auto[lastPackIndices, lastPackLocations] = PatchMixer::pack(
       copiedFreeRectsVec, lastBoxes, /*backward=*/false, emulatedBatch_, ROISize_);
 
-  // If last frame_ candidates packing failed
+  // If last frame candidates packing failed
   if (lastPackIndices.size() != lastBoxes.size()) {
     assert(lastPackIndices.size() < lastBoxes.size());
     return false;
   }
 
-  // If last frame_ candidates packing success
+  // If last frame candidates packing success
   int i = 0;
   for (auto&[_, info]: candidateLastFrames_) {
     int start = i;
@@ -350,7 +350,7 @@ bool ROIExtractor::tryPackNonFullVid(Frame* frame) {
   auto copiedFreeRectsVec = freeRectsVec_;
 
   // Try pack last candidate frames.
-  // If candidateVid == frame_->vid, pack candidateVid first as scaled
+  // If candidateVid == frame->vid, pack candidateVid first as scaled
   std::pair<Indices, Locations> existPackIndicesLocations;
   if (vidExists) {
     existPackIndicesLocations = PatchMixer::pack(
@@ -506,7 +506,7 @@ void ROIExtractor::processPD(Frame* currFrame) {
                    config_.MAX_PD_ROI_SIZE, config_.MIN_PD_ROI_SIZE,
                    currFrame->rois);
   currFrame->pixelDiffROIProcessEndTime = NowMicros();
-  LOGD("%-25s took %-7lld us for video %-5d frame_ %-4d // %4lu PD ROIs",
+  LOGD("%-25s took %-7lld us for video %-5d frame %-4d // %4lu PD ROIs",
        "ROIExtractor::processPD",
        currFrame->pixelDiffROIProcessEndTime - currFrame->pixelDiffROIProcessStartTime,
        currFrame->vid, currFrame->frameIndex, currFrame->rois.size());

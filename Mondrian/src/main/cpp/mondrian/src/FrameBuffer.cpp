@@ -21,14 +21,14 @@ Frame* FrameBuffer::enqueue(const cv::Mat& rgbMat) {
     prevFrame->nextFrame = frames[frameIndex].get();
   }
   lock.unlock();
-  LOGD("%-25s                 for video %-5d frame_ %-4d",
+  LOGD("%-25s                 for video %-5d frame %-4d",
        "FrameBuffer::enqueue", vid, frameIndex);
   return frames[frameIndex].get();
 }
 
 void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
   std::unique_lock<std::mutex> lock(mtx);
-  // Hide them from any other frame_'s eyesight
+  // Hide them from any other frame's eyesight
   for (int frameIndex: frameIndices) {
     if (frames[frameIndex]->prevFrame != nullptr) {
       frames[frameIndex]->prevFrame->nextFrame = nullptr;
@@ -44,7 +44,7 @@ void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
   }
   lock.unlock();
   cv.notify_all();
-  LOGD("%-25s                 for video %-5d frame_ %-4d ~ %-4d",
+  LOGD("%-25s                 for video %-5d frame %-4d ~ %-4d",
        "FrameBuffer::freeImage", vid, frameIndices.front(), frameIndices.back());
 }
 

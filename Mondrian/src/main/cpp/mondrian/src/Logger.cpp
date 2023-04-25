@@ -132,7 +132,7 @@ void Logger::logROIHeader() {
   }
   std::lock_guard<std::mutex> lock(mtx);
   logFile
-      // frame_
+      // frame
       << "videoId" << delim
       << "frameIndex" << delim
 

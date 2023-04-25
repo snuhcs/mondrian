@@ -60,7 +60,7 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
     classifiers.push_back(std::move(classifier));
   }
 
-  // classifier for full frame_ inference
+  // classifier for full frame inference
   // identical with above code block inside the for loop
   int inputSize = config.FULL_FRAME_SIZE;
   forFullFrame = true;
