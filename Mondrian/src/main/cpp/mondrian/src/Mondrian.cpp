@@ -119,7 +119,7 @@ void Mondrian::work() {
         {{config_.FULL_DEVICE, fullFramePlan ? latencyTable[config_.FULL_DEVICE][{config_.FULL_FRAME_SIZE, true}] : 0L}});
     logger.step("plan");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
-         "Mondrian::getInferencePlan", logger.getDuration("plan"), toString(inferencePlan).c_str());
+         "Mondrian::getInferencePlan", logger.getDuration("plan"), str(inferencePlan).c_str());
     assert(!inferencePlan.empty());
 
     // 2. Prepare inference
@@ -129,7 +129,7 @@ void Mondrian::work() {
     LOGD("%-25s took %-7lld us                            "
          "// %4lu PackedCanvases with %s, %lu droppedFrames",
          "RE::prepareInference", logger.getDuration("prep"),
-         packedCanvass.size(), toString(selectedFrames).c_str(), droppedFrames.size());
+         packedCanvass.size(), str(selectedFrames).c_str(), droppedFrames.size());
 
     // 3. Enqueue full frame
     if (fullFrameTarget != nullptr) {
@@ -151,7 +151,7 @@ void Mondrian::work() {
                                 packedCanvas.packedCanvasSize, false, packedCanvas.getKey());
       LOGD("inferenceEngine_->enqueue %d sized %d packedCanvas to %s | %s",
            packedCanvas.packedCanvasSize, packedCanvas.absolutePackedCanvasIndex, toConstStr(packedCanvas.device),
-           toString(packedCanvas.getPackedFrames()).c_str());
+           str(packedCanvas.getPackedFrames()).c_str());
     }
 
     // 5. Handle full frame inference results
@@ -172,7 +172,7 @@ void Mondrian::work() {
     LOGD("%-25s took %-7lld us                            // Plan: %s",
          config_.USE_ROI_WISE_INFERENCE ? "Mondrian::handleROIWiseResults"
                                         : "Mondrian::handlePackedCanvasResults",
-         logger.getDuration("inf"), toString(inferencePlan).c_str());
+         logger.getDuration("inf"), str(inferencePlan).c_str());
 
     // 7. Interpolate results
     Interpolator::interpolate(selectedFrames, config_.INTERPOLATION_THRESHOLD);

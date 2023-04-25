@@ -20,7 +20,7 @@ struct IntRect {
   IntRect(int l, int t, int r, int b)
       : l(l), t(t), r(r), b(b), w(r - l), h(b - t), area((r - l) * (b - t)) {};
 
-  std::string toString() const {
+  std::string str() const {
     std::stringstream ss;
     ss << "(" << l << ", " << t << ", " << r << ", " << b << ")";
     return ss.str();

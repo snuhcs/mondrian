@@ -141,7 +141,7 @@ void Frame::resetOFROIExtraction() {
   isROIsReady = false;
 }
 
-std::string toString(const MultiStream& frames) {
+std::string str(const MultiStream& frames) {
   std::stringstream ss;
   for (auto it = frames.begin(); it != frames.end(); it++) {
     ss << "video " << it->first << ": ";
@@ -159,12 +159,12 @@ std::string toString(const MultiStream& frames) {
   return ss.str();
 }
 
-std::string toString(const Stream& frames) {
+std::string str(const Stream& frames) {
   MultiStream multiStream;
   for (const auto& frame: frames) {
     multiStream[frame->vid].insert(frame);
   }
-  return toString(multiStream);
+  return str(multiStream);
 }
 
 } // namespace md

@@ -130,7 +130,7 @@ struct InferenceInfo {
   time_us accumulatedLatency = -1;
 };
 
-std::string toString(const std::vector<InferenceInfo>& inferencePlan);
+std::string str(const std::vector<InferenceInfo>& inferencePlan);
 
 } // namespace md
 
