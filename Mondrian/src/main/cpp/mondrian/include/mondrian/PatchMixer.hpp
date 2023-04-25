@@ -8,12 +8,6 @@
 
 namespace md {
 
-class Mondrian;
-
-using WHs = IntPairs;
-using Indices = IntPairs;
-using Locations = IntPairs;
-
 struct IntRect {
   int l;
   int t;
@@ -35,12 +29,12 @@ struct IntRect {
 
 class PatchMixer {
  public:
-  static std::tuple<Indices, Locations> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
-                                             const WHs& boxWHs, bool backward,
-                                             bool emulatedBatch, int roiSize);
+  static std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
+                                            const IntPairs& boxWHs, bool backward,
+                                            bool emulatedBatch, int roiSize);
 
   static void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                    const WHs& boxWH, const Indices& indices,
+                    const IntPairs& boxWH, const IntPairs& indices,
                     bool emulatedBatch, int roiSize);
 
  private:

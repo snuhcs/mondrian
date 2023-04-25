@@ -4,9 +4,9 @@
 
 namespace md {
 
-std::tuple<IntPairs, IntPairs> PatchMixer::pack(
-    const std::vector<std::vector<IntRect>>& freeRectsVec,
-    const IntPairs& boxWHs, bool backward, bool emulatedBatch, int roiSize) {
+std::pair<IntPairs, IntPairs> PatchMixer::pack(
+        const std::vector<std::vector<IntRect>>& freeRectsVec,
+        const IntPairs& boxWHs, bool backward, bool emulatedBatch, int roiSize) {
   auto copiedFreeRectsVec = freeRectsVec;
   IntPairs packIndices;
   IntPairs packLocations;
@@ -46,7 +46,7 @@ std::tuple<IntPairs, IntPairs> PatchMixer::pack(
 }
 
 void PatchMixer::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                       const WHs& boxWH, const Indices& indices,
+                       const IntPairs& boxWH, const IntPairs& indices,
                        bool emulatedBatch, int roiSize) {
   assert(boxWH.size() == indices.size());
   for (int i = 0; i < boxWH.size(); i++) {

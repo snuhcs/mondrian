@@ -69,11 +69,11 @@ class ROIExtractor {
   void resetPatchMixerWithPlan(const std::vector<InferenceInfo>& inferencePlan);
 
   void prepareFrameLast(Frame* frame,
-                        const Indices& indices, const Locations& locations);
+                        const IntPairs& indices, const IntPairs& locations);
 
   IntPairs getBoxesIfLast(const Frame* frame);
 
-  void prepareScaledFrame(Frame* frame, const Indices& indices, const Locations& locations);
+  void prepareScaledFrame(Frame* frame, const IntPairs& indices, const IntPairs& locations);
 
   static IntPairs getBoxesIfScaled(const Frame* frame);
 
@@ -118,8 +118,8 @@ class ROIExtractor {
 
   struct LastPackInfo {
     Frame* frame;
-    Indices indices;
-    Locations locations;
+    IntPairs indices;
+    IntPairs locations;
   };
 
   // Can be packed as last. Otherwise packed as scaled.

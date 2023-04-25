@@ -351,7 +351,7 @@ bool ROIExtractor::tryPackNonFullVid(Frame* frame) {
 
   // Try pack last candidate frames.
   // If candidateVid == frame->vid, pack candidateVid first as scaled
-  std::pair<Indices, Locations> existPackIndicesLocations;
+  std::pair<IntPairs, IntPairs> existPackIndicesLocations;
   if (vidExists) {
     existPackIndicesLocations = PatchMixer::pack(
         copiedFreeRectsVec, candidateLastFrames_[vid].frame->boxesIfScaled, /*backward=*/true,
@@ -448,8 +448,8 @@ IntPairs ROIExtractor::getBoxesIfLast(const Frame* frame) {
   return boxesIfLast;
 }
 
-void ROIExtractor::prepareFrameLast(Frame* frame, const Indices& indices,
-                                    const Locations& locations) {
+void ROIExtractor::prepareFrameLast(Frame* frame, const IntPairs& indices,
+                                    const IntPairs& locations) {
   assert(indices.size() == locations.size());
   frame->isLastFrame = true;
   frame->resetProbeROIs();
@@ -488,7 +488,7 @@ IntPairs ROIExtractor::getBoxesIfScaled(const Frame* frame) {
 }
 
 void ROIExtractor::prepareScaledFrame(Frame* frame,
-                                      const Indices& indices, const Locations& locations) {
+                                      const IntPairs& indices, const IntPairs& locations) {
   assert(indices.size() == locations.size());
   frame->resetProbeROIs();
   int i = 0;
