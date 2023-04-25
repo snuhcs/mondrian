@@ -27,7 +27,7 @@ struct IntRect {
   }
 };
 
-class PatchMixer {
+class ROIPacker {
  public:
   static std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
                                             const IntPairs& boxWHs, bool backward,

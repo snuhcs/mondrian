@@ -7,7 +7,7 @@
 
 #include "mondrian/DataType.hpp"
 #include "mondrian/MergedROI.hpp"
-#include "mondrian/PatchMixer.hpp"
+#include "mondrian/ROIPacker.hpp"
 #include "mondrian/ROI.hpp"
 
 namespace md {

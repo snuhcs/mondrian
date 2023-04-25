@@ -12,7 +12,7 @@
 #include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
 #include "mondrian/PackedCanvas.hpp"
-#include "mondrian/PatchMixer.hpp"
+#include "mondrian/ROIPacker.hpp"
 #include "mondrian/ROIResizer.hpp"
 #include "mondrian/Utils.hpp"
 

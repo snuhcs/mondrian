@@ -295,7 +295,7 @@ bool ROIExtractor::tryPackFullVid(Frame* frame) {
 
   // Try pack incoming frame as scaled
   auto copiedFreeRectsVec = freeRectsVec_;
-  auto[fullPackIndices, fullPackLocations] = PatchMixer::pack(
+  auto[fullPackIndices, fullPackLocations] = ROIPacker::pack(
       copiedFreeRectsVec, fullFrameTarget_->boxesIfScaled, /*backward=*/true,
       emulatedBatch_, ROISize_);
 
@@ -306,13 +306,13 @@ bool ROIExtractor::tryPackFullVid(Frame* frame) {
   }
 
   // Apply incoming frame and try pack last frame candidates
-  PatchMixer::apply(copiedFreeRectsVec, fullFrameTarget_->boxesIfScaled, fullPackIndices,
-                    emulatedBatch_, ROISize_);
+  ROIPacker::apply(copiedFreeRectsVec, fullFrameTarget_->boxesIfScaled, fullPackIndices,
+                   emulatedBatch_, ROISize_);
   IntPairs lastBoxes;
   for (auto&[cVid, info]: candidateLastFrames_) {
     appendLastBoxes(lastBoxes, info.frame);
   }
-  auto[lastPackIndices, lastPackLocations] = PatchMixer::pack(
+  auto[lastPackIndices, lastPackLocations] = ROIPacker::pack(
       copiedFreeRectsVec, lastBoxes, /*backward=*/false, emulatedBatch_, ROISize_);
 
   // If last frame candidates packing failed
@@ -353,12 +353,12 @@ bool ROIExtractor::tryPackNonFullVid(Frame* frame) {
   // If candidateVid == frame->vid, pack candidateVid first as scaled
   std::pair<IntPairs, IntPairs> existPackIndicesLocations;
   if (vidExists) {
-    existPackIndicesLocations = PatchMixer::pack(
+    existPackIndicesLocations = ROIPacker::pack(
         copiedFreeRectsVec, candidateLastFrames_[vid].frame->boxesIfScaled, /*backward=*/true,
         emulatedBatch_, ROISize_);
-    PatchMixer::apply(copiedFreeRectsVec,
-                      candidateLastFrames_[vid].frame->boxesIfScaled,
-                      existPackIndicesLocations.first, emulatedBatch_, ROISize_);
+    ROIPacker::apply(copiedFreeRectsVec,
+                     candidateLastFrames_[vid].frame->boxesIfScaled,
+                     existPackIndicesLocations.first, emulatedBatch_, ROISize_);
   } else {
     // Temporarily add. Erase if packing fails
     candidateLastFrames_[vid] = LastPackInfo();
@@ -372,7 +372,7 @@ bool ROIExtractor::tryPackNonFullVid(Frame* frame) {
       appendLastBoxes(lastBoxes, info.frame);
     }
   }
-  auto[lastPackIndices, lastPackLocations] = PatchMixer::pack(
+  auto[lastPackIndices, lastPackLocations] = ROIPacker::pack(
       copiedFreeRectsVec, lastBoxes, /*backward=*/false,
       emulatedBatch_, ROISize_);
 
@@ -415,8 +415,8 @@ bool ROIExtractor::tryPackNonFullVid(Frame* frame) {
 void ROIExtractor::applyLasts() {
   for (auto&[pVid, info]: candidateLastFrames_) {
     assert(info.indices.size() == info.locations.size());
-    PatchMixer::apply(freeRectsVec_, info.frame->boxesIfLast, info.indices,
-                      emulatedBatch_, ROISize_);
+    ROIPacker::apply(freeRectsVec_, info.frame->boxesIfLast, info.indices,
+                     emulatedBatch_, ROISize_);
   }
   for (auto&[cVid, info]: candidateLastFrames_) {
     prepareFrameLast(info.frame, info.indices, info.locations);
