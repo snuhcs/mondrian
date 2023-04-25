@@ -30,8 +30,8 @@ class Frame {
   int PDExtractorID;
   int OFExtractorID;
 
-  const float width;
-  const float height;
+  const int width;
+  const int height;
 
   bool useInferenceResultForOF;
 
@@ -39,10 +39,10 @@ class Frame {
   bool isROIsReady;
   std::vector<std::unique_ptr<BoundingBox>> boxes;
   std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
-  std::vector<std::unique_ptr<ROI>> probingROIs;
+  std::vector<std::unique_ptr<MergedROI>> probingROIs;
 
   bool extractOFAgain;
-  std::vector<std::unique_ptr<ROI>> rois; // => box
+  std::vector<std::unique_ptr<ROI>> rois;
   std::vector<std::unique_ptr<MergedROI>> mergedROIs;
 
   bool isLastFrame;
@@ -72,7 +72,7 @@ class Frame {
   time_us reconstructEndTime = 0;
   time_us endTime = 0;
 
-  Frame(const int vid, const int frameIndex, const cv::Mat mat,
+  Frame(const int vid, const int frameIndex, const cv::Mat& mat,
         Frame* prevFrame, const time_us& enqueueTime);
 
   void resizeROIs(ROIResizer* roiResizer, bool emulatedBatch, int roiSize);

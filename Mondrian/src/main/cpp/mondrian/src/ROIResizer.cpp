@@ -46,7 +46,7 @@ ROIResizer::ROIResizer(const ROIResizerConfig& config)
                     ? toVec(config.STATIC_TARGET_SCALE)
                     : SCALE_LEVELS.at(config.TRAIN_DATA)) {}
 
-std::pair<float, int> ROIResizer::getTargetScale(const idType id,
+std::pair<float, int> ROIResizer::getTargetScale(const ID id,
                                                  const Features& features,
                                                  const float maxEdgeLength) {
   auto[targetScale, targetLevel] = getTargetScale(id, features);
@@ -67,7 +67,7 @@ std::pair<float, int> ROIResizer::getTargetScale(const idType id,
   return {targetScale, targetLevel};
 }
 
-std::pair<float, int> ROIResizer::getTargetScale(const idType id,
+std::pair<float, int> ROIResizer::getTargetScale(const ID id,
                                                  const Features& features) {
   assert(features.type == OF);
   const int targetLevel = getMaxVotedLevel(id, features);
@@ -86,13 +86,12 @@ float ROIResizer::getTargetScale(const int scaleLevel, const float originalArea)
   return std::min(1.0f, calculateTargetScale(targetAreas_.at(scaleLevel), originalArea));
 }
 
-bool ROIResizer::isCalibrated(const idType id, const int scaleLevel) const {
-  [](){}();
+bool ROIResizer::isCalibrated(const ID id, const int scaleLevel) const {
   return calibrationTable_.find(id) != calibrationTable_.end()
          && calibrationTable_.at(id).first == scaleLevel;
 }
 
-int ROIResizer::getMaxVotedLevel(const idType id, const Features& features) {
+int ROIResizer::getMaxVotedLevel(const ID id, const Features& features) {
   auto record = prevPredictionBuffer_.find(id);
   if (record == prevPredictionBuffer_.end()) {
     prevPredictionBuffer_[id] = CircularBuffer(int(targetAreas_.size()),
@@ -121,80 +120,46 @@ int ROIResizer::predictLevelWithFeatures(const Features& features) const {
       features.confidence);
 }
 
-void ROIResizer::updateTable(ROI* cROI) {
-  if (cROI->roisForProbing.empty()) {
+void ROIResizer::updateTable(ROI* roi) {
+  if (roi->roisForProbing.empty()) {
     return;
   }
 
-  std::map<float, ROI*> probingROIs;
-  for (ROI* probeROI : cROI->roisForProbing) {
-    probingROIs[probeROI->getTargetScale()] = probeROI;
+  std::map<float, MergedROI*> probingROIs;
+  for (MergedROI* probeROI: roi->roisForProbing) {
+    probingROIs[probeROI->targetScale()] = probeROI;
   }
-
-  const auto addBoxToOriginal = [](ROI* cROI, BoundingBox* probeBox) {
-    auto copiedBox = std::make_unique<BoundingBox>(
-        cROI->id, probeBox->location, probeBox->confidence, probeBox->label, cROI->origin);
-    copiedBox->srcROI = cROI;
-    cROI->label = copiedBox->label;
-    cROI->box = copiedBox.get();
-    cROI->frame->boxes.push_back(std::move(copiedBox));
-  };
-
-  float originalROIScale = cROI->mergedROI->getTargetScale();
-  if (probingROIs.find(originalROIScale) != probingROIs.end()) {
-    auto box = probingROIs[originalROIScale]->probingBox;
-    if (cROI->box == nullptr && box != nullptr) {
-      addBoxToOriginal(cROI, box);
-    }
-  }
-  cROI->probingBox = cROI->box;
-  probingROIs[originalROIScale] = cROI;
 
   // find the smallest target size with a usable box
-  auto[largestScale, largestROI] = (*probingROIs.rbegin());
-  BoundingBox* referenceBox = largestROI->probingBox;
-  float newScale = std::min(1.0f, largestScale + config_.PROBE_STEP_SIZE);
-  ROI* selectedROI = largestROI;
-  for (auto it = probingROIs.rbegin(); it != probingROIs.rend(); it++) {
-    auto[scale, probeROI] = *it;
-    BoundingBox* probeBox = probeROI->probingBox;
-    if (isUsable(probeBox, referenceBox)) {
-      newScale = scale;
-      selectedROI = probeROI;
-    } else {
-      break;
+  float newScale = getTargetScale(roi->scaleLevel(), roi->features.width * roi->features.height);
+  BoundingBox* largestProbeROIBox = probingROIs.rbegin()->second->probingBox();
+  if (largestProbeROIBox != nullptr) {
+    for (auto it = probingROIs.rbegin(); it != probingROIs.rend(); it++) {
+      auto[scale, probeROI] = *it;
+      BoundingBox* probeROIBox = probeROI->probingBox();
+      if (isUsable(probeROIBox, largestProbeROIBox)) {
+        newScale = scale;
+      } else {
+        break;
+      }
     }
   }
 
-  if (!config_.STATIC_SCALE) {
-    // When cROI is merged and all of probing ROIs fail
-    // newScale can be larger than getTargetScale(cROI->getScaleLevel())
-    if (selectedROI == cROI && isCalibrated(cROI->id, cROI->getScaleLevel())) {
-      newScale = std::min(newScale, calibrationTable_[cROI->id].second
-                                    + cROI->getTargetScale() * config_.PROBE_STEP_SIZE);
-    } else {
-      newScale = std::min(newScale, getTargetScale(cROI->getScaleLevel(), cROI->features.width * cROI->features.height));
-    }
+  if (roi->box == nullptr && largestProbeROIBox != nullptr) {
+    auto copiedBox = std::make_unique<BoundingBox>(
+        roi->id, largestProbeROIBox->loc, largestProbeROIBox->confidence,
+        largestProbeROIBox->label, roi->origin);
+    copiedBox->srcROI = roi;
+    roi->label = copiedBox->label;
+    roi->box = copiedBox.get();
+    roi->frame->boxes.push_back(std::move(copiedBox));
   }
-
-  if (cROI->box != referenceBox && isUsable(referenceBox, referenceBox)) {
-    if (cROI->box != nullptr) {
-      cROI->box->id = cROI->id;
-      cROI->box->location = referenceBox->location;
-      cROI->box->confidence = referenceBox->confidence;
-      assert(cROI->box->origin == Origin::O_PACKED_BBOX
-             && cROI->box->origin == Origin::O_PD
-             && cROI->box->origin == Origin::O_NEW_PACKED_BBOX);
-    } else {
-      addBoxToOriginal(cROI, referenceBox);
-    }
-  }
-  calibrationTable_[cROI->id] = {cROI->getScaleLevel(), newScale};
+  calibrationTable_[roi->id] = {roi->scaleLevel(), newScale};
 }
 
 void ROIResizer::getProbingCandidates(ROI* roi) const {
-  float scale = roi->getTargetScale();
-  int level = roi->getScaleLevel();
+  float scale = roi->targetScale();
+  int level = roi->scaleLevel();
   int numProbeSteps = getNumProbeSteps();
   float originalArea = roi->features.width * roi->features.height;
   assert(0.0f <= scale && scale <= 1.0f);
@@ -227,7 +192,7 @@ void ROIResizer::getProbingCandidates(ROI* roi) const {
 bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
   return box != nullptr && referenceBox != nullptr
          && box->label == referenceBox->label
-         && box->location.iou(referenceBox->location) > config_.PROBE_IOU_THRESHOLD
+         && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRESHOLD
          && box->confidence > config_.PROBE_CONF_THRESHOLD;
 }
 

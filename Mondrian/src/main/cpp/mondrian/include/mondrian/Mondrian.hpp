@@ -15,7 +15,7 @@ namespace md {
 class FrameBuffer;
 class InferenceEngine;
 class Logger;
-class MixedFrame;
+class PackedCanvas;
 class ROIExtractor;
 class ROIResizer;
 class PatchReconstructor;
@@ -40,11 +40,11 @@ class Mondrian {
 
   void preprocess(Frame* frame) const;
 
-  void handleFullFrameInferenceResults(Frame* frame);
+  void handleFullFrameResults(Frame* frame);
 
-  void handleMixedFrameInferenceResults(std::vector<MixedFrame>& mixedFrames);
+  void handlePackedCanvasResults(std::vector<PackedCanvas>& packedCanvas);
 
-  void handleROIWiseInferenceResults(std::vector<MixedFrame>& mixedFrames);
+  void handleROIWiseResults(std::vector<PackedCanvas>& packedCanvas);
 
   void releaseFrames(const MultiStream& frames);
 

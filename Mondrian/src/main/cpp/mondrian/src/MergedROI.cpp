@@ -1,9 +1,27 @@
 #include "mondrian/MergedROI.hpp"
 
+#include "mondrian/Frame.hpp"
+
 namespace md {
 
-MergedROI::MergedROI(const std::vector<ROI*>& rois, int border, float targetScale, Type type)
-    : rois(rois), border(border), targetScale(targetScale), type(type), loc(locOf(rois)) {}
+int MergedROI::BORDER = -1e5;
+const cv::Scalar MergedROI::BORDER_COLOR(255, 255, 255);
+const IntPair MergedROI::INVALID_XY{-1, -1};
+
+MergedROI::MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isProbing)
+    : rois_(rois), targetScale_(targetScale), isProbing_(isProbing),
+      frame_(frameOf(rois)), loc_(locOf(rois)),
+      packedXY_(INVALID_XY), relativePackedCanvasIndex_(-1), absolutePackedCanvasIndex_(-1),
+      packedCanvasSize_(-1), probingBox_(nullptr) {}
+
+Frame* MergedROI::frameOf(const std::vector<ROI*>& rois) {
+  assert(!rois.empty());
+  Frame* frame = rois[0]->frame;
+  for (int i = 1; i < rois.size(); i++) {
+    assert(frame == rois[i]->frame);
+  }
+  return frame;
+}
 
 Rect MergedROI::locOf(const std::vector<ROI*>& rois) {
   assert(!rois.empty());
@@ -22,21 +40,18 @@ Rect MergedROI::locOf(const std::vector<ROI*>& rois) {
 
 std::unique_ptr<MergedROI> MergedROI::merge(const MergedROI* m0, const MergedROI* m1) {
   std::vector<ROI*> newROIs;
-  newROIs.insert(newROIs.end(), m0->rois.begin(), m0->rois.end());
-  newROIs.insert(newROIs.end(), m1->rois.begin(), m1->rois.end());
-  assert(m0->border == m1->border);
-  int newBorder = m0->border;
-  float newScale = std::max(m0->targetScale, m1->targetScale);
-  Type newType = (m0->type == OF && m1->type == OF) ? OF : PD;
-  return std::make_unique<MergedROI>(newROIs, newBorder, newScale, newType);
+  newROIs.insert(newROIs.end(), m0->rois_.begin(), m0->rois_.end());
+  newROIs.insert(newROIs.end(), m1->rois_.begin(), m1->rois_.end());
+  float newScale = std::max(m0->targetScale_, m1->targetScale_);
+  return std::make_unique<MergedROI>(newROIs, newScale, false);
 }
 
-std::vector<std::unique_ptr<MergedROI>> MergedROI::mergeROIs(
-    const std::vector<std::unique_ptr<ROI>>& rois, int maxSize, int border) {
+std::vector<std::unique_ptr<MergedROI>>
+MergedROI::mergeROIs(const std::vector<std::unique_ptr<ROI>>& rois, int maxSize) {
   std::vector<std::unique_ptr<MergedROI>> mergedROIs;
   mergedROIs.reserve(rois.size());
   for (const auto& roi: rois) {
-    mergedROIs.emplace_back(new MergedROI({roi.get()}, border, roi->getTargetScale(), roi->type));
+    mergedROIs.emplace_back(new MergedROI({roi.get()}, roi->targetScale(), roi->type));
   }
 
   while (true) {
@@ -48,15 +63,14 @@ std::vector<std::unique_ptr<MergedROI>> MergedROI::mergeROIs(
         const auto& mi = mergedROIs[i].get();
         const auto& mj = mergedROIs[j].get();
         merged = merge(mi, mj);
-        int nw = ROI::getResizedMatEdgeLength(merged->locw, merged->targetScale);
-        int nh = ROI::getResizedMatEdgeLength(merged->loch, merged->targetScale);
-        if (std::max(nw + 2 * mi->border, nh + 2 * mi->border) > maxSize) {
+        int bw = borderedLengthOf(merged->loc_.w, merged->targetScale_);
+        int bh = borderedLengthOf(merged->loc_.h, merged->targetScale_);
+        if (std::max(bw, bh) > maxSize) {
           continue; // would be little more conservative for the general case
         }
 
-        int newArea = ROI::getResizedArea(merged->locw, merged->loch,
-                                          merged->targetScale);
-        int origArea = mi->rois[0]->getResizedArea() + mj->rois[0]->getResizedArea();
+        int newArea = merged->resizedArea();
+        int origArea = mi->resizedArea() + mj->resizedArea();
         if (newArea >= origArea) {
           continue;
         }
@@ -78,16 +92,58 @@ std::vector<std::unique_ptr<MergedROI>> MergedROI::mergeROIs(
 
   std::sort(mergedROIs.begin(), mergedROIs.end(),
             [](const std::unique_ptr<MergedROI>& m0, const std::unique_ptr<MergedROI>& m1) {
-              return m0->loc.maxLength() > m1->loc.maxLength();
+              return m0->loc_.maxWH > m1->loc_.maxWH;
             });
 
   for (auto& merged: mergedROIs) {
-    for (auto& roi: merged->rois) {
+    for (auto& roi: merged->rois_) {
       roi->mergedROI = merged.get();
     }
   }
 
   return mergedROIs;
+}
+
+cv::Mat MergedROI::mat() const {
+  int l = std::max(0, std::min(frame_->rgbMat.cols, int(loc_.l)));
+  int t = std::max(0, std::min(frame_->rgbMat.rows, int(loc_.t)));
+  int w = std::max(0, std::min(frame_->rgbMat.cols - l, int(loc_.w)));
+  int h = std::max(0, std::min(frame_->rgbMat.rows - t, int(loc_.h)));
+  return frame_->rgbMat.operator()(cv::Rect(l, t, w, h));
+}
+
+cv::Mat MergedROI::resizedMat() const {
+  int rw = resizedLengthOf(loc_.w, targetScale_);
+  int rh = resizedLengthOf(loc_.h, targetScale_);
+  cv::Mat rgbMat;
+  cv::resize(mat(), rgbMat, cv::Size(rw, rh));
+  return rgbMat;
+}
+
+cv::Mat MergedROI::borderedMat() const {
+  cv::Mat rgbMat = resizedMat();
+  cv::copyMakeBorder(rgbMat, rgbMat,
+                     BORDER, BORDER, BORDER, BORDER,
+                     cv::BORDER_CONSTANT, BORDER_COLOR);
+  int bw = borderedLengthOf(loc_.w, targetScale_);
+  int bh = borderedLengthOf(loc_.h, targetScale_);
+  assert(bw == rgbMat.cols && bh == rgbMat.rows);
+  return rgbMat;
+}
+
+void MergedROI::setPackInfo(IntPair xy, int relativePackedCanvasIndex, bool emulatedBatch, int roiSize) {
+  if (emulatedBatch) {
+    int bw = borderedLengthOf(loc_.w, targetScale_);
+    int bh = borderedLengthOf(loc_.h, targetScale_);
+    if (roiSize < std::max(bw, bh)) {
+      LOGE("ROISize %d < bw %d or bh %d", roiSize, bw, bh);
+      assert(false);
+    }
+    xy.first += (roiSize - bw) / 2;
+    xy.second += (roiSize - bh) / 2;
+  }
+  packedXY_ = xy;
+  relativePackedCanvasIndex_ = relativePackedCanvasIndex;
 }
 
 } // namespace md

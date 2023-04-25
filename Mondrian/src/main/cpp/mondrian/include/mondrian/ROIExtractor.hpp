@@ -11,7 +11,7 @@
 
 #include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
-#include "mondrian/MixedFrame.hpp"
+#include "mondrian/PackedCanvas.hpp"
 #include "mondrian/PatchMixer.hpp"
 #include "mondrian/ROIResizer.hpp"
 #include "mondrian/Utils.hpp"
@@ -30,7 +30,7 @@ class ROIExtractor {
 
   void notify();
 
-  std::tuple<std::vector<MixedFrame>, Frame*, MultiStream, Stream> prepareInference(
+  std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> prepareInference(
       std::vector<InferenceInfo>& nextInferencePlan, bool runFull, int scheduleID);
 
  private:
@@ -88,6 +88,7 @@ class ROIExtractor {
   const int ROISize_;
   const cv::Size targetSize_;
   const int maxMergeSize_;
+  const int border_;
   const ROIExtractorConfig config_;
   const std::set<int> vids_;
   int fullFrameVid_;

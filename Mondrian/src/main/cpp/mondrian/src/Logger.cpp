@@ -40,8 +40,8 @@ void Logger::logExecutionHeader() {
           << "PDExtractorID" << delim
           << "OFExtractorID" << delim
           << "numBoxes" << delim
-          << "numChildROIs" << delim
-          << "numParentROIs" << delim
+          << "numROIs" << delim
+          << "numMergedROIs" << delim
           << "inferenceFrameSize" << delim
           << "inferenceDevice" << delim
           << "enqueueTime" << delim
@@ -132,7 +132,7 @@ void Logger::logROIHeader() {
   }
   std::lock_guard<std::mutex> lock(mtx);
   logFile
-      // frame
+      // frame_
       << "videoId" << delim
       << "frameIndex" << delim
 
@@ -166,28 +166,25 @@ void Logger::logROIHeader() {
       << "shiftNcc" << delim
       << "avgErr" << delim
 
-      << "isProbingROI" << delim
       << "numProbingROIs" << delim
       << "id" << delim
 
       // Packing info
-      << "priority" << delim
-      << "packedLoc_l" << delim
-      << "packedLoc_t" << delim
-      << "packedLoc_r" << delim
-      << "packedLoc_b" << delim
+      << "mergedLoc_l" << delim
+      << "mergedLoc_t" << delim
+      << "mergedLoc_r" << delim
+      << "mergedLoc_b" << delim
       << "packedXY_x" << delim
       << "packedXY_y" << delim
-      << "packedScale" << delim
-      << "packedAbsMixedFrameIndex" << delim
-      << "packedMixedFrameSize" << delim
+      << "mergedScale" << delim
+      << "absolutePackedCanvasIndex" << delim
+      << "packedCanvasSize" << delim
 
       << "box" << delim
-      << "probingBox" << delim
 
       << "maxEdgeLength" << delim
-      << "targetScale" << delim
-      << "scaleLevel" << '\n';
+      << "targetScale_" << delim
+      << "scaleLevel_" << '\n';
   logFile.flush();
 }
 
@@ -195,18 +192,9 @@ void Logger::logROI(const ROI* roi) {
   if (!logFile.is_open() || roi == nullptr) {
     return;
   }
-  std::unique_lock<std::mutex> logLock(mtx, std::defer_lock);
-  if (!roi->isProbingROI) {
-    logLock.lock();
-    for (auto& probeROI : roi->roisForProbing) {
-      assert(probeROI->isProbingROI);
-      logROI(probeROI);
-    }
-  } else {
-    assert(roi->roisForProbing.empty());
-  }
-  const ROI* pROI = roi->isProbingROI ? roi : roi->mergedROI;
+  const MergedROI* mergedROI = roi->mergedROI;
 
+  std::lock_guard<std::mutex> logLock(mtx);
   logFile
       // frame
       << roi->frame->vid << delim
@@ -242,27 +230,24 @@ void Logger::logROI(const ROI* roi) {
       << roi->features.ofFeatures.shiftNcc << delim
       << roi->features.ofFeatures.avgErr << delim
 
-      << roi->isProbingROI << delim
       << roi->roisForProbing.size() << delim
       << roi->id << delim
 
-      << pROI->priority << delim
-      << pROI->paddedLoc.l << delim
-      << pROI->paddedLoc.t << delim
-      << pROI->paddedLoc.r << delim
-      << pROI->paddedLoc.b << delim
-      << pROI->getPackedXY().first << delim
-      << pROI->getPackedXY().second << delim
-      << pROI->getTargetScale() << delim
-      << pROI->packedAbsMixedFrameIndex << delim
-      << pROI->packedMixedFrameSize << delim
+      << mergedROI->loc().l << delim
+      << mergedROI->loc().t << delim
+      << mergedROI->loc().r << delim
+      << mergedROI->loc().b << delim
+      << mergedROI->packedXY().first << delim
+      << mergedROI->packedXY().second << delim
+      << mergedROI->targetScale() << delim
+      << mergedROI->absolutePackedCanvasIndex() << delim
+      << mergedROI->packedCanvasSize() << delim
 
       << (roi->box == nullptr ? "X" : roi->box->str().c_str()) << delim
-      << (roi->probingBox == nullptr ? "X" : roi->probingBox->str().c_str()) << delim
 
       << roi->maxEdgeLength << delim
-      << roi->getTargetScale() << delim
-      << roi->getScaleLevel() << '\n';
+      << roi->targetScale() << delim
+      << roi->scaleLevel() << '\n';
   logFile.flush();
 }
 

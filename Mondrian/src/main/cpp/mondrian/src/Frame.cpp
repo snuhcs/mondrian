@@ -9,9 +9,9 @@ namespace md {
 
 const int Frame::FULL_KEY_OFFSET = 1000000;
 
-Frame::Frame(const int vid, const int frameIndex, const cv::Mat rgbMat,
+Frame::Frame(const int vid, const int frameIndex, const cv::Mat& rgbMat,
              Frame* prevFrame, const time_us& enqueueTime)
-    : vid(vid), frameIndex(frameIndex), rgbMat(rgbMat),
+    : vid(vid), frameIndex(frameIndex), scheduleID(-1), rgbMat(rgbMat),
       width(rgbMat.cols), height(rgbMat.rows), prevFrame(prevFrame), nextFrame(nullptr),
       useInferenceResultForOF(false), extractOFAgain(false), enqueueTime(enqueueTime),
       isBoxesReady(false), isROIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
@@ -19,12 +19,13 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat rgbMat,
 
 void Frame::resizeROIs(ROIResizer* roiResizer, bool emulatedBatch, int roiSize) {
   if (emulatedBatch) {
-    for (auto& cROI: childROIs) {
-      float w = cROI->paddedLoc.w;
-      float h = cROI->paddedLoc.h;
-      float scale = std::min(1.0f, float(roiSize - 2 * cROI->roiBorder) / std::max(h, w));
-      cROI->setTargetScale(scale, ROIResizer::INVALID_LEVEL);
-      auto[bw, bh] = cROI->getBorderMatWidthHeight();
+    for (auto& roi: rois) {
+      float w = roi->paddedLoc.w;
+      float h = roi->paddedLoc.h;
+      float scale = std::min(1.0f, float(roiSize - 2 * MergedROI::BORDER) / std::max(h, w));
+      roi->scaleTo(scale, ROIResizer::INVALID_LEVEL);
+      int bw = MergedROI::borderedLengthOf(w, scale);
+      int bh = MergedROI::borderedLengthOf(h, scale);
       if (roiSize < std::max(bw, bh)) {
         LOGE("Frame::resizeROIs: roiSize=%3d | %4.2f*%4.2f=%4.2f => %3d | %4.2f*%4.2f=%4.2f => %3d",
              roiSize, w, scale, w * scale, bw, h, scale, h * scale, bh);
@@ -32,136 +33,63 @@ void Frame::resizeROIs(ROIResizer* roiResizer, bool emulatedBatch, int roiSize) 
       }
     }
   } else {
-    for (auto& cROI: rois) {
-      if (cROI->type == OF) {
-        auto[scale, level] = roiResizer->getTargetScale(cROI->id, cROI->features,
-                                                        cROI->maxEdgeLength);
+    for (auto& roi: rois) {
+      if (roi->type == OF) {
+        auto[scale, level] = roiResizer->getTargetScale(roi->id, roi->features,
+                                                        roi->maxEdgeLength);
         assert(0.0f < scale && scale <= 1.0f);
-        cROI->setTargetScale(scale, level);
+        roi->scaleTo(scale, level);
       } else {
-        if (cROI->nextROI != nullptr) {
-          cROI->setTargetScale(cROI->nextROI->getTargetScale(), cROI->nextROI->getScaleLevel());
+        if (roi->nextROI != nullptr) {
+          roi->scaleTo(roi->nextROI->targetScale(), roi->nextROI->scaleLevel());
         } else {
-          cROI->setTargetScale(1.0f, ROIResizer::INVALID_LEVEL);
+          roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL);
         }
       }
     }
   }
-}
-
-void Frame::resetParentROIs() {
-  parentROIs.clear();
-  assert(parentROIs.empty());
-  for (auto& cROI: childROIs) {
-    assert(cROI->childROIs.empty());
-    assert(cROI->roisForProbing.empty());
-  }
-  for (auto& cROI: childROIs) {
-    std::unique_ptr<ROI> pROI = std::make_unique<ROI>(*cROI);
-    cROI->parentROI = pROI.get();
-    pROI->childROIs.push_back(cROI.get());
-    parentROIs.push_back(std::move(pROI));
-  }
-}
-
-void Frame::mergeROIs(float maxSize) {
-  resetParentROIs();
-  while (true) {
-    bool updated = false;
-    int i, j;
-    for (i = 0; i < parentROIs.size(); i++) {
-      for (j = i + 1; j < parentROIs.size(); j++) {
-        const auto& roi0 = parentROIs[i];
-        const auto& roi1 = parentROIs[j];
-        Rect newRect = Rect::merge(roi0->paddedLoc, roi1->paddedLoc);
-        float newScale = std::max(roi0->getTargetScale(), roi1->getTargetScale());
-
-        int nw = ROI::getResizedMatEdgeLength(newRect.w, newScale);
-        int nh = ROI::getResizedMatEdgeLength(newRect.h, newScale);
-        if (std::max(nw + 2*roi0->roiBorder, nh + 2*roi0->roiBorder) > maxSize) {
-          // would be little more conservative for the general case
-          continue;
-        }
-
-        int newArea = ROI::getResizedArea(newRect.w, newRect.h, newScale);
-        int origArea = roi0->getResizedArea() + roi1->getResizedArea();
-        if (newArea >= origArea) {
-          continue;
-        }
-        updated = true;
-        break;
-      }
-      if (updated) {
-        break;
-      }
-    }
-    if (!updated) {
-      break;
-    }
-    parentROIs.push_back(std::move(ROI::mergeROIs(parentROIs[i].get(), parentROIs[j].get())));
-    // Match child parent
-    ROI* mergedROI = parentROIs.back().get();
-    mergedROI->childROIs.insert(mergedROI->childROIs.end(),
-                                parentROIs[i]->childROIs.begin(), parentROIs[i]->childROIs.end());
-    mergedROI->childROIs.insert(mergedROI->childROIs.end(),
-                                parentROIs[j]->childROIs.begin(), parentROIs[j]->childROIs.end());
-    for (ROI* cROI: mergedROI->childROIs) {
-      cROI->parentROI = mergedROI;
-    }
-    assert(j > i);
-    parentROIs.erase(parentROIs.begin() + j);
-    parentROIs.erase(parentROIs.begin() + i);
-  }
-  std::sort(parentROIs.begin(), parentROIs.end(),
-            [](const std::unique_ptr<ROI>& l, const std::unique_ptr<ROI>& r) {
-              return l->maxEdgeLength > r->maxEdgeLength;
-            });
-  testAssignedUniqueROIID(childROIs);
-  testParentChildrenIDsAndChildIDsSame(childROIs, parentROIs);
-  testChildROIsFrameRelation(childROIs);
-  testParentROIsFrameRelation(parentROIs);
 }
 
 void Frame::resetProbeROIs() {
-  for (auto& cROI: rois) {
-    cROI->roisForProbing.clear();
+  for (auto& roi: rois) {
+    roi->roisForProbing.clear();
     probingROIs.clear();
   }
 }
 
 void Frame::filterPDROIs(float threshold, bool eatPD) {
   std::vector<ROI*> OFROIs;
-  for (auto& cROI: rois) {
-    if (cROI->type == OF) {
-      OFROIs.push_back(cROI.get());
+  for (auto& roi: rois) {
+    if (roi->type == OF) {
+      OFROIs.push_back(roi.get());
     }
   }
 
   for (auto it = rois.begin(); it != rois.end();) {
-    auto& cROI = *it;
-    if (cROI->type == PD) {
+    auto& roi = *it;
+    if (roi->type == PD) {
       if (eatPD) {
         ROI* maxOverlapROI = nullptr;
         float maxInterSection = 0;
         for (ROI* OFROI: OFROIs) {
-          float intersection = cROI->paddedLoc.intersection(OFROI->origLoc);
+          float intersection = roi->paddedLoc.intersection(OFROI->origLoc);
           if (intersection > maxInterSection) {
             maxOverlapROI = OFROI;
             maxInterSection = intersection;
           }
         }
-        if (maxInterSection / cROI->getPaddedArea() >= threshold) {
+        if (maxInterSection / roi->paddedArea() >= threshold) {
           assert(maxOverlapROI != nullptr);
-          maxOverlapROI->eatPD(cROI->paddedLoc);
+          maxOverlapROI->eatPD(roi->paddedLoc);
           it = rois.erase(it);
         }
       }
 
       float totalOFCoverage = 0;
       for (ROI* OFROI: OFROIs) {
-        totalOFCoverage += cROI->paddedLoc.intersection(OFROI->paddedLoc);
+        totalOFCoverage += roi->paddedLoc.intersection(OFROI->paddedLoc);
       }
-      if (totalOFCoverage / cROI->getPaddedArea() >= threshold) {
+      if (totalOFCoverage / roi->paddedArea() >= threshold) {
         it = rois.erase(it);
         continue;
       }
@@ -169,26 +97,26 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
     it++;
   }
 
-  for (auto& cROI: rois) {
-    if (cROI->type == PD) {
-      assert(cROI->id == UNASSIGNED_ID);
-      cROI->id = ROI::getNewIds(1).first;
+  for (auto& roi: rois) {
+    if (roi->type == PD) {
+      assert(roi->id == INVALID_ID);
+      roi->id = ROI::getNewIds(1).first;
     } else {
-      assert(cROI->id != UNASSIGNED_ID);
+      assert(roi->id != INVALID_ID);
     }
   }
 }
 
-bool Frame::isReadyToMarry(int mixedFrameIndex) const {
-  auto isROIPacked = [&mixedFrameIndex](const std::unique_ptr<ROI>& roi) {
-    return roi->isPacked() && roi->getPackedMixedFrameIndex() <= mixedFrameIndex;
+bool Frame::isReadyToMarry(int packedCanvasIndex) const {
+  auto isROIPacked = [&packedCanvasIndex](const std::unique_ptr<MergedROI>& mergedROI) {
+    return mergedROI->isPacked() && mergedROI->relativePackedCanvasIndex() <= packedCanvasIndex;
   };
   bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIPacked)
                     && std::all_of(probingROIs.begin(), probingROIs.end(), isROIPacked);
   bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
-                                     [](auto& box) { return box->id == UNASSIGNED_ID; });
+                                     [](auto& box) { return box->id == INVALID_ID; });
   bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),
-                                   [](auto& box) { return box->id != UNASSIGNED_ID; });
+                                   [](auto& box) { return box->id != INVALID_ID; });
   assert(isAllUnassigned || isAllAssigned);
   return isAllReady && isAllUnassigned;
 }
@@ -203,10 +131,10 @@ bool Frame::readyForOFExtraction() const {
 
 void Frame::resetOFROIExtraction() {
   rois.erase(std::remove_if(rois.begin(), rois.end(),
-                            [](const auto& cROI) { return cROI->type == OF; }),
+                            [](const auto& roi) { return roi->type == OF; }),
              rois.end());
-  std::for_each(rois.begin(), rois.end(), [](auto& cROI) {
-    if (cROI->type == PD) { cROI->id = UNASSIGNED_ID; }
+  std::for_each(rois.begin(), rois.end(), [](auto& roi) {
+    if (roi->type == PD) { roi->id = INVALID_ID; }
   });
   useInferenceResultForOF = false;
   extractOFAgain = false;

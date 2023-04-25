@@ -8,13 +8,16 @@
 
 namespace md {
 
-typedef int idType;
-
+using ID = int;
 using IntPair = std::pair<int, int>;
 using IntPairs = std::vector<std::pair<int, int>>;
 
-extern const idType UNASSIGNED_ID;
-extern const idType MERGED_ROI_ID;
+extern const ID INVALID_ID;
+
+enum Type {
+  OF = 1,
+  PD = 2,
+};
 
 enum Device {
   NO_DEVICE = -1,
@@ -22,18 +25,18 @@ enum Device {
   DSP = 1,
 };
 
-Device toDevice(std::string deviceStr);
+Device toDevice(const std::string& deviceStr);
 
 const char* toConstStr(Device device);
 
 enum Origin {
-  O_NULL = 0,            // null value for initialization
-  O_FULL_FRAME = 1,      // (Box) matched Box from full frame
-  O_PACKED_BBOX = 2,     // (ROI, Box) OF ROI from bounding box, Box from those ROIs
-  O_PD = 3,              // (ROI, Box) PD ROI, OF ROI originated from PD ROI, Box from those ROIs
-  O_INTERPOLATE = 4,     // (Box) interpolated Box
-  O_NEW_FULL_FRAME = 5,  // (Box) unmatched Box from full frame
-  O_NEW_PACKED_BBOX = 6, // (Box) unmatched Box from packed canvas
+  O_INVALID = 0,           // null value for initialization
+  O_FULL_FRAME = 1,        // (Box) matched Box from full frame_
+  O_PACKED_CANVAS = 2,     // (ROI, Box) OF ROI from bounding box, Box from those ROIs
+  O_PD = 3,                // (ROI, Box) PD ROI, OF ROI originated from PD ROI, Box from those ROIs
+  O_INTERPOLATE = 4,       // (Box) interpolated Box
+  O_NEW_FULL_FRAME = 5,    // (Box) unmatched Box from full frame_
+  O_NEW_PACKED_CANVAS = 6, // (Box) unmatched Box from packed canvas
 };
 
 struct Rect {
@@ -43,12 +46,17 @@ struct Rect {
   float b;
   float w;
   float h;
+  float maxWH;
   float area;
 
   Rect() {}
 
-  Rect(float l, float t, float r, float b)
-      : l(l), t(t), r(r), b(b), w(r - l), h(b - t), area((r - l) * (b - t)) {};
+  Rect(float l, float t, float r, float b) : l(l), t(t), r(r), b(b) {
+    w = r - l;
+    h = b - t;
+    maxWH = std::max(w, h);
+    area = w * h;
+  };
 
   Rect(const Rect& r) : Rect(r.l, r.t, r.r, r.b) {};
 
@@ -88,25 +96,25 @@ struct Rect {
 class ROI;
 
 struct BoundingBox {
-  Rect location;
+  ID id;
+  Rect loc;
   float confidence;
   int label;
-  idType choiceOfBox;
-  idType id;
   ROI* srcROI;
   Origin origin;
+  ID choiceOfBox;
 
-  BoundingBox(idType id, const Rect location, const float confidence, int label, Origin origin)
-      : id(id), location(location), confidence(confidence), label(label), origin(origin),
-        srcROI(nullptr), choiceOfBox(UNASSIGNED_ID) {}
+  BoundingBox(ID id, const Rect location, const float confidence, int label, Origin origin)
+      : id(id), loc(location), confidence(confidence), label(label), origin(origin),
+        srcROI(nullptr), choiceOfBox(INVALID_ID) {}
 
   std::string str() const {
     std::stringstream ss;
     ss << id << ','
-       << location.l << ','
-       << location.t << ','
-       << location.r << ','
-       << location.b << ','
+       << loc.l << ','
+       << loc.t << ','
+       << loc.r << ','
+       << loc.b << ','
        << confidence << ','
        << origin << ','
        << choiceOfBox << ','
