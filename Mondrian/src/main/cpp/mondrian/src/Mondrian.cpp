@@ -106,7 +106,7 @@ void Mondrian::work() {
 
     // Wait for scheduling interval
     time_us elapsedTime = logger.getElapsedTime();
-    if (config_.ALLOW_INTERPOLATION && scheduleInterval_ > elapsedTime) {
+    if (scheduleInterval_ > elapsedTime) {
       std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval_ - elapsedTime));
     }
 

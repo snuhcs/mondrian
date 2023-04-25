@@ -435,6 +435,7 @@ IntPairs ROIExtractor::getBoxesIfLast(const Frame* frame) {
   }
   for (const auto& roi: frame->rois) {
     if (roi->scaleLevel() == ROIResizer::INVALID_LEVEL) {
+      roi->probeScales.clear();
       continue;
     }
     ROIResizer_->getProbingCandidates(roi.get());
@@ -462,7 +463,7 @@ void ROIExtractor::prepareFrameLast(Frame* frame, const Indices& indices,
   }
   for (const auto& roi: frame->rois) {
     if (roi->scaleLevel() == ROIResizer::INVALID_LEVEL) {
-      i += int(roi->probeScales.size());
+      assert(roi->probeScales.empty());
       continue;
     }
     for (auto probeScale: roi->probeScales) {
