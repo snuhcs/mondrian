@@ -439,10 +439,8 @@ IntPairs ROIExtractor::getBoxesIfLast(const Frame* frame) {
     if (cROI->getScaleLevel() == ROIResizer::INVALID_LEVEL) {
       continue;
     }
-    std::vector<float> probingCandidates = mROIResizer->getProbingCandidates(
-        cROI->getTargetScale(), cROI->getScaleLevel(), mROIResizer->getNumProbeSteps(),
-        cROI->features.width * cROI->features.height);
-    for (auto scale: probingCandidates) {
+    mROIResizer->getProbingCandidates(cROI.get());
+    for (auto scale: cROI->probeScales) {
       boxesIfLast.push_back(cROI->getBorderMatWidthHeight(scale));
     }
   }
@@ -459,36 +457,20 @@ void ROIExtractor::prepareFrameLast(Frame* frame,
     if (!mEmulatedBatch && mConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
       pROI->setTargetScale(1.0f, ROIResizer::INVALID_LEVEL);
     }
-    if (mEmulatedBatch) {
-      auto[bw, bh] = pROI->getBorderMatWidthHeight();
-      if (mROISize < std::max(bw, bh)) {
-        LOGE("ROISize %d < bw %d or bh %d", mROISize, bw, bh);
-        assert(false);
-      }
-    }
     pROI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mROISize);
     i++;
   }
   for (const auto& cROI: frame->childROIs) {
     if (cROI->getScaleLevel() == ROIResizer::INVALID_LEVEL) {
+      i += int(cROI->probeScales.size());
       continue;
     }
-    std::vector<float> probingCandidates = mROIResizer->getProbingCandidates(
-        cROI->getTargetScale(), cROI->getScaleLevel(), mROIResizer->getNumProbeSteps(),
-        cROI->features.width * cROI->features.height);
-    for (auto scale: probingCandidates) {
+    for (auto scale: cROI->probeScales) {
+      assert(0.0f < scale && scale <= 1.0f);
       std::unique_ptr<ROI> probeROI = std::make_unique<ROI>(
               nullptr, cROI->id, cROI->frame, cROI->paddedLoc, cROI->type, cROI->origin, cROI->label,
               cROI->features.ofFeatures, ROI::INVALID_CONF, 0, mConfig.ROI_BORDER, true);
-      assert(0.0f < scale && scale <= 1.0f);
       probeROI->setTargetScale(scale, cROI->getScaleLevel());
-      if (mEmulatedBatch) {
-      auto[bw, bh] = probeROI->getBorderMatWidthHeight();
-        if (mROISize < std::max(bw, bh)) {
-          LOGE("ROISize %d < bw %d or bh %d", mROISize, bw, bh);
-          assert(false);
-        }
-      }
       probeROI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mROISize);
       cROI->roisForProbing.push_back(probeROI.get());
       frame->probingROIs.push_back(std::move(probeROI));
@@ -514,12 +496,6 @@ void ROIExtractor::prepareScaledFrame(Frame* frame,
   int i = 0;
   for (const auto& pROI: frame->parentROIs) {
     auto[bw, bh] = pROI->getBorderMatWidthHeight();
-    if (mEmulatedBatch) {
-      if (mROISize < std::max(bw, bh)) {
-        LOGE("ROISize %d < bw %d or bh %d", mROISize, bw, bh);
-        assert(false);
-      }
-    }
     pROI->setPackInfo(locations[i], indices[i].first, mEmulatedBatch, mROISize);
     i++;
   }

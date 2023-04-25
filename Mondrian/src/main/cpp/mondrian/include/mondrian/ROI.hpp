@@ -174,6 +174,7 @@ class ROI {
   Origin origin;
   int label;
   Features features;
+  std::vector<float> probeScales;
   std::vector<ROI*> roisForProbing;
   float priority;
 
