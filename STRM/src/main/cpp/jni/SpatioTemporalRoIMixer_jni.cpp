@@ -13,7 +13,6 @@
 #include "strm/impl/ImplConfig.hpp"
 
 static JavaVM* vm;
-static jboolean isCopy = JNI_TRUE;
 
 extern "C"
 JNIEXPORT jlong JNICALL
@@ -32,10 +31,10 @@ Java_hcs_offloading_strm_Emulator_createSpatioTemporalRoIMixer(JNIEnv* env, jobj
 extern "C"
 JNIEXPORT void JNICALL
 Java_hcs_offloading_strm_Emulator_enqueueImage(JNIEnv* env, jobject thiz,
-                                               jlong handle, jint vid, jlong matAddr) {
+                                               jlong handle, jint vid, jlong yuvMatAddr) {
   auto* strm = (rm::SpatioTemporalRoIMixer*) handle;
-  auto* image = (cv::Mat*) matAddr;
-  strm->enqueueImage(vid, *image);
+  auto* yuvMat = (cv::Mat*) yuvMatAddr;
+  strm->enqueueImage(vid, *yuvMat);
 }
 
 extern "C"

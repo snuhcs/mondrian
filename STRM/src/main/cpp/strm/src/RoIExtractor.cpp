@@ -580,8 +580,8 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
                                       const std::vector<BoundingBox>& boundingBoxes,
                                       const cv::Size& targetSize,
                                       std::vector<std::unique_ptr<RoI>>& outChildRoIs) const {
-  auto width = float(currFrame->mat.cols);
-  auto height = float(currFrame->mat.rows);
+  auto width = float(currFrame->rgbMat.cols);
+  auto height = float(currFrame->rgbMat.rows);
 
   std::vector<Rect> boundingRects;
   boundingRects.reserve(boundingBoxes.size());
@@ -616,12 +616,12 @@ void RoIExtractor::getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
 std::vector<OFFeatures> RoIExtractor::opticalFlowTracking(
     const Frame* prevFrame, const Frame* currFrame,
     const std::vector<Rect>& boundingBoxes, const cv::Size& targetSize) {
-  assert(!prevFrame->preProcessedMat.empty());
-  assert(!currFrame->preProcessedMat.empty());
-  assert(prevFrame->preProcessedMat.channels() == currFrame->preProcessedMat.channels());
+  assert(!prevFrame->resizedGrayMat.empty());
+  assert(!currFrame->resizedGrayMat.empty());
+  assert(prevFrame->resizedGrayMat.channels() == currFrame->resizedGrayMat.channels());
 
-  const cv::Mat& prevImage = prevFrame->preProcessedMat;
-  const cv::Mat& currImage = currFrame->preProcessedMat;
+  const cv::Mat& prevImage = prevFrame->resizedGrayMat;
+  const cv::Mat& currImage = currFrame->resizedGrayMat;
 
   std::vector<int> startEndIndices = {0};
   std::vector<cv::Point2f> inputPoints;
@@ -699,10 +699,10 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
     prevFrame = prevFrame->prevFrame;
   }
 
-  assert(!prevFrame->preProcessedMat.empty());
-  assert(!currFrame->preProcessedMat.empty());
-  assert(prevFrame->preProcessedMat.channels() == currFrame->preProcessedMat.channels());
-  cv::Mat mat = calculateDiffAndThreshold(prevFrame->preProcessedMat, currFrame->preProcessedMat);
+  assert(!prevFrame->resizedGrayMat.empty());
+  assert(!currFrame->resizedGrayMat.empty());
+  assert(prevFrame->resizedGrayMat.channels() == currFrame->resizedGrayMat.channels());
+  cv::Mat mat = calculateDiffAndThreshold(prevFrame->resizedGrayMat, currFrame->resizedGrayMat);
   cannyEdgeDetection(mat);
 
   std::vector<std::vector<cv::Point>> contours;
@@ -720,10 +720,10 @@ void RoIExtractor::getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize
     if (minPDRoISize <= std::min(box.width, box.height)
         && std::max(box.width, box.height) <= maxPDRoISize) {
       boxes.push_back(Rect(
-          box.x * float(currFrame->mat.cols) / float(targetSize.width),
-          box.y * float(currFrame->mat.rows) / float(targetSize.height),
-          (box.x + box.width) * float(currFrame->mat.cols) / float(targetSize.width),
-          (box.y + box.height) * float(currFrame->mat.rows) / float(targetSize.height)));
+              box.x * float(currFrame->rgbMat.cols) / float(targetSize.width),
+              box.y * float(currFrame->rgbMat.rows) / float(targetSize.height),
+              (box.x + box.width) * float(currFrame->rgbMat.cols) / float(targetSize.width),
+              (box.y + box.height) * float(currFrame->rgbMat.rows) / float(targetSize.height)));
     }
   }
 

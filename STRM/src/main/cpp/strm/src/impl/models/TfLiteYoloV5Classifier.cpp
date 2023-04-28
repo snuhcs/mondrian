@@ -74,10 +74,10 @@ TfLiteYoloV5Classifier::~TfLiteYoloV5Classifier() {
   TfLiteGpuDelegateV2Delete(delegate);
 }
 
-cv::Mat TfLiteYoloV5Classifier::preprocess(const cv::Mat& mat) {
-  cv::Mat preprocessedMat;
-  const int& width = mat.cols;
-  const int& height = mat.rows;
+cv::Mat TfLiteYoloV5Classifier::preprocess(const cv::Mat& rgbMat) {
+  cv::Mat mat;
+  const int& width = rgbMat.cols;
+  const int& height = rgbMat.rows;
   if (width * inputSize.height > height * inputSize.width) {
     resizeWidth = inputSize.width;
     resizeHeight = height * inputSize.width / width;
@@ -93,12 +93,11 @@ cv::Mat TfLiteYoloV5Classifier::preprocess(const cv::Mat& mat) {
     left = (inputSize.width - resizeWidth) / 2;
     right = (inputSize.width - resizeWidth) - left;
   }
-  cv::resize(mat, preprocessedMat, cv::Size(resizeWidth, resizeHeight));
-  cv::copyMakeBorder(preprocessedMat, preprocessedMat, top, bottom, left, right,
+  cv::resize(rgbMat, mat, cv::Size(resizeWidth, resizeHeight));
+  cv::copyMakeBorder(mat, mat, top, bottom, left, right,
                      cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
-  cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
-  preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
-  return preprocessedMat;
+  mat.convertTo(mat, CV_32FC3, 1.f / 255);
+  return mat;
 }
 
 void TfLiteYoloV5Classifier::inference(const cv::Mat& mat) {

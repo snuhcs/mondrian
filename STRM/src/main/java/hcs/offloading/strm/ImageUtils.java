@@ -8,11 +8,13 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class DrawUtil {
+public class ImageUtils {
     private static final String[] LABELS = {
             "person",
             "bicycle",
@@ -191,5 +193,14 @@ public class DrawUtil {
             }
         }
         return bitmap;
+    }
+
+    public static void saveBitmap(Bitmap bmp, String filepath) {
+        try (FileOutputStream out = new FileOutputStream(filepath)) {
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
+            // PNG is a lossless format, the compression factor (100) is ignored
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

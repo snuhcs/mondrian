@@ -89,10 +89,10 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int in
   outputs = outputTensor->data.int8;
 }
 
-cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& mat) {
-  cv::Mat preprocessedMat;
-  const int& width = mat.cols;
-  const int& height = mat.rows;
+cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& rgbMat) {
+  cv::Mat mat;
+  const int& width = rgbMat.cols;
+  const int& height = rgbMat.rows;
   if (width * inputSize.height > height * inputSize.width) {
     resizeWidth = inputSize.width;
     resizeHeight = height * inputSize.width / width;
@@ -108,28 +108,27 @@ cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& mat) {
     left = (inputSize.width - resizeWidth) / 2;
     right = (inputSize.width - resizeWidth) - left;
   }
-  cv::resize(mat, preprocessedMat, cv::Size(resizeWidth, resizeHeight));
-  cv::copyMakeBorder(preprocessedMat, preprocessedMat, top, bottom, left, right,
+  cv::resize(rgbMat, mat, cv::Size(resizeWidth, resizeHeight));
+  cv::copyMakeBorder(mat, mat, top, bottom, left, right,
                      cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
-  cv::cvtColor(preprocessedMat, preprocessedMat, CV_BGRA2RGB);
-  preprocessedMat.convertTo(preprocessedMat, CV_32FC3, 1.f / 255);
-  return preprocessedMat;
+  mat.convertTo(mat, CV_32FC3, 1.f / 255);
+  return mat;
 }
 
 void TfLiteYoloV5ClassifierDSP::inference(const cv::Mat& mat) {
   assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_32FC3);
   mat /= inputScale;
-  cv::Mat newMat;
-  mat.convertTo(newMat, CV_8SC3);
-  newMat += inputBias;
-  assert(newMat.cols == inputSize.width && newMat.rows == inputSize.height &&
-         newMat.type() == CV_8SC3);
-  std::memcpy((void*) input, (void*) newMat.data, inputSize.area() * newMat.elemSize());
+  cv::Mat quantizedMat;
+  mat.convertTo(quantizedMat, CV_8SC3);
+  quantizedMat += inputBias;
+  assert(quantizedMat.cols == inputSize.width && quantizedMat.rows == inputSize.height &&
+         quantizedMat.type() == CV_8SC3);
+  std::memcpy((void*) input, (void*) quantizedMat.data, inputSize.area() * quantizedMat.elemSize());
   interpreter->Invoke();
 }
 
-Result TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& mat) {
-  cv::Mat preprocessedMat = preprocess(mat);
+Result TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& rgbMat) {
+  cv::Mat preprocessedMat = preprocess(rgbMat);
 
   time_us start = NowMicros();
   inference(preprocessedMat);
@@ -160,7 +159,7 @@ Result TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat& mat) {
                          float(box[1] - outputBias) * outputScale,
                          float(box[2] - outputBias) * outputScale,
                          float(box[3] - outputBias) * outputScale,
-                         mat.cols, mat.rows),
+                         rgbMat.cols, rgbMat.rows),
           maxConfidence, maxLabel, origin_Null));
     }
   }

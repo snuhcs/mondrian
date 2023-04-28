@@ -19,14 +19,14 @@ class Worker {
 
   ~Worker();
 
-  void enqueue(const cv::Mat& mat, int inputSize, bool isFullFrame, int key);
+  void enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, int key);
 
   std::map<std::tuple<int, bool>, time_us> getInferenceTimes();
 
  private:
   void work();
 
-  void drawInferenceResult(const cv::Mat& mat, const std::vector<BoundingBox>& boxes);
+  void drawInferenceResult(const cv::Mat& rgbMat, const std::vector<BoundingBox>& boxes);
 
   const Device device;
   const bool draw;

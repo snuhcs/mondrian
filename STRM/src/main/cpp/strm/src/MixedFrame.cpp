@@ -9,7 +9,7 @@ int MixedFrame::numMixedFrames = 0;
 
 MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixedFrameSize)
     : device(device), packedRoIs(packedRoIs), mixedFrameSize(mixedFrameSize),
-      packedMat(mixedFrameSize, mixedFrameSize, CV_8UC4, cv::Scalar(114, 114, 114, 255)),
+      packedMat(mixedFrameSize, mixedFrameSize, CV_8UC3, cv::Scalar(114, 114, 114)),
       mixedFrameIndex(numMixedFrames++) {
   // TODO: Handle different background colors according to the model
   // (e.g. white for YOLOv4, gray for YOLOv5)

@@ -1,7 +1,6 @@
 package hcs.offloading.strm;
 
 import android.graphics.Bitmap;
-import android.media.MediaMetadataRetriever;
 import android.util.Log;
 import android.util.Pair;
 import android.widget.ImageView;
@@ -22,7 +21,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Emulator {
+public class Emulator implements VideoLoader.Callback {
     static {
         if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
         else Log.d("OpenCV", "OpenCV loaded Successfully");
@@ -39,109 +38,72 @@ public class Emulator {
     }
 
     private static class VideoConfig {
-        String PATH;
-        Pair<Integer, Integer> FRAME_RANGE;
-        int FPS = 0;
+        String path;
+        Pair<Integer, Integer> frame_range;
+        int fps;
     }
 
     private static final String TAG = Emulator.class.getName();
-    private static final String IMPL_CONFIG_PATH = "/data/local/tmp/strm.json";
-
-    private final ImageView outputView;
+    private static final String VIDEO_CONFIG_PATH = "/data/local/tmp/strm.json";
 
     private final long handle;
-
-    private final List<Thread> videoThreads;
+    private final ImageView outputView;
+    private final List<VideoLoader> videoLoaders = new ArrayList<>();
 
     public Emulator(ImageView outputView) throws JSONException, IOException {
         this.outputView = outputView;
-
         handle = createSpatioTemporalRoIMixer();
 
-        videoThreads = createAndStartVideoThreads(parseVideoConfigs());
+        List<VideoConfig> videoConfigs = parseVideoConfigs();
+        for (int vid = 0; vid < videoConfigs.size(); vid++) {
+            VideoConfig config = videoConfigs.get(vid);
+            videoLoaders.add(new VideoLoader(vid, config.path, config.fps, this));
+        }
+    }
+
+    @Override
+    public void onFrame(int vid, Mat yuvMat) {
+        enqueueImage(handle, vid, yuvMat.getNativeObjAddr());
     }
 
     public void close() {
-        try {
-            for (Thread videoThread : videoThreads) {
-                videoThread.join();
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        for (VideoLoader videoLoader : videoLoaders) {
+            videoLoader.close();
         }
         close(handle);
     }
 
-    private List<Thread> createAndStartVideoThreads(List<VideoConfig> videoConfigs) {
-        List<Thread> videoThreads = new ArrayList<>();
-        for (int videoIndex = 0; videoIndex < videoConfigs.size(); videoIndex++) {
-            VideoConfig config = videoConfigs.get(videoIndex);
-            int vid = videoIndex;
-            videoThreads.add(new Thread(() -> {
-                MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-                retriever.setDataSource(config.PATH);
-                long startTimeNs = System.nanoTime();
-                int frameCount = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT));
-                int startIndex = config.FRAME_RANGE.first;
-                int endIndex = config.FRAME_RANGE.second == -1 ? frameCount : config.FRAME_RANGE.second;
-                for (int frameIndex = startIndex; frameIndex < endIndex; frameIndex++) {
-                    Log.v(TAG, "Video " + vid + " frame " + frameIndex + " loaded");
-                    Bitmap bitmap = retriever.getFrameAtIndex(frameIndex);
-                    Mat mat = new Mat();
-                    Utils.bitmapToMat(bitmap, mat);
-                    enqueueImage(handle, vid, mat.getNativeObjAddr());
-                    if (config.FPS != 0) {
-                        long endTimeNs = System.nanoTime();
-                        long nextStartTimeNs = startTimeNs +
-                                (long) (frameIndex - startIndex + 1) * (long) (1e9 / config.FPS);
-                        if (nextStartTimeNs > endTimeNs) {
-                            try {
-                                Thread.sleep((nextStartTimeNs - endTimeNs) / 1000000);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                }
-            }));
-        }
-        for (Thread videoThread : videoThreads) {
-            videoThread.start();
-        }
-        return videoThreads;
-    }
-
     private static List<VideoConfig> parseVideoConfigs() throws JSONException, IOException {
         List<VideoConfig> videoConfigs = new ArrayList<>();
-        JSONObject jsonObject = new JSONObject(getStringFromFile(IMPL_CONFIG_PATH));
+        JSONObject jsonObject = getConfigJson();
         JSONArray jsonVideoConfigs = jsonObject.getJSONArray("video_configs");
         for (int i = 0; i < jsonVideoConfigs.length(); i++) {
             VideoConfig videoConfig = new VideoConfig();
             JSONObject jsonVideoConfig = jsonVideoConfigs.getJSONObject(i);
             if (jsonVideoConfig.has("path")) {
-                videoConfig.PATH = jsonVideoConfig.getString("path");
+                videoConfig.path = jsonVideoConfig.getString("path");
             }
             if (jsonVideoConfig.has("frame_range")) {
                 JSONArray frame_range = jsonVideoConfig.getJSONArray("frame_range");
                 if (frame_range.length() != 2) {
                     throw new JSONException("Frame range should contain only start index and end index");
                 }
-                videoConfig.FRAME_RANGE = new Pair<>(frame_range.getInt(0), frame_range.getInt(1));
+                videoConfig.frame_range = new Pair<>(frame_range.getInt(0), frame_range.getInt(1));
             }
             if (jsonVideoConfig.has("fps")) {
-                videoConfig.FPS = jsonVideoConfig.getInt("fps");
+                videoConfig.fps = jsonVideoConfig.getInt("fps");
             }
             videoConfigs.add(videoConfig);
         }
         return videoConfigs;
     }
 
-    private static String getStringFromFile(String filePath) throws IOException {
-        File fl = new File(filePath);
+    private static JSONObject getConfigJson() throws IOException, JSONException {
+        File fl = new File(VIDEO_CONFIG_PATH);
         FileInputStream fin = new FileInputStream(fl);
-        String ret = convertStreamToString(fin);
+        String jsonStr = convertStreamToString(fin);
         fin.close();
-        return ret;
+        return new JSONObject(jsonStr);
     }
 
     private static String convertStreamToString(InputStream is) throws IOException {
@@ -156,16 +118,16 @@ public class Emulator {
     }
 
     public void drawOutput(long rgbMatAddr, List<BoundingBox> results) {
-        Mat mat = new Mat(rgbMatAddr);
-        Bitmap bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(mat, bitmap);
-        Bitmap outputBitmap = DrawUtil.drawBoxes(bitmap, results, false);
+        Mat rgbMat = new Mat(rgbMatAddr);
+        Bitmap bitmap = Bitmap.createBitmap(rgbMat.cols(), rgbMat.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(rgbMat, bitmap);
+        Bitmap outputBitmap = ImageUtils.drawBoxes(bitmap, results, false);
         outputView.post(() -> outputView.setImageBitmap(outputBitmap));
     }
 
     private native long createSpatioTemporalRoIMixer();
 
-    private native void enqueueImage(long handle, int vid, long matAddr);
+    private native void enqueueImage(long handle, int vid, long yuvMatAddr);
 
     private native void close(long handle);
 }
