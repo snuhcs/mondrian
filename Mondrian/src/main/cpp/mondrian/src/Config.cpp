@@ -55,9 +55,9 @@ ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
 
 ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
   ROIResizerConfig config;
-  assert(!json["train_data"].isNull());
-  config.TRAIN_DATA = json["train_data"].asString();
-  assert(config.TRAIN_DATA == "virat" || config.TRAIN_DATA == "mta");
+  assert(!json["dataset"].isNull());
+  config.DATASET = json["dataset"].asString();
+  assert(config.DATASET == "virat" || config.DATASET == "mta");
   if (!json["scale_shift"].isNull()) {
     config.SCALE_SHIFT = json["scale_shift"].asFloat();
   }
@@ -218,7 +218,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
     config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
     config.inferenceEngineConfig.FULL_FRAME_SIZE = config.FULL_FRAME_SIZE;
   }
-  config.inferenceEngineConfig.DATASET = config.roiResizerConfig.TRAIN_DATA;
+  config.inferenceEngineConfig.DATASET = config.roiResizerConfig.DATASET;
   auto& devices = config.inferenceEngineConfig.DEVICES;
   assert(std::find(devices.begin(), devices.end(), config.FULL_DEVICE) != devices.end());
   auto& input_sizes = config.inferenceEngineConfig.INPUT_SIZES;
