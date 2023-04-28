@@ -183,8 +183,8 @@ void Logger::logROIHeader() {
       << "box" << delim
 
       << "maxEdgeLength" << delim
-      << "targetScale_" << delim
-      << "scaleLevel_" << '\n';
+      << "targetScale" << delim
+      << "scaleLevel" << '\n';
   logFile.flush();
 }
 
