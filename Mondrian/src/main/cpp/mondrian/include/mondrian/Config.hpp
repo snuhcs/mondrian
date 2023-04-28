@@ -13,81 +13,75 @@ namespace md {
 constexpr int NUM_LABELS = 80;
 
 struct ROIExtractorConfig {
-  int MAX_QUEUE_SIZE = 200;
-  int NUM_WORKERS = 2;
-  float EXTRACTION_RESIZE_WIDTH = 960;
-  float EXTRACTION_RESIZE_HEIGHT = 540;
-  float MAX_PD_ROI_SIZE = 206;
-  float MIN_PD_ROI_SIZE = 5;
-  bool EAT_PD = true;
-  float ROI_PADDING = 0;
-  int ROI_BORDER = 2;
-  float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = 0.1;
-  float PD_FILTER_THRESHOLD = 0.5;
-  int PD_INTERVAL = 5;
-  bool MERGE = true;
-  bool NO_DOWNSAMPLING_FOR_LAST_FRAME = false;
+  int MAX_QUEUE_SIZE;
+  int NUM_WORKERS;
+  float EXTRACTION_RESIZE_WIDTH;
+  float EXTRACTION_RESIZE_HEIGHT;
+  float MAX_PD_ROI_SIZE;
+  float MIN_PD_ROI_SIZE;
+  bool EAT_PD;
+  float ROI_PADDING;
+  int ROI_BORDER;
+  float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD;
+  float PD_FILTER_THRESHOLD;
+  int PD_INTERVAL;
+  bool MERGE;
+  bool NO_DOWNSAMPLING_FOR_LAST_FRAME;
 };
 
 struct ROIResizerConfig {
   // Predictive model configs
   std::string TRAIN_DATA;
-  int VOTING_WINDOW = 5;
-  float SCALE_SHIFT = 0;
-  float AREA_SHIFT = 0;
-  bool STATIC_SCALE = false;
-  float STATIC_TARGET_SCALE = 1.0;
-  float MAX_OF_ROI_SIZE = 206;
+  int VOTING_WINDOW;
+  float SCALE_SHIFT;
+  float AREA_SHIFT;
+  bool STATIC_SCALE;
+  float STATIC_TARGET_SCALE;
+  float MAX_OF_ROI_SIZE;
 
   // Reactive probing configs
-  float PROBE_STEP_SIZE = 0.1;
-  int NUM_PROBE_STEPS = 1;
-  float PROBE_CONF_THRESHOLD = 0.3;
-  float PROBE_IOU_THRESHOLD = 0.75;
+  float PROBE_STEP_SIZE;
+  int NUM_PROBE_STEPS;
+  float PROBE_CONF_THRESHOLD;
+  float PROBE_IOU_THRESHOLD;
 };
 
 struct InferenceEngineConfig {
-  bool DRAW_INFERENCE_RESULT = true;
+  bool DRAW_INFERENCE_RESULT;
   std::string DATASET;
-  std::string MODEL = "YOLO_V5";
-  std::string RUNTIME = "TFLITE";
-  bool USE_TINY = false;
-  float CONF_THRESHOLD = 0.1;
-  float IOU_THRESHOLD = 0.5;
-  int PROFILE_WARMUPS = 5;
-  int PROFILE_RUNS = 5;
-  int FULL_FRAME_SIZE = 768; // far TODO : remove redundancy
-  std::vector<int> INPUT_SIZES = {
-      256,
-      512,
-      768
-  };
-  std::vector<Device> DEVICES = {
-      GPU
-  };
+  std::string MODEL;
+  std::string RUNTIME;
+  bool USE_TINY;
+  float CONF_THRESHOLD;
+  float IOU_THRESHOLD;
+  int PROFILE_WARMUPS;
+  int PROFILE_RUNS;
+  int FULL_FRAME_SIZE; // TODO : remove redundancy
+  std::vector<int> INPUT_SIZES;
+  std::vector<Device> DEVICES;
 };
 
 struct PatchReconstructorConfig {
-  float FRAME_BOXES_IOU_THRESHOLD = 0.5;
-  float BOX_FILTER_OVERLAP_THRESHOLD = 0.8;
-  float ID_MAPPING_IOU_THRESHOLD = 0.1;
+  float FRAME_BOXES_IOU_THRESHOLD;
+  float BOX_FILTER_OVERLAP_THRESHOLD;
+  float ID_MAPPING_IOU_THRESHOLD;
 };
 
 extern bool LOG_INTERNAL;
 
 struct MondrianConfig {
-  bool LOG_EXECUTION = true;
-  bool LOG_ROI = true;
-  bool ALLOW_INTERPOLATION = false;
-  float INTERPOLATION_THRESHOLD = 1.0;
-  int FULL_FRAME_INTERVAL = 3; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
-  int FULL_FRAME_SIZE = 768;
-  Device FULL_DEVICE = GPU;
-  int BUFFER_SIZE = 500;
-  int LATENCY_SLO_MS = 10000;
-  bool USE_EMULATED_BATCH = false;
-  bool USE_ROI_WISE_INFERENCE = false;
-  int ROI_SIZE = 64; // Used for Emulated Batch or ROI-wise Inference
+  bool LOG_EXECUTION;
+  bool LOG_ROI;
+  bool ALLOW_INTERPOLATION;
+  float INTERPOLATION_THRESHOLD;
+  int FULL_FRAME_INTERVAL; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
+  int FULL_FRAME_SIZE;
+  Device FULL_DEVICE;
+  int BUFFER_SIZE;
+  int LATENCY_SLO_MS;
+  bool USE_EMULATED_BATCH;
+  bool USE_ROI_WISE_INFERENCE;
+  int ROI_SIZE; // Used for Emulated Batch or ROI-wise Inference
   ROIExtractorConfig roiExtractorConfig;
   ROIResizerConfig roiResizerConfig;
   InferenceEngineConfig inferenceEngineConfig;
