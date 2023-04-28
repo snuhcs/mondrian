@@ -31,7 +31,7 @@ struct ROIExtractorConfig {
 
 struct ROIResizerConfig {
   // Predictive model configs
-  std::string DATASET;
+  std::string DATASET; // TODO : remove redundancy
   int VOTING_WINDOW;
   float SCALE_SHIFT;
   float AREA_SHIFT;
@@ -48,7 +48,7 @@ struct ROIResizerConfig {
 
 struct InferenceEngineConfig {
   bool DRAW_INFERENCE_RESULT;
-  std::string DATASET;
+  std::string DATASET; // TODO : remove redundancy
   std::string MODEL;
   std::string RUNTIME;
   bool USE_TINY;
@@ -57,7 +57,7 @@ struct InferenceEngineConfig {
   int PROFILE_WARMUPS;
   int PROFILE_RUNS;
   int FULL_FRAME_SIZE; // TODO : remove redundancy
-  std::vector<int> INPUT_SIZES;
+  std::vector<int> INPUT_SIZES; // TODO: Change to std::set
   std::vector<Device> DEVICES;
 };
 
@@ -75,7 +75,7 @@ struct MondrianConfig {
   bool ALLOW_INTERPOLATION;
   float INTERPOLATION_THRESHOLD;
   int FULL_FRAME_INTERVAL; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
-  int FULL_FRAME_SIZE;
+  int FULL_FRAME_SIZE; // TODO : remove redundancy
   Device FULL_DEVICE;
   int BUFFER_SIZE;
   int LATENCY_SLO_MS;

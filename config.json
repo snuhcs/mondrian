@@ -50,6 +50,7 @@
     },
     "inference_engine": {
         "draw_inference_result": true,
+        "dataset": "mta",
         "model": "YOLO_V5",
         "runtime": "TFLITE",
         "use_tiny": false,
@@ -57,6 +58,7 @@
         "iou_threshold": 0.5,
         "profile_warmups": 5,
         "profile_runs": 5,
+        "full_frame_size": 1024,
         "input_sizes": [
             640,
             1280
