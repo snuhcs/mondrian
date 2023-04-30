@@ -1,1 +1,1 @@
-adb push ./strm.json /data/local/tmp
+adb push ./config.json /data/local/tmp
