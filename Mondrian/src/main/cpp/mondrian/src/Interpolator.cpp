@@ -144,9 +144,9 @@ std::pair<float, float> Interpolator::getBbxShift(std::vector<ROI*> childROIs, i
 
 void Interpolator::addBoxWithPrevInfo(ROI* currROI, const BoundingBox* prevBox,
                                       const std::pair<float, float>& newCenter) {
-  float newWidth = prevBox->location.width();
-  float newHeight = prevBox->location.height();
-  Rect newBox(newCenter, newWidth, newHeight);
+  float newW = prevBox->location.w;
+  float newH = prevBox->location.h;
+  Rect newBox(newCenter, newW, newH);
   currROI->frame->boxes.push_back(
       std::make_unique<BoundingBox>(prevBox->id, newBox, prevBox->confidence, prevBox->label, origin_IP));
 

@@ -301,10 +301,10 @@ void Mondrian::handleROIWiseInferenceResults(std::vector<MixedFrame>& mixedFrame
     for (BoundingBox& b: boxes) {
       pROI->frame->boxes.push_back(std::make_unique<BoundingBox>(
           UNASSIGNED_ID, Rect(
-              (b.location.left - x) / pROI->getTargetScale() + pROI->origLoc.left,
-              (b.location.top - y) / pROI->getTargetScale() + pROI->origLoc.top,
-              (b.location.right - x) / pROI->getTargetScale() + pROI->origLoc.left,
-              (b.location.bottom - y) / pROI->getTargetScale() + pROI->origLoc.top),
+              (b.location.l - x) / pROI->getTargetScale() + pROI->origLoc.l,
+              (b.location.t - y) / pROI->getTargetScale() + pROI->origLoc.t,
+              (b.location.r - x) / pROI->getTargetScale() + pROI->origLoc.l,
+              (b.location.b - y) / pROI->getTargetScale() + pROI->origLoc.t),
           b.confidence, b.label, pROI->origin));
     }
   }

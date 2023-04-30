@@ -15,29 +15,20 @@ using Indices = IntPairs;
 using Locations = IntPairs;
 
 struct IntRect {
-  int left;
-  int top;
-  int right;
-  int bottom;
+  int l;
+  int t;
+  int r;
+  int b;
+  int w;
+  int h;
+  int area;
 
-  IntRect(int left, int top, int right, int bottom)
-      : left(left), top(top), right(right), bottom(bottom) {};
-
-  int width() const {
-    return right - left;
-  }
-
-  int height() const {
-    return bottom - top;
-  }
-
-  int area() const {
-    return width() * height();
-  }
+  IntRect(int l, int t, int r, int b)
+      : l(l), t(t), r(r), b(b), w(r - l), h(b - t), area((r - l) * (b - t)) {};
 
   std::string toString() const {
     std::stringstream ss;
-    ss << "(" << left << ", " << top << ", " << right << ", " << bottom << ")";
+    ss << "(" << l << ", " << t << ", " << r << ", " << b << ")";
     return ss.str();
   }
 };

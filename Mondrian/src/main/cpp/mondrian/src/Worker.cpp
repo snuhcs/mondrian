@@ -22,7 +22,7 @@ Worker::Worker(InferenceEngine* engine, Device device,
     ArrayList_add = env->GetMethodID(class_ArrayList, "add", "(ILjava/lang/Object;)V");
     class_BoundingBox = reinterpret_cast<jclass>(env->NewGlobalRef(
             env->FindClass("hcs/offloading/mondrian/BoundingBox")));
-    BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIIFIIZ)V");
+    BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIFI)V");
   }
 
   thread = std::thread([this]() { work(); });
@@ -79,11 +79,11 @@ void Worker::drawInferenceResult(const cv::Mat& rgbMat, const std::vector<Boundi
   for (int i = 0; i < boxes.size(); i++) {
     const md::BoundingBox& b = boxes.at(i);
     jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
-                                 b.id,
-                                 int(std::round(b.location.left)), int(std::round(b.location.top)),
-                                 int(std::round(b.location.right)),
-                                 int(std::round(b.location.bottom)),
-                                 b.confidence, b.label, int(b.origin), (b.srcROI == nullptr));
+                                 int(std::round(b.location.l)),
+                                 int(std::round(b.location.t)),
+                                 int(std::round(b.location.r)),
+                                 int(std::round(b.location.b)),
+                                 b.confidence, b.label);
     env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
   }
   auto* jRgbMat = new cv::Mat();

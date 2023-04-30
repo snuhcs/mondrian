@@ -192,10 +192,13 @@ void ROIResizer::updateTable(ROI* cROI) {
   calibrationTable[cROI->id] = {cROI->getScaleLevel(), newScale};
 }
 
-std::vector<float> ROIResizer::getProbingCandidates(float scale, int level, int numProbeSteps,
-                                                    float originalArea) const {
+void ROIResizer::getProbingCandidates(ROI* roi) const {
+  float scale = roi->getTargetScale();
+  int level = roi->getScaleLevel();
+  int numProbeSteps = getNumProbeSteps();
+  float originalArea = roi->features.width * roi->features.height;
   assert(0.0f <= scale && scale <= 1.0f);
-  std::vector<float> candidates;
+  std::vector<float>& candidates = roi->probeScales;
   if (mConfig.STATIC_SCALE) {
     for (int i = 0; i < numProbeSteps; i++) {
       if (i == 0) {
@@ -219,7 +222,6 @@ std::vector<float> ROIResizer::getProbingCandidates(float scale, int level, int 
                                       return candidate <= lowerBound;
                                     }), candidates.end());
   }
-  return candidates;
 }
 
 bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {

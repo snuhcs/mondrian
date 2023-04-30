@@ -12,12 +12,9 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,54 +71,33 @@ public class MondrianApp implements VideoLoader.Callback {
     }
 
     private static List<VideoConfig> parseVideoConfigs() throws JSONException, IOException {
+        String jsonStr = new String(Files.readAllBytes(Paths.get(VIDEO_CONFIG_PATH)));
+        JSONObject configJson = new JSONObject(jsonStr);
+        JSONArray videoConfigsJson = configJson.getJSONArray("video_configs");
+
         List<VideoConfig> videoConfigs = new ArrayList<>();
-        JSONObject jsonObject = getConfigJson();
-        JSONArray jsonVideoConfigs = jsonObject.getJSONArray("video_configs");
-        for (int i = 0; i < jsonVideoConfigs.length(); i++) {
+        for (int i = 0; i < videoConfigsJson.length(); i++) {
+            JSONObject videoConfigJson = videoConfigsJson.getJSONObject(i);
+            assert (videoConfigJson.has("path")
+                    && videoConfigJson.has("frame_range")
+                    && videoConfigJson.has("fps"));
+            assert (videoConfigJson.getJSONArray("frame_range").length() == 2);
             VideoConfig videoConfig = new VideoConfig();
-            JSONObject jsonVideoConfig = jsonVideoConfigs.getJSONObject(i);
-            if (jsonVideoConfig.has("path")) {
-                videoConfig.path = jsonVideoConfig.getString("path");
-            }
-            if (jsonVideoConfig.has("frame_range")) {
-                JSONArray frame_range = jsonVideoConfig.getJSONArray("frame_range");
-                if (frame_range.length() != 2) {
-                    throw new JSONException("Frame range should contain only start index and end index");
-                }
-                videoConfig.frame_range = new Pair<>(frame_range.getInt(0), frame_range.getInt(1));
-            }
-            if (jsonVideoConfig.has("fps")) {
-                videoConfig.fps = jsonVideoConfig.getInt("fps");
-            }
+            videoConfig.path = videoConfigJson.getString("path");
+            videoConfig.frame_range = new Pair<>(
+                    videoConfigJson.getJSONArray("frame_range").getInt(0),
+                    videoConfigJson.getJSONArray("frame_range").getInt(1));
+            videoConfig.fps = videoConfigJson.getInt("fps");
             videoConfigs.add(videoConfig);
         }
         return videoConfigs;
-    }
-
-    private static JSONObject getConfigJson() throws IOException, JSONException {
-        File fl = new File(VIDEO_CONFIG_PATH);
-        FileInputStream fin = new FileInputStream(fl);
-        String jsonStr = convertStreamToString(fin);
-        fin.close();
-        return new JSONObject(jsonStr);
-    }
-
-    private static String convertStreamToString(InputStream is) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line).append("\n");
-        }
-        reader.close();
-        return sb.toString();
     }
 
     public void drawOutput(long rgbMatAddr, List<BoundingBox> results) {
         Mat rgbMat = new Mat(rgbMatAddr);
         Bitmap bitmap = Bitmap.createBitmap(rgbMat.cols(), rgbMat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(rgbMat, bitmap);
-        Bitmap outputBitmap = ImageUtils.drawBoxes(bitmap, results, false);
+        Bitmap outputBitmap = ImageUtils.drawBoxes(bitmap, results);
         outputView.post(() -> outputView.setImageBitmap(outputBitmap));
     }
 

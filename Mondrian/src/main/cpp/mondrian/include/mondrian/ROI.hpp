@@ -174,6 +174,7 @@ class ROI {
   Origin origin;
   int label;
   Features features;
+  std::vector<float> probeScales;
   std::vector<ROI*> roisForProbing;
   float priority;
 
@@ -238,7 +239,7 @@ class ROI {
   }
 
   float getPaddedArea() const {
-    return paddedLoc.area();
+    return paddedLoc.area;
   }
 
   static int getResizedArea(float width, float height, float scale) {
@@ -248,7 +249,7 @@ class ROI {
   }
 
   int getResizedArea() const {
-    return getResizedArea(paddedLoc.width(), paddedLoc.height(), targetScale);
+    return getResizedArea(paddedLoc.w, paddedLoc.h, targetScale);
   }
 
   float getTargetScale() const {
@@ -295,8 +296,8 @@ class ROI {
     if (scale == -1) {
       scale = targetScale;
     }
-    return {getResizedMatEdgeLength(paddedLoc.width(), scale),
-            getResizedMatEdgeLength(paddedLoc.height(), scale)};
+    return {getResizedMatEdgeLength(paddedLoc.w, scale),
+            getResizedMatEdgeLength(paddedLoc.h, scale)};
   }
 
   IntPair getBorderMatWidthHeight(float scale = -1) const {

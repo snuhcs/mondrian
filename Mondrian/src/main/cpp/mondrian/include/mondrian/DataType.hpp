@@ -37,45 +37,34 @@ enum Origin {
 };
 
 struct Rect {
-  float left;
-  float top;
-  float right;
-  float bottom;
+  float l;
+  float t;
+  float r;
+  float b;
+  float w;
+  float h;
+  float area;
 
   Rect() {}
 
-  Rect(const float left, const float top, const float right, const float bottom)
-      : left(left), top(top), right(right), bottom(bottom) {};
+  Rect(float l, float t, float r, float b)
+      : l(l), t(t), r(r), b(b), w(r - l), h(b - t), area((r - l) * (b - t)) {};
 
-  Rect(const Rect& r)
-      : left(r.left), top(r.top), right(r.right), bottom(r.bottom) {};
+  Rect(const Rect& r) : Rect(r.l, r.t, r.r, r.b) {};
 
-  Rect(const std::pair<float, float> center, const float width, const float height) {
-    left = center.first - width / 2;
-    right = center.first + width / 2;
-    top = center.second - height / 2;
-    bottom = center.second + height / 2;
-  }
-
-  float width() const {
-    return right - left;
-  }
-
-  float height() const {
-    return bottom - top;
-  }
-
-  float area() const {
-    return width() * height();
-  }
+  Rect(const std::pair<float, float> center, const float width, const float height) :
+      Rect(center.first - width / 2,
+           center.first + width / 2,
+           center.second - height / 2,
+           center.second + height / 2) {}
 
   std::pair<float, float> center() const {
-    return std::make_pair((right + left) / 2, (bottom + top) / 2);
+    return std::make_pair((r + l) / 2, (b + t) / 2);
   }
 
   float intersection(const Rect& other) const {
-    float width = std::min(right, other.right) - std::max(left, other.left);
-    float height = std::min(bottom, other.bottom) - std::max(top, other.top);
+    float width = std::min(r, other.r) - std::max(l, other.l);
+    float height = std::min(b, other.b) - std::max(t, other.t);
     if (width <= 0 || height <= 0) {
       return 0;
     } else {
@@ -85,14 +74,14 @@ struct Rect {
 
   float iou(const Rect& other) const {
     float inter = intersection(other);
-    return inter / (area() + other.area() - inter);
+    return inter / (area + other.area - inter);
   }
 
   static Rect merge(const Rect& rect0, const Rect& rect1) {
-    return {std::min(rect0.left, rect1.left),
-            std::min(rect0.top, rect1.top),
-            std::max(rect0.right, rect1.right),
-            std::max(rect0.bottom, rect1.bottom)};
+    return {std::min(rect0.l, rect1.l),
+            std::min(rect0.t, rect1.t),
+            std::max(rect0.r, rect1.r),
+            std::max(rect0.b, rect1.b)};
   }
 };
 
@@ -114,10 +103,10 @@ struct BoundingBox {
   std::string str() const {
     std::stringstream ss;
     ss << id << ','
-       << location.left << ','
-       << location.top << ','
-       << location.right << ','
-       << location.bottom << ','
+       << location.l << ','
+       << location.t << ','
+       << location.r << ','
+       << location.b << ','
        << confidence << ','
        << origin << ','
        << choiceOfBox << ','

@@ -20,8 +20,8 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat rgbMat,
 void Frame::resizeROIs(ROIResizer* roiResizer, bool emulatedBatch, int roiSize) {
   if (emulatedBatch) {
     for (auto& cROI: childROIs) {
-      float w = cROI->paddedLoc.width();
-      float h = cROI->paddedLoc.height();
+      float w = cROI->paddedLoc.w;
+      float h = cROI->paddedLoc.h;
       float scale = std::min(1.0f, float(roiSize - 2 * cROI->roiBorder) / std::max(h, w));
       cROI->setTargetScale(scale, ROIResizer::INVALID_LEVEL);
       auto[bw, bh] = cROI->getBorderMatWidthHeight();
@@ -76,14 +76,14 @@ void Frame::mergeROIs(float maxSize) {
         Rect newRect = Rect::merge(roi0->paddedLoc, roi1->paddedLoc);
         float newScale = std::max(roi0->getTargetScale(), roi1->getTargetScale());
 
-        int nw = ROI::getResizedMatEdgeLength(newRect.width(), newScale);
-        int nh = ROI::getResizedMatEdgeLength(newRect.height(), newScale);
+        int nw = ROI::getResizedMatEdgeLength(newRect.w, newScale);
+        int nh = ROI::getResizedMatEdgeLength(newRect.h, newScale);
         if (std::max(nw + 2*roi0->roiBorder, nh + 2*roi0->roiBorder) > maxSize) {
           // would be little more conservative for the general case
           continue;
         }
 
-        int newArea = ROI::getResizedArea(newRect.width(), newRect.height(), newScale);
+        int newArea = ROI::getResizedArea(newRect.w, newRect.h, newScale);
         int origArea = roi0->getResizedArea() + roi1->getResizedArea();
         if (newArea >= origArea) {
           continue;
