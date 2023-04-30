@@ -6,7 +6,7 @@
 #include <queue>
 #include <thread>
 
-#include "mondrian/impl/models/Classifier.hpp"
+#include "mondrian/model/Classifier.hpp"
 
 namespace md {
 
