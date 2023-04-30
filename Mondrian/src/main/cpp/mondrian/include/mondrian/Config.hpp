@@ -72,7 +72,6 @@ extern bool LOG_INTERNAL;
 struct MondrianConfig {
   bool LOG_EXECUTION;
   bool LOG_ROI;
-  bool ALLOW_INTERPOLATION;
   float INTERPOLATION_THRESHOLD;
   int FULL_FRAME_INTERVAL; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int FULL_FRAME_SIZE; // TODO : remove redundancy

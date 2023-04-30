@@ -9,7 +9,6 @@
     "log_internal": true,
     "log_execution": true,
     "log_roi": true,
-    "allow_interpolation": false,
     "interpolation_threshold": 1,
     "full_frame_interval": 3,
     "full_frame_size": 1024,

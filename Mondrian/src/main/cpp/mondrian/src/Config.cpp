@@ -132,8 +132,6 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.LOG_EXECUTION = json["log_execution"].asBool();
   assert(!json["log_roi"].isNull());
   config.LOG_ROI = json["log_roi"].asBool();
-  assert(!json["allow_interpolation"].isNull());
-  config.ALLOW_INTERPOLATION = json["allow_interpolation"].asBool();
   assert(!json["interpolation_threshold"].isNull());
   config.INTERPOLATION_THRESHOLD = json["interpolation_threshold"].asFloat();
   assert(!json["full_frame_interval"].isNull());
