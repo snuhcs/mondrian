@@ -10,23 +10,23 @@ class Interpolator {
   static void interpolate(MultiStream& frames, float threshold);
 
  private:
-  static std::set<idType> getRoIIds(const Stream& frames);
+  static std::set<idType> getROIIds(const Stream& frames);
 
-  static std::vector<RoI*> getRoIStream(const Stream& frames, idType roIId);
+  static std::vector<ROI*> getROIStream(const Stream& frames, idType roiId);
 
-  static std::vector<int> findValidRoIs(std::vector<RoI*>& childRoIs);
+  static std::vector<int> findValidROIs(std::vector<ROI*>& childROIs);
 
-  static std::pair<float, float> sumMotionVectors(std::vector<RoI*> childRoIs, int start, int end);
+  static std::pair<float, float> sumMotionVectors(std::vector<ROI*> childROIs, int start, int end);
 
-  static std::pair<float, float> getBbxShift(std::vector<RoI*> childRoIs, int start, int end);
+  static std::pair<float, float> getBbxShift(std::vector<ROI*> childROIs, int start, int end);
 
-  static void extrapolateLeft(std::vector<RoI*> childRoIs, int idx);
+  static void extrapolateLeft(std::vector<ROI*> childROIs, int idx);
 
-  static void extrapolateRight(std::vector<RoI*> childRoIs, int idx);
+  static void extrapolateRight(std::vector<ROI*> childROIs, int idx);
 
-  static void interpolateBetween(std::vector<RoI*> childRoIs, int leftIdx, int rightIdx);
+  static void interpolateBetween(std::vector<ROI*> childROIs, int leftIdx, int rightIdx);
 
-  static void addBoxWithPrevInfo(RoI* currRoI, const BoundingBox* prevBox,
+  static void addBoxWithPrevInfo(ROI* currROI, const BoundingBox* prevBox,
                                  const std::pair<float, float>& newCenter);
 };
 

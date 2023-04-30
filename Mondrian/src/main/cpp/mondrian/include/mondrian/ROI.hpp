@@ -161,7 +161,7 @@ struct Features {
   float confidence;
 };
 
-class RoI {
+class ROI {
  public:
   static const int INVALID_CONF;
 
@@ -174,15 +174,15 @@ class RoI {
   Origin origin;
   int label;
   Features features;
-  std::vector<RoI*> roisForProbing;
+  std::vector<ROI*> roisForProbing;
   float priority;
 
   inline static std::atomic<idType> lastId = 0;
   idType id;
-  RoI* prevRoI; // only valid with childRoIs
-  RoI* nextRoI; // only valid with childRoIs
-  std::vector<RoI*> childRoIs;
-  RoI* parentRoI;
+  ROI* prevROI; // only valid with childROIs
+  ROI* nextROI; // only valid with childROIs
+  std::vector<ROI*> childROIs;
+  ROI* parentROI;
 
   float maxEdgeLength;
 
@@ -199,11 +199,11 @@ class RoI {
 
   int packedAbsMixedFrameIndex;
   int packedMixedFrameSize;
-  bool isProbingRoI;
+  bool isProbingROI;
   BoundingBox* box;
   BoundingBox* probingBox;
 
-  RoI(RoI* prevRoI,
+  ROI(ROI* prevROI,
       const idType id,
       Frame* frame,
       const Rect origLoc,
@@ -214,13 +214,13 @@ class RoI {
       const float confidence,
       const float roiPadding,
       const int roiBorder,
-      const bool isProbingRoI);
+      const bool isProbingROI);
 
   void setPaddedLoc(const Rect& newOrigLoc);
 
   void eatPD(const Rect& PDRect);
 
-  static std::unique_ptr<RoI> mergeRoIs(const RoI* pRoI0, const RoI* pRoI1);
+  static std::unique_ptr<ROI> mergeROIs(const ROI* pROI0, const ROI* pROI1);
 
   static std::pair<idType, idType> getNewIds(unsigned long num) {
     idType minId = lastId.fetch_add(num);
@@ -234,7 +234,7 @@ class RoI {
   }
 
   bool isParent() const {
-    return childRoIs.size() > 1;
+    return childROIs.size() > 1;
   }
 
   float getPaddedArea() const {
@@ -273,7 +273,7 @@ class RoI {
     if (emulatedBatch) {
       auto[bw, bh] = getBorderMatWidthHeight();
       if (roiSize < std::max(bw, bh)) {
-        LOGE("RoiSize %d < bw %d or bh %d", roiSize, bw, bh);
+        LOGE("ROISize %d < bw %d or bh %d", roiSize, bw, bh);
         assert(false);
       }
       xy.first += (roiSize - bw) / 2;

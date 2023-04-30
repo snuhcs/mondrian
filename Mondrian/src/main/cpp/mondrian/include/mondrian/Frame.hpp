@@ -7,13 +7,13 @@
 
 #include "mondrian/DataType.hpp"
 #include "mondrian/PatchMixer.hpp"
-#include "mondrian/RoI.hpp"
+#include "mondrian/ROI.hpp"
 
 namespace md {
 
 class BoundingBox;
-class RoI;
-class RoIResizer;
+class ROI;
+class ROIResizer;
 
 class Frame {
  private:
@@ -36,14 +36,14 @@ class Frame {
   bool useInferenceResultForOF;
 
   bool isBoxesReady;
-  bool isRoIsReady;
+  bool isROIsReady;
   std::vector<std::unique_ptr<BoundingBox>> boxes;
   std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
-  std::vector<std::unique_ptr<RoI>> probingRoIs;
+  std::vector<std::unique_ptr<ROI>> probingROIs;
 
   bool extractOFAgain;
-  std::vector<std::unique_ptr<RoI>> childRoIs; // => box
-  std::vector<std::unique_ptr<RoI>> parentRoIs;
+  std::vector<std::unique_ptr<ROI>> childROIs; // => box
+  std::vector<std::unique_ptr<ROI>> parentROIs;
 
   bool isLastFrame;
   IntPairs boxesIfLast;
@@ -55,14 +55,14 @@ class Frame {
   const time_us enqueueTime;
   time_us fullInferenceStartTime = 0;
   time_us fullInferenceEndTime = 0;
-  time_us opticalFlowRoIProcessStartTime = 0;
-  time_us opticalFlowRoIProcessEndTime = 0;
-  time_us pixelDiffRoIProcessStartTime = 0;
-  time_us pixelDiffRoIProcessEndTime = 0;
+  time_us opticalFlowROIProcessStartTime = 0;
+  time_us opticalFlowROIProcessEndTime = 0;
+  time_us pixelDiffROIProcessStartTime = 0;
+  time_us pixelDiffROIProcessEndTime = 0;
   time_us resizeStartTime = 0;
   time_us resizeEndTime = 0;
-  time_us mergeRoIStartTime = 0;
-  time_us mergeRoIEndTime = 0;
+  time_us mergeROIStartTime = 0;
+  time_us mergeROIEndTime = 0;
   time_us mixingStartTime = 0;
   time_us mixingEndTime = 0;
   time_us scheduledTime = 0;
@@ -75,21 +75,21 @@ class Frame {
   Frame(const int vid, const int frameIndex, const cv::Mat mat,
         Frame* prevFrame, const time_us& enqueueTime);
 
-  void resizeRoIs(RoIResizer* roiResizer, bool emulatedBatch, int roiSize);
+  void resizeROIs(ROIResizer* roiResizer, bool emulatedBatch, int roiSize);
 
-  void resetParentRoIs();
+  void resetParentROIs();
 
-  void mergeRoIs(float maxSize);
+  void mergeROIs(float maxSize);
 
-  void resetProbeRoIs();
+  void resetProbeROIs();
 
-  void filterPDRoIs(float threshold, bool eatPD);
+  void filterPDROIs(float threshold, bool eatPD);
 
   bool isReadyToMarry(int mixedFrameIndex) const;
 
   bool readyForOFExtraction() const;
 
-  void resetOFRoIExtraction();
+  void resetOFROIExtraction();
 
   int getKey() const {
     return frameIndex + FULL_KEY_OFFSET;

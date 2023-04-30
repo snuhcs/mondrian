@@ -40,21 +40,21 @@ void Logger::logExecutionHeader() {
           << "PDExtractorID" << delim
           << "OFExtractorID" << delim
           << "numBoxes" << delim
-          << "numChildRoIs" << delim
-          << "numParentRoIs" << delim
+          << "numChildROIs" << delim
+          << "numParentROIs" << delim
           << "inferenceFrameSize" << delim
           << "inferenceDevice" << delim
           << "enqueueTime" << delim
           << "fullInferenceStartTime" << delim
           << "fullInferenceEndTime" << delim
-          << "pixelDiffRoIProcessStartTime" << delim
-          << "pixelDiffRoIProcessEndTime" << delim
-          << "opticalFlowRoIProcessStartTime" << delim
-          << "opticalFlowRoIProcessEndTime" << delim
+          << "pixelDiffROIProcessStartTime" << delim
+          << "pixelDiffROIProcessEndTime" << delim
+          << "opticalFlowROIProcessStartTime" << delim
+          << "opticalFlowROIProcessEndTime" << delim
           << "resizeStartTime" << delim
           << "resizeEndTime" << delim
-          << "mergeRoIStartTime" << delim
-          << "mergeRoIEndTime" << delim
+          << "mergeROIStartTime" << delim
+          << "mergeROIEndTime" << delim
           << "mixingStartTime" << delim
           << "mixingEndTime" << delim
           << "scheduledTime" << delim
@@ -77,21 +77,21 @@ void Logger::logExecution(const Frame* frame) {
           << frame->PDExtractorID << delim
           << frame->OFExtractorID << delim
           << frame->boxes.size() << delim
-          << frame->childRoIs.size() << delim
-          << frame->parentRoIs.size() << delim
+          << frame->childROIs.size() << delim
+          << frame->parentROIs.size() << delim
           << frame->inferenceFrameSize << delim
           << frame->inferenceDevice << delim
           << fromBaseTime(frame->enqueueTime) << delim
           << fromBaseTime(frame->fullInferenceStartTime) << delim
           << fromBaseTime(frame->fullInferenceEndTime) << delim
-          << fromBaseTime(frame->pixelDiffRoIProcessStartTime) << delim
-          << fromBaseTime(frame->pixelDiffRoIProcessEndTime) << delim
-          << fromBaseTime(frame->opticalFlowRoIProcessStartTime) << delim
-          << fromBaseTime(frame->opticalFlowRoIProcessEndTime) << delim
+          << fromBaseTime(frame->pixelDiffROIProcessStartTime) << delim
+          << fromBaseTime(frame->pixelDiffROIProcessEndTime) << delim
+          << fromBaseTime(frame->opticalFlowROIProcessStartTime) << delim
+          << fromBaseTime(frame->opticalFlowROIProcessEndTime) << delim
           << fromBaseTime(frame->resizeStartTime) << delim
           << fromBaseTime(frame->resizeEndTime) << delim
-          << fromBaseTime(frame->mergeRoIStartTime) << delim
-          << fromBaseTime(frame->mergeRoIEndTime) << delim
+          << fromBaseTime(frame->mergeROIStartTime) << delim
+          << fromBaseTime(frame->mergeROIEndTime) << delim
           << fromBaseTime(frame->mixingStartTime) << delim
           << fromBaseTime(frame->mixingEndTime) << delim
           << fromBaseTime(frame->scheduledTime) << delim
@@ -126,7 +126,7 @@ void Logger::logResult(int vid, int frameIndex, time_us time,
   logFile.flush();
 }
 
-void Logger::logRoIHeader() {
+void Logger::logROIHeader() {
   if (!logFile.is_open()) {
     return;
   }
@@ -166,8 +166,8 @@ void Logger::logRoIHeader() {
       << "shiftNcc" << delim
       << "avgErr" << delim
 
-      << "isProbingRoI" << delim
-      << "numProbingRoIs" << delim
+      << "isProbingROI" << delim
+      << "numProbingROIs" << delim
       << "id" << delim
 
       // Packing info
@@ -191,21 +191,21 @@ void Logger::logRoIHeader() {
   logFile.flush();
 }
 
-void Logger::logRoI(const RoI* roi) {
+void Logger::logROI(const ROI* roi) {
   if (!logFile.is_open() || roi == nullptr) {
     return;
   }
   std::unique_lock<std::mutex> logLock(mtx, std::defer_lock);
-  if (!roi->isProbingRoI) {
+  if (!roi->isProbingROI) {
     logLock.lock();
-    for (auto& probeRoI : roi->roisForProbing) {
-      assert(probeRoI->isProbingRoI);
-      logRoI(probeRoI);
+    for (auto& probeROI : roi->roisForProbing) {
+      assert(probeROI->isProbingROI);
+      logROI(probeROI);
     }
   } else {
     assert(roi->roisForProbing.empty());
   }
-  const RoI* pRoI = roi->isProbingRoI ? roi : roi->parentRoI;
+  const ROI* pROI = roi->isProbingROI ? roi : roi->parentROI;
 
   logFile
       // frame
@@ -242,20 +242,20 @@ void Logger::logRoI(const RoI* roi) {
       << roi->features.ofFeatures.shiftNcc << delim
       << roi->features.ofFeatures.avgErr << delim
 
-      << roi->isProbingRoI << delim
+      << roi->isProbingROI << delim
       << roi->roisForProbing.size() << delim
       << roi->id << delim
 
-      << pRoI->priority << delim
-      << pRoI->paddedLoc.left << delim
-      << pRoI->paddedLoc.top << delim
-      << pRoI->paddedLoc.right << delim
-      << pRoI->paddedLoc.bottom << delim
-      << pRoI->getPackedXY().first << delim
-      << pRoI->getPackedXY().second << delim
-      << pRoI->getTargetScale() << delim
-      << pRoI->packedAbsMixedFrameIndex << delim
-      << pRoI->packedMixedFrameSize << delim
+      << pROI->priority << delim
+      << pROI->paddedLoc.left << delim
+      << pROI->paddedLoc.top << delim
+      << pROI->paddedLoc.right << delim
+      << pROI->paddedLoc.bottom << delim
+      << pROI->getPackedXY().first << delim
+      << pROI->getPackedXY().second << delim
+      << pROI->getTargetScale() << delim
+      << pROI->packedAbsMixedFrameIndex << delim
+      << pROI->packedMixedFrameSize << delim
 
       << (roi->box == nullptr ? "X" : roi->box->str().c_str()) << delim
       << (roi->probingBox == nullptr ? "X" : roi->probingBox->str().c_str()) << delim

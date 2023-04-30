@@ -16,8 +16,8 @@ class FrameBuffer;
 class InferenceEngine;
 class Logger;
 class MixedFrame;
-class RoIExtractor;
-class RoIResizer;
+class ROIExtractor;
+class ROIResizer;
 class PatchReconstructor;
 
 using FrameResult = std::pair<time_us, std::vector<BoundingBox>>;
@@ -44,7 +44,7 @@ class Mondrian {
 
   void handleMixedFrameInferenceResults(std::vector<MixedFrame>& mixedFrames);
 
-  void handleRoIWiseInferenceResults(std::vector<MixedFrame>& mixedFrames);
+  void handleROIWiseInferenceResults(std::vector<MixedFrame>& mixedFrames);
 
   void releaseFrames(const MultiStream& frames);
 
@@ -60,12 +60,12 @@ class Mondrian {
   std::thread mResultThread;
   std::unique_ptr<Logger> mResultLogger;
   std::unique_ptr<Logger> mExecutionLogger;
-  std::unique_ptr<Logger> mRoILogger;
+  std::unique_ptr<Logger> mROILogger;
   const cv::Size mTargetSize;
   const std::vector<int> mInputSizes;
 
-  std::unique_ptr<RoIExtractor> mRoIExtractor;
-  std::unique_ptr<RoIResizer> mRoIResizer;
+  std::unique_ptr<ROIExtractor> mROIExtractor;
+  std::unique_ptr<ROIResizer> mROIResizer;
   std::unique_ptr<InferenceEngine> mInferenceEngine;
   std::unique_ptr<PatchReconstructor> mPatchReconstructor;
 

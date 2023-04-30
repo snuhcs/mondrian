@@ -1,19 +1,19 @@
 #include "mondrian/MixedFrame.hpp"
 
 #include "mondrian/Log.hpp"
-#include "mondrian/RoI.hpp"
+#include "mondrian/ROI.hpp"
 
 namespace md {
 
 int MixedFrame::numMixedFrames = 0;
 
-MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixedFrameSize)
-    : device(device), packedRoIs(packedRoIs), mixedFrameSize(mixedFrameSize),
+MixedFrame::MixedFrame(Device device, const std::set<ROI*>& packedROIs, int mixedFrameSize)
+    : device(device), packedROIs(packedROIs), mixedFrameSize(mixedFrameSize),
       packedMat(mixedFrameSize, mixedFrameSize, CV_8UC3, cv::Scalar(114, 114, 114)),
       mixedFrameIndex(numMixedFrames++) {
   // TODO: Handle different background colors according to the model
   // (e.g. white for YOLOv4, gray for YOLOv5)
-  for (RoI* roi: packedRoIs) {
+  for (ROI* roi: packedROIs) {
     assert(roi->isPacked());
     cv::Mat borderMat = roi->getBorderMat();
     int bw = borderMat.cols;
@@ -24,7 +24,7 @@ MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixe
     auto& m = packedMat;
     if (!(0 <= rect.x && 0 <= rect.width && rect.x + rect.width <= m.cols && 0 <= rect.y &&
           0 <= rect.height && rect.y + rect.height <= m.rows)) {
-      LOGE("MixedFrame packedMat(%4d, %4d), RoI(x=%4d, y=%4d, w=%4d, h=%4d)",
+      LOGE("MixedFrame packedMat(%4d, %4d), ROI(x=%4d, y=%4d, w=%4d, h=%4d)",
            m.cols, m.rows, rect.x, rect.y, rect.width, rect.height);
       assert(false);
     }
@@ -36,7 +36,7 @@ MixedFrame::MixedFrame(Device device, const std::set<RoI*>& packedRoIs, int mixe
 
 Stream MixedFrame::getPackedFrames() const {
   Stream packedFrames;
-  for (RoI* roi: packedRoIs) {
+  for (ROI* roi: packedROIs) {
     packedFrames.insert(roi->frame);
   }
   return packedFrames;

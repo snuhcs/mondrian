@@ -9,7 +9,7 @@ namespace md {
 
 class BoundingBox;
 class Frame;
-class RoI;
+class ROI;
 
 class Logger {
  public:
@@ -21,9 +21,9 @@ class Logger {
 
   void logExecution(const Frame* frame);
 
-  void logRoIHeader();
+  void logROIHeader();
 
-  void logRoI(const RoI* roi);
+  void logROI(const ROI* roi);
 
   void logResult(int vid, int frameIndex, time_us time,
                  const std::vector<BoundingBox>& boxes);

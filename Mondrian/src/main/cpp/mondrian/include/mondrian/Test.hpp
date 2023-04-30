@@ -6,18 +6,18 @@
 namespace md {
 
 class BoundingBox;
-class RoI;
+class ROI;
 
 void testAssignedUniqueBoxID(const std::vector<std::unique_ptr<BoundingBox>>& boxes);
 
-void testAssignedUniqueRoIID(const std::vector<std::unique_ptr<RoI>>& rois);
+void testAssignedUniqueROIID(const std::vector<std::unique_ptr<ROI>>& rois);
 
-void testParentChildrenIDsAndChildIDsSame(const std::vector<std::unique_ptr<RoI>>& childRoIs,
-                                          const std::vector<std::unique_ptr<RoI>>& parentRoIs);
+void testParentChildrenIDsAndChildIDsSame(const std::vector<std::unique_ptr<ROI>>& childROIs,
+                                          const std::vector<std::unique_ptr<ROI>>& parentROIs);
 
-void testChildRoIsFrameRelation(const std::vector<std::unique_ptr<RoI>>& childRoIs);
+void testChildROIsFrameRelation(const std::vector<std::unique_ptr<ROI>>& childROIs);
 
-void testParentRoIsFrameRelation(const std::vector<std::unique_ptr<RoI>>& parentRoIs);
+void testParentROIsFrameRelation(const std::vector<std::unique_ptr<ROI>>& parentROIs);
 
 } // namespace md
 

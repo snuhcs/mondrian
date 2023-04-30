@@ -13,18 +13,18 @@
 #include "mondrian/DataType.hpp"
 #include "mondrian/MixedFrame.hpp"
 #include "mondrian/PatchMixer.hpp"
-#include "mondrian/RoIResizer.hpp"
+#include "mondrian/ROIResizer.hpp"
 #include "mondrian/Utils.hpp"
 
 namespace md {
 
-class RoIExtractor {
+class ROIExtractor {
  public:
-  RoIExtractor(const RoIExtractorConfig& config, int maxMergeSize, bool run,
-               RoIResizer* roiResizer, bool emulatedBatch, int roiSize,
+  ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize, bool run,
+               ROIResizer* roiResizer, bool emulatedBatch, int roiSize,
                std::vector<InferenceInfo> inferencePlan, std::set<int> vids);
 
-  ~RoIExtractor();
+  ~ROIExtractor();
 
   void enqueue(Frame* frame);
 
@@ -48,18 +48,18 @@ class RoIExtractor {
 
   bool tryPackNonFullVid(Frame* frame);
 
-  void getOpticalFlowRoIs(const Frame* prevFrame, Frame* currFrame,
+  void getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,
                           const std::vector<BoundingBox>& boundingBoxes,
                           const cv::Size& targetSize,
-                          std::vector<std::unique_ptr<RoI>>& outChildRoIs) const;
+                          std::vector<std::unique_ptr<ROI>>& outChildROIs) const;
 
   static std::vector<OFFeatures> opticalFlowTracking(
       const Frame* prevFrame, const Frame* currFrame, const std::vector<Rect>& boundingBoxes,
       const cv::Size& targetSize);
 
-  void getPixelDiffRoIs(Frame* currFrame, const cv::Size& targetSize,
-                        const float maxPDRoISize, const float minPDRoISize,
-                        std::vector<std::unique_ptr<RoI>>& outChildRoIs) const;
+  void getPixelDiffROIs(Frame* currFrame, const cv::Size& targetSize,
+                        const float maxPDROISize, const float minPDROISize,
+                        std::vector<std::unique_ptr<ROI>>& outChildROIs) const;
 
   static cv::Mat calculateDiffAndThreshold(
       const cv::Mat& prevMat, const cv::Mat& currMat);
@@ -85,15 +85,15 @@ class RoIExtractor {
   static const cv::TermCriteria CRITERIA;
 
   const bool mEmulatedBatch;
-  const int mRoISize;
+  const int mROISize;
   const cv::Size mTargetSize;
   const int mMaxMergeSize;
-  const RoIExtractorConfig mConfig;
+  const ROIExtractorConfig mConfig;
   const std::set<int> mVids;
   int mFullFrameVid;
   Frame* mFullFrameTarget;
 
-  RoIResizer* mRoIResizer;
+  ROIResizer* mROIResizer;
 
   int mFullFrameInferenceCount;
   std::vector<InferenceInfo> mInferencePlan;

@@ -9,8 +9,8 @@ namespace md {
 
 bool LOG_INTERNAL = true;
 
-RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
-  RoIExtractorConfig config;
+ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
+  ROIExtractorConfig config;
   if (!json["max_queue_size"].isNull()) {
     config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
   }
@@ -53,8 +53,8 @@ RoIExtractorConfig parseRoIExtractorConfig(const Json::Value& json) {
   return config;
 }
 
-RoIResizerConfig parseRoIResizerConfig(const Json::Value& json) {
-  RoIResizerConfig config;
+ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
+  ROIResizerConfig config;
   assert(!json["train_data"].isNull());
   config.TRAIN_DATA = json["train_data"].asString();
   assert(config.TRAIN_DATA == "virat" || config.TRAIN_DATA == "mta");
@@ -206,10 +206,10 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   }
 
   if (!json["roi_extractor"].isNull()) {
-    config.roIExtractorConfig = parseRoIExtractorConfig(json["roi_extractor"]);
+    config.roiExtractorConfig = parseROIExtractorConfig(json["roi_extractor"]);
   }
   if (!json["roi_resizer"].isNull()) {
-    config.roiResizerConfig = parseRoIResizerConfig(json["roi_resizer"]);
+    config.roiResizerConfig = parseROIResizerConfig(json["roi_resizer"]);
   }
   if (config.USE_EMULATED_BATCH || config.USE_ROI_WISE_INFERENCE) {
     assert(config.roiResizerConfig.NUM_PROBE_STEPS == 0);
