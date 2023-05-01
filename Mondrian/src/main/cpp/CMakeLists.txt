@@ -29,20 +29,21 @@ add_library(
     SHARED
     mondrian/src/Config.cpp
     mondrian/src/DataType.cpp
+    mondrian/src/Features.cpp
     mondrian/src/Frame.cpp
     mondrian/src/FrameBuffer.cpp
     mondrian/src/InferenceEngine.cpp
     mondrian/src/InferencePlanner.cpp
     mondrian/src/Interpolator.cpp
     mondrian/src/Logger.cpp
-    mondrian/src/MixedFrame.cpp
+    mondrian/src/MergedROI.cpp
     mondrian/src/Mondrian.cpp
+    mondrian/src/PackedCanvas.cpp
     mondrian/src/PatchMixer.cpp
     mondrian/src/PatchReconstructor.cpp
     mondrian/src/ROI.cpp
     mondrian/src/ROIExtractor.cpp
     mondrian/src/ROIResizer.cpp
-    mondrian/src/Test.cpp
     mondrian/src/Time.cpp
     mondrian/src/Utils.cpp
     mondrian/src/Worker.cpp

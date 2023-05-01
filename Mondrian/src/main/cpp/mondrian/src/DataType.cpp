@@ -5,10 +5,9 @@
 
 namespace md {
 
-const idType UNASSIGNED_ID = -1;
-const idType MERGED_ROI_ID = -2;
+const ID INVALID_ID = -1;
 
-Device toDevice(std::string deviceStr) {
+Device toDevice(const std::string& deviceStr) {
   if (deviceStr == "GPU") {
     return GPU;
   } else if (deviceStr == "DSP") {

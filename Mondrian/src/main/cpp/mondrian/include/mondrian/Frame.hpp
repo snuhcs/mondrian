@@ -6,13 +6,13 @@
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/DataType.hpp"
+#include "mondrian/MergedROI.hpp"
 #include "mondrian/PatchMixer.hpp"
 #include "mondrian/ROI.hpp"
 
 namespace md {
 
 class BoundingBox;
-class ROI;
 class ROIResizer;
 
 class Frame {
@@ -30,8 +30,8 @@ class Frame {
   int PDExtractorID;
   int OFExtractorID;
 
-  const float width;
-  const float height;
+  const int width;
+  const int height;
 
   bool useInferenceResultForOF;
 
@@ -39,11 +39,11 @@ class Frame {
   bool isROIsReady;
   std::vector<std::unique_ptr<BoundingBox>> boxes;
   std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
-  std::vector<std::unique_ptr<ROI>> probingROIs;
+  std::vector<std::unique_ptr<MergedROI>> probingROIs;
 
   bool extractOFAgain;
-  std::vector<std::unique_ptr<ROI>> childROIs; // => box
-  std::vector<std::unique_ptr<ROI>> parentROIs;
+  std::vector<std::unique_ptr<ROI>> rois;
+  std::vector<std::unique_ptr<MergedROI>> mergedROIs;
 
   bool isLastFrame;
   IntPairs boxesIfLast;
@@ -72,14 +72,10 @@ class Frame {
   time_us reconstructEndTime = 0;
   time_us endTime = 0;
 
-  Frame(const int vid, const int frameIndex, const cv::Mat mat,
+  Frame(const int vid, const int frameIndex, const cv::Mat& mat,
         Frame* prevFrame, const time_us& enqueueTime);
 
   void resizeROIs(ROIResizer* roiResizer, bool emulatedBatch, int roiSize);
-
-  void resetParentROIs();
-
-  void mergeROIs(float maxSize);
 
   void resetProbeROIs();
 

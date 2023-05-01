@@ -33,7 +33,7 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
       sortedBoxes.erase(startIt);
 
       for (auto it = sortedBoxes.begin(); it != sortedBoxes.end();) {
-        if (max.location.iou(it->location) >= iouThreshold) {
+        if (max.loc.iou(it->loc) >= iouThreshold) {
           it = sortedBoxes.erase(it);
         } else {
           it++;
@@ -67,7 +67,7 @@ void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
       sortedBoxes.erase(startIt);
 
       for (auto it = sortedBoxes.begin(); it != sortedBoxes.end();) {
-        if (boxes[max]->location.iou(boxes[*it]->location) >= iouThreshold) {
+        if (boxes[max]->loc.iou(boxes[*it]->loc) >= iouThreshold) {
           it = sortedBoxes.erase(it);
         } else {
           it++;

@@ -46,10 +46,10 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
 
   // classifiers for packed canvas inference
   bool forFullFrame = false;
-  for (const auto& inputSize : config.INPUT_SIZES) {
+  for (const auto& inputSize: config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-            config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
-            config.USE_TINY, forFullFrame);
+        config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
+        config.USE_TINY, forFullFrame);
     LOGD("Profiling %s %d size started", device == GPU ? "GPU" : "DSP", inputSize);
     time_us initialLatency = classifier->profileInferenceTime(config.PROFILE_WARMUPS,
                                                               config.PROFILE_RUNS);
@@ -65,8 +65,8 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
   int inputSize = config.FULL_FRAME_SIZE;
   forFullFrame = true;
   std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-          config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
-          config.USE_TINY, forFullFrame);
+      config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
+      config.USE_TINY, forFullFrame);
   LOGD("Profiling %s %d size started", device == GPU ? "GPU" : "DSP", inputSize);
   time_us initialLatency = classifier->profileInferenceTime(config.PROFILE_WARMUPS,
                                                             config.PROFILE_RUNS);
@@ -77,7 +77,7 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
   classifiers.push_back(std::move(classifier));
 
   workers[device] = std::make_unique<Worker>(
-          this, device, classifierMap, mConfig.DRAW_INFERENCE_RESULT, env, app);
+      this, device, classifierMap, mConfig.DRAW_INFERENCE_RESULT, env, app);
 }
 
 void InferenceEngine::enqueue(const cv::Mat& rgbMat, Device device, int inputSize, bool isFullFrame,
@@ -102,9 +102,10 @@ void InferenceEngine::enqueueResults(int key, const Result& boxTimes) {
   resultCv.notify_all();
 }
 
-std::map<Device, std::map<std::tuple<int, bool>, time_us>> InferenceEngine::getInferenceTimeTable() const {
+std::map<Device, std::map<std::tuple<int, bool>, time_us>>
+InferenceEngine::getInferenceTimeTable() const {
   std::map<Device, std::map<std::tuple<int, bool>, time_us>> inferenceTimeTable;
-  for (const auto&[device, worker] : workers) {
+  for (const auto&[device, worker]: workers) {
     inferenceTimeTable[device] = worker->getInferenceTimes();
   }
   return inferenceTimeTable;

@@ -38,13 +38,13 @@ Result Classifier::recognizeImage(const cv::Mat& rgbMat) {
     maxConfidence *= getObjectConfidence(i);
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
       detections.push_back(BoundingBox(
-          UNASSIGNED_ID,
+          INVALID_ID,
           reconstructBox(float(box[0]),
                          float(box[1]),
                          float(box[2]),
                          float(box[3]),
                          rgbMat.cols, rgbMat.rows),
-          maxConfidence, maxLabel, origin_Null));
+          maxConfidence, maxLabel, O_INVALID));
     }
   }
   return {nms(detections, numLabels, iouThreshold), {start, end}, device};

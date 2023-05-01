@@ -72,15 +72,15 @@ std::vector<time_us> InferencePlanner::search(time_us total,
 }
 
 std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
-        const std::map<Device, std::map<std::tuple<int, bool>, time_us>>& latencyTable,
-        time_us interval, bool roiWiseInference,
-        const std::map<Device, time_us>& startTimes) {
+    const std::map<Device, std::map<std::tuple<int, bool>, time_us>>& latencyTable,
+    time_us interval, bool roiWiseInference,
+    const std::map<Device, time_us>& startTimes) {
   std::vector<InferenceInfo> inferencePlan;
 
   std::map<Device, std::map<int, time_us>> latencyTableWoFullFrame;
   for (const auto&[device, size_forFullFrame_latency]: latencyTable) {
     for (const auto&[size_forFullFrame, latency]: size_forFullFrame_latency) {
-      auto [size, forFullFrame] = size_forFullFrame;
+      auto[size, forFullFrame] = size_forFullFrame;
       if (!forFullFrame) {
         latencyTableWoFullFrame[device][size] = latency;
       }
@@ -92,9 +92,9 @@ std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
     std::vector<time_us> bars;
     std::map<time_us, int> latency_size;
     int min_size = std::min_element(
-            size_latency.begin(), size_latency.end(),
-            [](const auto& it0, const auto& it1) {
-                return it0.first < it1.first;
+        size_latency.begin(), size_latency.end(),
+        [](const auto& it0, const auto& it1) {
+          return it0.first < it1.first;
         })->first;
     for (const auto&[size, latency]: size_latency) {
       if (roiWiseInference && size != min_size) {
@@ -107,8 +107,8 @@ std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
     std::sort(bars.begin(), bars.end(),
               [&profile](time_us b1, time_us b2) { return (profile[b1] > profile[b2]); });
     time_us startTime = startTimes.find(device) != startTimes.end()
-        ? startTimes.at(device)
-        : 0L;
+                        ? startTimes.at(device)
+                        : 0L;
     std::vector<time_us> layout = search(interval - startTime, bars, profile);
     inferencePlan.reserve(layout.size());
     for (auto& l: layout) {
