@@ -33,7 +33,8 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
       inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)),
       patchReconstructor_(new PatchReconstructor(config.patchReconstructorConfig,
                                                  ROIResizer_.get())) {
-  assert(!config.USE_ROI_WISE_INFERENCE || inputSizes_.size() >= 2);
+  LOGD("Running Mondrian with Config: %s", config_.str().c_str());
+  assert(isValid(config));
   ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
   int maxMergeSize = config.FULL_FRAME_INTERVAL == 0 ? 0 : (config.USE_EMULATED_BATCH
@@ -58,6 +59,18 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
   }
   thread_ = std::thread([this]() { work(); });
   resultThread_ = std::thread([this]() { outputWork(); });
+}
+
+bool Mondrian::isValid(const MondrianConfig& c) {
+  std::set<std::string> datasets = {"virat", "mta"};
+  if (datasets.find(c.roiResizerConfig.DATASET) == datasets.end()) return false;
+  if (datasets.find(c.inferenceEngineConfig.DATASET) == datasets.end()) return false;
+  if (c.roiResizerConfig.DATASET != c.inferenceEngineConfig.DATASET) return false;
+  bool isInputSizeSorted = std::is_sorted(c.inferenceEngineConfig.INPUT_SIZES.begin(),
+                                          c.inferenceEngineConfig.INPUT_SIZES.end());
+  if (!isInputSizeSorted) return false;
+  if (c.USE_ROI_WISE_INFERENCE && c.inferenceEngineConfig.INPUT_SIZES.size() < 2) return false;
+  return true;
 }
 
 Mondrian::~Mondrian() {

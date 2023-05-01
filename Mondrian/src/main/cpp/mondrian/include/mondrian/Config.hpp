@@ -85,6 +85,8 @@ struct MondrianConfig {
   ROIResizerConfig roiResizerConfig;
   InferenceEngineConfig inferenceEngineConfig;
   PatchReconstructorConfig patchReconstructorConfig;
+
+  std::string str() const;
 };
 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json);

@@ -46,7 +46,6 @@ ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
   ROIResizerConfig config = {};
   assert(!json["dataset"].isNull());;
   config.DATASET = json["dataset"].asString();
-  assert(config.DATASET == "virat" || config.DATASET == "mta");
   assert(!json["voting_window"].isNull());
   config.VOTING_WINDOW = json["voting_window"].asInt();
   assert(!json["scale_shift"].isNull());
@@ -77,7 +76,6 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   config.DRAW_INFERENCE_RESULT = json["draw_inference_result"].asBool();
   assert(!json["dataset"].isNull());;
   config.DATASET = json["dataset"].asString();
-  assert(config.DATASET == "virat" || config.DATASET == "mta");
   assert(!json["model"].isNull());
   config.MODEL = json["model"].asString();
   assert(!json["runtime"].isNull());
@@ -98,7 +96,6 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   for (const auto& inputSizeJson: json["input_sizes"]) {
     config.INPUT_SIZES.push_back(inputSizeJson.asInt());
   }
-  std::sort(config.INPUT_SIZES.begin(), config.INPUT_SIZES.end());
   assert(!json["devices"].isNull());
   for (const auto& deviceJson: json["devices"]) {
     config.DEVICES.push_back(toDevice(deviceJson.asString()));
@@ -124,7 +121,6 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   Json::Value json;
   jsonFile >> json;
   assert(json.isObject());
-  LOGD("Config : %s", json.toStyledString().c_str());
 
   assert(!json["log_internal"].isNull());
   LOG_INTERNAL = json["log_internal"].asBool();
@@ -175,4 +171,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   return config;
 }
 
+std::string MondrianConfig::str() const {
+  return std::string();
+}
 } // namespace md
