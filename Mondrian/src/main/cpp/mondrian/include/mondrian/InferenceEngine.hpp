@@ -27,7 +27,7 @@ class InferenceEngine {
 
   Result getResults(int key);
 
-  std::map<Device, std::map<std::tuple<int, bool>, time_us>> latencyTable() const;
+  std::map<Device, std::map<std::pair<int, bool>, time_us>> latencyTable() const;
 
  private:
   void enqueueResult(const int handle, const Result& result);
