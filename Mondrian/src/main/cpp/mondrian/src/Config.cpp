@@ -117,32 +117,30 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   return config;
 }
 
-bool MondrianConfig::isValid() const {
+void MondrianConfig::test() const {
   std::set<std::string> datasets = {"virat", "mta"};
 
   // ROIResizer
-  if (datasets.find(roiResizerConfig.DATASET) == datasets.end()) return false;
-  if (roiResizerConfig.PROBE_STEP_SIZE <= 0) return false;
-  if (EXECUTION_TYPE != MONDRIAN && roiResizerConfig.NUM_PROBE_STEPS != 0) return false;
+  assert(datasets.find(roiResizerConfig.DATASET) != datasets.end());
+  assert(roiResizerConfig.PROBE_STEP_SIZE > 0);
+  assert(EXECUTION_TYPE == MONDRIAN || roiResizerConfig.NUM_PROBE_STEPS == 0);
 
   // InferenceEngine
-  if (inferenceEngineConfig.DATASET != roiResizerConfig.DATASET) return false;
-  if (inferenceEngineConfig.DEVICES.empty()) return false;
-  if (inferenceEngineConfig.INPUT_SIZES.empty()) return false;
+  assert(inferenceEngineConfig.DATASET == roiResizerConfig.DATASET);
+  assert(!inferenceEngineConfig.DEVICES.empty());
+  assert(!inferenceEngineConfig.INPUT_SIZES.empty());
   if (EXECUTION_TYPE == ROI_WISE_INFERENCE) {
-    if (inferenceEngineConfig.INPUT_SIZES.size() != 1) return false;
-    if (ROI_SIZE != *inferenceEngineConfig.INPUT_SIZES.begin()) return false;
+    assert(inferenceEngineConfig.INPUT_SIZES.size() == 1);
+    assert(ROI_SIZE == *inferenceEngineConfig.INPUT_SIZES.begin());
   }
-  if (inferenceEngineConfig.FULL_FRAME_SIZE != FULL_FRAME_SIZE) return false;
-  if (std::find(inferenceEngineConfig.DEVICES.begin(),
-                inferenceEngineConfig.DEVICES.end(),
-                FULL_DEVICE) == inferenceEngineConfig.DEVICES.end())
-    return false;
+  assert(inferenceEngineConfig.FULL_FRAME_SIZE == FULL_FRAME_SIZE);
+  assert(std::find(inferenceEngineConfig.DEVICES.begin(),
+                   inferenceEngineConfig.DEVICES.end(),
+                   FULL_DEVICE) != inferenceEngineConfig.DEVICES.end());
   bool isDivisible = std::all_of(
       inferenceEngineConfig.INPUT_SIZES.begin(), inferenceEngineConfig.INPUT_SIZES.end(),
       [this](int input_size) { return input_size % ROI_SIZE == 0; });
-  if (EXECUTION_TYPE == EMULATED_BATCH && !isDivisible) return false;
-  return true;
+  assert(EXECUTION_TYPE == MONDRIAN || isDivisible);
 }
 
 void MondrianConfig::print() const {
