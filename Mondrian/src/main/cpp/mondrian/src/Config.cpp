@@ -104,7 +104,7 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
     config.INPUT_SIZES.insert(inputSizeJson.asInt());
   }
   for (const auto& deviceJson: json["devices"]) {
-    config.DEVICES.push_back(deviceOf(deviceJson.asString()));
+    config.DEVICES.insert(deviceOf(deviceJson.asString()));
   }
   return config;
 }

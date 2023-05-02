@@ -73,7 +73,7 @@ struct InferenceEngineConfig {
   int PROFILE_RUNS;
   int FULL_FRAME_SIZE;
   std::set<int> INPUT_SIZES;
-  std::vector<Device> DEVICES;
+  std::set<Device> DEVICES;
 
   void print() const;
 };
