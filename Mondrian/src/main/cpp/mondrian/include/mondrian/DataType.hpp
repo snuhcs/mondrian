@@ -29,6 +29,16 @@ Device deviceOf(const std::string& deviceStr);
 
 std::string str(const Device& device);
 
+enum ExecutionType {
+  MONDRIAN = 0,
+  EMULATED_BATCH = 1,
+  ROI_WISE_INFERENCE = 2,
+};
+
+ExecutionType executionTypeOf(const std::string& executionTypeStr);
+
+std::string str(const ExecutionType& executionType);
+
 enum Origin {
   O_INVALID = 0,           // null value for initialization
   O_FULL_FRAME = 1,        // (Box) matched Box from full frame_

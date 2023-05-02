@@ -4,7 +4,6 @@
 #include <memory>
 #include <vector>
 
-#include "mondrian/Config.hpp"
 #include "mondrian/ROI.hpp"
 
 namespace md {

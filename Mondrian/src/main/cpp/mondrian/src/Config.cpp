@@ -27,32 +27,6 @@ static std::string parseString(const Json::Value& json, const std::string& key) 
   return json[key].asString();
 }
 
-ExecutionType executionTypeOf(const std::string& executionTypeStr) {
-  if (executionTypeStr == "mondrian") {
-    return MONDRIAN;
-  } else if (executionTypeStr == "emulated_batch") {
-    return EMULATED_BATCH;
-  } else if (executionTypeStr == "roi_wise_inference") {
-    return ROI_WISE_INFERENCE;
-  } else {
-    LOGE("Unknown execution type: %s", executionTypeStr.c_str());
-    assert(false);
-  }
-}
-
-std::string str(const ExecutionType& executionType) {
-  if (executionType == MONDRIAN) {
-    return "mondrian";
-  } else if (executionType == EMULATED_BATCH) {
-    return "emulated_batch";
-  } else if (executionType == ROI_WISE_INFERENCE) {
-    return "roi_wise_inference";
-  } else {
-    LOGE("Unknown execution type: %d", executionType);
-    assert(false);
-  }
-}
-
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   ROIExtractorConfig config = {};
   config.MAX_QUEUE_SIZE = parseInt(json, "max_queue_size");

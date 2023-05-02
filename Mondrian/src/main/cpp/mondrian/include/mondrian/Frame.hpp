@@ -5,7 +5,6 @@
 
 #include "opencv2/core/mat.hpp"
 
-#include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
 #include "mondrian/MergedROI.hpp"
 #include "mondrian/ROIPacker.hpp"

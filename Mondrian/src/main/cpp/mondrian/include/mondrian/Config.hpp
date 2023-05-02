@@ -11,16 +11,6 @@
 
 namespace md {
 
-enum ExecutionType {
-  MONDRIAN = 0,
-  EMULATED_BATCH = 1,
-  ROI_WISE_INFERENCE = 2,
-};
-
-ExecutionType executionTypeOf(const std::string& executionTypeStr);
-
-std::string str(const ExecutionType& executionType);
-
 constexpr int NUM_LABELS = 80;
 
 struct ROIExtractorConfig {

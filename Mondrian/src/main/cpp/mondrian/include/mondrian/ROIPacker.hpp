@@ -4,7 +4,6 @@
 #include <sstream>
 #include <vector>
 
-#include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
 
 namespace md {

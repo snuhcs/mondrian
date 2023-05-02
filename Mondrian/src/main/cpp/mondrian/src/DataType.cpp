@@ -33,6 +33,32 @@ std::string str(const Device& device) {
   }
 }
 
+ExecutionType executionTypeOf(const std::string& executionTypeStr) {
+  if (executionTypeStr == "mondrian") {
+    return MONDRIAN;
+  } else if (executionTypeStr == "emulated_batch") {
+    return EMULATED_BATCH;
+  } else if (executionTypeStr == "roi_wise_inference") {
+    return ROI_WISE_INFERENCE;
+  } else {
+    LOGE("Unknown execution type: %s", executionTypeStr.c_str());
+    assert(false);
+  }
+}
+
+std::string str(const ExecutionType& executionType) {
+  if (executionType == MONDRIAN) {
+    return "mondrian";
+  } else if (executionType == EMULATED_BATCH) {
+    return "emulated_batch";
+  } else if (executionType == ROI_WISE_INFERENCE) {
+    return "roi_wise_inference";
+  } else {
+    LOGE("Unknown execution type: %d", executionType);
+    assert(false);
+  }
+}
+
 std::string str(const std::vector<InferenceInfo>& inferencePlan) {
   std::stringstream ss;
   for (int i = int(inferencePlan.size()) - 1; i >= 0; i--) {
