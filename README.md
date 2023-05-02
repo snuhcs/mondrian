@@ -1,7 +1,7 @@
 <div id="top"></div>
 
 # Mondrian
-FYC, [Mondrian/src/main/cpp/mondrian](https://github.com/snuhcs/offloading-system/tree/master/Mondrian/src/main/cpp/mondrian)
+FYC, [Mondrian/src/main/cpp/mondrian](https://github.com/snuhcs/mondrian/tree/master/Mondrian/src/main/cpp/mondrian)
 <details>
   <summary>Table of Contents</summary>
   <ol>
@@ -50,7 +50,7 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 ## Contact
 * Changmin Jeon - wisechang1@snu.ac.kr
 * Seonjun Kim - seonjun.kim@hcs.snu.ac.kr
-* Project Link: [https://github.com/snuhcs/offloading-system](https://github.com/snuhcs/offloading-system)
+* Project Link: [https://github.com/snuhcs/mondrian](https://github.com/snuhcs/mondrian)
 
 
 ## Citation
