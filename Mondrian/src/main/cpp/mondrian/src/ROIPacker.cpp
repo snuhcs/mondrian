@@ -1,12 +1,12 @@
-#include "mondrian/PatchMixer.hpp"
+#include "mondrian/ROIPacker.hpp"
 
 #include <sstream>
 
 namespace md {
 
-std::tuple<IntPairs, IntPairs> PatchMixer::pack(
-    const std::vector<std::vector<IntRect>>& freeRectsVec,
-    const IntPairs& boxWHs, bool backward, bool emulatedBatch, int roiSize) {
+std::pair<IntPairs, IntPairs> ROIPacker::pack(
+        const std::vector<std::vector<IntRect>>& freeRectsVec,
+        const IntPairs& boxWHs, bool backward, bool emulatedBatch, int roiSize) {
   auto copiedFreeRectsVec = freeRectsVec;
   IntPairs packIndices;
   IntPairs packLocations;
@@ -45,9 +45,9 @@ std::tuple<IntPairs, IntPairs> PatchMixer::pack(
   return {packIndices, packLocations};
 }
 
-void PatchMixer::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                       const WHs& boxWH, const Indices& indices,
-                       bool emulatedBatch, int roiSize) {
+void ROIPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
+                      const IntPairs& boxWH, const IntPairs& indices,
+                      bool emulatedBatch, int roiSize) {
   assert(boxWH.size() == indices.size());
   for (int i = 0; i < boxWH.size(); i++) {
     auto[w, h] = boxWH[i];
@@ -60,7 +60,7 @@ void PatchMixer::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
   }
 }
 
-int PatchMixer::getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, int w, int h) {
+int ROIPacker::getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, int w, int h) {
   int minRemainingArea = INT_MAX / 2;
   int best_index = -1;
   for (int i = 0; i < freeRects.size(); i++) {
@@ -76,7 +76,7 @@ int PatchMixer::getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, i
   return best_index;
 }
 
-void PatchMixer::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
+void ROIPacker::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
                         int w, int h, int pack_i, int pack_j) {
   assert(pack_i < freeRectsVec.size() && pack_j < freeRectsVec[pack_i].size());
   IntRect freeRectToPack = freeRectsVec[pack_i][pack_j];
@@ -90,11 +90,11 @@ void PatchMixer::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
   }
 }
 
-bool PatchMixer::canFit(int w, int h, const IntRect& freeRect) {
+bool ROIPacker::canFit(int w, int h, const IntRect& freeRect) {
   return w <= freeRect.w && h <= freeRect.h;
 }
 
-std::pair<IntRect, IntRect> PatchMixer::splitFreeRect(int w, int h, const IntRect& freeRect) {
+std::pair<IntRect, IntRect> ROIPacker::splitFreeRect(int w, int h, const IntRect& freeRect) {
   if (freeRect.w > freeRect.h) {
     return {IntRect(freeRect.l + w, freeRect.t, freeRect.r, freeRect.b),
             IntRect(freeRect.l, freeRect.t + h, freeRect.l + w, freeRect.b)};

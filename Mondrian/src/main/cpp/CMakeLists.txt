@@ -39,10 +39,10 @@ add_library(
     mondrian/src/MergedROI.cpp
     mondrian/src/Mondrian.cpp
     mondrian/src/PackedCanvas.cpp
-    mondrian/src/PatchMixer.cpp
     mondrian/src/PatchReconstructor.cpp
     mondrian/src/ROI.cpp
     mondrian/src/ROIExtractor.cpp
+    mondrian/src/ROIPacker.cpp
     mondrian/src/ROIResizer.cpp
     mondrian/src/Time.cpp
     mondrian/src/Utils.cpp
