@@ -18,7 +18,7 @@ namespace md {
 
 class ROIExtractor {
  public:
-  ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize, bool run,
+  ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
                ROIResizer* roiResizer, ExecutionType executionType, int roiSize,
                std::vector<InferenceInfo> inferencePlan, std::set<int> vids);
 

@@ -15,7 +15,7 @@ namespace md {
 const cv::TermCriteria ROIExtractor::CRITERIA = cv::TermCriteria(
     cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
 
-ROIExtractor::ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize, bool run,
+ROIExtractor::ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
                            ROIResizer* roiResizer, ExecutionType executionType, int roiSize,
                            std::vector<InferenceInfo> inferencePlan, std::set<int> vids)
     : config_(config), maxMergeSize_(maxMergeSize), border_(config.ROI_BORDER),
@@ -26,19 +26,17 @@ ROIExtractor::ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize, b
       fullFrameInferenceCount_(0), fullFrameTarget_(nullptr), fullFrameVid_(-1),
       vids_(std::move(vids)), stop_(false), notFullyPacked_(true) {
   assert(executionType_ == MONDRIAN || ROISize_ == maxMergeSize_);
-  if (run) {
-    resetPatchMixerWithPlan(inferencePlan_);
-    threads_.reserve(config.NUM_WORKERS);
-    for (int extractorId = 0; extractorId < config.NUM_WORKERS; extractorId++) {
-      threads_.emplace_back([this, extractorId]() { work(extractorId); });
-    }
+  resetPatchMixerWithPlan(inferencePlan_);
+  threads_.reserve(config.NUM_WORKERS);
+  for (int extractorId = 0; extractorId < config.NUM_WORKERS; extractorId++) {
+    threads_.emplace_back([this, extractorId]() { work(extractorId); });
   }
 }
 
 ROIExtractor::~ROIExtractor() {
   stop_ = true;
   queueCV_.notify_all();
-  for (auto& thread : threads_) {
+  for (auto& thread: threads_) {
     thread.join();
   }
 }

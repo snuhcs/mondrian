@@ -37,18 +37,19 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
   assert(config_.isValid());
   ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
-  int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
-                     ? *inputSizes_.begin()
-                     : config.ROI_SIZE;
-  bool runROIExtractor = config_.FULL_FRAME_INTERVAL != 0;
   inferenceEngine_->profileLatency();
-  auto latencyTable = inferenceEngine_->latencyTable();
-  auto inferencePlan = InferencePlanner::getInferencePlan(
-      latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);
-  auto vids = keySetOf(startIndices_);
-  ROIExtractor_ = std::make_unique<ROIExtractor>(
-      config_.roiExtractorConfig, maxMergeSize, runROIExtractor, ROIResizer_.get(),
-      config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, vids);
+  if (config_.FULL_FRAME_INTERVAL != 0) {
+    int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
+                       ? *inputSizes_.begin()
+                       : config.ROI_SIZE;
+    auto latencyTable = inferenceEngine_->latencyTable();
+    auto inferencePlan = InferencePlanner::getInferencePlan(
+        latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);
+    auto vids = keySetOf(startIndices_);
+    ROIExtractor_ = std::make_unique<ROIExtractor>(
+        config_.roiExtractorConfig, maxMergeSize, ROIResizer_.get(),
+        config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, vids);
+  }
 
   if (config.LOG_EXECUTION) {
     executionLogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/timeline.csv");
