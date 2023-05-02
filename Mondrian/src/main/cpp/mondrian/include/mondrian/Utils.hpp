@@ -15,7 +15,7 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
 void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
          const int numLabels, const float iouThreshold);
 
-std::set<int> keySetOf(const std::map<int, int>& map);
+std::set<int> range(int startIndex, int endIndex);
 
 extern const char* COCO_LABELS[];
 

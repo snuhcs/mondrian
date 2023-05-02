@@ -5,8 +5,8 @@
 
 namespace md {
 
-FrameBuffer::FrameBuffer(int vid, int capacity, int startIndex)
-    : vid(vid), capacity(capacity), count(startIndex) {}
+FrameBuffer::FrameBuffer(int vid, int capacity)
+    : vid(vid), capacity(capacity), count(0) {}
 
 Frame* FrameBuffer::enqueue(const cv::Mat& rgbMat) {
   std::unique_lock<std::mutex> lock(mtx);

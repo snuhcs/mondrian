@@ -47,9 +47,10 @@ public class MondrianApp implements VideoLoader.Callback {
 
     public MondrianApp(ImageView outputView) throws JSONException, IOException {
         this.outputView = outputView;
-        handle = createHandle();
 
         List<VideoConfig> videoConfigs = parseVideoConfigs();
+        handle = createHandle(videoConfigs.size());
+
         for (int vid = 0; vid < videoConfigs.size(); vid++) {
             VideoConfig config = videoConfigs.get(vid);
             videoLoaders.add(new VideoLoader(vid, config.path, config.fps, this));
@@ -93,7 +94,7 @@ public class MondrianApp implements VideoLoader.Callback {
         outputView.post(() -> outputView.setImageBitmap(outputBitmap));
     }
 
-    private native long createHandle();
+    private native long createHandle(int numVideos);
 
     private native void enqueueImage(long handle, int vid, long yuvMatAddr);
 

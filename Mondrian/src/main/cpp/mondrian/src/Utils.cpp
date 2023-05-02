@@ -82,13 +82,13 @@ void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
   }
 }
 
-std::set<int> keySetOf(const std::map<int, int>& map) {
-  std::set<int> keys;
-  for (auto& it: map) {
-    keys.insert(it.first);
+std::set<int> range(int startIndex, int endIndex) {
+  std::set<int> range;
+  for (int i = startIndex; i < endIndex; i++) {
+    range.insert(i);
   }
-  return keys;
-};
+  return range;
+}
 
 const char* COCO_LABELS[] = {
     "person",

@@ -20,11 +20,9 @@
 
 namespace md {
 
-Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices,
-                   JNIEnv* env, jobject app)
-    : config_(config), stop_(false),
+Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app)
+    : config_(config), numVideos_(numVideos), stop_(false),
       resultLogger_(new Logger("/data/data/hcs.offloading.mondrian/boxes.txt")),
-      startIndices_(std::move(startIndices)),
       targetSize_(int(config_.roiExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(config_.roiExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
       inputSizes_(config_.inferenceEngineConfig.INPUT_SIZES),
@@ -45,10 +43,9 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
     auto latencyTable = inferenceEngine_->latencyTable();
     auto inferencePlan = InferencePlanner::getInferencePlan(
         latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);
-    auto vids = keySetOf(startIndices_);
     ROIExtractor_ = std::make_unique<ROIExtractor>(
         config_.roiExtractorConfig, maxMergeSize, ROIResizer_.get(),
-        config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, vids);
+        config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, numVideos_);
   }
 
   if (config.LOG_EXECUTION) {
@@ -75,7 +72,9 @@ void Mondrian::work() {
   int scheduleID = -1;
 
   // Wait sources for synced start
-  waitForStart();
+  std::unique_lock<std::mutex> startLock(startMtx_);
+  startCV_.wait(startLock, [this]() { return frameBuffers_.size() == numVideos_; });
+  startLock.unlock();
   std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval_));
 
   TimeLogger logger;
@@ -177,6 +176,7 @@ void Mondrian::work() {
           assert(roi->box->id == roi->id);
           assert(roi->box->label == roi->label);
         }
+        nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
         frame->isBoxesReady = true;
         frame->endTime = NowMicros();
       }
@@ -191,8 +191,7 @@ void Mondrian::work() {
           std::vector<BoundingBox> boxes;
           std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
                          [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-          results_[frame->vid][frame->frameIndex] = {
-              frame->endTime, nms(boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold())};
+          results_[frame->vid][frame->frameIndex] = std::move(boxes);
         }
       }
     }
@@ -237,7 +236,7 @@ void Mondrian::handleFullFrameResults(Frame* frame) {
   std::vector<BoundingBox> resultBoxes;
   std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(resultBoxes),
                  [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-  results_[frame->vid][frame->frameIndex] = {NowMicros(), std::move(resultBoxes)};
+  results_[frame->vid][frame->frameIndex] = std::move(resultBoxes);
   resultLock.unlock();
   resultsCV_.notify_all();
 }
@@ -351,29 +350,12 @@ void Mondrian::log(const Frame* frame) {
   }
 }
 
-void Mondrian::waitForStart() {
-  std::unique_lock<std::mutex> startLock(startMtx_);
-  startCV_.wait(startLock, [this]() { return numStartedFrameBuffers_ == startIndices_.size(); });
-  startEnqueue_ = true;
-  startLock.unlock();
-  enqueueCV_.notify_all();
-}
-
 int Mondrian::enqueueImage(const int vid, const cv::Mat& yuvMat) {
   assert(!yuvMat.empty());
 
-  std::unique_lock<std::mutex> fairLock(fairEnqueueMtx_);
-  fairCV_.wait(fairLock, [vid, this]() {
-    return startIndices_.size() == 1 || prevEnqueuedVid_ != vid;
-  });
-  prevEnqueuedVid_ = vid;
-  fairLock.unlock();
-  fairCV_.notify_all();
-
   std::unique_lock<std::mutex> lock(frameBuffersMtx_);
   if (frameBuffers_.find(vid) == frameBuffers_.end()) {
-    frameBuffers_[vid] = std::make_unique<FrameBuffer>(
-        vid, config_.BUFFER_SIZE, startIndices_[vid]);
+    frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid, config_.BUFFER_SIZE);
   }
   FrameBuffer* frameBuffer = frameBuffers_.at(vid).get();
   lock.unlock();
@@ -385,7 +367,7 @@ int Mondrian::enqueueImage(const int vid, const cv::Mat& yuvMat) {
   preprocess(frame);
   LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
        "Mondrian::preprocess", NowMicros() - startTime, frame->vid, frame->frameIndex);
-  if (config_.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == startIndices_[vid]) {
+  if (config_.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == 0) {
     frame->useInferenceResultForOF = true;
     inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
                               frame->getKey());
@@ -400,12 +382,11 @@ int Mondrian::enqueueImage(const int vid, const cv::Mat& yuvMat) {
       frameBuffers_.at(frame->vid)->freeImage({frame->frameIndex});
     }
   } else {
-    if (frame->frameIndex == startIndices_[vid] + 1) {
+    if (frame->frameIndex == 1) {
       std::unique_lock<std::mutex> startLock(startMtx_);
-      numStartedFrameBuffers_++;
-      startCV_.notify_one();
-      enqueueCV_.wait(startLock, [this]() { return startEnqueue_; });
+      startCV_.wait(startLock, [this]() { return frameBuffers_.size() == numVideos_; });
       startLock.unlock();
+      startCV_.notify_all();
       LOGD("Start %d video at %lld us", vid, NowMicros());
     }
     ROIExtractor_->enqueue(frame);
@@ -425,39 +406,19 @@ void Mondrian::outputWork() {
       if (stop_) {
         return true;
       }
-      for (auto& streamIt: results_) {
-        int vid = streamIt.first;
-        if (resultIndices_.find(vid) == resultIndices_.end()) {
-          resultIndices_[vid] = startIndices_[vid];
-        }
-        int frameIndex = resultIndices_[vid];
-        if (streamIt.second.find(frameIndex) != streamIt.second.end()) {
-          return true;
-        }
-      }
-      return false;
+      return std::any_of(results_.begin(), results_.end(),
+                         [](const auto& it) { return !it.second.empty(); });
     });
-    int vid;
-    int frameIndex;
-    FrameResult result;
-    for (auto& streamIt: results_) {
-      vid = streamIt.first;
-      frameIndex = resultIndices_[vid];
-      auto frameIt = streamIt.second.find(frameIndex);
-      if (frameIt != streamIt.second.end()) {
-        resultIndices_[vid]++;
-        result = frameIt->second;
-        streamIt.second.erase(frameIt);
-        break;
+    for (const auto&[vid, frameResults]: results_) {
+      for (const auto&[frameIndex, boxes]: frameResults) {
+        resultLogger_->logResult(vid, frameIndex, boxes);
+        LOGD("Logger::logResult                         for video %-5d frame %-4d // %4lu boxes",
+             vid, frameIndex, boxes.size());
       }
     }
+    results_.clear();
     resultLock.unlock();
     resultsCV_.notify_all();
-
-    auto&[time, boxes] = result;
-    LOGD("Logger::logResult                         for video %-5d frame %-4d // %4lu boxes",
-         vid, frameIndex, boxes.size());
-    resultLogger_->logResult(vid, frameIndex, time, boxes);
   }
 }
 

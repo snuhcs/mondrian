@@ -20,7 +20,7 @@ class ROIExtractor {
  public:
   ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
                ROIResizer* roiResizer, ExecutionType executionType, int roiSize,
-               std::vector<InferenceInfo> inferencePlan, std::set<int> vids);
+               std::vector<InferenceInfo> inferencePlan, int numVideos);
 
   ~ROIExtractor();
 
@@ -88,7 +88,7 @@ class ROIExtractor {
   const int maxMergeSize_;
   const int border_;
   const ROIExtractorConfig config_;
-  const std::set<int> vids_;
+  const int numVideos_;
   int fullFrameVid_;
   Frame* fullFrameTarget_;
 

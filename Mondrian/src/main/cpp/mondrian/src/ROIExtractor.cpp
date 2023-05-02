@@ -17,14 +17,14 @@ const cv::TermCriteria ROIExtractor::CRITERIA = cv::TermCriteria(
 
 ROIExtractor::ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
                            ROIResizer* roiResizer, ExecutionType executionType, int roiSize,
-                           std::vector<InferenceInfo> inferencePlan, std::set<int> vids)
+                           std::vector<InferenceInfo> inferencePlan, int numVideos)
     : config_(config), maxMergeSize_(maxMergeSize), border_(config.ROI_BORDER),
       ROIResizer_(roiResizer), executionType_(executionType), ROISize_(roiSize),
       targetSize_(cv::Size(int(config.EXTRACTION_RESIZE_WIDTH),
                            int(config.EXTRACTION_RESIZE_HEIGHT))),
       inferencePlan_(std::move(inferencePlan)),
       fullFrameInferenceCount_(0), fullFrameTarget_(nullptr), fullFrameVid_(-1),
-      vids_(std::move(vids)), stop_(false), notFullyPacked_(true) {
+      numVideos_(numVideos), stop_(false), notFullyPacked_(true) {
   assert(executionType_ == MONDRIAN || ROISize_ == maxMergeSize_);
   resetPatchMixerWithPlan(inferencePlan_);
   threads_.reserve(config.NUM_WORKERS);
@@ -119,9 +119,8 @@ std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> ROIExtractor:
   }
 
   if (runFull) {
-    int index = fullFrameInferenceCount_ % int(vids_.size());
+    fullFrameVid_ = fullFrameInferenceCount_ % numVideos_;
     fullFrameInferenceCount_++;
-    fullFrameVid_ = *std::next(vids_.begin(), index);
   } else {
     fullFrameVid_ = -1;
   }

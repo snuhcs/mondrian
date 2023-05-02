@@ -9,26 +9,12 @@
 #include "mondrian/Config.hpp"
 #include "mondrian/Mondrian.hpp"
 
-static std::map<int, int> parseStartIndexMap(const std::string& jsonPath) {
-  std::ifstream jsonFile(jsonPath, std::ifstream::binary);
-  assert(jsonFile.is_open());
-  Json::Value json;
-  jsonFile >> json;
-  assert(json.isObject());
-  std::map<int, int> startIndexMap;
-  for (int vid = 0; vid < json["video_configs"].size(); vid++) {
-    startIndexMap[vid] = 0;
-  }
-  return startIndexMap;
-}
-
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_hcs_offloading_mondrian_MondrianApp_createHandle(JNIEnv* env, jobject thiz) {
+Java_hcs_offloading_mondrian_MondrianApp_createHandle(JNIEnv* env, jobject thiz, jint numVideos) {
   auto configPath = "/data/local/tmp/config.json";
   auto config = md::parseMondrianConfig(configPath);
-  auto startIndexMap = parseStartIndexMap(configPath);
-  return reinterpret_cast<long>(new md::Mondrian(config, startIndexMap, env, thiz));
+  return reinterpret_cast<long>(new md::Mondrian(config, numVideos, env, thiz));
 }
 
 extern "C"

@@ -20,20 +20,15 @@ class ROIExtractor;
 class ROIResizer;
 class PatchReconstructor;
 
-using FrameResult = std::pair<time_us, std::vector<BoundingBox>>;
-
 class Mondrian {
  public:
-  Mondrian(const MondrianConfig& config, std::map<int, int> startIndices,
-           JNIEnv* env, jobject app);
+  Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app);
 
   ~Mondrian();
 
   int enqueueImage(const int vid, const cv::Mat& yuvMat);
 
  private:
-  void waitForStart();
-
   void work();
 
   void outputWork();
@@ -67,23 +62,17 @@ class Mondrian {
   std::unique_ptr<InferenceEngine> inferenceEngine_;
   std::unique_ptr<PatchReconstructor> patchReconstructor_;
 
-  int prevEnqueuedVid_ = -1;
-  std::mutex fairEnqueueMtx_;
-  std::condition_variable fairCV_;
-
-  int numStartedFrameBuffers_ = 0;
-  std::mutex startMtx_;
-  std::condition_variable startCV_;
-  std::condition_variable enqueueCV_;
-  bool startEnqueue_ = false;
 
   std::mutex frameBuffersMtx_;
   std::map<int, std::unique_ptr<FrameBuffer>> frameBuffers_;
   std::map<int, int> startIndices_;
+  std::mutex startMtx_;
+  std::condition_variable startCV_;
+  int numVideos_;
 
   std::mutex resultsMtx_;
   std::condition_variable resultsCV_;
-  std::map<int, std::map<int, FrameResult>> results_;
+  std::map<int, std::map<int, std::vector<BoundingBox>>> results_;
   std::map<int, int> resultIndices_;
 };
 
