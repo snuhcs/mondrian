@@ -34,7 +34,7 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
       patchReconstructor_(new PatchReconstructor(config.patchReconstructorConfig,
                                                  ROIResizer_.get())) {
   config_.print();
-  assert(isValid(config));
+  assert(config_.isValid());
   ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
   int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
@@ -59,37 +59,6 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
   }
   thread_ = std::thread([this]() { work(); });
   resultThread_ = std::thread([this]() { outputWork(); });
-}
-
-bool Mondrian::isValid(const MondrianConfig& c) {
-  std::set<std::string> datasets = {"virat", "mta"};
-
-  // ROIResizer
-  if (datasets.find(c.roiResizerConfig.DATASET) == datasets.end()) return false;
-  if (c.roiResizerConfig.PROBE_STEP_SIZE <= 0) return false;
-  if (c.EXECUTION_TYPE != MONDRIAN && c.roiResizerConfig.NUM_PROBE_STEPS != 0) return false;
-
-  // InferenceEngine
-  if (c.inferenceEngineConfig.DATASET != c.roiResizerConfig.DATASET) return false;
-  if (c.inferenceEngineConfig.DEVICES.empty()) return false;
-  if (c.inferenceEngineConfig.INPUT_SIZES.empty()) return false;
-  if (c.EXECUTION_TYPE == ROI_WISE_INFERENCE) {
-    if (c.inferenceEngineConfig.INPUT_SIZES.size() != 1) return false;
-    if (c.ROI_SIZE != c.inferenceEngineConfig.INPUT_SIZES[0]) return false;
-  }
-  bool isInputSizeSorted = std::is_sorted(c.inferenceEngineConfig.INPUT_SIZES.begin(),
-                                          c.inferenceEngineConfig.INPUT_SIZES.end());
-  if (!isInputSizeSorted) return false;
-  if (c.inferenceEngineConfig.FULL_FRAME_SIZE != c.FULL_FRAME_SIZE) return false;
-  if (std::find(c.inferenceEngineConfig.DEVICES.begin(),
-                c.inferenceEngineConfig.DEVICES.end(),
-                c.FULL_DEVICE) == c.inferenceEngineConfig.DEVICES.end())
-    return false;
-  bool isDivisible = std::all_of(
-      c.inferenceEngineConfig.INPUT_SIZES.begin(), c.inferenceEngineConfig.INPUT_SIZES.end(),
-      [&c](int input_size) { return input_size % c.ROI_SIZE == 0; });
-  if (c.EXECUTION_TYPE == EMULATED_BATCH && !isDivisible) return false;
-  return true;
 }
 
 Mondrian::~Mondrian() {

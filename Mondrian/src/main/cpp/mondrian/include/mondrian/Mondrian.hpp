@@ -32,8 +32,6 @@ class Mondrian {
   int enqueueImage(const int vid, const cv::Mat& yuvMat);
 
  private:
-  static bool isValid(const MondrianConfig& config);
-
   void waitForStart();
 
   void work();

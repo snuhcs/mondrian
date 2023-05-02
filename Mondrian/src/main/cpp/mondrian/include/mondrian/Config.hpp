@@ -101,6 +101,8 @@ struct MondrianConfig {
   InferenceEngineConfig inferenceEngineConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 
+  bool isValid() const;
+
   void print() const;
 };
 
