@@ -77,9 +77,9 @@ struct PatchReconstructorConfig {
 };
 
 struct MondrianConfig {
+  ExecutionType EXECUTION_TYPE;
   bool LOG_EXECUTION;
   bool LOG_ROI;
-  ExecutionType EXECUTION_TYPE;
   float INTERPOLATION_THRESHOLD;
   int FULL_FRAME_INTERVAL; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int FULL_FRAME_SIZE;

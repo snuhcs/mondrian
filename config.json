@@ -6,9 +6,9 @@
             "fps": 0
         }
     ],
+    "execution_type": "mondrian",
     "log_execution": true,
     "log_roi": true,
-    "execution_type": "mondrian",
     "interpolation_threshold": 1,
     "full_frame_interval": 3,
     "full_frame_size": 1024,

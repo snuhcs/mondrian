@@ -99,9 +99,9 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   jsonFile >> json;
   assert(json.isObject());
 
+  config.EXECUTION_TYPE = executionTypeOf(parseString(json, "execution_type"));
   config.LOG_EXECUTION = parseBool(json, "log_execution");
   config.LOG_ROI = parseBool(json, "log_roi");
-  config.EXECUTION_TYPE = executionTypeOf(parseString(json, "execution_type"));
   config.INTERPOLATION_THRESHOLD = parseFloat(json, "interpolation_threshold");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
@@ -148,9 +148,9 @@ bool MondrianConfig::isValid() const {
 void MondrianConfig::print() const {
   std::stringstream ss;
   ss << "========== MondrianConfig ==========" << std::endl;
+  ss << "EXECUTION_TYPE: " << md::str(EXECUTION_TYPE) << std::endl;
   ss << "LOG_EXECUTION: " << LOG_EXECUTION << std::endl;
   ss << "LOG_ROI: " << LOG_ROI << std::endl;
-  ss << "EXECUTION_TYPE: " << md::str(EXECUTION_TYPE) << std::endl;
   ss << "INTERPOLATION_THRESHOLD: " << INTERPOLATION_THRESHOLD << std::endl;
   ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
