@@ -2,7 +2,6 @@
     "video_configs": [
         {
             "path": "/data/local/tmp/video/mta/test_cam_3.mp4",
-            "frame_range": [0, 500],
             "fps": 0
         }
     ],

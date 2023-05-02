@@ -2,7 +2,6 @@ package hcs.offloading.mondrian;
 
 import android.graphics.Bitmap;
 import android.util.Log;
-import android.util.Pair;
 import android.widget.ImageView;
 
 import org.json.JSONArray;
@@ -36,7 +35,6 @@ public class MondrianApp implements VideoLoader.Callback {
 
     private static class VideoConfig {
         String path;
-        Pair<Integer, Integer> frame_range;
         int fps;
     }
 
@@ -78,15 +76,9 @@ public class MondrianApp implements VideoLoader.Callback {
         List<VideoConfig> videoConfigs = new ArrayList<>();
         for (int i = 0; i < videoConfigsJson.length(); i++) {
             JSONObject videoConfigJson = videoConfigsJson.getJSONObject(i);
-            assert (videoConfigJson.has("path")
-                    && videoConfigJson.has("frame_range")
-                    && videoConfigJson.has("fps"));
-            assert (videoConfigJson.getJSONArray("frame_range").length() == 2);
+            assert (videoConfigJson.has("path") && videoConfigJson.has("fps"));
             VideoConfig videoConfig = new VideoConfig();
             videoConfig.path = videoConfigJson.getString("path");
-            videoConfig.frame_range = new Pair<>(
-                    videoConfigJson.getJSONArray("frame_range").getInt(0),
-                    videoConfigJson.getJSONArray("frame_range").getInt(1));
             videoConfig.fps = videoConfigJson.getInt("fps");
             videoConfigs.add(videoConfig);
         }

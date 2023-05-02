@@ -17,7 +17,7 @@ static std::map<int, int> parseStartIndexMap(const std::string& jsonPath) {
   assert(json.isObject());
   std::map<int, int> startIndexMap;
   for (int vid = 0; vid < json["video_configs"].size(); vid++) {
-    startIndexMap[vid] = json["video_configs"][vid]["frame_range"][0].asInt();
+    startIndexMap[vid] = 0;
   }
   return startIndexMap;
 }
