@@ -10,22 +10,21 @@ r2=$?
 adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/boxes.txt > $base/boxes.txt
 r3=$?
 
+mkdir -p $base/$dir
+mv $base/config.json $base/$dir/config.json
+
 if [ $r1 -eq 0 ]
 then
-    mkdir -p $base/$dir
     mv $base/roi.csv $base/$dir/roi.csv
 fi
 
 if [ $r2 -eq 0 ]
 then
-    mkdir -p $base/$dir
     mv $base/timeline.csv $base/$dir/timeline.csv
 fi
 
 if [ $r3 -eq 0 ]
 then
-    mkdir -p $base/$dir
-    mv $base/config.json $base/$dir/config.json
     mv $base/boxes.txt $base/$dir/boxes.txt
 fi
 
