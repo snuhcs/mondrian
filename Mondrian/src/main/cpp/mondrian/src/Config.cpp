@@ -7,231 +7,235 @@
 
 namespace md {
 
-bool LOG_INTERNAL = true;
+static int parseInt(const Json::Value& json, const std::string& key) {
+  assert(!json[key].isNull());
+  return json[key].asInt();
+}
+
+static float parseFloat(const Json::Value& json, const std::string& key) {
+  assert(!json[key].isNull());
+  return json[key].asFloat();
+}
+
+static bool parseBool(const Json::Value& json, const std::string& key) {
+  assert(!json[key].isNull());
+  return json[key].asBool();
+}
+
+static std::string parseString(const Json::Value& json, const std::string& key) {
+  assert(!json[key].isNull());
+  return json[key].asString();
+}
 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
-  ROIExtractorConfig config;
-  if (!json["max_queue_size"].isNull()) {
-    config.MAX_QUEUE_SIZE = json["max_queue_size"].asInt();
-  }
-  if (!json["extraction_resize_width"].isNull()) {
-    config.EXTRACTION_RESIZE_WIDTH = json["extraction_resize_width"].asFloat();
-  }
-  if (!json["extraction_resize_height"].isNull()) {
-    config.EXTRACTION_RESIZE_HEIGHT = json["extraction_resize_height"].asFloat();
-  }
-  if (!json["max_pd_roi_size"].isNull()) {
-    config.MAX_PD_ROI_SIZE = json["max_pd_roi_size"].asFloat();
-  }
-  if (!json["min_pd_roi_size"].isNull()) {
-    config.MIN_PD_ROI_SIZE = json["min_pd_roi_size"].asFloat();
-  }
-  if (!json["eat_pd"].isNull()) {
-    config.EAT_PD = json["eat_pd"].asBool();
-  }
-  if (!json["roi_padding"].isNull()) {
-    config.ROI_PADDING = json["roi_padding"].asFloat();
-  }
-  if (!json["roi_border"].isNull()) {
-    config.ROI_BORDER = json["roi_border"].asInt();
-  }
-  if (!json["optical_flow_roi_confidence_threshold"].isNull()) {
-    config.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD = json["optical_flow_roi_confidence_threshold"].asFloat();
-  }
-  if (!json["pd_filter_threshold"].isNull()) {
-    config.PD_FILTER_THRESHOLD = json["pd_filter_threshold"].asFloat();
-  }
-  if (!json["pd_interval"].isNull()) {
-    config.PD_INTERVAL = json["pd_interval"].asInt();
-  }
-  if (!json["merge"].isNull()) {
-    config.MERGE = json["merge"].asBool();
-  }
-  if (!json["no_downsampling_for_last_frame"].isNull()) {
-    config.NO_DOWNSAMPLING_FOR_LAST_FRAME = json["no_downsampling_for_last_frame"].asBool();
-  }
+  ROIExtractorConfig config = {};
+  config.MAX_QUEUE_SIZE = parseInt(json, "max_queue_size");
+  config.NUM_WORKERS = parseInt(json, "num_workers");
+  config.EXTRACTION_RESIZE_WIDTH = parseFloat(json, "extraction_resize_width");
+  config.EXTRACTION_RESIZE_HEIGHT = parseFloat(json, "extraction_resize_height");
+  config.MAX_PD_ROI_SIZE = parseFloat(json, "max_pd_roi_size");
+  config.MIN_PD_ROI_SIZE = parseFloat(json, "min_pd_roi_size");
+  config.EAT_PD = parseBool(json, "eat_pd");
+  config.ROI_PADDING = parseFloat(json, "roi_padding");
+  config.ROI_BORDER = parseInt(json, "roi_border");
+  config.OF_CONF_THRESHOLD = parseFloat(json, "of_conf_threshold");
+  config.PD_FILTER_THRESHOLD = parseFloat(json, "pd_filter_threshold");
+  config.PD_INTERVAL = parseInt(json, "pd_interval");
+  config.MERGE = parseBool(json, "merge");
+  config.NO_DOWNSAMPLING_FOR_LAST_FRAME = parseBool(json, "no_downsampling_for_last_frame");
   return config;
 }
 
 ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
-  ROIResizerConfig config;
-  assert(!json["train_data"].isNull());
-  config.TRAIN_DATA = json["train_data"].asString();
-  assert(config.TRAIN_DATA == "virat" || config.TRAIN_DATA == "mta");
-  if (!json["scale_shift"].isNull()) {
-    config.SCALE_SHIFT = json["scale_shift"].asFloat();
-  }
-  if (!json["voting_window"].isNull()) {
-    config.VOTING_WINDOW = json["voting_window"].asInt();
-  }
-  if (!json["area_shift"].isNull()) {
-    config.AREA_SHIFT = json["area_shift"].asFloat();
-  }
-  if (!json["static_scale"].isNull()) {
-    config.STATIC_SCALE = json["static_scale"].asBool();
-  }
-  if (!json["static_target_scale"].isNull()) {
-    config.STATIC_TARGET_SCALE = json["static_target_scale"].asFloat();
-  }
-  if (!json["max_of_roi_size"].isNull()) {
-    config.MAX_OF_ROI_SIZE = json["max_of_roi_size"].asFloat();
-  }
-  if (!json["probe_step_size"].isNull()) {
-    config.PROBE_STEP_SIZE = json["probe_step_size"].asFloat();
-    assert(config.PROBE_STEP_SIZE > 0);
-  }
-  if (!json["num_probe_steps"].isNull()) {
-    config.NUM_PROBE_STEPS = json["num_probe_steps"].asInt();
-  }
-  if (!json["probe_conf_threshold"].isNull()) {
-    config.PROBE_CONF_THRESHOLD = json["probe_conf_threshold"].asFloat();
-  }
-  if (!json["probe_iou_threshold"].isNull()) {
-    config.PROBE_IOU_THRESHOLD = json["probe_iou_threshold"].asFloat();
-  }
+  ROIResizerConfig config = {};
+  config.DATASET = parseString(json, "dataset");
+  config.VOTING_WINDOW = parseInt(json, "voting_window");
+  config.SCALE_SHIFT = parseFloat(json, "scale_shift");
+  config.AREA_SHIFT = parseFloat(json, "area_shift");
+  config.STATIC_SCALE = parseBool(json, "static_scale");
+  config.STATIC_TARGET_SCALE = parseFloat(json, "static_target_scale");
+  config.MAX_OF_ROI_SIZE = parseFloat(json, "max_of_roi_size");
+  config.PROBE_STEP_SIZE = parseFloat(json, "probe_step_size");
+  config.NUM_PROBE_STEPS = parseInt(json, "num_probe_steps");
+  config.PROBE_CONF_THRESHOLD = parseFloat(json, "probe_conf_threshold");
+  config.PROBE_IOU_THRESHOLD = parseFloat(json, "probe_iou_threshold");
   return config;
 }
 
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
-  InferenceEngineConfig config;
-  if (!json["draw_inference_result"].isNull()) {
-    config.DRAW_INFERENCE_RESULT = json["draw_inference_result"].asBool();
+  InferenceEngineConfig config = {};
+  config.DRAW_INFERENCE_RESULT = parseBool(json, "draw_inference_result");
+  config.DATASET = parseString(json, "dataset");
+  config.MODEL = parseString(json, "model");
+  config.RUNTIME = parseString(json, "runtime");
+  config.USE_TINY = parseBool(json, "use_tiny");
+  config.CONF_THRESHOLD = parseFloat(json, "conf_threshold");
+  config.IOU_THRESHOLD = parseFloat(json, "iou_threshold");
+  config.PROFILE_WARMUPS = parseInt(json, "profile_warmups");
+  config.PROFILE_RUNS = parseInt(json, "profile_runs");
+  config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
+  for (const auto& inputSizeJson: json["input_sizes"]) {
+    config.INPUT_SIZES.insert(inputSizeJson.asInt());
   }
-  if (!json["model"].isNull()) {
-    config.MODEL = json["model"].asString();
-  }
-  if (!json["runtime"].isNull()) {
-    config.RUNTIME = json["runtime"].asString();
-  }
-  if (!json["use_tiny"].isNull()) {
-    config.USE_TINY = json["use_tiny"].asBool();
-  }
-  if (!json["conf_threshold"].isNull()) {
-    config.CONF_THRESHOLD = json["conf_threshold"].asFloat();
-  }
-  if (!json["iou_threshold"].isNull()) {
-    config.IOU_THRESHOLD = json["iou_threshold"].asFloat();
-  }
-  if (!json["profile_warmups"].isNull()) {
-    config.PROFILE_WARMUPS = json["profile_warmups"].asInt();
-  }
-  if (!json["profile_runs"].isNull()) {
-    config.PROFILE_RUNS = json["profile_runs"].asInt();
-  }
-  if (!json["input_sizes"].isNull()) {
-    const Json::Value inputSizes = json["input_sizes"];
-    config.INPUT_SIZES.clear();
-    for (const auto& size : inputSizes) {
-      config.INPUT_SIZES.push_back(size.asInt());
-    }
-    // TODO: Change INPUT_SIZES from std::vector to std::set
-    std::sort(config.INPUT_SIZES.begin(), config.INPUT_SIZES.end());
-  }
-  if (!json["devices"].isNull()) {
-    const Json::Value devices = json["devices"];
-    config.DEVICES.clear();
-    for (const auto& device : devices) {
-      config.DEVICES.push_back(toDevice(device.asString()));
-    }
+  for (const auto& deviceJson: json["devices"]) {
+    config.DEVICES.insert(deviceOf(deviceJson.asString()));
   }
   return config;
 }
 
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) {
-  PatchReconstructorConfig config;
-  if (!json["frame_boxes_iou_threshold"].isNull()) {
-    config.FRAME_BOXES_IOU_THRESHOLD = json["frame_boxes_iou_threshold"].asFloat();
-  }
-  if (!json["box_filter_overlap_threshold"].isNull()) {
-    config.BOX_FILTER_OVERLAP_THRESHOLD = json["box_filter_overlap_threshold"].asFloat();
-  }
-  if (!json["id_mapping_iou_threshold"].isNull()) {
-    config.ID_MAPPING_IOU_THRESHOLD = json["id_mapping_iou_threshold"].asFloat();
-  }
+  PatchReconstructorConfig config = {};
+  config.FRAME_BOXES_IOU_THRESHOLD = parseFloat(json, "frame_boxes_iou_threshold");
+  config.BOX_FILTER_OVERLAP_THRESHOLD = parseFloat(json, "box_filter_overlap_threshold");
+  config.ID_MAPPING_IOU_THRESHOLD = parseFloat(json, "id_mapping_iou_threshold");
   return config;
 }
 
 MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   MondrianConfig config;
   std::ifstream jsonFile(jsonPath, std::ifstream::binary);
-  if (!jsonFile.is_open()) {
-    LOGE("Cannot open config file");
-    return config;
-  }
+  assert(jsonFile.is_open());
   Json::Value json;
   jsonFile >> json;
-  if (!json.isObject()) {
-    LOGE("Json parsing failed");
-    return config;
-  }
-  LOGD("Config : %s", json.toStyledString().c_str());
-  if (!json["log_internal"].isNull()) {
-    LOG_INTERNAL = json["log_internal"].asBool();
-  }
-  if (!json["log_execution"].isNull()) {
-    config.LOG_EXECUTION = json["log_execution"].asBool();
-  }
-  if (!json["log_roi"].isNull()) {
-    config.LOG_ROI = json["log_roi"].asBool();
-  }
-  if (!json["allow_interpolation"].isNull()) {
-    config.ALLOW_INTERPOLATION = json["allow_interpolation"].asBool();
-  }
-  if (!json["interpolation_threshold"].isNull()) {
-    config.INTERPOLATION_THRESHOLD = json["interpolation_threshold"].asFloat();
-  }
-  if (!json["full_frame_interval"].isNull()) {
-    config.FULL_FRAME_INTERVAL = json["full_frame_interval"].asInt();
-  }
-  if (!json["full_frame_size"].isNull()) {
-    config.FULL_FRAME_SIZE = json["full_frame_size"].asInt();
-  }
-  if (!json["full_device"].isNull()) {
-    config.FULL_DEVICE = toDevice(json["full_device"].asString());
-  }
-  if (!json["buffer_size"].isNull()) {
-    config.BUFFER_SIZE = json["buffer_size"].asInt();
-  }
-  if (!json["latency_slo_ms"].isNull()) {
-    config.LATENCY_SLO_MS = json["latency_slo_ms"].asInt();
-  }
-  if (!json["use_emulated_batch"].isNull()) {
-    config.USE_EMULATED_BATCH = json["use_emulated_batch"].asBool();
-  }
-  if (!json["use_roi_wise_inference"].isNull()) {
-    config.USE_ROI_WISE_INFERENCE = json["use_roi_wise_inference"].asBool();
-  }
-  if (!json["roi_size"].isNull()) {
-    config.ROI_SIZE = json["roi_size"].asInt();
-  }
+  assert(json.isObject());
 
-  if (!json["roi_extractor"].isNull()) {
-    config.roiExtractorConfig = parseROIExtractorConfig(json["roi_extractor"]);
-  }
-  if (!json["roi_resizer"].isNull()) {
-    config.roiResizerConfig = parseROIResizerConfig(json["roi_resizer"]);
-  }
-  if (config.USE_EMULATED_BATCH || config.USE_ROI_WISE_INFERENCE) {
-    assert(config.roiResizerConfig.NUM_PROBE_STEPS == 0);
-  }
-  if (!json["inference_engine"].isNull()) {
-    config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
-    config.inferenceEngineConfig.FULL_FRAME_SIZE = config.FULL_FRAME_SIZE;
-  }
-  config.inferenceEngineConfig.DATASET = config.roiResizerConfig.TRAIN_DATA;
-  auto& devices = config.inferenceEngineConfig.DEVICES;
-  assert(std::find(devices.begin(), devices.end(), config.FULL_DEVICE) != devices.end());
-  auto& input_sizes = config.inferenceEngineConfig.INPUT_SIZES;
-  if (config.USE_EMULATED_BATCH) {
-    assert(std::all_of(input_sizes.begin(), input_sizes.end(), [&config](int input_size) {
-      return input_size % config.ROI_SIZE == 0;
-    }));
-  }
-  if (!json["patch_reconstructor"].isNull()) {
-    config.patchReconstructorConfig = parsePatchReconstructorConfig(
-        json["patch_reconstructor"]);
-  }
+  config.EXECUTION_TYPE = executionTypeOf(parseString(json, "execution_type"));
+  config.LOG_EXECUTION = parseBool(json, "log_execution");
+  config.LOG_ROI = parseBool(json, "log_roi");
+  config.INTERPOLATION_THRESHOLD = parseFloat(json, "interpolation_threshold");
+  config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
+  config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
+  config.FULL_DEVICE = deviceOf(parseString(json, "full_device"));
+  config.BUFFER_SIZE = parseInt(json, "buffer_size");
+  config.LATENCY_SLO_MS = parseInt(json, "latency_slo_ms");
+  config.ROI_SIZE = parseInt(json, "roi_size");
+
+  config.roiExtractorConfig = parseROIExtractorConfig(json["roi_extractor"]);
+  config.roiResizerConfig = parseROIResizerConfig(json["roi_resizer"]);
+  config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
+  config.patchReconstructorConfig = parsePatchReconstructorConfig(json["patch_reconstructor"]);
   return config;
+}
+
+bool MondrianConfig::isValid() const {
+  std::set<std::string> datasets = {"virat", "mta"};
+
+  // ROIResizer
+  if (datasets.find(roiResizerConfig.DATASET) == datasets.end()) return false;
+  if (roiResizerConfig.PROBE_STEP_SIZE <= 0) return false;
+  if (EXECUTION_TYPE != MONDRIAN && roiResizerConfig.NUM_PROBE_STEPS != 0) return false;
+
+  // InferenceEngine
+  if (inferenceEngineConfig.DATASET != roiResizerConfig.DATASET) return false;
+  if (inferenceEngineConfig.DEVICES.empty()) return false;
+  if (inferenceEngineConfig.INPUT_SIZES.empty()) return false;
+  if (EXECUTION_TYPE == ROI_WISE_INFERENCE) {
+    if (inferenceEngineConfig.INPUT_SIZES.size() != 1) return false;
+    if (ROI_SIZE != *inferenceEngineConfig.INPUT_SIZES.begin()) return false;
+  }
+  if (inferenceEngineConfig.FULL_FRAME_SIZE != FULL_FRAME_SIZE) return false;
+  if (std::find(inferenceEngineConfig.DEVICES.begin(),
+                inferenceEngineConfig.DEVICES.end(),
+                FULL_DEVICE) == inferenceEngineConfig.DEVICES.end())
+    return false;
+  bool isDivisible = std::all_of(
+      inferenceEngineConfig.INPUT_SIZES.begin(), inferenceEngineConfig.INPUT_SIZES.end(),
+      [this](int input_size) { return input_size % ROI_SIZE == 0; });
+  if (EXECUTION_TYPE == EMULATED_BATCH && !isDivisible) return false;
+  return true;
+}
+
+void MondrianConfig::print() const {
+  std::stringstream ss;
+  ss << "========== MondrianConfig ==========" << std::endl;
+  ss << "EXECUTION_TYPE: " << md::str(EXECUTION_TYPE) << std::endl;
+  ss << "LOG_EXECUTION: " << LOG_EXECUTION << std::endl;
+  ss << "LOG_ROI: " << LOG_ROI << std::endl;
+  ss << "INTERPOLATION_THRESHOLD: " << INTERPOLATION_THRESHOLD << std::endl;
+  ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
+  ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
+  ss << "FULL_DEVICE: " << md::str(FULL_DEVICE) << std::endl;
+  ss << "BUFFER_SIZE: " << BUFFER_SIZE << std::endl;
+  ss << "LATENCY_SLO_MS: " << LATENCY_SLO_MS << std::endl;
+  ss << "ROI_SIZE: " << ROI_SIZE << std::endl;
+  LOGD("%s", ss.str().c_str());
+  roiExtractorConfig.print();
+  roiResizerConfig.print();
+  inferenceEngineConfig.print();
+  patchReconstructorConfig.print();
+  LOGD("====================================");
+}
+
+void ROIExtractorConfig::print() const {
+  std::stringstream ss;
+  ss << "========== ROIExtractorConfig ==========" << std::endl;
+  ss << "MAX_QUEUE_SIZE: " << MAX_QUEUE_SIZE << std::endl;
+  ss << "NUM_WORKERS: " << NUM_WORKERS << std::endl;
+  ss << "EXTRACTION_RESIZE_WIDTH: " << EXTRACTION_RESIZE_WIDTH << std::endl;
+  ss << "EXTRACTION_RESIZE_HEIGHT: " << EXTRACTION_RESIZE_HEIGHT << std::endl;
+  ss << "MAX_PD_ROI_SIZE: " << MAX_PD_ROI_SIZE << std::endl;
+  ss << "MIN_PD_ROI_SIZE: " << MIN_PD_ROI_SIZE << std::endl;
+  ss << "EAT_PD: " << EAT_PD << std::endl;
+  ss << "ROI_PADDING: " << ROI_PADDING << std::endl;
+  ss << "ROI_BORDER: " << ROI_BORDER << std::endl;
+  ss << "OF_CONF_THRESHOLD: " << OF_CONF_THRESHOLD << std::endl;
+  ss << "PD_FILTER_THRESHOLD: " << PD_FILTER_THRESHOLD << std::endl;
+  ss << "PD_INTERVAL: " << PD_INTERVAL << std::endl;
+  ss << "MERGE: " << MERGE << std::endl;
+  ss << "NO_DOWNSAMPLING_FOR_LAST_FRAME: " << NO_DOWNSAMPLING_FOR_LAST_FRAME << std::endl;
+  LOGD("%s", ss.str().c_str());
+}
+
+void ROIResizerConfig::print() const {
+  std::stringstream ss;
+  ss << "========== ROIResizerConfig ==========" << std::endl;
+  ss << "DATASET: " << DATASET << std::endl;
+  ss << "VOTING_WINDOW: " << VOTING_WINDOW << std::endl;
+  ss << "SCALE_SHIFT: " << SCALE_SHIFT << std::endl;
+  ss << "AREA_SHIFT: " << AREA_SHIFT << std::endl;
+  ss << "STATIC_SCALE: " << STATIC_SCALE << std::endl;
+  ss << "STATIC_TARGET_SCALE: " << STATIC_TARGET_SCALE << std::endl;
+  ss << "MAX_OF_ROI_SIZE: " << MAX_OF_ROI_SIZE << std::endl;
+  ss << "PROBE_STEP_SIZE: " << PROBE_STEP_SIZE << std::endl;
+  ss << "NUM_PROBE_STEPS: " << NUM_PROBE_STEPS << std::endl;
+  ss << "PROBE_CONF_THRESHOLD: " << PROBE_CONF_THRESHOLD << std::endl;
+  ss << "PROBE_IOU_THRESHOLD: " << PROBE_IOU_THRESHOLD << std::endl;
+  LOGD("%s", ss.str().c_str());
+}
+
+void InferenceEngineConfig::print() const {
+  std::stringstream ss;
+  ss << "========== InferenceEngineConfig ==========" << std::endl;
+  ss << "DRAW_INFERENCE_RESULT: " << DRAW_INFERENCE_RESULT << std::endl;
+  ss << "DATASET: " << DATASET << std::endl;
+  ss << "MODEL: " << MODEL << std::endl;
+  ss << "RUNTIME: " << RUNTIME << std::endl;
+  ss << "USE_TINY: " << USE_TINY << std::endl;
+  ss << "CONF_THRESHOLD: " << CONF_THRESHOLD << std::endl;
+  ss << "IOU_THRESHOLD: " << IOU_THRESHOLD << std::endl;
+  ss << "PROFILE_WARMUPS: " << PROFILE_WARMUPS << std::endl;
+  ss << "PROFILE_RUNS: " << PROFILE_RUNS << std::endl;
+  ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
+  ss << "INPUT_SIZES: ";
+  for (auto& inputSize: INPUT_SIZES) {
+    ss << inputSize << " ";
+  }
+  ss << std::endl;
+  ss << "DEVICES: ";
+  for (auto& device: DEVICES) {
+    ss << md::str(device) << " ";
+  }
+  ss << std::endl;
+  LOGD("%s", ss.str().c_str());
+}
+
+void PatchReconstructorConfig::print() const {
+  std::stringstream ss;
+  ss << "========== PatchReconstructorConfig ==========" << std::endl;
+  ss << "FRAME_BOXES_IOU_THRESHOLD: " << FRAME_BOXES_IOU_THRESHOLD << std::endl;
+  ss << "BOX_FILTER_OVERLAP_THRESHOLD: " << BOX_FILTER_OVERLAP_THRESHOLD << std::endl;
+  ss << "ID_MAPPING_IOU_THRESHOLD: " << ID_MAPPING_IOU_THRESHOLD << std::endl;
+  LOGD("%s", ss.str().c_str());
 }
 
 } // namespace md

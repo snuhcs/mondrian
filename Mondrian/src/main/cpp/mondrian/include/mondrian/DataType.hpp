@@ -20,14 +20,24 @@ enum Type {
 };
 
 enum Device {
-  NO_DEVICE = -1,
   GPU = 0,
   DSP = 1,
+  NO_DEVICE = 2,
 };
 
-Device toDevice(const std::string& deviceStr);
+Device deviceOf(const std::string& deviceStr);
 
-const char* toConstStr(Device device);
+std::string str(const Device& device);
+
+enum ExecutionType {
+  MONDRIAN = 0,
+  EMULATED_BATCH = 1,
+  ROI_WISE_INFERENCE = 2,
+};
+
+ExecutionType executionTypeOf(const std::string& executionTypeStr);
+
+std::string str(const ExecutionType& executionType);
 
 enum Origin {
   O_INVALID = 0,           // null value for initialization

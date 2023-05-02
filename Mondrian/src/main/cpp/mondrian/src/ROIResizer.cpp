@@ -41,10 +41,10 @@ static const auto toVec = [](float staticScale) -> std::vector<float> {
 
 ROIResizer::ROIResizer(const ROIResizerConfig& config)
     : config_(config),
-      predictor_(CANDIDATE_PREDICTORS.at(config.TRAIN_DATA)),
+      predictor_(CANDIDATE_PREDICTORS.at(config.DATASET)),
       targetAreas_(config.STATIC_SCALE
                     ? toVec(config.STATIC_TARGET_SCALE)
-                    : SCALE_LEVELS.at(config.TRAIN_DATA)) {}
+                    : SCALE_LEVELS.at(config.DATASET)) {}
 
 std::pair<float, int> ROIResizer::getTargetScale(const ID id,
                                                  const Features& features,

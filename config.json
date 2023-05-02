@@ -2,22 +2,18 @@
     "video_configs": [
         {
             "path": "/data/local/tmp/video/mta/test_cam_3.mp4",
-            "frame_range": [0, 500],
             "fps": 0
         }
     ],
-    "log_internal": true,
+    "execution_type": "mondrian",
     "log_execution": true,
     "log_roi": true,
-    "allow_interpolation": false,
     "interpolation_threshold": 1,
     "full_frame_interval": 3,
     "full_frame_size": 1024,
     "full_device": "GPU",
     "buffer_size": 200,
     "latency_slo_ms": 5000,
-    "use_emulated_batch": false,
-    "use_roi_wise_inference": false,
     "roi_size": 64,
     "roi_extractor": {
         "max_queue_size": 200,
@@ -29,14 +25,14 @@
         "eat_pd": true,
         "roi_padding": 0,
         "roi_border": 2,
-        "optical_flow_roi_confidence_threshold": 0.0,
+        "of_conf_threshold": 0.0,
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
         "merge": true,
         "no_downsampling_for_last_frame": true
     },
     "roi_resizer": {
-        "train_data": "mta",
+        "dataset": "mta",
         "voting_window": 5,
         "scale_shift": 0.0,
         "area_shift": 1600,
@@ -50,6 +46,7 @@
     },
     "inference_engine": {
         "draw_inference_result": true,
+        "dataset": "mta",
         "model": "YOLO_V5",
         "runtime": "TFLITE",
         "use_tiny": false,
@@ -57,6 +54,7 @@
         "iou_threshold": 0.5,
         "profile_warmups": 5,
         "profile_runs": 5,
+        "full_frame_size": 1024,
         "input_sizes": [
             640,
             1280

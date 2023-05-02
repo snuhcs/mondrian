@@ -17,8 +17,8 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat& rgbMat,
       isBoxesReady(false), isROIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
       isLastFrame(false), inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
 
-void Frame::resizeROIs(ROIResizer* roiResizer, bool emulatedBatch, int roiSize) {
-  if (emulatedBatch) {
+void Frame::resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize) {
+  if (executionType == EMULATED_BATCH) {
     for (auto& roi: rois) {
       float w = roi->paddedLoc.w;
       float h = roi->paddedLoc.h;

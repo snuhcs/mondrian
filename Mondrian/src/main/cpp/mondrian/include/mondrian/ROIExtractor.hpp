@@ -10,19 +10,17 @@
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
-#include "mondrian/DataType.hpp"
 #include "mondrian/PackedCanvas.hpp"
 #include "mondrian/ROIPacker.hpp"
 #include "mondrian/ROIResizer.hpp"
-#include "mondrian/Utils.hpp"
 
 namespace md {
 
 class ROIExtractor {
  public:
-  ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize, bool run,
-               ROIResizer* roiResizer, bool emulatedBatch, int roiSize,
-               std::vector<InferenceInfo> inferencePlan, std::set<int> vids);
+  ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
+               ROIResizer* roiResizer, ExecutionType executionType, int roiSize,
+               std::vector<InferenceInfo> inferencePlan, int numVideos);
 
   ~ROIExtractor();
 
@@ -84,13 +82,13 @@ class ROIExtractor {
 
   static const cv::TermCriteria CRITERIA;
 
-  const bool emulatedBatch_;
+  const ExecutionType executionType_;
   const int ROISize_;
   const cv::Size targetSize_;
   const int maxMergeSize_;
   const int border_;
   const ROIExtractorConfig config_;
-  const std::set<int> vids_;
+  const int numVideos_;
   int fullFrameVid_;
   Frame* fullFrameTarget_;
 

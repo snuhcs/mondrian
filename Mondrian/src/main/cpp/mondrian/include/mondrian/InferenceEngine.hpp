@@ -20,6 +20,8 @@ class InferenceEngine {
  public:
   InferenceEngine(const InferenceEngineConfig& config, JNIEnv* env, jobject app);
 
+  void profileLatency() const;
+
   void enqueue(const cv::Mat& rgbMat, Device device, int inputSize, bool isFullFrame,
                int key);
 

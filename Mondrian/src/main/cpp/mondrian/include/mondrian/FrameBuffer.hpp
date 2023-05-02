@@ -13,7 +13,7 @@ class Frame;
 
 class FrameBuffer {
  public:
-  FrameBuffer(int vid, int capacity, int startIndex);
+  FrameBuffer(int vid, int capacity);
 
   Frame* enqueue(const cv::Mat& mat);
 
