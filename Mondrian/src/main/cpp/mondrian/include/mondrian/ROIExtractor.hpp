@@ -21,7 +21,7 @@ namespace md {
 class ROIExtractor {
  public:
   ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize, bool run,
-               ROIResizer* roiResizer, bool emulatedBatch, int roiSize,
+               ROIResizer* roiResizer, ExecutionType executionType, int roiSize,
                std::vector<InferenceInfo> inferencePlan, std::set<int> vids);
 
   ~ROIExtractor();
@@ -84,7 +84,7 @@ class ROIExtractor {
 
   static const cv::TermCriteria CRITERIA;
 
-  const bool emulatedBatch_;
+  const ExecutionType executionType_;
   const int ROISize_;
   const cv::Size targetSize_;
   const int maxMergeSize_;

@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 
+#include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
 
 namespace md {
@@ -31,11 +32,11 @@ class ROIPacker {
  public:
   static std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
                                             const IntPairs& boxWHs, bool backward,
-                                            bool emulatedBatch, int roiSize);
+                                            ExecutionType executionType, int roiSize);
 
   static void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
                     const IntPairs& boxWH, const IntPairs& indices,
-                    bool emulatedBatch, int roiSize);
+                    ExecutionType executionType, int roiSize);
 
  private:
   static int getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, int w, int h);

@@ -5,6 +5,7 @@
 
 #include "opencv2/core/mat.hpp"
 
+#include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
 #include "mondrian/MergedROI.hpp"
 #include "mondrian/ROIPacker.hpp"
@@ -75,7 +76,7 @@ class Frame {
   Frame(const int vid, const int frameIndex, const cv::Mat& mat,
         Frame* prevFrame, const time_us& enqueueTime);
 
-  void resizeROIs(ROIResizer* roiResizer, bool emulatedBatch, int roiSize);
+  void resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize);
 
   void resetProbeROIs();
 

@@ -37,17 +37,17 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
   assert(isValid(config));
   ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
-  int maxMergeSize = config.FULL_FRAME_INTERVAL == 0 ? 0 : (config.USE_EMULATED_BATCH
-                                                            ? config.ROI_SIZE
-                                                            : inputSizes_.front());
+  int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
+                     ? inputSizes_.front()
+                     : config.ROI_SIZE;
   bool runROIExtractor = config_.FULL_FRAME_INTERVAL != 0;
   auto latencyTable = inferenceEngine_->latencyTable();
-  auto inferencePlan = InferencePlanner::getInferencePlan(latencyTable, scheduleInterval_,
-                                                          config_.USE_ROI_WISE_INFERENCE);
+  auto inferencePlan = InferencePlanner::getInferencePlan(
+      latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);
   auto vids = keySetOf(startIndices_);
   ROIExtractor_ = std::make_unique<ROIExtractor>(
       config_.roiExtractorConfig, maxMergeSize, runROIExtractor, ROIResizer_.get(),
-      config.USE_EMULATED_BATCH, config.ROI_SIZE, inferencePlan, vids);
+      config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, vids);
 
   if (config.LOG_EXECUTION) {
     executionLogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/timeline.csv");
@@ -67,18 +67,19 @@ bool Mondrian::isValid(const MondrianConfig& c) {
   // ROIResizer
   if (datasets.find(c.roiResizerConfig.DATASET) == datasets.end()) return false;
   if (c.roiResizerConfig.PROBE_STEP_SIZE <= 0) return false;
-  if ((c.USE_EMULATED_BATCH || c.USE_ROI_WISE_INFERENCE) &&
-      (c.roiResizerConfig.NUM_PROBE_STEPS != 0))
-    return false;
+  if (c.EXECUTION_TYPE != MONDRIAN && c.roiResizerConfig.NUM_PROBE_STEPS != 0) return false;
 
   // InferenceEngine
   if (c.inferenceEngineConfig.DATASET != c.roiResizerConfig.DATASET) return false;
   if (c.inferenceEngineConfig.DEVICES.empty()) return false;
   if (c.inferenceEngineConfig.INPUT_SIZES.empty()) return false;
+  if (c.EXECUTION_TYPE == ROI_WISE_INFERENCE) {
+    if (c.inferenceEngineConfig.INPUT_SIZES.size() != 1) return false;
+    if (c.ROI_SIZE != c.inferenceEngineConfig.INPUT_SIZES[0]) return false;
+  }
   bool isInputSizeSorted = std::is_sorted(c.inferenceEngineConfig.INPUT_SIZES.begin(),
                                           c.inferenceEngineConfig.INPUT_SIZES.end());
   if (!isInputSizeSorted) return false;
-  if (c.USE_ROI_WISE_INFERENCE && c.inferenceEngineConfig.INPUT_SIZES.size() < 2) return false;
   if (c.inferenceEngineConfig.FULL_FRAME_SIZE != c.FULL_FRAME_SIZE) return false;
   if (std::find(c.inferenceEngineConfig.DEVICES.begin(),
                 c.inferenceEngineConfig.DEVICES.end(),
@@ -87,7 +88,7 @@ bool Mondrian::isValid(const MondrianConfig& c) {
   bool isDivisible = std::all_of(
       c.inferenceEngineConfig.INPUT_SIZES.begin(), c.inferenceEngineConfig.INPUT_SIZES.end(),
       [&c](int input_size) { return input_size % c.ROI_SIZE == 0; });
-  if (c.USE_EMULATED_BATCH && !isDivisible) return false;
+  if (c.EXECUTION_TYPE == EMULATED_BATCH && !isDivisible) return false;
   return true;
 }
 
@@ -125,9 +126,12 @@ void Mondrian::work() {
     // 1. Inference planning
     logger.start();
     auto latencyTable = inferenceEngine_->latencyTable();
+    time_us fullStartTime = fullFramePlan
+        ? latencyTable[config_.FULL_DEVICE][{config_.FULL_FRAME_SIZE, true}]
+        : 0L;
     std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
-        latencyTable, scheduleInterval_, config_.USE_ROI_WISE_INFERENCE,
-        {{config_.FULL_DEVICE, fullFramePlan ? latencyTable[config_.FULL_DEVICE][{config_.FULL_FRAME_SIZE, true}] : 0L}});
+        latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE,
+        {{config_.FULL_DEVICE, fullStartTime}});
     logger.step("plan");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
          "Mondrian::getInferencePlan", logger.getDuration("plan"), str(inferencePlan).c_str());
@@ -174,15 +178,16 @@ void Mondrian::work() {
     }
 
     // 6. Handle packed canvases or ROI-wise inference results
-    if (config_.USE_ROI_WISE_INFERENCE) {
+    if (config_.EXECUTION_TYPE == ROI_WISE_INFERENCE) {
       handleROIWiseResults(packedCanvases);
     } else {
       handlePackedCanvasesResults(packedCanvases);
     }
     logger.step("inf");
     LOGD("%-25s took %-7lld us                            // Plan: %s",
-         config_.USE_ROI_WISE_INFERENCE ? "Mondrian::handleROIWiseResults"
-                                        : "Mondrian::handlePackedCanvasesResults",
+         config_.EXECUTION_TYPE == ROI_WISE_INFERENCE
+         ? "Mondrian::handleROIWiseResults"
+         : "Mondrian::handlePackedCanvasesResults",
          logger.getDuration("inf"), str(inferencePlan).c_str());
 
     // 7. Interpolate results

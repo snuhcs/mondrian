@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include "mondrian/Config.hpp"
 #include "mondrian/ROI.hpp"
 
 namespace md {
@@ -120,7 +121,8 @@ class MergedROI {
 
   cv::Mat borderedMat() const;
 
-  void setPackInfo(IntPair xy, int relativePackedCanvasIndex, bool emulatedBatch, int roiSize);
+  void setPackInfo(IntPair xy, int relativePackedCanvasIndex,
+                   ExecutionType executionType, int roiSize);
 
  private:
   static Frame* frameOf(const std::vector<ROI*>& rois);

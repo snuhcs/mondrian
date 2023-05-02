@@ -5,8 +5,8 @@
 namespace md {
 
 std::pair<IntPairs, IntPairs> ROIPacker::pack(
-        const std::vector<std::vector<IntRect>>& freeRectsVec,
-        const IntPairs& boxWHs, bool backward, bool emulatedBatch, int roiSize) {
+    const std::vector<std::vector<IntRect>>& freeRectsVec,
+    const IntPairs& boxWHs, bool backward, ExecutionType executionType, int roiSize) {
   auto copiedFreeRectsVec = freeRectsVec;
   IntPairs packIndices;
   IntPairs packLocations;
@@ -17,7 +17,7 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
       int i = backward
               ? int(copiedFreeRectsVec.size()) - 1 - _i
               : _i;
-      if (emulatedBatch) {
+      if (executionType == EMULATED_BATCH) {
         pack_j = !copiedFreeRectsVec[i].empty() ? 0 : -1;
       } else {
         pack_j = getBestFitFreeRectIndex(copiedFreeRectsVec[i], w, h);
@@ -35,7 +35,7 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
     const IntRect& rect = copiedFreeRectsVec[pack_i][pack_j];
     packIndices.emplace_back(pack_i, pack_j);
     packLocations.emplace_back(rect.l, rect.t);
-    if (emulatedBatch) {
+    if (executionType == EMULATED_BATCH) {
       packBox(copiedFreeRectsVec, roiSize, roiSize, pack_i, pack_j);
     } else {
       packBox(copiedFreeRectsVec, w, h, pack_i, pack_j);
@@ -47,12 +47,12 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
 
 void ROIPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
                       const IntPairs& boxWH, const IntPairs& indices,
-                      bool emulatedBatch, int roiSize) {
+                      ExecutionType executionType, int roiSize) {
   assert(boxWH.size() == indices.size());
   for (int i = 0; i < boxWH.size(); i++) {
     auto[w, h] = boxWH[i];
     auto[pack_i, pack_j] = indices[i];
-    if (emulatedBatch) {
+    if (executionType == EMULATED_BATCH) {
       packBox(freeRectsVec, roiSize, roiSize, pack_i, pack_j);
     } else {
       packBox(freeRectsVec, w, h, pack_i, pack_j);

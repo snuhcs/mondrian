@@ -22,6 +22,24 @@ static bool parseBool(const Json::Value& json, const std::string& key) {
   return json[key].asBool();
 }
 
+static std::string parseString(const Json::Value& json, const std::string& key) {
+  assert(!json[key].isNull());
+  return json[key].asString();
+}
+
+ExecutionType toExecutionType(const std::string& executionTypeStr) {
+  if (executionTypeStr == "mondrian") {
+    return MONDRIAN;
+  } else if (executionTypeStr == "emulated_batch") {
+    return EMULATED_BATCH;
+  } else if (executionTypeStr == "roi_wise_inference") {
+    return ROI_WISE_INFERENCE;
+  } else {
+    LOGE("Unknown execution type: %s", executionTypeStr.c_str());
+    assert(false);
+  }
+}
+
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   ROIExtractorConfig config = {};
   config.MAX_QUEUE_SIZE = parseInt(json, "max_queue_size");
@@ -43,7 +61,7 @@ ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
 
 ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
   ROIResizerConfig config = {};
-  config.DATASET = json["dataset"].asString();
+  config.DATASET = parseString(json, "dataset");
   config.VOTING_WINDOW = parseInt(json, "voting_window");
   config.SCALE_SHIFT = parseFloat(json, "scale_shift");
   config.AREA_SHIFT = parseFloat(json, "area_shift");
@@ -60,9 +78,9 @@ ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   InferenceEngineConfig config = {};
   config.DRAW_INFERENCE_RESULT = parseBool(json, "draw_inference_result");
-  config.DATASET = json["dataset"].asString();
-  config.MODEL = json["model"].asString();
-  config.RUNTIME = json["runtime"].asString();
+  config.DATASET = parseString(json, "dataset");
+  config.MODEL = parseString(json, "model");
+  config.RUNTIME = parseString(json, "runtime");
   config.USE_TINY = parseBool(json, "use_tiny");
   config.CONF_THRESHOLD = parseFloat(json, "conf_threshold");
   config.IOU_THRESHOLD = parseFloat(json, "iou_threshold");
@@ -96,14 +114,13 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
 
   config.LOG_EXECUTION = parseBool(json, "log_execution");
   config.LOG_ROI = parseBool(json, "log_roi");
+  config.EXECUTION_TYPE = toExecutionType(parseString(json, "execution_type"));
   config.INTERPOLATION_THRESHOLD = parseFloat(json, "interpolation_threshold");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
-  config.FULL_DEVICE = toDevice(json["full_device"].asString());
+  config.FULL_DEVICE = toDevice(parseString(json, "full_device"));
   config.BUFFER_SIZE = parseInt(json, "buffer_size");
   config.LATENCY_SLO_MS = parseInt(json, "latency_slo_ms");
-  config.USE_EMULATED_BATCH = parseBool(json, "use_emulated_batch");
-  config.USE_ROI_WISE_INFERENCE = parseBool(json, "use_roi_wise_inference");
   config.ROI_SIZE = parseInt(json, "roi_size");
 
   config.roiExtractorConfig = parseROIExtractorConfig(json["roi_extractor"]);

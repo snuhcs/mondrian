@@ -131,8 +131,9 @@ cv::Mat MergedROI::borderedMat() const {
   return rgbMat;
 }
 
-void MergedROI::setPackInfo(IntPair xy, int relativePackedCanvasIndex, bool emulatedBatch, int roiSize) {
-  if (emulatedBatch) {
+void MergedROI::setPackInfo(IntPair xy, int relativePackedCanvasIndex,
+                            ExecutionType executionType, int roiSize) {
+  if (executionType == EMULATED_BATCH) {
     int bw = borderedLengthOf(loc_.w, targetScale_);
     int bh = borderedLengthOf(loc_.h, targetScale_);
     if (roiSize < std::max(bw, bh)) {

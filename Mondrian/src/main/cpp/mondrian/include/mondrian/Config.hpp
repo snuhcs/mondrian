@@ -10,6 +10,14 @@
 
 namespace md {
 
+enum ExecutionType {
+  MONDRIAN = 0,
+  EMULATED_BATCH = 1,
+  ROI_WISE_INFERENCE = 2,
+};
+
+ExecutionType toExecutionType(const std::string& executionTypeStr);
+
 constexpr int NUM_LABELS = 80;
 
 struct ROIExtractorConfig {
@@ -70,14 +78,13 @@ struct PatchReconstructorConfig {
 struct MondrianConfig {
   bool LOG_EXECUTION;
   bool LOG_ROI;
+  ExecutionType EXECUTION_TYPE;
   float INTERPOLATION_THRESHOLD;
   int FULL_FRAME_INTERVAL; // If FULL_FRAME_INTERVAL == 0, always run full frame inference
   int FULL_FRAME_SIZE;
   Device FULL_DEVICE;
   int BUFFER_SIZE;
   int LATENCY_SLO_MS;
-  bool USE_EMULATED_BATCH;
-  bool USE_ROI_WISE_INFERENCE;
   int ROI_SIZE; // Used for Emulated Batch or ROI-wise Inference
   ROIExtractorConfig roiExtractorConfig;
   ROIResizerConfig roiResizerConfig;
