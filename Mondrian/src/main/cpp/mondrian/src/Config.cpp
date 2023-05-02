@@ -140,7 +140,7 @@ void MondrianConfig::test() const {
   bool isDivisible = std::all_of(
       inferenceEngineConfig.INPUT_SIZES.begin(), inferenceEngineConfig.INPUT_SIZES.end(),
       [this](int input_size) { return input_size % ROI_SIZE == 0; });
-  assert(EXECUTION_TYPE == MONDRIAN || isDivisible);
+  assert(EXECUTION_TYPE != EMULATED_BATCH || isDivisible);
 }
 
 void MondrianConfig::print() const {
