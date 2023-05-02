@@ -2,6 +2,7 @@
 base="logs"
 dir="$(date '+%Y-%m-%d_%H-%M-%S')_h$(openssl rand -hex 2)"
 
+adb shell cat /data/local/tmp/config.json > $base/config.json
 adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/roi.csv > $base/roi.csv
 r1=$?
 adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/timeline.csv > $base/timeline.csv
@@ -24,6 +25,7 @@ fi
 if [ $r3 -eq 0 ]
 then
     mkdir -p $base/$dir
+    mv $base/config.json $base/$dir/config.json
     mv $base/boxes.txt $base/$dir/boxes.txt
 fi
 
