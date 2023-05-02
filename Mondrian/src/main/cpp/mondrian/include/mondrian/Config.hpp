@@ -22,7 +22,7 @@ struct ROIExtractorConfig {
   bool EAT_PD;
   float ROI_PADDING;
   int ROI_BORDER;
-  float OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD;
+  float OF_CONF_THRESHOLD;
   float PD_FILTER_THRESHOLD;
   int PD_INTERVAL;
   bool MERGE;
@@ -66,8 +66,6 @@ struct PatchReconstructorConfig {
   float BOX_FILTER_OVERLAP_THRESHOLD;
   float ID_MAPPING_IOU_THRESHOLD;
 };
-
-extern bool LOG_INTERNAL;
 
 struct MondrianConfig {
   bool LOG_EXECUTION;

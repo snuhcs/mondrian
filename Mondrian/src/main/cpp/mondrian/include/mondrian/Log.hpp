@@ -3,17 +3,13 @@
 
 #include <android/log.h>
 
-#include "mondrian/Config.hpp"
-
 #define TAG "Mondrian"
 
 namespace md {
 
-#define LOG(prio, ...)                             \
-  do {                                             \
-    if (LOG_INTERNAL) {                            \
-      __android_log_print(prio, TAG, __VA_ARGS__); \
-    }                                              \
+#define LOG(prio, ...)                           \
+  do {                                           \
+    __android_log_print(prio, TAG, __VA_ARGS__); \
   } while (false)
 
 #define LOGV(...) LOG(ANDROID_LOG_VERBOSE, __VA_ARGS__)

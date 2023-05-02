@@ -6,7 +6,6 @@
             "fps": 0
         }
     ],
-    "log_internal": true,
     "log_execution": true,
     "log_roi": true,
     "interpolation_threshold": 1,
@@ -28,7 +27,7 @@
         "eat_pd": true,
         "roi_padding": 0,
         "roi_border": 2,
-        "optical_flow_roi_confidence_threshold": 0.0,
+        "of_conf_threshold": 0.0,
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
         "merge": true,

@@ -73,6 +73,8 @@ bool Mondrian::isValid(const MondrianConfig& c) {
 
   // InferenceEngine
   if (c.inferenceEngineConfig.DATASET != c.roiResizerConfig.DATASET) return false;
+  if (c.inferenceEngineConfig.DEVICES.empty()) return false;
+  if (c.inferenceEngineConfig.INPUT_SIZES.empty()) return false;
   bool isInputSizeSorted = std::is_sorted(c.inferenceEngineConfig.INPUT_SIZES.begin(),
                                           c.inferenceEngineConfig.INPUT_SIZES.end());
   if (!isInputSizeSorted) return false;

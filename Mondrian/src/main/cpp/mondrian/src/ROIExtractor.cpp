@@ -518,7 +518,7 @@ void ROIExtractor::processOF(Frame* currFrame) {
   std::vector<BoundingBox> reliablePrevBoxes;
   if (prevFrame->useInferenceResultForOF) {
     for (const std::unique_ptr<BoundingBox>& box : prevFrame->boxes) {
-      if (box->confidence > config_.OPTICAL_FLOW_ROI_CONFIDENCE_THRESHOLD) {
+      if (box->confidence > config_.OF_CONF_THRESHOLD) {
         BoundingBox reliableBox(box->id, Rect(
             std::max(0.0f, box->loc.l),
             std::max(0.0f, box->loc.t),
