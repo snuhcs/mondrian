@@ -20,14 +20,14 @@ enum Type {
 };
 
 enum Device {
-  NO_DEVICE = -1,
   GPU = 0,
   DSP = 1,
+  NO_DEVICE = 2,
 };
 
-Device toDevice(const std::string& deviceStr);
+Device deviceOf(const std::string& deviceStr);
 
-const char* toConstStr(Device device);
+std::string str(const Device& device);
 
 enum Origin {
   O_INVALID = 0,           // null value for initialization

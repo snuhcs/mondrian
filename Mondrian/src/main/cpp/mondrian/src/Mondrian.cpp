@@ -33,7 +33,7 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
       inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)),
       patchReconstructor_(new PatchReconstructor(config.patchReconstructorConfig,
                                                  ROIResizer_.get())) {
-  LOGD("Running Mondrian with Config: %s", config_.str().c_str());
+  config_.print();
   assert(isValid(config));
   ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
@@ -153,7 +153,7 @@ void Mondrian::work() {
       fullFrameTarget->inferenceFrameSize = config_.FULL_FRAME_SIZE;
       fullFrameTarget->inferenceDevice = config_.FULL_DEVICE;
       LOGD("inferenceEngine_->enqueue %d sized fullFrame to %s | %d",
-           config_.FULL_FRAME_SIZE, toConstStr(config_.FULL_DEVICE), fullFrameTarget->frameIndex);
+           config_.FULL_FRAME_SIZE, str(config_.FULL_DEVICE).c_str(), fullFrameTarget->frameIndex);
       logger.step("full");
     } else {
       logger.step("full");
@@ -165,8 +165,8 @@ void Mondrian::work() {
       inferenceEngine_->enqueue(packedCanvas.packedMat, packedCanvas.device,
                                 packedCanvas.packedCanvasSize, false, packedCanvas.getKey());
       LOGD("inferenceEngine_->enqueue %d sized %d packedCanvas to %s | %s",
-           packedCanvas.packedCanvasSize, packedCanvas.absolutePackedCanvasIndex, toConstStr(packedCanvas.device),
-           str(packedCanvas.getPackedFrames()).c_str());
+           packedCanvas.packedCanvasSize, packedCanvas.absolutePackedCanvasIndex,
+           str(packedCanvas.device).c_str(), str(packedCanvas.getPackedFrames()).c_str());
     }
 
     // 5. Handle full frame inference results
@@ -277,7 +277,7 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
     auto[boxes, times, device] = inferenceEngine_->getResults(packedCanvases[i].getKey());
     assert(device == packedCanvases[i].device);
     LOGD("inferenceEngine_->getResults %d sized %d packedCanvases to %s", packedCanvases[i].packedCanvasSize,
-         packedCanvases[i].absolutePackedCanvasIndex, toConstStr(packedCanvases[i].device));
+         packedCanvases[i].absolutePackedCanvasIndex, str(packedCanvases[i].device).c_str());
     for (Frame* frame: packedCanvases[i].getPackedFrames()) {
       if (frame->inferenceDevice == NO_DEVICE) {
         frame->inferenceFrameSize = packedCanvases[i].packedCanvasSize;
@@ -421,7 +421,7 @@ int Mondrian::enqueueImage(const int vid, const cv::Mat& yuvMat) {
     frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
     frame->inferenceDevice = config_.FULL_DEVICE;
     LOGD("inferenceEngine_->enqueue %d sized fullFrame to %s | %d",
-         config_.FULL_FRAME_SIZE, toConstStr(config_.FULL_DEVICE), frame->frameIndex);
+         config_.FULL_FRAME_SIZE, str(config_.FULL_DEVICE).c_str(), frame->frameIndex);
     handleFullFrameResults(frame);
     if (config_.FULL_FRAME_INTERVAL == 0) {
       std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);

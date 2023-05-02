@@ -16,7 +16,9 @@ enum ExecutionType {
   ROI_WISE_INFERENCE = 2,
 };
 
-ExecutionType toExecutionType(const std::string& executionTypeStr);
+ExecutionType executionTypeOf(const std::string& executionTypeStr);
+
+std::string str(const ExecutionType& executionType);
 
 constexpr int NUM_LABELS = 80;
 
@@ -35,6 +37,8 @@ struct ROIExtractorConfig {
   int PD_INTERVAL;
   bool MERGE;
   bool NO_DOWNSAMPLING_FOR_LAST_FRAME;
+
+  void print() const;
 };
 
 struct ROIResizerConfig {
@@ -52,6 +56,8 @@ struct ROIResizerConfig {
   int NUM_PROBE_STEPS;
   float PROBE_CONF_THRESHOLD;
   float PROBE_IOU_THRESHOLD;
+
+  void print() const;
 };
 
 struct InferenceEngineConfig {
@@ -67,12 +73,16 @@ struct InferenceEngineConfig {
   int FULL_FRAME_SIZE;
   std::vector<int> INPUT_SIZES; // TODO: Change to std::set
   std::vector<Device> DEVICES;
+
+  void print() const;
 };
 
 struct PatchReconstructorConfig {
   float FRAME_BOXES_IOU_THRESHOLD;
   float BOX_FILTER_OVERLAP_THRESHOLD;
   float ID_MAPPING_IOU_THRESHOLD;
+
+  void print() const;
 };
 
 struct MondrianConfig {
@@ -91,7 +101,7 @@ struct MondrianConfig {
   InferenceEngineConfig inferenceEngineConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 
-  std::string str() const;
+  void print() const;
 };
 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json);
