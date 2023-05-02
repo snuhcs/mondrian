@@ -4,7 +4,7 @@
 namespace md {
 
 int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float shiftStd,
-          float shiftNcc, float avgErr, float confidence);
+          float shiftNcc, float avgErr);
 
 } // namespace md
 

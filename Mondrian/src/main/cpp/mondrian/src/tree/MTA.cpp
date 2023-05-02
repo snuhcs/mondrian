@@ -3,7 +3,7 @@
 namespace md {
 
 int MTA(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float shiftStd,
-        float shiftNcc, float avgErr, float confidence) {
+        float shiftNcc, float avgErr) {
   if (area <= 5071.5) {
     if (area <= 4093.5) {
       if (xyRatio <= 1.1926) {

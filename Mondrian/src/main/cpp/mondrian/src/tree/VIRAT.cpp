@@ -3,7 +3,7 @@
 namespace md {
 
 int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float shiftStd,
-          float shiftNcc, float avgErr, float confidence) {
+          float shiftNcc, float avgErr) {
   if (maxEdgeLength <= 194.5) {
     if (area <= 15950) {
       if (area <= 8356) {
