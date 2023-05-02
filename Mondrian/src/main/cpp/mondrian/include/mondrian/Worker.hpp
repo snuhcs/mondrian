@@ -14,14 +14,19 @@ class InferenceEngine;
 
 class Worker {
  public:
-  Worker(InferenceEngine* engine, Device device, std::map<std::tuple<int, bool>, Classifier*> classifierMap,
+  Worker(InferenceEngine* engine, Device device,
+         std::map<std::tuple<int, bool>, Classifier*> classifierMap,
          bool draw, JNIEnv* env, jobject app);
 
   ~Worker();
 
   void enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, int key);
 
-  std::map<std::tuple<int, bool>, time_us> getInferenceTimes();
+  std::map<std::tuple<int, bool>, time_us> latencyMap() const {
+    return latencyMap_;
+  }
+
+  void profileLatency(int warmupRuns, int numRuns);
 
  private:
   void work();
@@ -37,6 +42,7 @@ class Worker {
 
   InferenceEngine* engine;
   std::map<std::tuple<int, bool>, Classifier*> classifierMap;
+  std::map<std::tuple<int, bool>, time_us> latencyMap_;
 
   std::atomic_bool isClosed;
   std::thread thread;

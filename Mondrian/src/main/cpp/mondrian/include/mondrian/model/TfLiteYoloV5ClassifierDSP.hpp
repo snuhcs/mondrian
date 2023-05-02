@@ -14,10 +14,7 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
                             float confidenceThreshold, float iouThreshold,
                             bool isTiny, bool forFullFrame);
 
-  Result recognizeImage(const cv::Mat& mat) override;
-
- protected:
-  void singleInference() const override;
+  std::vector<BoundingBox> recognizeImage(const cv::Mat& mat) override;
 
  private:
   cv::Mat preprocess(const cv::Mat& mat) override;

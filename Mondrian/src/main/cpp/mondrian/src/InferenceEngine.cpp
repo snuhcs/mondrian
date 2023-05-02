@@ -50,12 +50,6 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
         config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
         config.USE_TINY, forFullFrame);
-    LOGD("Profiling %s %d size started", device == GPU ? "GPU" : "DSP", inputSize);
-    time_us initialLatency = classifier->profileInferenceTime(config.PROFILE_WARMUPS,
-                                                              config.PROFILE_RUNS);
-    LOGD("Profiling %s %d size ended    // %lld", device == GPU ? "GPU" : "DSP", inputSize,
-         initialLatency);
-    classifier->setInferenceTime(initialLatency);
     classifierMap[{inputSize, forFullFrame}] = classifier.get();
     classifiers.push_back(std::move(classifier));
   }
@@ -67,17 +61,12 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
   std::unique_ptr<Classifier> classifier = std::make_unique<T>(
       config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
       config.USE_TINY, forFullFrame);
-  LOGD("Profiling %s %d size started", device == GPU ? "GPU" : "DSP", inputSize);
-  time_us initialLatency = classifier->profileInferenceTime(config.PROFILE_WARMUPS,
-                                                            config.PROFILE_RUNS);
-  LOGD("Profiling %s %d size ended    // %lld", device == GPU ? "GPU" : "DSP", inputSize,
-       initialLatency);
-  classifier->setInferenceTime(initialLatency);
   classifierMap[{inputSize, forFullFrame}] = classifier.get();
   classifiers.push_back(std::move(classifier));
 
   workers[device] = std::make_unique<Worker>(
       this, device, classifierMap, mConfig.DRAW_INFERENCE_RESULT, env, app);
+  workers[device]->profileLatency(config.PROFILE_WARMUPS, config.PROFILE_RUNS);
 }
 
 void InferenceEngine::enqueue(const cv::Mat& rgbMat, Device device, int inputSize, bool isFullFrame,
@@ -90,29 +79,24 @@ Result InferenceEngine::getResults(int key) {
   resultCv.wait(resultLock, [this, key]() {
     return results.find(key) != results.end();
   });
-  auto boxTimeDevice = results.at(key);
+  auto result = results.at(key);
   results.erase(key);
-  return boxTimeDevice;
+  return result;
 }
 
-void InferenceEngine::enqueueResults(int key, const Result& boxTimes) {
+void InferenceEngine::enqueueResult(const int handle, const Result& result) {
   std::unique_lock<std::mutex> resultLock(resultMtx);
-  results.emplace(key, boxTimes);
+  results.emplace(handle, result);
   resultLock.unlock();
   resultCv.notify_all();
 }
 
-std::map<Device, std::map<std::tuple<int, bool>, time_us>>
-InferenceEngine::getInferenceTimeTable() const {
-  std::map<Device, std::map<std::tuple<int, bool>, time_us>> inferenceTimeTable;
+std::map<Device, std::map<std::tuple<int, bool>, time_us>> InferenceEngine::latencyTable() const {
+  std::map<Device, std::map<std::tuple<int, bool>, time_us>> latencyTable;
   for (const auto&[device, worker]: workers) {
-    inferenceTimeTable[device] = worker->getInferenceTimes();
+    latencyTable[device] = worker->latencyMap();
   }
-  return inferenceTimeTable;
-}
-
-std::vector<int> InferenceEngine::getInputSizes() const {
-  return mConfig.INPUT_SIZES;
+  return latencyTable;
 }
 
 } // namespace md

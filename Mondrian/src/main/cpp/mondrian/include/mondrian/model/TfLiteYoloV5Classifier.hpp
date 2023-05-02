@@ -16,9 +16,6 @@ class TfLiteYoloV5Classifier : public Classifier {
 
   ~TfLiteYoloV5Classifier();
 
- protected:
-  void singleInference() const override;
-
  private:
   cv::Mat preprocess(const cv::Mat& mat) override;
 

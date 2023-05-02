@@ -12,6 +12,8 @@
 
 namespace md {
 
+using Result = std::tuple<std::vector<BoundingBox>, std::pair<time_us, time_us>, Device>;
+
 class InferenceEngine {
   friend Worker;
 
@@ -23,12 +25,10 @@ class InferenceEngine {
 
   Result getResults(int key);
 
-  std::map<Device, std::map<std::tuple<int, bool>, time_us>> getInferenceTimeTable() const;
-
-  std::vector<int> getInputSizes() const;
+  std::map<Device, std::map<std::tuple<int, bool>, time_us>> latencyTable() const;
 
  private:
-  void enqueueResults(const int handle, const Result& boxes);
+  void enqueueResult(const int handle, const Result& result);
 
   template<typename T>
   void addClassifiers(Device device, const InferenceEngineConfig& config,

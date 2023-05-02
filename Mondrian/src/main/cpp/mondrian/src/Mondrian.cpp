@@ -59,7 +59,7 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
                                                             ? config.ROI_SIZE
                                                             : inputSizes_.front());
   bool runROIExtractor = config_.FULL_FRAME_INTERVAL != 0;
-  auto latencyTable = inferenceEngine_->getInferenceTimeTable();
+  auto latencyTable = inferenceEngine_->latencyTable();
   printLatencyTable(latencyTable);
   auto inferencePlan = InferencePlanner::getInferencePlan(latencyTable, scheduleInterval_,
                                                           config_.USE_ROI_WISE_INFERENCE);
@@ -113,7 +113,7 @@ void Mondrian::work() {
     LOGD("========== Start ==========");
     // 1. Inference planning
     logger.start();
-    auto latencyTable = inferenceEngine_->getInferenceTimeTable();
+    auto latencyTable = inferenceEngine_->latencyTable();
     std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
         latencyTable, scheduleInterval_, config_.USE_ROI_WISE_INFERENCE,
         {{config_.FULL_DEVICE, fullFramePlan ? latencyTable[config_.FULL_DEVICE][{config_.FULL_FRAME_SIZE, true}] : 0L}});
@@ -255,25 +255,25 @@ void Mondrian::handleFullFrameResults(Frame* frame) {
   resultsCV_.notify_all();
 }
 
-void Mondrian::handlePackedCanvasResults(std::vector<PackedCanvas>& packedCanvas) {
+void Mondrian::handlePackedCanvasResults(std::vector<PackedCanvas>& packedCanvases) {
   // Get results of mixed frames sequentially
-  for (int i = 0; i < packedCanvas.size(); i++) {
-    auto[boxes, times, device] = inferenceEngine_->getResults(packedCanvas[i].getKey());
-    assert(device == packedCanvas[i].device);
-    LOGD("inferenceEngine_->getResults %d sized %d packedCanvas to %s", packedCanvas[i].packedCanvasSize,
-         packedCanvas[i].absolutePackedCanvasIndex, toConstStr(packedCanvas[i].device));
-    for (Frame* frame: packedCanvas[i].getPackedFrames()) {
+  for (int i = 0; i < packedCanvases.size(); i++) {
+    auto[boxes, times, device] = inferenceEngine_->getResults(packedCanvases[i].getKey());
+    assert(device == packedCanvases[i].device);
+    LOGD("inferenceEngine_->getResults %d sized %d packedCanvases to %s", packedCanvases[i].packedCanvasSize,
+         packedCanvases[i].absolutePackedCanvasIndex, toConstStr(packedCanvases[i].device));
+    for (Frame* frame: packedCanvases[i].getPackedFrames()) {
       if (frame->inferenceDevice == NO_DEVICE) {
-        frame->inferenceFrameSize = packedCanvas[i].packedCanvasSize;
+        frame->inferenceFrameSize = packedCanvases[i].packedCanvasSize;
         frame->inferenceDevice = device;
         frame->mixedInferenceStartTime = times.first;
         frame->mixedInferenceEndTime = times.second;
       }
     }
-    packedCanvas[i].packedMat.release();
-    patchReconstructor_->assignBoxesToFrame(packedCanvas[i], boxes);
+    packedCanvases[i].packedMat.release();
+    patchReconstructor_->assignBoxesToFrame(packedCanvases[i], boxes);
 
-    for (Frame* frame: packedCanvas[i].getPackedFrames()) {
+    for (Frame* frame: packedCanvases[i].getPackedFrames()) {
       if (frame->isReadyToMarry(i)) { // If all mergedROIs are packed and inferenced
         // Match boxes with ROIs (per frame)
         nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
@@ -286,9 +286,9 @@ void Mondrian::handlePackedCanvasResults(std::vector<PackedCanvas>& packedCanvas
   }
 }
 
-void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvas) {
+void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
   Stream inferenceFrames;
-  for (auto& packedCanvas: packedCanvas) {
+  for (auto& packedCanvas: packedCanvases) {
     auto[boxes, times, device] = inferenceEngine_->getResults(packedCanvas.getKey());
     assert(packedCanvas.packedROIs.size() == 1);
     assert(device == packedCanvas.device);
