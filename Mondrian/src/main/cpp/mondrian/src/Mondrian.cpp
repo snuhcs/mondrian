@@ -41,6 +41,7 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
                      ? inputSizes_.front()
                      : config.ROI_SIZE;
   bool runROIExtractor = config_.FULL_FRAME_INTERVAL != 0;
+  inferenceEngine_->profileLatency();
   auto latencyTable = inferenceEngine_->latencyTable();
   auto inferencePlan = InferencePlanner::getInferencePlan(
       latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);

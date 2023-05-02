@@ -66,7 +66,12 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
 
   workers[device] = std::make_unique<Worker>(
       this, device, classifierMap, mConfig.DRAW_INFERENCE_RESULT, env, app);
-  workers[device]->profileLatency(config.PROFILE_WARMUPS, config.PROFILE_RUNS);
+}
+
+void InferenceEngine::profileLatency() const {
+  for (const auto&[device, worker]: workers) {
+    workers.at(device)->profileLatency(mConfig.PROFILE_WARMUPS, mConfig.PROFILE_RUNS);
+  }
 }
 
 void InferenceEngine::enqueue(const cv::Mat& rgbMat, Device device, int inputSize, bool isFullFrame,
