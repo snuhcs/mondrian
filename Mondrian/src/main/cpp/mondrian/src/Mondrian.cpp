@@ -38,7 +38,7 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
   ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
   int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
-                     ? inputSizes_.front()
+                     ? *inputSizes_.begin()
                      : config.ROI_SIZE;
   bool runROIExtractor = config_.FULL_FRAME_INTERVAL != 0;
   inferenceEngine_->profileLatency();

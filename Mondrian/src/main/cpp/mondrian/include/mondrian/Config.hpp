@@ -1,6 +1,7 @@
 #ifndef CONFIG_HPP_
 #define CONFIG_HPP_
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -71,7 +72,7 @@ struct InferenceEngineConfig {
   int PROFILE_WARMUPS;
   int PROFILE_RUNS;
   int FULL_FRAME_SIZE;
-  std::vector<int> INPUT_SIZES; // TODO: Change to std::set
+  std::set<int> INPUT_SIZES;
   std::vector<Device> DEVICES;
 
   void print() const;

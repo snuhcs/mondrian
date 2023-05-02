@@ -60,7 +60,7 @@ class Mondrian {
   std::unique_ptr<Logger> executionLogger_;
   std::unique_ptr<Logger> ROILogger_;
   const cv::Size targetSize_;
-  const std::vector<int> inputSizes_;
+  const std::set<int> inputSizes_;
 
   std::unique_ptr<ROIExtractor> ROIExtractor_;
   std::unique_ptr<ROIResizer> ROIResizer_;

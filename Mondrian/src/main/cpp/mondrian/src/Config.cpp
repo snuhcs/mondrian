@@ -101,7 +101,7 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   config.PROFILE_RUNS = parseInt(json, "profile_runs");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
   for (const auto& inputSizeJson: json["input_sizes"]) {
-    config.INPUT_SIZES.push_back(inputSizeJson.asInt());
+    config.INPUT_SIZES.insert(inputSizeJson.asInt());
   }
   for (const auto& deviceJson: json["devices"]) {
     config.DEVICES.push_back(deviceOf(deviceJson.asString()));
@@ -157,11 +157,8 @@ bool MondrianConfig::isValid() const {
   if (inferenceEngineConfig.INPUT_SIZES.empty()) return false;
   if (EXECUTION_TYPE == ROI_WISE_INFERENCE) {
     if (inferenceEngineConfig.INPUT_SIZES.size() != 1) return false;
-    if (ROI_SIZE != inferenceEngineConfig.INPUT_SIZES[0]) return false;
+    if (ROI_SIZE != *inferenceEngineConfig.INPUT_SIZES.begin()) return false;
   }
-  bool isInputSizeSorted = std::is_sorted(inferenceEngineConfig.INPUT_SIZES.begin(),
-                                          inferenceEngineConfig.INPUT_SIZES.end());
-  if (!isInputSizeSorted) return false;
   if (inferenceEngineConfig.FULL_FRAME_SIZE != FULL_FRAME_SIZE) return false;
   if (std::find(inferenceEngineConfig.DEVICES.begin(),
                 inferenceEngineConfig.DEVICES.end(),
