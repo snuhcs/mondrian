@@ -64,7 +64,7 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
 bool Mondrian::isValid(const MondrianConfig& c) {
   std::set<std::string> datasets = {"virat", "mta"};
   if (datasets.find(c.roiResizerConfig.DATASET) == datasets.end()) return false;
-  if (datasets.find(c.inferenceEngineConfig.DATASET) == datasets.end()) return false;
+  if (c.roiResizerConfig.PROBE_STEP_SIZE <= 0) return false;
   if (c.roiResizerConfig.DATASET != c.inferenceEngineConfig.DATASET) return false;
   bool isInputSizeSorted = std::is_sorted(c.inferenceEngineConfig.INPUT_SIZES.begin(),
                                           c.inferenceEngineConfig.INPUT_SIZES.end());

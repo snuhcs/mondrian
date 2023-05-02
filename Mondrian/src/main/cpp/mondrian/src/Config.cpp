@@ -60,7 +60,6 @@ ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
   config.MAX_OF_ROI_SIZE = json["max_of_roi_size"].asFloat();
   assert(!json["probe_step_size"].isNull());
   config.PROBE_STEP_SIZE = json["probe_step_size"].asFloat();
-  assert(config.PROBE_STEP_SIZE > 0);
   assert(!json["num_probe_steps"].isNull());
   config.NUM_PROBE_STEPS = json["num_probe_steps"].asInt();
   assert(!json["probe_conf_threshold"].isNull());
