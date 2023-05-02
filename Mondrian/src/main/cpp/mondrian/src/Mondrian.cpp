@@ -63,13 +63,29 @@ Mondrian::Mondrian(const MondrianConfig& config, std::map<int, int> startIndices
 
 bool Mondrian::isValid(const MondrianConfig& c) {
   std::set<std::string> datasets = {"virat", "mta"};
+
+  // ROIResizer
   if (datasets.find(c.roiResizerConfig.DATASET) == datasets.end()) return false;
   if (c.roiResizerConfig.PROBE_STEP_SIZE <= 0) return false;
-  if (c.roiResizerConfig.DATASET != c.inferenceEngineConfig.DATASET) return false;
+  if ((c.USE_EMULATED_BATCH || c.USE_ROI_WISE_INFERENCE) &&
+      (c.roiResizerConfig.NUM_PROBE_STEPS != 0))
+    return false;
+
+  // InferenceEngine
+  if (c.inferenceEngineConfig.DATASET != c.roiResizerConfig.DATASET) return false;
   bool isInputSizeSorted = std::is_sorted(c.inferenceEngineConfig.INPUT_SIZES.begin(),
                                           c.inferenceEngineConfig.INPUT_SIZES.end());
   if (!isInputSizeSorted) return false;
   if (c.USE_ROI_WISE_INFERENCE && c.inferenceEngineConfig.INPUT_SIZES.size() < 2) return false;
+  if (c.inferenceEngineConfig.FULL_FRAME_SIZE != c.FULL_FRAME_SIZE) return false;
+  if (std::find(c.inferenceEngineConfig.DEVICES.begin(),
+                c.inferenceEngineConfig.DEVICES.end(),
+                c.FULL_DEVICE) == c.inferenceEngineConfig.DEVICES.end())
+    return false;
+  bool isDivisible = std::all_of(
+      c.inferenceEngineConfig.INPUT_SIZES.begin(), c.inferenceEngineConfig.INPUT_SIZES.end(),
+      [&c](int input_size) { return input_size % c.ROI_SIZE == 0; });
+  if (c.USE_EMULATED_BATCH && !isDivisible) return false;
   return true;
 }
 

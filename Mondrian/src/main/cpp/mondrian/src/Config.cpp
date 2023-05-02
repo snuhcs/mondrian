@@ -150,21 +150,8 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.roiExtractorConfig = parseROIExtractorConfig(json["roi_extractor"]);
   assert(!json["roi_resizer"].isNull());
   config.roiResizerConfig = parseROIResizerConfig(json["roi_resizer"]);
-  if (config.USE_EMULATED_BATCH || config.USE_ROI_WISE_INFERENCE) {
-    assert(config.roiResizerConfig.NUM_PROBE_STEPS == 0);
-  }
   assert(!json["inference_engine"].isNull());
   config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
-  assert(config.inferenceEngineConfig.FULL_FRAME_SIZE == config.FULL_FRAME_SIZE);
-  assert(config.inferenceEngineConfig.DATASET == config.roiResizerConfig.DATASET);
-  auto& devices = config.inferenceEngineConfig.DEVICES;
-  assert(std::find(devices.begin(), devices.end(), config.FULL_DEVICE) != devices.end());
-  auto& input_sizes = config.inferenceEngineConfig.INPUT_SIZES;
-  if (config.USE_EMULATED_BATCH) {
-    assert(std::all_of(input_sizes.begin(), input_sizes.end(), [&config](int input_size) {
-      return input_size % config.ROI_SIZE == 0;
-    }));
-  }
   assert(!json["patch_reconstructor"].isNull());
   config.patchReconstructorConfig = parsePatchReconstructorConfig(json["patch_reconstructor"]);
   return config;
