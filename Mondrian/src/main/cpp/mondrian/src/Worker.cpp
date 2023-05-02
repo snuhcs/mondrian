@@ -6,12 +6,12 @@
 namespace md {
 
 Worker::Worker(InferenceEngine* engine, Device device,
-               std::map<std::tuple<int, bool>, Classifier*> classifierMap,
+               std::map<std::pair<int, bool>, Classifier*> classifierMap,
                bool draw, JNIEnv* env, jobject app)
-        : engine(engine), device(device), classifierMap(std::move(classifierMap)), isClosed(false),
-          env(env), app(reinterpret_cast<jobject>(env->NewGlobalRef(app))),
-          draw(draw) {
+    : engine(engine), device(device), classifierMap_(std::move(classifierMap)), isClosed(false),
+      env(env), app(reinterpret_cast<jobject>(env->NewGlobalRef(app))), draw(draw) {
   if (draw) {
+    maxPackedCanvasSize = (*classifierMap_.rbegin()).first.first;
     env->GetJavaVM(&jvm);
     class_MondrianApp = reinterpret_cast<jclass>(env->NewGlobalRef(
             env->FindClass("hcs/offloading/mondrian/MondrianApp")));
@@ -50,13 +50,13 @@ void Worker::work() {
 
     // Inference
     time_us inferenceStart = NowMicros();
-    auto boxes = classifierMap[{size, isFullFrame}]->recognizeImage(rgbMat);
+    auto boxes = classifierMap_[{size, isFullFrame}]->recognizeImage(rgbMat);
     time_us inferenceEnd = NowMicros();
 
     // Enqueue & draw result
     engine->enqueueResult(key, {boxes, {inferenceStart, inferenceEnd}, device});
     if (draw) {
-      drawInferenceResult(rgbMat, boxes);
+      drawInferenceResult(rgbMat, boxes, isFullFrame);
     }
     time_us end = NowMicros();
 
@@ -78,7 +78,7 @@ void Worker::enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, int
 }
 
 void Worker::profileLatency(int warmupRuns, int numRuns) {
-  for (auto& it: classifierMap) {
+  for (auto& it: classifierMap_) {
     auto&[size, isFullFrame] = it.first;
     auto* classifier = it.second;
     for (int i = 0; i < warmupRuns; i++) {
@@ -100,7 +100,9 @@ void Worker::profileLatency(int warmupRuns, int numRuns) {
   }
 }
 
-void Worker::drawInferenceResult(const cv::Mat& rgbMat, const std::vector<BoundingBox>& boxes) {
+void Worker::drawInferenceResult(const cv::Mat& rgbMat,
+                                 const std::vector<BoundingBox>& boxes,
+                                 bool isFullFrame) {
   if (jvm->AttachCurrentThread(&env, nullptr) != 0) {
     return;
   }
@@ -115,9 +117,18 @@ void Worker::drawInferenceResult(const cv::Mat& rgbMat, const std::vector<Boundi
                                  b.confidence, b.label);
     env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
   }
-  auto* jRgbMat = new cv::Mat();
-  rgbMat.copyTo(*jRgbMat);
-  env->CallVoidMethod(app, MondrianApp_drawOutput, (long) jRgbMat, jBoxes);
+  if (isFullFrame) {
+    auto* jRgbMat = new cv::Mat();
+    rgbMat.copyTo(*jRgbMat);
+    env->CallVoidMethod(app, MondrianApp_drawOutput, (long) jRgbMat, jBoxes);
+  } else {
+    assert(rgbMat.rows <= maxPackedCanvasSize && rgbMat.cols <= maxPackedCanvasSize);
+    auto* jRgbMat = new cv::Mat(maxPackedCanvasSize, maxPackedCanvasSize,
+                                CV_8UC3, cv::Scalar(0, 0, 0));
+    cv::Rect rect(0, 0, rgbMat.cols, rgbMat.rows);
+    rgbMat.copyTo((*jRgbMat)(rect));
+    env->CallVoidMethod(app, MondrianApp_drawOutput, (long) jRgbMat, jBoxes);
+  }
   jvm->DetachCurrentThread();
 }
 

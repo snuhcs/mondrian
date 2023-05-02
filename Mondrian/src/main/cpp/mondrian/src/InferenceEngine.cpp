@@ -42,7 +42,7 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
 template<typename T>
 void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig& config,
                                      JNIEnv* env, jobject app) {
-  std::map<std::tuple<int, bool>, Classifier*> classifierMap;
+  std::map<std::pair<int, bool>, Classifier*> classifierMap;
 
   // classifiers for packed canvas inference
   bool forFullFrame = false;
@@ -96,8 +96,8 @@ void InferenceEngine::enqueueResult(const int handle, const Result& result) {
   resultCv.notify_all();
 }
 
-std::map<Device, std::map<std::tuple<int, bool>, time_us>> InferenceEngine::latencyTable() const {
-  std::map<Device, std::map<std::tuple<int, bool>, time_us>> latencyTable;
+std::map<Device, std::map<std::pair<int, bool>, time_us>> InferenceEngine::latencyTable() const {
+  std::map<Device, std::map<std::pair<int, bool>, time_us>> latencyTable;
   for (const auto&[device, worker]: workers) {
     latencyTable[device] = worker->latencyMap();
   }

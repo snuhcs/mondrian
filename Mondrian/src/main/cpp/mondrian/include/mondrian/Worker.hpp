@@ -15,14 +15,14 @@ class InferenceEngine;
 class Worker {
  public:
   Worker(InferenceEngine* engine, Device device,
-         std::map<std::tuple<int, bool>, Classifier*> classifierMap,
+         std::map<std::pair<int, bool>, Classifier*> classifierMap,
          bool draw, JNIEnv* env, jobject app);
 
   ~Worker();
 
   void enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, int key);
 
-  std::map<std::tuple<int, bool>, time_us> latencyMap() const {
+  std::map<std::pair<int, bool>, time_us> latencyMap() const {
     return latencyMap_;
   }
 
@@ -31,7 +31,9 @@ class Worker {
  private:
   void work();
 
-  void drawInferenceResult(const cv::Mat& rgbMat, const std::vector<BoundingBox>& boxes);
+  void drawInferenceResult(const cv::Mat& rgbMat,
+                           const std::vector<BoundingBox>& boxes,
+                           bool isFullFrame);
 
   const Device device;
   const bool draw;
@@ -41,12 +43,13 @@ class Worker {
   std::queue<std::tuple<const cv::Mat, int, bool, int>> inputs;
 
   InferenceEngine* engine;
-  std::map<std::tuple<int, bool>, Classifier*> classifierMap;
-  std::map<std::tuple<int, bool>, time_us> latencyMap_;
+  std::map<std::pair<int, bool>, Classifier*> classifierMap_;
+  std::map<std::pair<int, bool>, time_us> latencyMap_;
 
   std::atomic_bool isClosed;
   std::thread thread;
 
+  int maxPackedCanvasSize;
   JavaVM* jvm;
   JNIEnv* env;
   jobject app;
