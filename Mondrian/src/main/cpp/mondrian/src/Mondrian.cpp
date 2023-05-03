@@ -191,7 +191,7 @@ void Mondrian::work() {
           std::vector<BoundingBox> boxes;
           std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
                          [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-          results_[frame->vid][frame->frameIndex] = std::move(boxes);
+          results_[frame->vid][frame->frameIndex] = {frame->endTime, std::move(boxes)};
         }
       }
     }
@@ -236,7 +236,7 @@ void Mondrian::handleFullFrameResults(Frame* frame) {
   std::vector<BoundingBox> resultBoxes;
   std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(resultBoxes),
                  [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-  results_[frame->vid][frame->frameIndex] = std::move(resultBoxes);
+  results_[frame->vid][frame->frameIndex] = {frame->endTime, std::move(resultBoxes)};
   resultLock.unlock();
   resultsCV_.notify_all();
 }
@@ -410,8 +410,9 @@ void Mondrian::outputWork() {
                          [](const auto& it) { return !it.second.empty(); });
     });
     for (const auto&[vid, frameResults]: results_) {
-      for (const auto&[frameIndex, boxes]: frameResults) {
-        resultLogger_->logResult(vid, frameIndex, boxes);
+      for (const auto&[frameIndex, endTimeBoxes]: frameResults) {
+        const auto&[endTime, boxes] = endTimeBoxes;
+        resultLogger_->logResult(vid, frameIndex, endTime, boxes);
         LOGD("Logger::logResult                         for video %-5d frame %-4d // %4lu boxes",
              vid, frameIndex, boxes.size());
       }
