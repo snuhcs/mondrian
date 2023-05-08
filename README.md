@@ -19,6 +19,7 @@ This project enables effective multi-stream video analytics via spatio-temporal 
 ## Directory Structure
 * `android/`: Mondrian android runtime
 * `offline/`: Mondrian offline stage: train ROI scale estimator
+* `experiment/`: Automated experiments and analysis
 
 ## Contact
 * Changmin Jeon - wisechang1@snu.ac.kr
