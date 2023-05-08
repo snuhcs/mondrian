@@ -317,7 +317,7 @@ def export_tflite(keras_model, im, file, int8, data, ncalib, prefix=colorstr('Te
 
         LOGGER.info(f'\n{prefix} starting export with tensorflow {tf.__version__}...')
         batch_size, ch, *imgsz = list(im.shape)  # BCHW
-        f = str(file).replace('.pt', '-fp16.tflite')
+        f = str(file).replace('.pt', f'-{imgsz[0]}-fp16.tflite')
 
         converter = tf.lite.TFLiteConverter.from_keras_model(keras_model)
         converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
@@ -332,7 +332,7 @@ def export_tflite(keras_model, im, file, int8, data, ncalib, prefix=colorstr('Te
             converter.inference_input_type = tf.uint8  # or tf.int8
             converter.inference_output_type = tf.uint8  # or tf.int8
             converter.experimental_new_quantizer = False
-            f = str(file).replace('.pt', '-int8.tflite')
+            f = str(file).replace('.pt', f'-{imgsz[0]}-int8.tflite')
 
         tflite_model = converter.convert()
         open(f, "wb").write(tflite_model)
