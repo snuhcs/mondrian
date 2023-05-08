@@ -14,29 +14,8 @@ boxes.txt
 logs/
 tags
 
-# Created by https://www.toptal.com/developers/gitignore/api/androidstudio,visualstudiocode
-# Edit at https://www.toptal.com/developers/gitignore?templates=androidstudio,visualstudiocode
-
-### VisualStudioCode ###
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
-
-# Local History for Visual Studio Code
-.history/
-
-# Built Visual Studio Code Extensions
-*.vsix
-
-### VisualStudioCode Patch ###
-# Ignore all local history of files
-.history
-.ionide
-
-# Support for Project snippet scope
+# Created by https://www.toptal.com/developers/gitignore/api/androidstudio
+# Edit at https://www.toptal.com/developers/gitignore?templates=androidstudio
 
 ### AndroidStudio ###
 # Covers files to be ignored for android development using Android Studio.
@@ -116,7 +95,6 @@ obj/
 .idea/.name
 .idea/compiler.xml
 .idea/copyright/profiles_settings.xml
-.idea/deploymentTargetDropDown.xml
 .idea/encodings.xml
 .idea/misc.xml
 .idea/modules.xml
@@ -171,4 +149,4 @@ fabric.properties
 
 !/gradle/wrapper/gradle-wrapper.jar
 
-# End of https://www.toptal.com/developers/gitignore/api/androidstudio,visualstudiocode
+# End of https://www.toptal.com/developers/gitignore/api/androidstudio
