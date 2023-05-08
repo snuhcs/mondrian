@@ -1,7 +1,6 @@
 <div id="top"></div>
 
 # Mondrian
-FYC, [Mondrian/src/main/cpp/mondrian](https://github.com/snuhcs/mondrian/tree/master/Mondrian/src/main/cpp/mondrian)
 <details>
   <summary>Table of Contents</summary>
   <ol>
