@@ -116,8 +116,7 @@ int ROIResizer::predictLevelWithFeatures(const Features& features) const {
       features.xyRatio,
       shiftAvg, shiftStd,
       features.ofFeatures.shiftNcc,
-      features.ofFeatures.avgErr,
-      features.confidence);
+      features.ofFeatures.avgErr);
 }
 
 void ROIResizer::updateTable(ROI* roi) {

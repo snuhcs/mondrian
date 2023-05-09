@@ -15,7 +15,7 @@ namespace md {
 class ROI;
 
 using Predictor = std::function<int(
-    float, float, float, float, float, float, float, float)>;
+    float, float, float, float, float, float, float)>;
 
 class ROIResizer {
  public:
