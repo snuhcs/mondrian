@@ -62,18 +62,16 @@ class Mondrian {
   std::unique_ptr<InferenceEngine> inferenceEngine_;
   std::unique_ptr<PatchReconstructor> patchReconstructor_;
 
-
   std::mutex frameBuffersMtx_;
   std::map<int, std::unique_ptr<FrameBuffer>> frameBuffers_;
-  std::map<int, int> startIndices_;
+
+  int numVideos_;
   std::mutex startMtx_;
   std::condition_variable startCV_;
-  int numVideos_;
 
   std::mutex resultsMtx_;
   std::condition_variable resultsCV_;
-  std::map<int, std::map<int, std::vector<BoundingBox>>> results_;
-  std::map<int, int> resultIndices_;
+  std::map<int, std::map<int, std::pair<time_us, std::vector<BoundingBox>>>> results_;
 };
 
 } // namespace md

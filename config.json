@@ -1,7 +1,7 @@
 {
     "video_configs": [
         {
-            "path": "/data/local/tmp/video/mta/test_cam_3.mp4",
+            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
             "fps": 0
         }
     ],

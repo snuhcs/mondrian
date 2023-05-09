@@ -107,13 +107,15 @@ time_us Logger::fromBaseTime(const time_us& time) const {
   return time != 0 ? time - baseTime : 0;
 }
 
-void Logger::logResult(int vid, int frameIndex, const std::vector<BoundingBox>& boxes) {
+void Logger::logResult(int vid, int frameIndex, time_us endTime,
+                       const std::vector<BoundingBox>& boxes) {
   if (!logFile.is_open()) {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
   logFile << vid << ','
-          << frameIndex << ',';
+          << frameIndex << ','
+          << endTime << ',';
   for (int i = 0; i < boxes.size(); i++) {
     logFile << boxes[i].str();
     if (i != boxes.size() - 1) {
