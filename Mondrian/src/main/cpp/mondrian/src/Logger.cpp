@@ -243,7 +243,7 @@ void Logger::logROI(const ROI* roi) {
       << mergedROI->absolutePackedCanvasIndex() << delim
       << mergedROI->packedCanvasSize() << delim
 
-      << (roi->box == nullptr ? "X" : roi->box->str().c_str()) << delim
+      << "X" << delim  // TODO: handle roi->box validity
 
       << roi->maxEdgeLength << delim
       << roi->targetScale() << delim
