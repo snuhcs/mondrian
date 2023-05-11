@@ -81,6 +81,7 @@ struct MondrianConfig {
   bool LOG_BOXES;
   bool LOG_FRAME;
   bool LOG_ROI;
+  bool STREAM_MODE;
   float INTERPOLATION_THRESHOLD;
   int FULL_FRAME_INTERVAL;
   int FULL_FRAME_SIZE;

@@ -103,6 +103,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.LOG_BOXES = parseBool(json, "log_boxes");
   config.LOG_ROI = parseBool(json, "log_roi");
   config.LOG_FRAME = parseBool(json, "log_frame");
+  config.STREAM_MODE = parseBool(json, "stream_mode");
   config.INTERPOLATION_THRESHOLD = parseFloat(json, "interpolation_threshold");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
@@ -154,6 +155,7 @@ void MondrianConfig::print() const {
   ss << "LOG_BOXES: " << LOG_BOXES << std::endl;
   ss << "LOG_ROI: " << LOG_ROI << std::endl;
   ss << "LOG_FRAME: " << LOG_FRAME << std::endl;
+  ss << "STREAM_MODE: " << STREAM_MODE << std::endl;
   ss << "INTERPOLATION_THRESHOLD: " << INTERPOLATION_THRESHOLD << std::endl;
   ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
