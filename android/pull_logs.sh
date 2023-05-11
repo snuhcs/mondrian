@@ -5,7 +5,7 @@ dir="$(date '+%Y-%m-%d_%H-%M-%S')_h$(openssl rand -hex 2)"
 adb shell cat /data/local/tmp/config.json > $base/config.json
 adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/roi.csv > $base/roi.csv
 r1=$?
-adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/timeline.csv > $base/timeline.csv
+adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/frame.csv > $base/frame.csv
 r2=$?
 adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/boxes.csv > $base/boxes.csv
 r3=$?
@@ -20,7 +20,7 @@ fi
 
 if [ $r2 -eq 0 ]
 then
-    mv $base/timeline.csv $base/$dir/timeline.csv
+    mv $base/frame.csv $base/$dir/frame.csv
 fi
 
 if [ $r3 -eq 0 ]

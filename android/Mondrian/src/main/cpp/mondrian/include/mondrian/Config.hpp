@@ -78,8 +78,8 @@ struct PatchReconstructorConfig {
 
 struct MondrianConfig {
   ExecutionType EXECUTION_TYPE;
-  bool LOG_RESULTS;
-  bool LOG_EXECUTION;
+  bool LOG_BOXES;
+  bool LOG_FRAME;
   bool LOG_ROI;
   float INTERPOLATION_THRESHOLD;
   int FULL_FRAME_INTERVAL;

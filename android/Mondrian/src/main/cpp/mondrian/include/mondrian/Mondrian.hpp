@@ -52,7 +52,7 @@ class Mondrian {
 
   std::thread resultThread_;
   std::unique_ptr<Logger> loggerBoxes_;
-  std::unique_ptr<Logger> loggerTimeline_;
+  std::unique_ptr<Logger> loggerFrame_;
   std::unique_ptr<Logger> loggerROI_;
   const cv::Size targetSize_;
   const std::set<int> inputSizes_;

@@ -100,9 +100,9 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   assert(json.isObject());
 
   config.EXECUTION_TYPE = executionTypeOf(parseString(json, "execution_type"));
-  config.LOG_RESULTS = parseBool(json, "log_results");
-  config.LOG_EXECUTION = parseBool(json, "log_execution");
+  config.LOG_BOXES = parseBool(json, "log_boxes");
   config.LOG_ROI = parseBool(json, "log_roi");
+  config.LOG_FRAME = parseBool(json, "log_frame");
   config.INTERPOLATION_THRESHOLD = parseFloat(json, "interpolation_threshold");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
@@ -151,9 +151,9 @@ void MondrianConfig::print() const {
   std::stringstream ss;
   ss << "========== MondrianConfig ==========" << std::endl;
   ss << "EXECUTION_TYPE: " << md::str(EXECUTION_TYPE) << std::endl;
-  ss << "LOG_RESULTS: " << LOG_RESULTS << std::endl;
-  ss << "LOG_EXECUTION: " << LOG_EXECUTION << std::endl;
+  ss << "LOG_BOXES: " << LOG_BOXES << std::endl;
   ss << "LOG_ROI: " << LOG_ROI << std::endl;
+  ss << "LOG_FRAME: " << LOG_FRAME << std::endl;
   ss << "INTERPOLATION_THRESHOLD: " << INTERPOLATION_THRESHOLD << std::endl;
   ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;

@@ -35,17 +35,17 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
 
-  if (config.LOG_RESULTS) {
+  if (config.LOG_BOXES) {
     loggerBoxes_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
     loggerBoxes_->logBoxesHeader();
-  }
-  if (config.LOG_EXECUTION) {
-    loggerTimeline_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/timeline.csv");
-    loggerTimeline_->logTimelineHeader();
   }
   if (config.LOG_ROI) {
     loggerROI_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/roi.csv");
     loggerROI_->logROIHeader();
+  }
+  if (config.LOG_FRAME) {
+    loggerFrame_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/frame.csv");
+    loggerFrame_->logTimelineHeader();
   }
 
   resultThread_ = std::thread([this]() { outputWork(); });
@@ -344,8 +344,8 @@ void Mondrian::releaseFrames(const MultiStream& frames) {
 }
 
 void Mondrian::log(const Frame* frame) {
-  if (loggerTimeline_) {
-    loggerTimeline_->logTimeline(frame);
+  if (loggerFrame_) {
+    loggerFrame_->logTimeline(frame);
   }
   if (loggerROI_) {
     for (auto& roi: frame->rois) {
