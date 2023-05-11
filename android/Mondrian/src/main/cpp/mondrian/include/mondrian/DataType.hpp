@@ -119,17 +119,31 @@ struct BoundingBox {
       : id(id), loc(location), confidence(confidence), label(label), origin(origin),
         srcROI(nullptr), choiceOfBox(INVALID_ID) {}
 
-  std::string str() const {
+  static std::string header(char delim) {
     std::stringstream ss;
-    ss << id << ','
-       << loc.l << ','
-       << loc.t << ','
-       << loc.r << ','
-       << loc.b << ','
-       << confidence << ','
-       << origin << ','
-       << choiceOfBox << ','
-       << COCO_LABELS[label];
+    ss << "id" << delim
+       << "left" << delim
+       << "top" << delim
+       << "right" << delim
+       << "bottom" << delim
+       << "confidence" << delim
+       << "label" << delim
+       << "origin" << delim
+       << "choiceOfBox";
+    return ss.str();
+  }
+
+  std::string str(char delim) const {
+    std::stringstream ss;
+    ss << id << delim
+       << loc.l << delim
+       << loc.t << delim
+       << loc.r << delim
+       << loc.b << delim
+       << confidence << delim
+       << COCO_LABELS[label] << delim
+       << origin << delim
+       << choiceOfBox;
     return ss.str();
   }
 };

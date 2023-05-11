@@ -37,6 +37,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
 
   if (config.LOG_RESULTS) {
     resultLogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
+    resultLogger_->logResultHeader();
   }
   if (config.LOG_EXECUTION) {
     executionLogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/timeline.csv");
@@ -424,7 +425,7 @@ void Mondrian::outputWork() {
     for (const auto&[vid, frameResults]: results_) {
       for (const auto&[frameIndex, endTimeBoxes]: frameResults) {
         const auto&[endTime, boxes] = endTimeBoxes;
-        resultLogger_->logResult(vid, frameIndex, endTime, boxes);
+        resultLogger_->logResult(vid, frameIndex, boxes);
         LOGD("Logger::logResult                         for video %-5d frame %-4d // %4lu boxes",
              vid, frameIndex, boxes.size());
       }

@@ -17,6 +17,10 @@ class Logger {
 
   ~Logger();
 
+  void logResultHeader();
+
+  void logResult(int vid, int frameIndex, const std::vector<BoundingBox>& boxes);
+
   void logExecutionHeader();
 
   void logExecution(const Frame* frame);
@@ -24,9 +28,6 @@ class Logger {
   void logROIHeader();
 
   void logROI(const ROI* roi);
-
-  void logResult(int vid, int frameIndex, time_us endTime,
-                 const std::vector<BoundingBox>& boxes);
 
  private:
   time_us fromBaseTime(const time_us& time) const;
