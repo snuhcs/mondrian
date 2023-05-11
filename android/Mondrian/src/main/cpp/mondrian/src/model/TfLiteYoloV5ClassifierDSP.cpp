@@ -159,7 +159,7 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat
 }
 
 Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float h,
-                                               float imageWidth, float imageHeight) {
+                                               float imageWidth, float imageHeight) const {
   x *= (float) inputSize.width;
   y *= (float) inputSize.height;
   w *= (float) inputSize.width;

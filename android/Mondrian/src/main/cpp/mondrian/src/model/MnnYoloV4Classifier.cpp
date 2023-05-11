@@ -112,7 +112,7 @@ const float* MnnYoloV4Classifier::getClassConfidences(const int i) const {
 }
 
 Rect MnnYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
-                                         float imageWidth, float imageHeight) {
+                                         float imageWidth, float imageHeight) const {
   float widthRatio = (float) imageWidth / (float) inputSize.width;
   float heightRatio = (float) imageHeight / (float) inputSize.height;
   return Rect(

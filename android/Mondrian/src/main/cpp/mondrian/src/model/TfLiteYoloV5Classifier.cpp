@@ -119,7 +119,7 @@ const float* TfLiteYoloV5Classifier::getClassConfidences(const int i) const {
 }
 
 Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
-                                            float imageWidth, float imageHeight) {
+                                            float imageWidth, float imageHeight) const {
   x *= (float) inputSize.width;
   y *= (float) inputSize.height;
   w *= (float) inputSize.width;

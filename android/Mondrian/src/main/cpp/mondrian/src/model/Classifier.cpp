@@ -13,9 +13,36 @@ Classifier::Classifier(const int numLabels, const int inputSize, const int outpu
       confidenceThreshold(confidenceThreshold), iouThreshold(iouThreshold) {}
 
 std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& rgbMat) {
-  inference(preprocess(rgbMat));
+  // Latency Breakdown on Galaxy S22
+  // Input Size  640   1024   1280
+  // Preprocess  750us 1500us 2300us
+  // Inference   130ms 480ms  470ms
+  // Postprocess 14ms  38ms   60ms
+  // NMS         10us  12us   13us
+  time_us start = NowMicros();
+  cv::Mat inputTensor = preprocess(rgbMat);
+  time_us preprocessTime = NowMicros();
+  inference(inputTensor);
+  time_us inferenceTime = NowMicros();
+  std::vector<BoundingBox> boxesAll = postprocess(rgbMat.cols, rgbMat.rows);
+  time_us postprocessTime = NowMicros();
+  std::vector<BoundingBox> boxesNms = nms(boxesAll, numLabels, iouThreshold);
+  time_us nmsTime = NowMicros();
 
-  std::vector<BoundingBox> detections;
+  // TODO: remove android log and add detailed latency to timeline.csv
+  LOGD("Latency (%4dx%4d): "
+       "preprocess %7lld us, inference %7lld us, postprocess %7lld us, nms %7lld us",
+       inputSize.width, inputSize.height,
+       preprocessTime - start,
+       inferenceTime - preprocessTime,
+       postprocessTime - inferenceTime,
+       nmsTime - postprocessTime);
+
+  return boxesNms;
+}
+
+std::vector<BoundingBox> Classifier::postprocess(int width, int height) const {
+  std::vector<BoundingBox> boxes;
   for (int i = 0; i < outputSize; i++) {
     const float* box = getBox(i);
     const float* classConfidences = getClassConfidences(i);
@@ -29,17 +56,17 @@ std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& rgbMat) {
     }
     maxConfidence *= getObjectConfidence(i);
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
-      detections.push_back(BoundingBox(
+      boxes.emplace_back(
           INVALID_ID,
           reconstructBox(float(box[0]),
                          float(box[1]),
                          float(box[2]),
                          float(box[3]),
-                         rgbMat.cols, rgbMat.rows),
-          maxConfidence, maxLabel, O_INVALID));
+                         float(width), float(height)),
+          maxConfidence, maxLabel, O_INVALID);
     }
   }
-  return nms(detections, numLabels, iouThreshold);
+  return boxes;
 }
 
 const cv::Size& Classifier::getInputSize() const {
