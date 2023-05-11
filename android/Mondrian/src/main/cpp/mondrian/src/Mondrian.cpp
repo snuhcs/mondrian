@@ -85,7 +85,6 @@ void Mondrian::work() {
   TimeLogger logger;
   logger.start();
 
-  // See Mondrian::enqueueImage(...)
   while (!stop_) {
     scheduleID++;
     bool fullFramePlan = scheduleID % config_.FULL_FRAME_INTERVAL == 0;
