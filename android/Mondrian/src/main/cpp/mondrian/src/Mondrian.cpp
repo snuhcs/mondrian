@@ -36,16 +36,16 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
 
   if (config.LOG_RESULTS) {
-    resultLogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
-    resultLogger_->logResultHeader();
+    loggerBoxes_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
+    loggerBoxes_->logBoxesHeader();
   }
   if (config.LOG_EXECUTION) {
-    executionLogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/timeline.csv");
-    executionLogger_->logExecutionHeader();
+    loggerTimeline_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/timeline.csv");
+    loggerTimeline_->logTimelineHeader();
   }
   if (config.LOG_ROI) {
-    ROILogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/roi.csv");
-    ROILogger_->logROIHeader();
+    loggerROI_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/roi.csv");
+    loggerROI_->logROIHeader();
   }
 
   resultThread_ = std::thread([this]() { outputWork(); });
@@ -344,12 +344,12 @@ void Mondrian::releaseFrames(const MultiStream& frames) {
 }
 
 void Mondrian::log(const Frame* frame) {
-  if (executionLogger_) {
-    executionLogger_->logExecution(frame);
+  if (loggerTimeline_) {
+    loggerTimeline_->logTimeline(frame);
   }
-  if (ROILogger_) {
+  if (loggerROI_) {
     for (auto& roi: frame->rois) {
-      ROILogger_->logROI(roi.get());
+      loggerROI_->logROI(roi.get());
     }
   }
 }
@@ -425,8 +425,8 @@ void Mondrian::outputWork() {
     for (const auto&[vid, frameResults]: results_) {
       for (const auto&[frameIndex, endTimeBoxes]: frameResults) {
         const auto&[endTime, boxes] = endTimeBoxes;
-        resultLogger_->logResult(vid, frameIndex, boxes);
-        LOGD("Logger::logResult                         for video %-5d frame %-4d // %4lu boxes",
+        loggerBoxes_->logBoxes(vid, frameIndex, boxes);
+        LOGD("Logger::logBoxes                          for video %-5d frame %-4d // %4lu boxes",
              vid, frameIndex, boxes.size());
       }
     }

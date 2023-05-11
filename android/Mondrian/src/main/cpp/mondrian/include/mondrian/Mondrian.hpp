@@ -51,9 +51,9 @@ class Mondrian {
   bool stop_;
 
   std::thread resultThread_;
-  std::unique_ptr<Logger> resultLogger_;
-  std::unique_ptr<Logger> executionLogger_;
-  std::unique_ptr<Logger> ROILogger_;
+  std::unique_ptr<Logger> loggerBoxes_;
+  std::unique_ptr<Logger> loggerTimeline_;
+  std::unique_ptr<Logger> loggerROI_;
   const cv::Size targetSize_;
   const std::set<int> inputSizes_;
 

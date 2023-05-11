@@ -33,7 +33,7 @@ time_us Logger::fromBaseTime(const time_us& time) const {
   return time != 0 ? time - baseTime : 0;
 }
 
-void Logger::logResultHeader() {
+void Logger::logBoxesHeader() {
   if (!logFile.is_open()) {
     return;
   }
@@ -44,7 +44,7 @@ void Logger::logResultHeader() {
   logFile.flush();
 }
 
-void Logger::logResult(int vid, int frameIndex, const std::vector<BoundingBox>& boxes) {
+void Logger::logBoxes(int vid, int frameIndex, const std::vector<BoundingBox>& boxes) {
   if (!logFile.is_open()) {
     return;
   }
@@ -57,7 +57,7 @@ void Logger::logResult(int vid, int frameIndex, const std::vector<BoundingBox>& 
   logFile.flush();
 }
 
-void Logger::logExecutionHeader() {
+void Logger::logTimelineHeader() {
   if (!logFile.is_open()) {
     return;
   }
@@ -94,7 +94,7 @@ void Logger::logExecutionHeader() {
   logFile.flush();
 }
 
-void Logger::logExecution(const Frame* frame) {
+void Logger::logTimeline(const Frame* frame) {
   if (!logFile.is_open() || frame == nullptr) {
     return;
   }

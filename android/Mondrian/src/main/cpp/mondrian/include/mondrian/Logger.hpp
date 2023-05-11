@@ -8,7 +8,9 @@
 namespace md {
 
 class BoundingBox;
+
 class Frame;
+
 class ROI;
 
 class Logger {
@@ -17,13 +19,13 @@ class Logger {
 
   ~Logger();
 
-  void logResultHeader();
+  void logBoxesHeader();
 
-  void logResult(int vid, int frameIndex, const std::vector<BoundingBox>& boxes);
+  void logBoxes(int vid, int frameIndex, const std::vector<BoundingBox>& boxes);
 
-  void logExecutionHeader();
+  void logTimelineHeader();
 
-  void logExecution(const Frame* frame);
+  void logTimeline(const Frame* frame);
 
   void logROIHeader();
 
