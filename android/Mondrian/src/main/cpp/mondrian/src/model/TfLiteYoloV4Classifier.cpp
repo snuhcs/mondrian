@@ -115,11 +115,11 @@ Rect TfLiteYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
                                             float imageWidth, float imageHeight) const {
   float widthRatio = imageWidth / (float) inputSize.width;
   float heightRatio = imageHeight / (float) inputSize.height;
-  return Rect(
+  return {
       std::max(0.0f, ((x - w / 2) * widthRatio)),
       std::max(0.0f, ((y - h / 2) * heightRatio)),
       std::min(imageWidth, ((x + w / 2) * widthRatio)),
-      std::min(imageHeight,((y + h / 2) * heightRatio)));
+      std::min(imageHeight, ((y + h / 2) * heightRatio))};
 }
 
 Device TfLiteYoloV4Classifier::device() const {

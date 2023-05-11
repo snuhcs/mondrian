@@ -168,11 +168,11 @@ Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float 
                         (float) inputSize.height / (float) imageHeight);
   float xPad = ((float) inputSize.width - (float) imageWidth * gain) / 2;
   float yPad = ((float) inputSize.height - (float) imageHeight * gain) / 2;
-  return Rect(
+  return {
       std::max(0.0f, ((x - w / 2 - xPad) / gain)),
       std::max(0.0f, ((y - h / 2 - yPad) / gain)),
       std::min(imageWidth, ((x + w / 2 - xPad) / gain)),
-      std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
+      std::min(imageHeight, ((y + h / 2 - yPad) / gain))};
 }
 
 Device TfLiteYoloV5ClassifierDSP::device() const {
