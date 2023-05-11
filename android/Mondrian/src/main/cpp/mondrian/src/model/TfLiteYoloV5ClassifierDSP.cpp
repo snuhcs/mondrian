@@ -175,4 +175,8 @@ Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float 
       std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
 }
 
+Device TfLiteYoloV5ClassifierDSP::device() const {
+  return DSP;
+}
+
 } // namespace md

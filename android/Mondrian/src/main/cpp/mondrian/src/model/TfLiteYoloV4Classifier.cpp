@@ -122,4 +122,8 @@ Rect TfLiteYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
       std::min(imageHeight,((y + h / 2) * heightRatio)));
 }
 
+Device TfLiteYoloV4Classifier::device() const {
+  return GPU;
+}
+
 } // namespace md

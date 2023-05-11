@@ -29,6 +29,8 @@ class MnnYoloV4Classifier : public Classifier {
   Rect reconstructBox(float x, float y, float w, float h,
                       float imageWidth, float imageHeight) const override;
 
+  Device device() const override;
+
   MNN::Interpreter* interpreter;
   MNN::Session* session;
 

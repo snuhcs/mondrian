@@ -135,4 +135,8 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
       std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
 }
 
+Device TfLiteYoloV5Classifier::device() const {
+  return GPU;
+}
+
 } // namespace md

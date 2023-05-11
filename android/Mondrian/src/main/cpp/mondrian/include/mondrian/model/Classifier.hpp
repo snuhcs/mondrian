@@ -35,6 +35,8 @@ class Classifier {
   virtual Rect reconstructBox(float x, float y, float w, float h,
                               float imageWidth, float imageHeight) const = 0;
 
+  virtual Device device() const = 0;
+
   const int numLabels;
   const cv::Size inputSize; // width, height
   const int outputSize;
