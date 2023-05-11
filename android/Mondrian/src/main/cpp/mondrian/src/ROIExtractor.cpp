@@ -43,7 +43,9 @@ ROIExtractor::~ROIExtractor() {
 
 void ROIExtractor::enqueue(Frame* frame) {
   std::unique_lock<std::mutex> queueLock(queueMtx_);
-  queueCV_.wait(queueLock, [this]() { return PDWaiting_.size() < config_.MAX_QUEUE_SIZE; });
+  if (!config_.STREAM_MODE) {
+    queueCV_.wait(queueLock, [this]() { return PDWaiting_.size() < config_.MAX_QUEUE_SIZE; });
+  }
   PDWaiting_.insert(frame);
   LOGD("%-25s                 for video %-5d frame %-4d // %4lu PD | %4lu OF | %4d Processed",
        "ROIExtractor::enqueue", frame->vid, frame->frameIndex,
@@ -64,6 +66,27 @@ std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> ROIExtractor:
   // See postprocessOF() for detail
   std::unique_lock<std::mutex> packLock(packMtx_);
   std::unique_lock<std::mutex> queueLock(queueMtx_);
+
+  if (config_.STREAM_MODE) {
+    for (const auto&[vid, frames]: packedFrames_) {
+      for (Frame* frame: frames) {
+        assert(frame != fullFrameTarget_);
+        frame->isROIsReady = true;
+
+        frame->packingStartTime = NowMicros();
+        tryPack(frame);
+        frame->packingEndTime = NowMicros();
+
+        OFProcessing_.erase(frame);
+        if (frame->extractOFAgain) {
+          frame->resetOFROIExtraction();
+          OFWaiting_.insert(frame);
+        } else {
+          frame->isROIsReady = true;
+        }
+      }
+    }
+  }
 
   if (notFullyPacked_) {
     applyLasts();
@@ -239,19 +262,23 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
                        [this](const auto& box) { return std::max(box.first, box.second) <= ROISize_;}));
   }
 
-  currFrame->packingStartTime = NowMicros();
-  std::unique_lock<std::mutex> packLock(packMtx_);
-  tryPack(currFrame);
-  packLock.unlock();
-  currFrame->packingEndTime = NowMicros();
-
-  std::lock_guard<std::mutex> queueLock(queueMtx_);
-  OFProcessing_.erase(currFrame);
-  if (currFrame->extractOFAgain) {
-    currFrame->resetOFROIExtraction();
-    OFWaiting_.insert(currFrame);
+  if (config_.STREAM_MODE) {
+    packedFrames_[currFrame->vid].insert(currFrame);
   } else {
-    currFrame->isROIsReady = true;
+    currFrame->packingStartTime = NowMicros();
+    std::unique_lock<std::mutex> packLock(packMtx_);
+    tryPack(currFrame);
+    packLock.unlock();
+    currFrame->packingEndTime = NowMicros();
+
+    std::lock_guard<std::mutex> queueLock(queueMtx_);
+    OFProcessing_.erase(currFrame);
+    if (currFrame->extractOFAgain) {
+      currFrame->resetOFROIExtraction();
+      OFWaiting_.insert(currFrame);
+    } else {
+      currFrame->isROIsReady = true;
+    }
   }
 }
 
@@ -336,7 +363,9 @@ bool ROIExtractor::tryPackFullVid(Frame* frame) {
   }
   assert(i == lastPackIndices.size());
   prepareScaledFrame(fullFrameTarget_, fullPackIndices, fullPackLocations);
-  packedFrames_[fullFrameTarget_->vid].insert(fullFrameTarget_);
+  if (!config_.STREAM_MODE) {
+    packedFrames_[fullFrameTarget_->vid].insert(fullFrameTarget_);
+  }
   freeRectsVec_ = std::move(copiedFreeRectsVec);
   fullFrameTarget_ = frame;
   return true;
@@ -405,7 +434,9 @@ bool ROIExtractor::tryPackNonFullVid(Frame* frame) {
     i = end;
   }
   assert(i == lastPackIndices.size());
-  packedFrames_[vid].insert(frame);
+  if (!config_.STREAM_MODE) {
+    packedFrames_[vid].insert(frame);
+  }
   freeRectsVec_ = std::move(copiedFreeRectsVec);
   return true;
 }
