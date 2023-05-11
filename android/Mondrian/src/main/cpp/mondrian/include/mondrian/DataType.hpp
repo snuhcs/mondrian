@@ -33,6 +33,7 @@ enum ExecutionType {
   MONDRIAN = 0,
   EMULATED_BATCH = 1,
   ROI_WISE_INFERENCE = 2,
+  FRAME_WISE_INFERENCE = 3,
 };
 
 ExecutionType executionTypeOf(const std::string& executionTypeStr);

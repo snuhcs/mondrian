@@ -6,6 +6,7 @@
         }
     ],
     "execution_type": "mondrian",
+    "log_results": true,
     "log_execution": true,
     "log_roi": true,
     "interpolation_threshold": 1,

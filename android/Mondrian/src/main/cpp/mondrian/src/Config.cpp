@@ -100,6 +100,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   assert(json.isObject());
 
   config.EXECUTION_TYPE = executionTypeOf(parseString(json, "execution_type"));
+  config.LOG_RESULTS = parseBool(json, "log_results");
   config.LOG_EXECUTION = parseBool(json, "log_execution");
   config.LOG_ROI = parseBool(json, "log_roi");
   config.INTERPOLATION_THRESHOLD = parseFloat(json, "interpolation_threshold");
@@ -119,6 +120,9 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
 
 void MondrianConfig::test() const {
   std::set<std::string> datasets = {"virat", "mta"};
+
+  // Common
+  assert(EXECUTION_TYPE == FRAME_WISE_INFERENCE || FULL_FRAME_INTERVAL > 0);
 
   // ROIResizer
   assert(datasets.find(roiResizerConfig.DATASET) != datasets.end());
@@ -147,6 +151,7 @@ void MondrianConfig::print() const {
   std::stringstream ss;
   ss << "========== MondrianConfig ==========" << std::endl;
   ss << "EXECUTION_TYPE: " << md::str(EXECUTION_TYPE) << std::endl;
+  ss << "LOG_RESULTS: " << LOG_RESULTS << std::endl;
   ss << "LOG_EXECUTION: " << LOG_EXECUTION << std::endl;
   ss << "LOG_ROI: " << LOG_ROI << std::endl;
   ss << "INTERPOLATION_THRESHOLD: " << INTERPOLATION_THRESHOLD << std::endl;
