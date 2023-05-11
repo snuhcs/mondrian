@@ -36,7 +36,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
 
   if (config.LOG_RESULTS) {
-    resultLogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.txt");
+    resultLogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
   }
   if (config.LOG_EXECUTION) {
     executionLogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/timeline.csv");

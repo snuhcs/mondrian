@@ -7,7 +7,7 @@ adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/
 r1=$?
 adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/timeline.csv > $base/timeline.csv
 r2=$?
-adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/boxes.txt > $base/boxes.txt
+adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/boxes.csv > $base/boxes.csv
 r3=$?
 
 mkdir -p $base/$dir
@@ -25,11 +25,11 @@ fi
 
 if [ $r3 -eq 0 ]
 then
-    mv $base/boxes.txt $base/$dir/boxes.txt
+    mv $base/boxes.csv $base/$dir/boxes.csv
 fi
 
 if [ $r1 -eq 0 ] || [ $r2 -eq 0 ] || [ $r3 -eq 0 ]
 then
-    echo "status : roi.csv $r1 | exec.csv $r2 | boxes.txt $r3"
+    echo "status : roi.csv $r1 | exec.csv $r2 | boxes.csv $r3"
     echo "saved at $base/$dir"
 fi
