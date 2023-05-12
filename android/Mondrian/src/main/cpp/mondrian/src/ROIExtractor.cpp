@@ -68,51 +68,44 @@ std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> ROIExtractor:
   std::unique_lock<std::mutex> queueLock(queueMtx_);
 
   if (config_.STREAM_MODE) {
-    for (const auto&[vid, frames]: packedFrames_) {
-      for (Frame* frame: frames) {
-        assert(frame != fullFrameTarget_);
-        frame->isROIsReady = true;
-
-        frame->packingStartTime = NowMicros();
-        tryPack(frame);
-        frame->packingEndTime = NowMicros();
-
-        OFProcessing_.erase(frame);
-        if (frame->extractOFAgain) {
-          frame->resetOFROIExtraction();
-          OFWaiting_.insert(frame);
-        } else {
-          frame->isROIsReady = true;
-        }
-      }
-    }
+    packGatheredMultiStream(packedFrames_);
   }
 
-  if (notFullyPacked_) {
+  if (!config_.STREAM_MODE && notFullyPacked_) {
     applyLasts();
   }
 
   Frame* fullFrameTarget = fullFrameTarget_;
 
-  std::map<int, std::set<MergedROI*>> groupedROIs;
+  std::map<int, std::set<MergedROI*>> groupedMergedROIs;
   for (const auto&[vid, frames]: packedFrames_) {
     for (Frame* frame: frames) {
-      assert(frame != fullFrameTarget);
+      if (config_.STREAM_MODE) {
+        if (frame == fullFrameTarget_) {
+          continue;
+        }
+      } else {
+        assert(frame != fullFrameTarget);
+      }
       for (auto& mergedROI: frame->mergedROIs) {
-        groupedROIs[mergedROI->relativePackedCanvasIndex()].insert(mergedROI.get());
+        if (mergedROI->isPacked()) {
+          groupedMergedROIs[mergedROI->relativePackedCanvasIndex()].insert(mergedROI.get());
+        }
       }
       for (auto& probeROI: frame->probingROIs) {
-        groupedROIs[probeROI->relativePackedCanvasIndex()].insert(probeROI.get());
+        if (probeROI->isPacked()) {
+          groupedMergedROIs[probeROI->relativePackedCanvasIndex()].insert(probeROI.get());
+        }
       }
     }
   }
 
   std::vector<PackedCanvas> packedCanvases;
-  for (auto&[relativePackedCanvasIndex, rois]: groupedROIs) {
+  for (auto&[relativePackedCanvasIndex, mergedROIs]: groupedMergedROIs) {
     assert(relativePackedCanvasIndex < inferencePlan_.size());
     const auto& info = inferencePlan_[relativePackedCanvasIndex];
-    if (!rois.empty()) {
-      packedCanvases.emplace_back(rois, info.size, info.device);
+    if (!mergedROIs.empty()) {
+      packedCanvases.emplace_back(mergedROIs, info.size, info.device);
     }
   }
 
@@ -156,6 +149,69 @@ std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> ROIExtractor:
   queueCV_.notify_all();
 
   return {packedCanvases, fullFrameTarget, selectedFrames, droppedFrames};
+}
+
+void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
+  time_us start = NowMicros();
+  if (multiStream.find(fullFrameVid_) != multiStream.end()) {
+    fullFrameTarget_ = *multiStream.at(fullFrameVid_).rbegin();
+  }
+
+  for (const auto&[vid, frames]: multiStream) {
+    if (vid == fullFrameVid_) {
+      continue;
+    }
+    Frame* lastFrame = *frames.rbegin();
+    auto[indices, locations] = ROIPacker::pack(freeRectsVec_, lastFrame->boxesIfLast,
+                                               /*backward=*/false, executionType_, ROISize_);
+    bool fullyPacked = indices.size() == lastFrame->boxesIfLast.size();
+    if (fullyPacked) {
+      ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
+    } else {
+      indices.resize(lastFrame->boxesIfLast.size());
+      locations.resize(lastFrame->boxesIfLast.size());
+      ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
+    }
+  }
+  time_us packTime = NowMicros();
+
+  std::vector<MergedROI*> gatheredMergedROIs;
+  for (const auto&[vid, frames]: multiStream) {
+    for (Frame* frame: frames) {
+      if (frame == *frames.rbegin()) {
+        continue;
+      }
+      for (auto& mergedROI: frame->mergedROIs) {
+        gatheredMergedROIs.push_back(mergedROI.get());
+      }
+    }
+  }
+  time_us gatherTime = NowMicros();
+
+
+  int numFrames = std::accumulate(
+      multiStream.begin(), multiStream.end(), 0,
+      [](int cnt, const auto& it) { return cnt + it.second.size(); });
+  LOGD("XXX numFrames: %d", numFrames);
+  LOGD("XXX gatheredMergedROIs: %lu", gatheredMergedROIs.size());
+
+  std::sort(gatheredMergedROIs.begin(), gatheredMergedROIs.end(),
+            [](const MergedROI* a, const MergedROI* b) {
+              return a->resizedArea() > b->resizedArea();
+            });
+  time_us sortTime = NowMicros();
+
+  for (MergedROI* mergedROI: gatheredMergedROIs) {
+    auto[bw, bh] = mergedROI->borderedMatWH();
+    auto[indices, locations] = ROIPacker::pack(freeRectsVec_, {{bw, bh}}, /*backward=*/false,
+                                               executionType_, ROISize_);
+    if (!indices.empty()) {
+      mergedROI->setPackInfo(locations[0], indices[0].first, executionType_, ROISize_);
+    }
+  }
+
+  LOGD("XXX packTime: %6lld, gatherTime: %6lld, sortTime: %6lld",
+       packTime - start, gatherTime - packTime, sortTime - gatherTime);
 }
 
 void ROIExtractor::work(int extractorId) {
@@ -404,7 +460,6 @@ bool ROIExtractor::tryPackNonFullVid(Frame* frame) {
       executionType_, ROISize_);
 
   if (lastPackIndices.size() != lastBoxes.size()) {
-    assert(lastPackIndices.size() < lastBoxes.size());
     if (!vidExists) {
       candidateLastFrames_.erase(vid);
     }
