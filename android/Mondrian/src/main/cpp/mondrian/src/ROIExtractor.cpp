@@ -147,7 +147,7 @@ std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> ROIExtractor:
 }
 
 void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
-  time_us start = NowMicros();
+  time_us startTime = NowMicros();
   // Full frame
   if (multiStream.find(fullFrameVid_) != multiStream.end()) {
     fullFrameTarget_ = *multiStream.at(fullFrameVid_).rbegin();
@@ -172,7 +172,7 @@ void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
     }
     prepareFrameLast(lastFrame, indices, locations);
   }
-  time_us packTime = NowMicros();
+  time_us packLastTime = NowMicros();
 
   // Gather MergedROIs not in last frames
   std::vector<MergedROI*> mergedROIs;
@@ -190,6 +190,7 @@ void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
 
   // Sort MergedROIs
   auto sortedMergedROIs = ROIPrioritizer::sort(mergedROIs);
+  time_us sortTime = NowMicros();
 
   // Pack MergedROIs
   for (MergedROI* mergedROI: sortedMergedROIs) {
@@ -201,6 +202,13 @@ void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
       mergedROI->setPackInfo(locations[0], indices[0].first, executionType_, ROISize_);
     }
   }
+  time_us packOthersTime = NowMicros();
+
+//  LOGD("XXX packLastTime: %lld, gatherTime: %lld, sortTime: %lld, packOthersTime: %lld",
+//       packLastTime - startTime,
+//       gatherTime - packLastTime,
+//       sortTime - gatherTime,
+//       packOthersTime - sortTime);
 }
 
 void ROIExtractor::work(int extractorId) {
