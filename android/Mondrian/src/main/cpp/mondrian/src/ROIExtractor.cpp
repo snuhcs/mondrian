@@ -24,7 +24,7 @@ ROIExtractor::ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
                            int(config.EXTRACTION_RESIZE_HEIGHT))),
       inferencePlan_(std::move(inferencePlan)),
       fullFrameInferenceCount_(0), fullFrameTarget_(nullptr), fullFrameVid_(-1),
-      numVideos_(numVideos), stop_(false), notFullyPacked_(true) {
+      numVideos_(numVideos), stop_(false), fullyPacked_(false) {
   assert(executionType_ == MONDRIAN || ROISize_ == maxMergeSize_);
   resetPatchMixerWithPlan(inferencePlan_);
   threads_.reserve(config.NUM_WORKERS);
@@ -71,7 +71,7 @@ std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> ROIExtractor:
     packGatheredMultiStream(packedFrames_);
   }
 
-  if (!config_.STREAM_MODE && notFullyPacked_) {
+  if (!config_.STREAM_MODE && !fullyPacked_) {
     applyLasts();
   }
 
@@ -111,7 +111,7 @@ std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> ROIExtractor:
 
   MultiStream selectedFrames = std::move(packedFrames_);
   packedFrames_.clear();
-  notFullyPacked_ = true;
+  fullyPacked_ = false;
   candidateLastFrames_.clear();
 
   Stream droppedFrames;
@@ -233,7 +233,7 @@ void ROIExtractor::work(int extractorId) {
   };
   auto getOFJob = [this]() {
     if (!OFWaiting_.empty()
-        && notFullyPacked_
+        && !fullyPacked_
         && (*OFWaiting_.begin())->readyForOFExtraction()) {
       return *OFWaiting_.begin();
     } else {
@@ -341,17 +341,19 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
 void ROIExtractor::tryPack(Frame* frame) {
   // TODO: Cache pack indices
   assert(frame->vid != -1);
-  if (!notFullyPacked_) {
+  if (fullyPacked_) {
     return;
   }
 
   if (frame->vid == fullFrameVid_) {
-    notFullyPacked_ = tryPackFullVid(frame);
+    bool packingSuccess = tryPackFullVid(frame);
+    fullyPacked_ = !packingSuccess;
   } else {
-    notFullyPacked_ = tryPackNonFullVid(frame);
+    bool packingSuccess = tryPackNonFullVid(frame);
+    fullyPacked_ = !packingSuccess;
   }
 
-  if (!notFullyPacked_) {
+  if (fullyPacked_) {
     applyLasts();
     std::lock_guard<std::mutex> queueLock(queueMtx_);
     for (Frame* f: OFProcessing_) {

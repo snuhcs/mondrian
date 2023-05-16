@@ -111,10 +111,8 @@ class ROIExtractor {
   Stream OFWaiting_;
   Stream OFProcessing_;
   MultiStream packedFrames_;
-
-  // Finalized frames are packed
   std::vector<std::vector<IntRect>> freeRectsVec_;
-  bool notFullyPacked_;
+  bool fullyPacked_; // Only for back to back mode
 
   struct LastPackInfo {
     Frame* frame;
