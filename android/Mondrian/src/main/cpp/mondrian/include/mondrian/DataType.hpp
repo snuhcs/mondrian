@@ -73,9 +73,11 @@ struct Rect {
 
   Rect(const std::pair<float, float> center, const float width, const float height) :
       Rect(center.first - width / 2,
-           center.first + width / 2,
            center.second - height / 2,
-           center.second + height / 2) {}
+           center.first + width / 2,
+           center.second + height / 2) {
+    assert(width > 0 && height > 0);
+  }
 
   std::pair<float, float> center() const {
     return std::make_pair((r + l) / 2, (b + t) / 2);
