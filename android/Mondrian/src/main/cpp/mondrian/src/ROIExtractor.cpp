@@ -81,13 +81,7 @@ std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> ROIExtractor:
   std::map<int, std::set<MergedROI*>> groupedMergedROIs;
   for (const auto&[vid, frames]: packedFrames_) {
     for (Frame* frame: frames) {
-      if (config_.STREAM_MODE) {
-        if (frame == fullFrameTarget_) {
-          continue;
-        }
-      } else {
-        assert(frame != fullFrameTarget);
-      }
+      assert(frame != fullFrameTarget);
       for (auto& mergedROI: frame->mergedROIs) {
         if (mergedROI->isPacked()) {
           groupedMergedROIs[mergedROI->relativePackedCanvasIndex()].insert(mergedROI.get());
@@ -157,6 +151,7 @@ void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
   // Full frame
   if (multiStream.find(fullFrameVid_) != multiStream.end()) {
     fullFrameTarget_ = *multiStream.at(fullFrameVid_).rbegin();
+    packedFrames_[fullFrameVid_].erase(fullFrameTarget_);
   }
 
   // Last frames
