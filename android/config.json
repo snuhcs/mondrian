@@ -10,7 +10,7 @@
     "log_roi": true,
     "log_frame": true,
     "stream_mode": true,
-    "interpolation_threshold": 1,
+    "interpolation_threshold": 0,
     "full_frame_interval": 3,
     "full_frame_size": 1024,
     "full_device": "GPU",

@@ -7,6 +7,7 @@ namespace md {
 
 float ROI::PADDING = -1e5;
 const float ROI::INVALID_CONF = -1.0f;
+const int ROI::INVALID_PRIORITY = -1;
 
 ROI::ROI(ROI* prevROI,
          const ID id,
@@ -29,7 +30,7 @@ ROI::ROI(ROI* prevROI,
         ofFeatures  // OFFeatures
     }, targetScale_(1.0f), // TODO: Start with targetScale_(-1) and assert
       scaleLevel_(ROIResizer::INVALID_LEVEL), nextROI(nullptr), mergedROI(nullptr), box(nullptr),
-      priority(-1) {
+      priority(INVALID_PRIORITY) {
   if (prevROI != nullptr) {
     prevROI->nextROI = this;
   }

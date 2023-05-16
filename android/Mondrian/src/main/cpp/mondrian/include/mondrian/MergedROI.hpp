@@ -36,6 +36,22 @@ class MergedROI {
     return frame_;
   }
 
+  const std::vector<ROI*>& rois() const {
+    return rois_;
+  }
+
+  int priority() const {
+    return priority_;
+  }
+
+  void syncPriority() {
+    int priority = 0;
+    for (const ROI* roi : rois_) {
+      priority += roi->priority;
+    }
+    priority_ = priority;
+  }
+
   Rect loc() const {
     return loc_;
   }
@@ -130,6 +146,7 @@ class MergedROI {
 
   const std::vector<ROI*> rois_;
   float targetScale_;
+  int priority_;
 
   Frame* frame_;
   const Rect loc_;

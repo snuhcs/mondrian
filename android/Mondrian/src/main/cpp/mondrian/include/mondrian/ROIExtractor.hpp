@@ -48,10 +48,10 @@ class ROIExtractor {
 
   bool tryPackNonFullVid(Frame* frame);
 
-  void getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,
+  static void getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,
                           const std::vector<BoundingBox>& boundingBoxes,
                           const cv::Size& targetSize,
-                          std::vector<std::unique_ptr<ROI>>& outChildROIs) const;
+                          std::vector<std::unique_ptr<ROI>>& outChildROIs) ;
 
   static std::vector<OFFeatures> opticalFlowTracking(
       const Frame* prevFrame, const Frame* currFrame, const std::vector<Rect>& boundingBoxes,
@@ -73,7 +73,7 @@ class ROIExtractor {
 
   IntPairs getBoxesIfLast(const Frame* frame);
 
-  void prepareScaledFrame(Frame* frame, const IntPairs& indices, const IntPairs& locations);
+  void prepareFrameScaled(Frame* frame, const IntPairs& indices, const IntPairs& locations);
 
   static IntPairs getBoxesIfScaled(const Frame* frame);
 
