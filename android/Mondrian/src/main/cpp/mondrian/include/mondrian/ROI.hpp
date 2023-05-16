@@ -19,7 +19,6 @@ class ROI {
  public:
   static float PADDING;
   static const float INVALID_CONF;
-  static const int INVALID_PRIORITY;
 
   Frame* frame;
   const Rect origLoc;
@@ -31,7 +30,6 @@ class ROI {
   Features features;
   std::vector<float> probeScales;
   std::vector<MergedROI*> roisForProbing;
-  int priority;
 
   inline static std::atomic<ID> lastId = 0;
   ID id;

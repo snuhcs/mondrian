@@ -176,13 +176,6 @@ void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
       ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
     }
     prepareFrameLast(lastFrame, indices, locations);
-    for (auto& mergedROI: lastFrame->mergedROIs) {
-      if (mergedROI->isPacked()) {
-        for (auto* roi: mergedROI->rois()) {
-          roi->priority = 0;
-        }
-      }
-    }
   }
   time_us packTime = NowMicros();
 
