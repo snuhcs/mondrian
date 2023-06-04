@@ -64,8 +64,6 @@ class Mondrian {
   std::map<int, std::unique_ptr<FrameBuffer>> frameBuffers_;
 
   int numVideos_;
-  std::mutex startMtx_;
-  std::condition_variable startCV_;
 
   std::mutex resultsMtx_;
   std::condition_variable resultsCV_;

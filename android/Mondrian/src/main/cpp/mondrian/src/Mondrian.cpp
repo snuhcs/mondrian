@@ -21,7 +21,7 @@
 namespace md {
 
 Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app)
-    : config_(config), numVideos_(numVideos), stop_(false),
+    : config_(config), stop_(false),
       targetSize_(int(config_.roiExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(config_.roiExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
       inputSizes_(config_.inferenceEngineConfig.INPUT_SIZES),
@@ -71,7 +71,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
       latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);
   ROIExtractor_ = std::make_unique<ROIExtractor>(
       config_.roiExtractorConfig, maxMergeSize, ROIResizer_.get(),
-      config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, numVideos_);
+      config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, numVideos);
   thread_ = std::thread([this]() { work(); });
 }
 
@@ -85,12 +85,6 @@ Mondrian::~Mondrian() {
 void Mondrian::work() {
   LOGD("Mondrian::work()");
   int scheduleID = -1;
-
-  // Wait sources for synced start
-  std::unique_lock<std::mutex> startLock(startMtx_);
-  startCV_.wait(startLock, [this]() { return frameBuffers_.size() == numVideos_; });
-  startLock.unlock();
-  std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval_));
 
   TimeLogger logger;
   logger.start();
@@ -371,13 +365,6 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
          config_.FULL_FRAME_SIZE, str(config_.FULL_DEVICE).c_str(), frame->frameIndex);
     handleFullFrameResults(frame);
   } else {
-    if (frame->frameIndex == 1) {
-      std::unique_lock<std::mutex> startLock(startMtx_);
-      startCV_.wait(startLock, [this]() { return frameBuffers_.size() == numVideos_; });
-      startLock.unlock();
-      startCV_.notify_all();
-      LOGD("Start %d video at %lld us", vid, NowMicros());
-    }
     ROIExtractor_->enqueue(frame);
   }
 }
