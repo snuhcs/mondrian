@@ -128,11 +128,12 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
                         (float) inputSize.height / (float) imageHeight);
   float xPad = ((float) inputSize.width - (float) imageWidth * gain) / 2;
   float yPad = ((float) inputSize.height - (float) imageHeight * gain) / 2;
-  return {
-      std::max(0.0f, ((x - w / 2 - xPad) / gain)),
-      std::max(0.0f, ((y - h / 2 - yPad) / gain)),
-      std::min(imageWidth, ((x + w / 2 - xPad) / gain)),
-      std::min(imageHeight, ((y + h / 2 - yPad) / gain))};
+  float newL = std::max(0.0f, ((x - w / 2 - xPad) / gain));
+  float newT = std::max(0.0f, ((y - h / 2 - yPad) / gain));
+  float newR = std::min(imageWidth, ((x + w / 2 - xPad) / gain));
+  float newB = std::min(imageHeight, ((y + h / 2 - yPad) / gain));
+  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
+  return {newL, newT, newR, newB};
 }
 
 Device TfLiteYoloV5Classifier::device() const {

@@ -291,13 +291,13 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
     }
     inferenceFrames.insert(mergedROI->frame());
     for (BoundingBox& b: boxes) {
+      float newL = (b.loc.l - float(x)) / mergedROI->targetScale() + mergedROI->loc().l;
+      float newT = (b.loc.t - float(y)) / mergedROI->targetScale() + mergedROI->loc().t;
+      float newR = (b.loc.r - float(x)) / mergedROI->targetScale() + mergedROI->loc().l;
+      float newB = (b.loc.b - float(y)) / mergedROI->targetScale() + mergedROI->loc().t;
+      assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
       mergedROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
-          INVALID_ID, Rect(
-              (b.loc.l - float(x)) / mergedROI->targetScale() + mergedROI->loc().l,
-              (b.loc.t - float(y)) / mergedROI->targetScale() + mergedROI->loc().t,
-              (b.loc.r - float(x)) / mergedROI->targetScale() + mergedROI->loc().l,
-              (b.loc.b - float(y)) / mergedROI->targetScale() + mergedROI->loc().t),
-          b.confidence, b.label, O_FULL_FRAME));
+          INVALID_ID, Rect(newL, newT, newR, newB), b.confidence, b.label, O_FULL_FRAME));
     }
   }
 

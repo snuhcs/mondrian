@@ -115,11 +115,12 @@ Rect MnnYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
                                          float imageWidth, float imageHeight) const {
   float widthRatio = (float) imageWidth / (float) inputSize.width;
   float heightRatio = (float) imageHeight / (float) inputSize.height;
-  return {
-      std::max(0.0f, ((x - w / 2) * widthRatio)),
-      std::max(0.0f, ((y - h / 2) * heightRatio)),
-      std::min(imageWidth, ((x + w / 2) * widthRatio)),
-      std::min(imageHeight, ((y + h / 2) * heightRatio))};
+  float newL = std::max(0.0f, ((x - w / 2) * widthRatio));
+  float newT = std::max(0.0f, ((y - h / 2) * heightRatio));
+  float newR = std::min(imageWidth, ((x + w / 2) * widthRatio));
+  float newB = std::min(imageHeight, ((y + h / 2) * heightRatio));
+  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
+  return {newL, newT, newR, newB};
 }
 
 Device MnnYoloV4Classifier::device() const {
