@@ -50,19 +50,21 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
 
   resultThread_ = std::thread([this]() { outputWork(); });
 
-  if (config_.EXECUTION_TYPE != FRAME_WISE_INFERENCE) {
-    inferenceEngine_->profileLatency();
-    int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
-                       ? *inputSizes_.begin()
-                       : config.ROI_SIZE;
-    auto latencyTable = inferenceEngine_->latencyTable();
-    auto inferencePlan = InferencePlanner::getInferencePlan(
-        latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);
-    ROIExtractor_ = std::make_unique<ROIExtractor>(
-        config_.roiExtractorConfig, maxMergeSize, ROIResizer_.get(),
-        config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, numVideos_);
-    thread_ = std::thread([this]() { work(); });
-  }
+  // If frame-wise inference, skip ROI extraction and scheduling
+  if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) return;
+
+  // Prepare ROI extractor and start scheduling
+  inferenceEngine_->profileLatency();
+  int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
+                     ? *inputSizes_.begin()
+                     : config.ROI_SIZE;
+  auto latencyTable = inferenceEngine_->latencyTable();
+  auto inferencePlan = InferencePlanner::getInferencePlan(
+      latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);
+  ROIExtractor_ = std::make_unique<ROIExtractor>(
+      config_.roiExtractorConfig, maxMergeSize, ROIResizer_.get(),
+      config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, numVideos_);
+  thread_ = std::thread([this]() { work(); });
 }
 
 Mondrian::~Mondrian() {
