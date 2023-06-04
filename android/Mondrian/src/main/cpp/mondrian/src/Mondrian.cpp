@@ -21,7 +21,7 @@
 namespace md {
 
 Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app)
-    : config_(config), stop_(false),
+    : config_(config), stop_(false), numFirstFrameReadyVideos_(0), numVideos_(numVideos),
       targetSize_(int(config_.roiExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(config_.roiExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
       inputSizes_(config_.inferenceEngineConfig.INPUT_SIZES),
@@ -337,6 +337,13 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
   assert(!yuvMat.empty());
 
   Frame* frame = frameBuffers_.at(vid)->enqueue(yuvMat);
+  if (frame->frameIndex == 1) {
+    std::unique_lock<std::mutex> startLock(startMtx_);
+    startCV_.wait(startLock, [this]() {
+      assert(numFirstFrameReadyVideos_ <= numVideos_);
+      return numFirstFrameReadyVideos_ == numVideos_;
+    });
+  }
   time_us startTime = NowMicros();
   frame->prepareRgbMatAndResizedGrayMat(targetSize_);
   LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
@@ -364,6 +371,11 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
     LOGD("inferenceEngine_->enqueue %d sized fullFrame to %s | %d",
          config_.FULL_FRAME_SIZE, str(config_.FULL_DEVICE).c_str(), frame->frameIndex);
     handleFullFrameResults(frame);
+    {
+      std::lock_guard<std::mutex> startLock(startMtx_);
+      numFirstFrameReadyVideos_++;
+    }
+    startCV_.notify_all();
   } else {
     ROIExtractor_->enqueue(frame);
   }

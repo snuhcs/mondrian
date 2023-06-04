@@ -48,6 +48,11 @@ class Mondrian {
   std::thread thread_;
   bool stop_;
 
+  int numVideos_;
+  int numFirstFrameReadyVideos_;
+  std::mutex startMtx_;
+  std::condition_variable startCV_;
+
   std::thread resultThread_;
   std::unique_ptr<Logger> loggerBoxes_;
   std::unique_ptr<Logger> loggerFrame_;
