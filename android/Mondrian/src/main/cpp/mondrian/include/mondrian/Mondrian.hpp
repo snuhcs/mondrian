@@ -4,6 +4,7 @@
 #include <jni.h>
 
 #include <thread>
+#include <queue>
 
 #include "opencv2/core/mat.hpp"
 
@@ -31,6 +32,8 @@ class Mondrian {
  private:
   void work();
 
+  void workPreprocess();
+
   void outputWork();
 
   void handleFullFrameResults(Frame* frame);
@@ -52,6 +55,11 @@ class Mondrian {
   int numFirstFrameReadyVideos_;
   std::mutex startMtx_;
   std::condition_variable startCV_;
+
+  std::thread preprocessThread_;
+  std::mutex preprocessMtx_;
+  std::condition_variable preprocessCV_;
+  std::queue<Frame*> preprocessQueue_;
 
   std::thread resultThread_;
   std::unique_ptr<Logger> loggerBoxes_;

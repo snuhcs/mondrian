@@ -55,6 +55,9 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
     frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid, config_.BUFFER_SIZE, blocking);
   }
 
+  // Start preprocessing thread
+  preprocessThread_ = std::thread([this]() { workPreprocess(); });
+
   // Start result logging thread
   resultThread_ = std::thread([this]() { outputWork(); });
 
@@ -344,40 +347,56 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
       return numFirstFrameReadyVideos_ == numVideos_;
     });
   }
-  time_us startTime = NowMicros();
-  frame->prepareRgbMatAndResizedGrayMat(targetSize_);
-  LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
-       "Mondrian::preprocess", NowMicros() - startTime, frame->vid, frame->frameIndex);
+  std::unique_lock<std::mutex> preprocessLock(preprocessMtx_);
+  preprocessQueue_.push(frame);
+  preprocessLock.unlock();
+  preprocessCV_.notify_one();
+}
 
-  if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
-    frame->useInferenceResultForOF = true;
-    inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
-                              frame->getKey());
-    frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
-    frame->inferenceDevice = config_.FULL_DEVICE;
-    handleFullFrameResults(frame);
-    std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
-    log(frame);
-    frameBuffers_.at(frame->vid)->free(frame->frameIndex);
-    return;
-  }
+void Mondrian::workPreprocess() {
+  while (!stop_) {
+    std::unique_lock<std::mutex> preprocessLock(preprocessMtx_);
+    preprocessCV_.wait(preprocessLock, [this]() {
+      if (stop_) {
+        return true;
+      }
+      return !preprocessQueue_.empty();
+    });
+    Frame* frame = preprocessQueue_.front();
+    preprocessQueue_.pop();
+    preprocessLock.unlock();
 
-  if (frame->frameIndex == 0) {
-    frame->useInferenceResultForOF = true;
-    inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
-                              frame->getKey());
-    frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
-    frame->inferenceDevice = config_.FULL_DEVICE;
-    LOGD("inferenceEngine_->enqueue %d sized fullFrame to %s | %d",
-         config_.FULL_FRAME_SIZE, str(config_.FULL_DEVICE).c_str(), frame->frameIndex);
-    handleFullFrameResults(frame);
-    {
-      std::lock_guard<std::mutex> startLock(startMtx_);
-      numFirstFrameReadyVideos_++;
+    frame->prepareRgbMatAndResizedGrayMat(targetSize_);
+
+    if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
+      inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
+                                frame->getKey());
+      frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
+      frame->inferenceDevice = config_.FULL_DEVICE;
+      handleFullFrameResults(frame);
+      std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
+      log(frame);
+      frameBuffers_.at(frame->vid)->free(frame->frameIndex);
+      continue;
     }
-    startCV_.notify_all();
-  } else {
-    ROIExtractor_->enqueue(frame);
+
+    if (frame->frameIndex == 0) {
+      frame->useInferenceResultForOF = true;
+      inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
+                                frame->getKey());
+      frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
+      frame->inferenceDevice = config_.FULL_DEVICE;
+      LOGD("inferenceEngine_->enqueue %d sized fullFrame to %s | %d",
+           config_.FULL_FRAME_SIZE, str(config_.FULL_DEVICE).c_str(), frame->frameIndex);
+      handleFullFrameResults(frame);
+      {
+        std::lock_guard<std::mutex> startLock(startMtx_);
+        numFirstFrameReadyVideos_++;
+      }
+      startCV_.notify_all();
+    } else {
+      ROIExtractor_->enqueue(frame);
+    }
   }
 }
 
