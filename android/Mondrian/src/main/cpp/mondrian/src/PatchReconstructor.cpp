@@ -104,17 +104,15 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
 void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   std::vector<std::unique_ptr<ROI>>& rois = frame->rois;
   std::vector<std::unique_ptr<BoundingBox>>& boxes = frame->boxes;
-
-  std::vector<BoundingBox*> unassignedBoxes;
-
-  assert(std::all_of(rois.begin(), rois.end(),
-                     [](auto& roi) { return roi->id != INVALID_ID && roi->box == nullptr; }));
-  assert(std::all_of(boxes.begin(), boxes.end(),
-                     [](auto& box) { return box->id == INVALID_ID && box->srcROI == nullptr; }));
+  assert(std::all_of(rois.begin(), rois.end(), [](auto& roi) { return roi->id != INVALID_ID; }));
+  assert(std::all_of(boxes.begin(), boxes.end(), [](auto& box) { return box->id == INVALID_ID; }));
+  assert(std::all_of(rois.begin(), rois.end(), [](auto& roi) { return roi->box == nullptr; }));
+  assert(std::all_of(boxes.begin(), boxes.end(), [](auto& box) { return box->srcROI == nullptr; }));
 
   // 1. Let Boxes to select their favorite ROI.
   // - Boxes can be unmatched, if overlap ratio is lower than threshold
   // - Selection result is saved in roi.boxes
+  std::vector<BoundingBox*> unassignedBoxes;
   std::map<ROI*, std::vector<BoundingBox*>> roiToBoxesMap;
   for (std::unique_ptr<BoundingBox>& box: boxes) {
     // find ROI with largest overlap
