@@ -26,7 +26,7 @@ class Mondrian {
 
   ~Mondrian();
 
-  int enqueueImage(const int vid, const cv::Mat& yuvMat);
+  void enqueue(const int vid, const cv::Mat& yuvMat);
 
  private:
   void work();

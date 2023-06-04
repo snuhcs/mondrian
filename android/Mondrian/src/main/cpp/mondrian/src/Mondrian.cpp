@@ -353,7 +353,7 @@ void Mondrian::log(const Frame* frame) {
   }
 }
 
-int Mondrian::enqueueImage(const int vid, const cv::Mat& yuvMat) {
+void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
   assert(!yuvMat.empty());
 
   std::unique_lock<std::mutex> lock(frameBuffersMtx_);
@@ -381,7 +381,7 @@ int Mondrian::enqueueImage(const int vid, const cv::Mat& yuvMat) {
     std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
     log(frame);
     frameBuffers_.at(frame->vid)->freeImage({frame->frameIndex});
-    return frame->frameIndex;
+    return;
   }
 
   if (frame->frameIndex == 0) {
@@ -403,7 +403,6 @@ int Mondrian::enqueueImage(const int vid, const cv::Mat& yuvMat) {
     }
     ROIExtractor_->enqueue(frame);
   }
-  return frame->frameIndex;
 }
 
 void Mondrian::preprocess(Frame* frame) const {
