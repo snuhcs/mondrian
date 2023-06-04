@@ -15,7 +15,7 @@ class FrameBuffer {
  public:
   FrameBuffer(int vid, int capacity);
 
-  Frame* enqueue(const cv::Mat& mat);
+  Frame* enqueue(const cv::Mat& yuvMat);
 
   void freeImage(const std::vector<int>& frameIndices);
 

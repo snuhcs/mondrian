@@ -8,7 +8,7 @@ namespace md {
 FrameBuffer::FrameBuffer(int vid, int capacity)
     : vid(vid), capacity(capacity), count(0) {}
 
-Frame* FrameBuffer::enqueue(const cv::Mat& rgbMat) {
+Frame* FrameBuffer::enqueue(const cv::Mat& yuvMat) {
   std::unique_lock<std::mutex> lock(mtx);
   int frameIndex = count++;
   cv.wait(lock, [this]() { return frames.size() < capacity; });
@@ -16,7 +16,7 @@ Frame* FrameBuffer::enqueue(const cv::Mat& rgbMat) {
                      ? frames.at(frameIndex - 1).get()
                      : nullptr;
   frames[frameIndex] = std::make_unique<Frame>(
-      vid, frameIndex, rgbMat, prevFrame, NowMicros());
+      vid, frameIndex, yuvMat, prevFrame, NowMicros());
   if (prevFrame != nullptr) {
     prevFrame->nextFrame = frames[frameIndex].get();
   }

@@ -363,9 +363,7 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
   FrameBuffer* frameBuffer = frameBuffers_.at(vid).get();
   lock.unlock();
 
-  cv::Mat rgbMat;
-  cv::cvtColor(yuvMat, rgbMat, cv::COLOR_YUV2RGB_NV12, 3);
-  Frame* frame = frameBuffer->enqueue(rgbMat);
+  Frame* frame = frameBuffer->enqueue(yuvMat);
   time_us startTime = NowMicros();
   preprocess(frame);
   LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
@@ -406,6 +404,7 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
 }
 
 void Mondrian::preprocess(Frame* frame) const {
+  cv::cvtColor(frame->yuvMat, frame->rgbMat, cv::COLOR_YUV2RGB_NV12, 3);
   cv::resize(frame->rgbMat, frame->resizedGrayMat, targetSize_, 0, 0, CV_INTER_LINEAR);
   cv::cvtColor(frame->resizedGrayMat, frame->resizedGrayMat, cv::COLOR_RGB2GRAY);
 }
