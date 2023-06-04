@@ -80,9 +80,9 @@ public class VideoLoader implements Runnable {
 
     @Override
     public void run() {
-        long startNs = System.nanoTime();
-        long frameIndex = 0;
+        long intervalNs = (long) (1e9 / fps);
         boolean enqueueEnd = false;
+        long prevNs = System.nanoTime();
         while (true) {
             if (!enqueueEnd) {
                 enqueueEnd = enqueueStream(decoder, extractor);
@@ -99,14 +99,15 @@ public class VideoLoader implements Runnable {
             ByteBuffer outputBuffer = decoder.getOutputBuffer(outputIndex);
             outputBuffer.get(yuvBytes);
             yuvMat.put(0, 0, yuvBytes);
-            callback.onFrame(vid, yuvMat);
             decoder.releaseOutputBuffer(outputIndex, false);
 
-            frameIndex++;
-            if (fps > 0) {
-                long nextNs = startNs + frameIndex * (long) 1e9 / (long) fps;
-                sleepFor(nextNs - System.nanoTime());
+            if (fps > 0) { // Wait for interval
+                long elapsedNs = System.nanoTime() - prevNs;
+                sleepFor(intervalNs - elapsedNs);
             }
+
+            callback.onFrame(vid, yuvMat);
+            prevNs = System.nanoTime();
         }
     }
 
