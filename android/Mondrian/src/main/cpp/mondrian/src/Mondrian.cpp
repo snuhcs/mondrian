@@ -35,6 +35,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
 
+  // Create loggers
   if (config.LOG_BOXES) {
     loggerBoxes_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
     loggerBoxes_->logBoxesHeader();
@@ -48,6 +49,13 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
     loggerFrame_->logTimelineHeader();
   }
 
+  // Prepare frame buffers
+  bool blocking = !config_.STREAM_MODE;
+  for (int vid = 0; vid < numVideos; vid++) {
+    frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid, config_.BUFFER_SIZE, blocking);
+  }
+
+  // Start result logging thread
   resultThread_ = std::thread([this]() { outputWork(); });
 
   // If frame-wise inference, skip ROI extraction and scheduling
@@ -309,39 +317,15 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
   }
 }
 
-void Mondrian::releaseFrames(const MultiStream& frames) {
-  std::unique_lock<std::mutex> framesLock(frameBuffersMtx_);
-  for (const auto& it: frames) {
-    const int vid = it.first;
-    const Stream& aStreamFrames = it.second;
-    if (aStreamFrames.empty()) {
-      continue;
-    }
-    for (Frame* frame: aStreamFrames) {
+void Mondrian::releaseFrames(const MultiStream& multiStream) {
+  for (const auto& [vid, stream]: multiStream) {
+    if (stream.empty()) continue;
+    for (Frame* frame: stream) {
       log(frame);
     }
-    Frame* lastFrame = *aStreamFrames.rbegin();
-    std::vector<int> freeFrameIndices;
-
-    Frame* handle = lastFrame;
-    // Skip {pdInterval} frames
-    for (int i = 0; i < config_.roiExtractorConfig.PD_INTERVAL; i++) {
-      assert(handle != nullptr);
-      handle = handle->prevFrame;
-      if (handle == nullptr) {
-        break;
-      }
-    }
-    while (handle != nullptr) {
-      freeFrameIndices.push_back(handle->frameIndex);
-      handle = handle->prevFrame;
-    }
-
-    if (!freeFrameIndices.empty()) {
-      frameBuffers_.at(vid)->freeImage(freeFrameIndices);
-    }
+    int lastFrameIndex = (*stream.rbegin())->frameIndex;
+    frameBuffers_.at(vid)->free(lastFrameIndex - config_.roiExtractorConfig.PD_INTERVAL);
   }
-  framesLock.unlock();
 }
 
 void Mondrian::log(const Frame* frame) {
@@ -358,14 +342,7 @@ void Mondrian::log(const Frame* frame) {
 void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
   assert(!yuvMat.empty());
 
-  std::unique_lock<std::mutex> lock(frameBuffersMtx_);
-  if (frameBuffers_.find(vid) == frameBuffers_.end()) {
-    frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid, config_.BUFFER_SIZE);
-  }
-  FrameBuffer* frameBuffer = frameBuffers_.at(vid).get();
-  lock.unlock();
-
-  Frame* frame = frameBuffer->enqueue(yuvMat);
+  Frame* frame = frameBuffers_.at(vid)->enqueue(yuvMat);
   time_us startTime = NowMicros();
   frame->prepareRgbMatAndResizedGrayMat(targetSize_);
   LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
@@ -380,7 +357,7 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
     handleFullFrameResults(frame);
     std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
     log(frame);
-    frameBuffers_.at(frame->vid)->freeImage({frame->frameIndex});
+    frameBuffers_.at(frame->vid)->free(frame->frameIndex);
     return;
   }
 

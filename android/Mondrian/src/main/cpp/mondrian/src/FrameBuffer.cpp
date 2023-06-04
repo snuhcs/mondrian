@@ -5,35 +5,41 @@
 
 namespace md {
 
-FrameBuffer::FrameBuffer(int vid, int capacity)
-    : vid(vid), capacity(capacity), count(0) {}
-
-Frame* FrameBuffer::enqueue(const cv::Mat& yuvMat) {
-  std::unique_lock<std::mutex> lock(mtx);
-  int frameIndex = count++;
-  cv.wait(lock, [this]() { return frames.size() < capacity; });
-  Frame* prevFrame = frames.find(frameIndex - 1) != frames.end()
-                     ? frames.at(frameIndex - 1).get()
-                     : nullptr;
-  frames[frameIndex] = std::make_unique<Frame>(
-      vid, frameIndex, yuvMat, prevFrame, NowMicros());
-  lock.unlock();
-  LOGD("%-25s                 for video %-5d frame %-4d",
-       "FrameBuffer::enqueue", vid, frameIndex);
-  return frames[frameIndex].get();
+FrameBuffer::FrameBuffer(int vid, int capacity, bool blocking)
+    : vid(vid), capacity(capacity), blocking(blocking),
+      count(0), head(0), tail(0) {
+  frames.reserve(capacity);
+  for (int i = 0; i < capacity; ++i) {
+    frames.emplace_back(nullptr);
+  }
 }
 
-void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
-  std::unique_lock<std::mutex> lock(mtx);
-  // Reset smart pointers
-  for (int frameIndex: frameIndices) {
-    assert(frames[frameIndex] != nullptr);
-    frames.erase(frameIndex);
+Frame* FrameBuffer::enqueue(const cv::Mat& yuvMat) {
+  if (blocking) {
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [this] { return head - tail < capacity; });
+    return enqueue(head++, yuvMat);
+  } else {
+    return enqueue(count++, yuvMat);
   }
+}
+
+Frame* FrameBuffer::enqueue(int frameIndex, const cv::Mat& yuvMat) {
+  Frame* prevFrame = frameIndex != 0
+                     ? frames[(frameIndex - 1) % capacity].get()
+                     : nullptr;
+  auto currFrame = std::make_unique<Frame>(vid, frameIndex, yuvMat, prevFrame, NowMicros());
+  frames[frameIndex % capacity] = std::move(currFrame);
+  return frames[frameIndex % capacity].get();
+}
+
+void FrameBuffer::free(int tailIndex) {
+  if (!blocking) return;
+
+  std::unique_lock<std::mutex> lock(mtx);
+  tail = std::max(tail, tailIndex);
   lock.unlock();
   cv.notify_all();
-  LOGD("%-25s                 for video %-5d frame %-4d ~ %-4d",
-       "FrameBuffer::freeImage", vid, frameIndices.front(), frameIndices.back());
 }
 
 } // namespace md
