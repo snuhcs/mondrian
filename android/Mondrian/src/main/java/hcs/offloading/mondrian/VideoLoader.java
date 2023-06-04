@@ -80,8 +80,8 @@ public class VideoLoader implements Runnable {
 
     @Override
     public void run() {
-        long intervalNs = (long) (1e9 / fps);
         boolean enqueueEnd = false;
+        long intervalNs = (long) (1e9 / fps);
         long prevNs = System.nanoTime();
         while (true) {
             if (!enqueueEnd) {
