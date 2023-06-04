@@ -33,8 +33,6 @@ class Mondrian {
 
   void outputWork();
 
-  void preprocess(Frame* frame) const;
-
   void handleFullFrameResults(Frame* frame);
 
   void handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanvases);

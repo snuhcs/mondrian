@@ -17,6 +17,12 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
       isBoxesReady(false), isROIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
       isLastFrame(false), inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
 
+void Frame::prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize) {
+  cv::cvtColor(yuvMat, rgbMat, cv::COLOR_YUV2RGB_NV12, 3);
+  cv::resize(rgbMat, resizedGrayMat, targetSize, 0, 0, CV_INTER_LINEAR);
+  cv::cvtColor(resizedGrayMat, resizedGrayMat, cv::COLOR_RGB2GRAY);
+}
+
 void Frame::resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize) {
   if (executionType == EMULATED_BATCH) {
     for (auto& roi: rois) {
