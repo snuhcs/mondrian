@@ -72,10 +72,6 @@ struct Rect {
 
   Rect(const Rect& r) : Rect(r.l, r.t, r.r, r.b) {};
 
-  Rect(const std::pair<float, float> center, const float width, const float height)
-      : Rect(center.first - width / 2, center.second - height / 2,
-             center.first + width / 2, center.second + height / 2) {}
-
   std::pair<float, float> center() const {
     return std::make_pair((r + l) / 2, (b + t) / 2);
   }
