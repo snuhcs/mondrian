@@ -27,7 +27,6 @@ class Frame {
   cv::Mat rgbMat;
   cv::Mat resizedGrayMat;
   Frame* prevFrame;
-  Frame* nextFrame;
   int PDExtractorID;
   int OFExtractorID;
 

@@ -12,7 +12,7 @@ const int Frame::FULL_KEY_OFFSET = 1000000;
 Frame::Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
              Frame* prevFrame, const time_us& enqueueTime)
     : vid(vid), frameIndex(frameIndex), scheduleID(-1), yuvMat(yuvMat),
-      width(yuvMat.cols), height(yuvMat.rows), prevFrame(prevFrame), nextFrame(nullptr),
+      width(yuvMat.cols), height(yuvMat.rows), prevFrame(prevFrame),
       useInferenceResultForOF(false), extractOFAgain(false), enqueueTime(enqueueTime),
       isBoxesReady(false), isROIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
       isLastFrame(false), inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}

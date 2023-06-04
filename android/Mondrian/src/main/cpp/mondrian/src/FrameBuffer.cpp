@@ -17,9 +17,6 @@ Frame* FrameBuffer::enqueue(const cv::Mat& yuvMat) {
                      : nullptr;
   frames[frameIndex] = std::make_unique<Frame>(
       vid, frameIndex, yuvMat, prevFrame, NowMicros());
-  if (prevFrame != nullptr) {
-    prevFrame->nextFrame = frames[frameIndex].get();
-  }
   lock.unlock();
   LOGD("%-25s                 for video %-5d frame %-4d",
        "FrameBuffer::enqueue", vid, frameIndex);
@@ -28,15 +25,6 @@ Frame* FrameBuffer::enqueue(const cv::Mat& yuvMat) {
 
 void FrameBuffer::freeImage(const std::vector<int>& frameIndices) {
   std::unique_lock<std::mutex> lock(mtx);
-  // Hide them from any other frame's eyesight
-  for (int frameIndex: frameIndices) {
-    if (frames[frameIndex]->prevFrame != nullptr) {
-      frames[frameIndex]->prevFrame->nextFrame = nullptr;
-    }
-    if (frames[frameIndex]->nextFrame != nullptr) {
-      frames[frameIndex]->nextFrame->prevFrame = nullptr;
-    }
-  }
   // Reset smart pointers
   for (int frameIndex: frameIndices) {
     assert(frames[frameIndex] != nullptr);
