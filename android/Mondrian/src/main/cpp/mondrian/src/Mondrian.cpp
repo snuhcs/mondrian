@@ -57,8 +57,11 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   // Start preprocessing thread
   preprocessThread_ = std::thread([this]() { workPreprocess(); });
 
-  // Start result logging thread
-  resultThread_ = std::thread([this]() { workLog(); });
+  // Start postprocessing thread
+  postprocessThread_ = std::thread([this]() { workPostprocess(); });
+
+  // Start logging thread
+  logThread_ = std::thread([this]() { workLog(); });
 
   // If frame-wise inference, skip ROI extraction and scheduling
   if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) return;
@@ -80,8 +83,10 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
 Mondrian::~Mondrian() {
   stop_ = true;
   resultsCV_.notify_all();
+  preprocessThread_.join();
   scheduleThread_.join();
-  resultThread_.join();
+  postprocessThread_.join();
+  logThread_.join();
 }
 
 void Mondrian::workSchedule() {
@@ -194,7 +199,7 @@ void Mondrian::workSchedule() {
     ROIExtractor_->notify();
 
     // 9. Update results for system output
-    std::unique_lock<std::mutex> resultLock(resultsMtx_);
+    std::unique_lock<std::mutex> resultLock(logMtx_);
     for (const auto& it: selectedFrames) {
       for (Frame* frame: it.second) {
         if (frame != fullFrameTarget) {
@@ -242,7 +247,7 @@ void Mondrian::handleFullFrameResults(Frame* frame) {
   assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
                      [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
 
-  std::unique_lock<std::mutex> resultLock(resultsMtx_);
+  std::unique_lock<std::mutex> resultLock(logMtx_);
   std::vector<BoundingBox> resultBoxes;
   std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(resultBoxes),
                  [](const std::unique_ptr<BoundingBox>& box) { return *box; });
@@ -401,9 +406,13 @@ void Mondrian::workPreprocess() {
   }
 }
 
+void Mondrian::workPostprocess() {
+
+}
+
 void Mondrian::workLog() {
   while (!stop_) {
-    std::unique_lock<std::mutex> resultLock(resultsMtx_);
+    std::unique_lock<std::mutex> resultLock(logMtx_);
     resultsCV_.wait(resultLock, [this]() {
       if (stop_) {
         return true;

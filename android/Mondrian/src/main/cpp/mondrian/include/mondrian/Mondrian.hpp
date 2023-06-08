@@ -34,6 +34,8 @@ class Mondrian {
 
   void workPreprocess();
 
+  void workPostprocess();
+
   void workLog();
 
   void handleFullFrameResults(Frame* frame);
@@ -76,9 +78,12 @@ class Mondrian {
   std::condition_variable preprocessCV_;
   std::queue<Frame*> preprocessQueue_;
 
-  // Thread : Result Logging
-  std::thread resultThread_;
-  std::mutex resultsMtx_;
+  // Thread: Postprocessing
+  std::thread postprocessThread_;
+
+  // Thread : Logging
+  std::thread logThread_;
+  std::mutex logMtx_;
   std::condition_variable resultsCV_;
   std::map<int, std::map<int, std::pair<time_us, std::vector<BoundingBox>>>> results_;
   std::unique_ptr<Logger> loggerBoxes_;
