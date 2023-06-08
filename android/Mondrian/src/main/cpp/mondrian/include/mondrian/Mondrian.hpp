@@ -47,38 +47,43 @@ class Mondrian {
   void log(const Frame* frame);
 
   const MondrianConfig config_;
-  const time_us scheduleInterval_;
-  std::thread scheduleThread_;
-  bool stop_;
 
-  int numVideos_;
-  int numFirstFrameReadyVideos_;
-  std::mutex startMtx_;
-  std::condition_variable startCV_;
+  // Frame Buffers
+  std::mutex frameBuffersMtx_;
+  std::map<int, std::unique_ptr<FrameBuffer>> frameBuffers_;
 
-  std::thread preprocessThread_;
-  std::mutex preprocessMtx_;
-  std::condition_variable preprocessCV_;
-  std::queue<Frame*> preprocessQueue_;
-
-  std::thread resultThread_;
-  std::unique_ptr<Logger> loggerBoxes_;
-  std::unique_ptr<Logger> loggerFrame_;
-  std::unique_ptr<Logger> loggerROI_;
-  const cv::Size targetSize_;
-  const std::set<int> inputSizes_;
-
+  // Components
   std::unique_ptr<ROIExtractor> ROIExtractor_;
   std::unique_ptr<ROIResizer> ROIResizer_;
   std::unique_ptr<InferenceEngine> inferenceEngine_;
   std::unique_ptr<PatchReconstructor> patchReconstructor_;
 
-  std::mutex frameBuffersMtx_;
-  std::map<int, std::unique_ptr<FrameBuffer>> frameBuffers_;
+  // To support synchronized start
+  int numVideos_;
+  int numFirstFrameReadyVideos_;
+  std::mutex startMtx_;
+  std::condition_variable startCV_;
 
+  // Thread: Scheduling
+  std::thread scheduleThread_;
+  const time_us scheduleInterval_;
+  bool stop_;
+
+  // Thread: Preprocessing
+  std::thread preprocessThread_;
+  const cv::Size preprocessTargetSize_;
+  std::mutex preprocessMtx_;
+  std::condition_variable preprocessCV_;
+  std::queue<Frame*> preprocessQueue_;
+
+  // Thread : Result Logging
+  std::thread resultThread_;
   std::mutex resultsMtx_;
   std::condition_variable resultsCV_;
   std::map<int, std::map<int, std::pair<time_us, std::vector<BoundingBox>>>> results_;
+  std::unique_ptr<Logger> loggerBoxes_;
+  std::unique_ptr<Logger> loggerFrame_;
+  std::unique_ptr<Logger> loggerROI_;
 };
 
 } // namespace md

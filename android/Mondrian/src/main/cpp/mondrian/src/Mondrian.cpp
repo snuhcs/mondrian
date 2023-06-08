@@ -22,9 +22,8 @@ namespace md {
 
 Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app)
     : config_(config), stop_(false), numFirstFrameReadyVideos_(0), numVideos_(numVideos),
-      targetSize_(int(config_.roiExtractorConfig.EXTRACTION_RESIZE_WIDTH),
+      preprocessTargetSize_(int(config_.roiExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(config_.roiExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
-      inputSizes_(config_.inferenceEngineConfig.INPUT_SIZES),
       scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2),
       ROIResizer_(new ROIResizer(config.roiResizerConfig)),
       inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)),
@@ -67,7 +66,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   // Prepare ROI extractor and start scheduling
   inferenceEngine_->profileLatency();
   int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
-                     ? *inputSizes_.begin()
+                     ? *config_.inferenceEngineConfig.INPUT_SIZES.begin()
                      : config.ROI_SIZE;
   auto latencyTable = inferenceEngine_->latencyTable();
   auto inferencePlan = InferencePlanner::getInferencePlan(
@@ -366,7 +365,7 @@ void Mondrian::workPreprocess() {
     preprocessQueue_.pop();
     preprocessLock.unlock();
 
-    frame->prepareRgbMatAndResizedGrayMat(targetSize_);
+    frame->prepareRgbMatAndResizedGrayMat(preprocessTargetSize_);
 
     if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
       inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
