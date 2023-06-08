@@ -75,17 +75,17 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   ROIExtractor_ = std::make_unique<ROIExtractor>(
       config_.roiExtractorConfig, maxMergeSize, ROIResizer_.get(),
       config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, numVideos);
-  thread_ = std::thread([this]() { work(); });
+  scheduleThread_ = std::thread([this]() { workSchedule(); });
 }
 
 Mondrian::~Mondrian() {
   stop_ = true;
   resultsCV_.notify_all();
-  thread_.join();
+  scheduleThread_.join();
   resultThread_.join();
 }
 
-void Mondrian::work() {
+void Mondrian::workSchedule() {
   LOGD("Mondrian::work()");
   int scheduleID = -1;
 

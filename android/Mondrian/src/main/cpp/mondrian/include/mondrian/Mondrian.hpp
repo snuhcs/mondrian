@@ -30,7 +30,7 @@ class Mondrian {
   void enqueue(const int vid, const cv::Mat& yuvMat);
 
  private:
-  void work();
+  void workSchedule();
 
   void workPreprocess();
 
@@ -48,7 +48,7 @@ class Mondrian {
 
   const MondrianConfig config_;
   const time_us scheduleInterval_;
-  std::thread thread_;
+  std::thread scheduleThread_;
   bool stop_;
 
   int numVideos_;
