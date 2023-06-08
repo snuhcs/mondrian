@@ -34,7 +34,7 @@ class Mondrian {
 
   void workPreprocess();
 
-  void outputWork();
+  void workLog();
 
   void handleFullFrameResults(Frame* frame);
 

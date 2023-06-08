@@ -59,7 +59,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   preprocessThread_ = std::thread([this]() { workPreprocess(); });
 
   // Start result logging thread
-  resultThread_ = std::thread([this]() { outputWork(); });
+  resultThread_ = std::thread([this]() { workLog(); });
 
   // If frame-wise inference, skip ROI extraction and scheduling
   if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) return;
@@ -400,7 +400,7 @@ void Mondrian::workPreprocess() {
   }
 }
 
-void Mondrian::outputWork() {
+void Mondrian::workLog() {
   while (!stop_) {
     std::unique_lock<std::mutex> resultLock(resultsMtx_);
     resultsCV_.wait(resultLock, [this]() {
