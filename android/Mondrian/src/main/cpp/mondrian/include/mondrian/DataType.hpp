@@ -2,6 +2,7 @@
 #define DATA_TYPE_HPP_
 
 #include <sstream>
+#include <queue>
 
 #include "mondrian/Time.hpp"
 #include "mondrian/Utils.hpp"
@@ -141,6 +142,22 @@ struct BoundingBox {
        << choiceOfBox;
     return ss.str();
   }
+};
+
+template<typename T>
+class BlockingQueue {
+ public:
+  BlockingQueue(int maxElem = INT_MAX);
+
+  void put(const T& v);
+
+  T take();
+
+ private:
+  std::mutex mtx_;
+  std::condition_variable cv_;
+  std::queue<T> queue_;
+  int maxElem_;
 };
 
 struct InferenceInfo {

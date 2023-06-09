@@ -4,11 +4,11 @@
 #include <jni.h>
 
 #include <thread>
-#include <queue>
 
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
+#include "mondrian/DataType.hpp"
 #include "mondrian/Frame.hpp"
 
 namespace md {
@@ -74,9 +74,7 @@ class Mondrian {
   // Thread: Preprocessing
   std::thread preprocessThread_;
   const cv::Size preprocessTargetSize_;
-  std::mutex preprocessMtx_;
-  std::condition_variable preprocessCV_;
-  std::queue<Frame*> preprocessQueue_;
+  BlockingQueue<Frame*> preprocessQueue_;
 
   // Thread: Postprocessing
   std::thread postprocessThread_;

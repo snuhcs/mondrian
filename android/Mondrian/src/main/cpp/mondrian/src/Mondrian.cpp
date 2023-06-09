@@ -353,24 +353,12 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
       return numFirstFrameReadyVideos_ == numVideos_;
     });
   }
-  std::unique_lock<std::mutex> preprocessLock(preprocessMtx_);
-  preprocessQueue_.push(frame);
-  preprocessLock.unlock();
-  preprocessCV_.notify_one();
+  preprocessQueue_.put(frame);
 }
 
 void Mondrian::workPreprocess() {
   while (!stop_) {
-    std::unique_lock<std::mutex> preprocessLock(preprocessMtx_);
-    preprocessCV_.wait(preprocessLock, [this]() {
-      if (stop_) {
-        return true;
-      }
-      return !preprocessQueue_.empty();
-    });
-    Frame* frame = preprocessQueue_.front();
-    preprocessQueue_.pop();
-    preprocessLock.unlock();
+    Frame* frame = preprocessQueue_.take();
 
     frame->prepareRgbMatAndResizedGrayMat(preprocessTargetSize_);
 
