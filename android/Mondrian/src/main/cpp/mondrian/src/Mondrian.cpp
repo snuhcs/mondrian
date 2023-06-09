@@ -91,12 +91,12 @@ Mondrian::~Mondrian() {
 
 void Mondrian::workSchedule() {
   std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval_));
+  time_us start = NowMicros();
   while (!stop_) {
     int currID = numIntervals_++;
     bool fullFramePlan = currID % config_.FULL_FRAME_INTERVAL == 0;
-    time_us start = NowMicros();
 
-    LOGD("========== Schedule %d Start ==========", currID);
+    LOGD("========== Schedule %d Start at %.2fs ==========", currID, float(NowMicros() - start) / 1e6);
     // Inference planning
     auto latencyTable = inferenceEngine_->latencyTable();
     time_us fullStartTime = fullFramePlan
@@ -113,12 +113,13 @@ void Mondrian::workSchedule() {
          packingResult.packedCanvases.size(),
          packingResult.fullFrameTarget != nullptr ? packingResult.fullFrameTarget->frameIndex : -1);
     packingResults_.put(packingResult);
-    LOGD("========== Schedule %d End   ==========", currID);
+    LOGD("========== Schedule %d End   at %.2fs ==========", currID, float(NowMicros() - start) / 1e6);
 
     // Wait for scheduling interval
-    time_us elapsedTime = NowMicros() - start;
-    if (scheduleInterval_ > elapsedTime) {
-      std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval_ - elapsedTime));
+    time_us nextStartTime = (currID + 1) * scheduleInterval_;
+    time_us sleepTime = nextStartTime - (NowMicros() - start);
+    if (sleepTime > 0) {
+      std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
     }
   }
 }
