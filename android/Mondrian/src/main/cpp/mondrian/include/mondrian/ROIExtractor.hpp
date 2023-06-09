@@ -16,6 +16,13 @@
 
 namespace md {
 
+struct PackingResult {
+  std::vector<PackedCanvas> packedCanvases;
+  Frame* fullFrameTarget;
+  MultiStream selectedFrames;
+  Stream droppedFrames;
+};
+
 class ROIExtractor {
  public:
   ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
@@ -28,8 +35,8 @@ class ROIExtractor {
 
   void notify();
 
-  std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> prepareInference(
-      std::vector<InferenceInfo>& nextInferencePlan, bool runFull, int scheduleID);
+  PackingResult prepareInference(std::vector<InferenceInfo>& nextInferencePlan,
+                                 bool runFull, int scheduleID);
 
  private:
   void work(int extractorId);

@@ -1,7 +1,10 @@
 #include "mondrian/DataType.hpp"
-#include "mondrian/Log.hpp"
 
 #include <sstream>
+
+#include "mondrian/Frame.hpp"
+#include "mondrian/ROIExtractor.hpp"
+#include "mondrian/Log.hpp"
 
 namespace md {
 
@@ -103,8 +106,8 @@ T BlockingQueue<T>::take() {
   return v;
 }
 
-class Frame;
-
 template class BlockingQueue<Frame*>;
+
+template class BlockingQueue<PackingResult>;
 
 } // namespace md

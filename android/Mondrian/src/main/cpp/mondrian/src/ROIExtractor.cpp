@@ -61,8 +61,8 @@ void ROIExtractor::notify() {
   queueCV_.notify_all();
 }
 
-std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> ROIExtractor::prepareInference(
-    std::vector<InferenceInfo>& nextInferencePlan, bool runFull, int scheduleID) {
+PackingResult ROIExtractor::prepareInference(std::vector<InferenceInfo>& nextInferencePlan,
+                                             bool runFull, int scheduleID) {
   // Should be packLock => queueLock sort.
   // See postprocessOF() for detail
   std::unique_lock<std::mutex> packLock(packMtx_);
