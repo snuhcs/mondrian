@@ -613,7 +613,7 @@ void ROIExtractor::processPD(Frame* currFrame) {
 }
 
 void ROIExtractor::processOF(Frame* currFrame) {
-  Frame* prevFrame = currFrame->prevFrame;
+  const Frame* prevFrame = currFrame->prevFrame;
   std::vector<BoundingBox> reliablePrevBoxes;
   if (prevFrame->useInferenceResultForOF) {
     for (const std::unique_ptr<BoundingBox>& box : prevFrame->boxes) {
@@ -758,8 +758,8 @@ void ROIExtractor::getPixelDiffROIs(Frame* currFrame, const cv::Size& targetSize
                                     std::vector<std::unique_ptr<ROI>>& outChildROIs) const {
 
   // Find {PD_INTERVAL}th previous frame. If not available, use farthest frame.
-  Frame* prevFrame = currFrame;
-  for (int i = 0; i < config_.PD_INTERVAL; ++i) {
+  const Frame* prevFrame = currFrame;
+  for (int i = 0; i < config_.PD_INTERVAL; i++) {
     assert(prevFrame != nullptr);
     if (prevFrame->prevFrame == nullptr) {
       break;

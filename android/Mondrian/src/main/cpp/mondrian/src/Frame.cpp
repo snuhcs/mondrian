@@ -10,7 +10,7 @@ namespace md {
 const int Frame::FULL_KEY_OFFSET = 1000000;
 
 Frame::Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
-             Frame* prevFrame, const time_us& enqueueTime)
+             const Frame* prevFrame, const time_us& enqueueTime)
     : vid(vid), frameIndex(frameIndex), scheduleID(-1), yuvMat(yuvMat),
       width(yuvMat.cols), height(yuvMat.rows), prevFrame(prevFrame),
       useInferenceResultForOF(false), extractOFAgain(false), enqueueTime(enqueueTime),
