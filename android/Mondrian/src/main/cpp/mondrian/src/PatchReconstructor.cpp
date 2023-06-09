@@ -96,9 +96,6 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
     frame->reconstructStartTime = reconstructStartTime;
     frame->reconstructEndTime = reconstructEndTime;
   }
-  LOGD("%-25s took %-7lld us for             packed %-4d // %4lu packedROIs %4lu boxes",
-       "PR::assignBoxesToFrame", reconstructEndTime - reconstructStartTime,
-       packedCanvas.absolutePackedCanvasIndex, packedFrames.size(), results.size());
 }
 
 void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {

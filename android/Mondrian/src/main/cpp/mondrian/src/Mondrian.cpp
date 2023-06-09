@@ -163,9 +163,6 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
   for (int i = 0; i < packedCanvases.size(); i++) {
     auto [boxes, times, device] = inferenceEngine_->getResults(packedCanvases[i].getKey());
     assert(device == packedCanvases[i].device);
-    LOGD("inferenceEngine_->getResults %d sized %d packedCanvases to %s",
-         packedCanvases[i].packedCanvasSize, packedCanvases[i].absolutePackedCanvasIndex,
-         str(packedCanvases[i].device).c_str());
     for (Frame* frame: packedCanvases[i].getPackedFrames()) {
       if (frame->inferenceDevice == NO_DEVICE) {
         frame->inferenceFrameSize = packedCanvases[i].packedCanvasSize;
@@ -384,9 +381,9 @@ void Mondrian::workLog() {
       for (const auto& [frameIndex, endTimeBoxes]: frameResults) {
         const auto& [endTime, boxes] = endTimeBoxes;
         loggerBoxes_->logBoxes(vid, frameIndex, boxes);
-        LOGD("Logger::logBoxes                          for video %-5d frame %-4d // %4lu boxes",
-             vid, frameIndex, boxes.size());
       }
+      LOGD("Boxes from video %d frame %d ~ %d logged",
+           vid, frameResults.begin()->first, frameResults.rbegin()->first);
     }
     results_.clear();
     resultLock.unlock();

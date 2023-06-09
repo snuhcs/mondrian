@@ -148,7 +148,8 @@ void Interpolator::addBoxWithPrevInfo(ROI* currROI, const BoundingBox* prevBox,
   float newT = std::max(0.0f, newCenter.second - prevBox->loc.h / 2);
   float newR = std::min(float(currROI->frame->width), newL + prevBox->loc.w);
   float newB = std::min(float(currROI->frame->height), newT + prevBox->loc.h);
-  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
+  assert(0 <= newL && 0 <= newT);
+  assert(newL <= newR && newT <= newB);
   Rect newBox(newL, newT, newR, newB);
   currROI->frame->boxes.push_back(std::make_unique<BoundingBox>(
       prevBox->id, newBox, prevBox->confidence, prevBox->label, O_INTERPOLATE));

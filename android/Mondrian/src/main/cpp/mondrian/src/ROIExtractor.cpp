@@ -48,11 +48,6 @@ void ROIExtractor::enqueue(Frame* frame) {
     queueCV_.wait(queueLock, [this]() { return PDWaiting_.size() < config_.MAX_QUEUE_SIZE; });
   }
   PDWaiting_.insert(frame);
-  LOGD("%-25s                 for video %-5d frame %-4d // %4lu PD | %4lu OF | %4d Processed",
-       "ROIExtractor::enqueue", frame->vid, frame->frameIndex,
-       PDWaiting_.size(), OFWaiting_.size(),
-       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-                       [](int cnt, const auto& it) { return cnt + it.second.size(); }));
   queueLock.unlock();
   queueCV_.notify_all();
 }
@@ -612,8 +607,7 @@ void ROIExtractor::processPD(Frame* currFrame) {
                    config_.MAX_PD_ROI_SIZE, config_.MIN_PD_ROI_SIZE,
                    currFrame->rois);
   currFrame->pixelDiffROIProcessEndTime = NowMicros();
-  LOGD("%-25s took %-7lld us for video %-5d frame %-4d // %4lu PD ROIs",
-       "ROIExtractor::processPD",
+  LOGD("PD ROI Extraction took %5lld us for video %d frame %d // %lu PD ROIs",
        currFrame->pixelDiffROIProcessEndTime - currFrame->pixelDiffROIProcessStartTime,
        currFrame->vid, currFrame->frameIndex, currFrame->rois.size());
 }
@@ -644,7 +638,7 @@ void ROIExtractor::processOF(Frame* currFrame) {
   currFrame->opticalFlowROIProcessStartTime = NowMicros();
   getOpticalFlowROIs(prevFrame, currFrame, reliablePrevBoxes, targetSize_, currFrame->rois);
   currFrame->opticalFlowROIProcessEndTime = NowMicros();
-  LOGD("%-25s took %-7lld us for video %-5d frame %-4d // %4lu OF ROIs", "ROIExtractor::processOF",
+  LOGD("OF ROI Extraction took %5lld us for video %d frame %d // %lu OF ROIs",
        currFrame->opticalFlowROIProcessEndTime - currFrame->opticalFlowROIProcessStartTime,
        currFrame->vid, currFrame->frameIndex,
        std::count_if(currFrame->rois.begin(), currFrame->rois.end(),
