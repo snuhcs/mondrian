@@ -95,7 +95,6 @@ class ROIExtractor {
   const int ROISize_;
   const cv::Size targetSize_;
   const int maxMergeSize_;
-  const int border_;
   const ROIExtractorConfig config_;
   const int numVideos_;
   int fullFrameVid_;
@@ -115,6 +114,7 @@ class ROIExtractor {
   std::condition_variable queueCV_;
 
   Stream PDWaiting_;
+  Stream PDProcessing_;
   Stream OFWaiting_;
   Stream OFProcessing_;
   MultiStream packedFrames_;

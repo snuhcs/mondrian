@@ -19,7 +19,7 @@ const cv::TermCriteria ROIExtractor::CRITERIA = cv::TermCriteria(
 ROIExtractor::ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
                            ROIResizer* roiResizer, ExecutionType executionType, int roiSize,
                            std::vector<InferenceInfo> inferencePlan, int numVideos)
-    : config_(config), maxMergeSize_(maxMergeSize), border_(config.ROI_BORDER),
+    : config_(config), maxMergeSize_(maxMergeSize),
       ROIResizer_(roiResizer), executionType_(executionType), ROISize_(roiSize),
       targetSize_(cv::Size(int(config.EXTRACTION_RESIZE_WIDTH),
                            int(config.EXTRACTION_RESIZE_HEIGHT))),
@@ -285,11 +285,12 @@ void ROIExtractor::work(int extractorId) {
 
     if (isOF) {
       frame->OFExtractorID = extractorId;
-      OFWaiting_.erase(OFWaiting_.begin());
+      OFWaiting_.erase(frame);
       OFProcessing_.insert(frame);
     } else {
       frame->PDExtractorID = extractorId;
-      PDWaiting_.erase(PDWaiting_.begin());
+      PDWaiting_.erase(frame);
+      PDProcessing_.insert(frame);
     }
     queueLock.unlock();
     queueCV_.notify_all();
@@ -304,6 +305,7 @@ void ROIExtractor::work(int extractorId) {
       postprocessOF(frame);
     } else {
       queueLock.lock();
+      PDProcessing_.erase(frame);
       OFWaiting_.insert(frame);
       queueLock.unlock();
     }
