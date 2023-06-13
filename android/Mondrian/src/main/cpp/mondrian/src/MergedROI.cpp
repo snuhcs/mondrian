@@ -48,11 +48,16 @@ std::unique_ptr<MergedROI> MergedROI::merge(const MergedROI* m0, const MergedROI
 }
 
 std::vector<std::unique_ptr<MergedROI>>
-MergedROI::mergeROIs(const std::vector<std::unique_ptr<ROI>>& rois, int maxSize) {
+MergedROI::mergeROIs(const std::vector<std::unique_ptr<ROI>>& rois, int maxSize, bool doMerge) {
   std::vector<std::unique_ptr<MergedROI>> mergedROIs;
   mergedROIs.reserve(rois.size());
   for (const auto& roi: rois) {
-    mergedROIs.emplace_back(new MergedROI({roi.get()}, roi->targetScale(), roi->type));
+    std::unique_ptr<MergedROI> mergedROI(new MergedROI({roi.get()}, roi->targetScale(), roi->type));
+    roi->mergedROI = mergedROI.get();
+    mergedROIs.push_back(std::move(mergedROI));
+  }
+  if (!doMerge) {
+    return mergedROIs;
   }
 
   while (true) {
