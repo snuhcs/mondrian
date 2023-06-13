@@ -334,6 +334,7 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
 
   if (config_.STREAM_MODE) {
     packedFrames_[currFrame->vid].insert(currFrame);
+    OFProcessing_.erase(currFrame);
     currFrame->isROIsReady = true;
   } else {
     currFrame->packingStartTime = NowMicros();
