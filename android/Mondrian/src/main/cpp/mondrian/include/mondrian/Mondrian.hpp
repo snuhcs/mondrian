@@ -38,9 +38,9 @@ class Mondrian {
 
   void workLog();
 
-  void handleFullFrameResults(Frame* frame);
+  void handleFullFrameResults(Frame* frame, int currID);
 
-  void handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanvases);
+  void handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanvases, int currID);
 
   void handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases);
 
@@ -49,6 +49,7 @@ class Mondrian {
   void log(const Frame* frame);
 
   const MondrianConfig config_;
+  const time_us startTime;
 
   // Frame Buffers
   std::mutex frameBuffersMtx_;

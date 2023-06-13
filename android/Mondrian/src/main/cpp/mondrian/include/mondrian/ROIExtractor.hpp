@@ -87,6 +87,7 @@ class ROIExtractor {
   void applyLasts();
 
   std::vector<std::thread> threads_;
+  bool pull_;
   bool stop_;
 
   static const cv::TermCriteria CRITERIA;
