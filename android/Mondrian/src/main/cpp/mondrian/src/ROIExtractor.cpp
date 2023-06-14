@@ -47,11 +47,11 @@ void ROIExtractor::enqueue(Frame* frame) {
   if (!config_.STREAM_MODE) {
     queueCV_.wait(queueLock, [this]() { return PDWaiting_.size() < config_.MAX_QUEUE_SIZE; });
   }
-  LOGD("XXX == %lu OF Waiting %lu OF Processing %d Processed | %d",
-       OFWaiting_.size(), OFProcessing_.size(),
-       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-                       [](int sum, const auto& pair) { return sum + pair.second.size(); }),
-       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
+//  LOGD("XXX == %lu OF Waiting %lu OF Processing %d Processed | %d",
+//       OFWaiting_.size(), OFProcessing_.size(),
+//       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
+//                       [](int sum, const auto& pair) { return sum + pair.second.size(); }),
+//       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
   PDWaiting_.insert(frame);
   queueLock.unlock();
   queueCV_.notify_all();
@@ -73,12 +73,12 @@ PackingResult ROIExtractor::prepareInference(std::vector<InferenceInfo>& nextInf
   if (config_.STREAM_MODE) {
     time_us start = NowMicros();
     queueCV_.wait(queueLock, [this]() { return OFProcessing_.empty(); });
-    LOGD("XXX == prepareInference %lu OF Waiting %lu OF Processing %d Processed | %d",
-         OFWaiting_.size(), OFProcessing_.size(),
-         std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-                         [](int sum, const auto& pair) { return sum + pair.second.size(); }),
-         OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
-    packGatheredMultiStream(packedFrames_);
+//    LOGD("XXX == prepareInference %lu OF Waiting %lu OF Processing %d Processed | %d",
+//         OFWaiting_.size(), OFProcessing_.size(),
+//         std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
+//                         [](int sum, const auto& pair) { return sum + pair.second.size(); }),
+//         OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
+    packGatheredMultiStream();
     time_us end = NowMicros();
   } else { // Back to back mode
     if (!fullyPacked_) {
@@ -158,17 +158,17 @@ PackingResult ROIExtractor::prepareInference(std::vector<InferenceInfo>& nextInf
   return {packedCanvases, fullFrameTarget, selectedFrames, droppedFrames};
 }
 
-void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
+void ROIExtractor::packGatheredMultiStream() {
   time_us startTime = NowMicros();
   // Full frame
-  if (multiStream.find(fullFrameVid_) != multiStream.end()) {
-    fullFrameTarget_ = *multiStream.at(fullFrameVid_).rbegin();
+  if (packedFrames_.find(fullFrameVid_) != packedFrames_.end()) {
+    fullFrameTarget_ = *packedFrames_.at(fullFrameVid_).rbegin();
     packedFrames_[fullFrameVid_].erase(fullFrameTarget_);
-    LOGD("XXX == Last Full Frame %d", fullFrameTarget_->frameIndex);
+//    LOGD("XXX == Last Full Frame %d", fullFrameTarget_->frameIndex);
   }
 
   // Last frames
-  for (const auto&[vid, frames]: multiStream) {
+  for (const auto&[vid, frames]: packedFrames_) {
     if (vid == fullFrameVid_) {
       continue;
     }
@@ -180,8 +180,8 @@ void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
     for (auto& [packedCanvasIndex, freeRectIndex]: indices) {
       maxPackedCanvasIndex = std::max(maxPackedCanvasIndex, packedCanvasIndex);
     }
-    LOGD("XXX == Last Pack Frame %d: %lu / %lu Packed, Last Packed Frame=%d",
-         lastFrame->frameIndex, indices.size(), lastFrame->boxesIfLast.size(), maxPackedCanvasIndex);
+//    LOGD("XXX == Last Pack Frame %d: %lu / %lu Packed, Last Packed Frame=%d",
+//         lastFrame->frameIndex, indices.size(), lastFrame->boxesIfLast.size(), maxPackedCanvasIndex);
     if (fullyPacked) {
       ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
     } else {
@@ -195,7 +195,7 @@ void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
 
   // Gather MergedROIs not in last frames
   std::vector<MergedROI*> mergedROIs;
-  for (const auto&[vid, frames]: multiStream) {
+  for (const auto&[vid, frames]: packedFrames_) {
     for (Frame* frame: frames) {
       if (frame == *frames.rbegin()) {
         continue;
@@ -223,18 +223,18 @@ void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
   }
   time_us packOthersTime = NowMicros();
 
-  LOGD("XXX == # ROIs: %lu, # Frames: %d | "
-       "total: %lld, packLastTime: %lld, gatherTime: %lld, sortTime: %lld, packOthersTime: %lld",
-       sortedMergedROIs.size(),
-       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-                       [](int sum, const auto& pair) {
-         return sum + pair.second.size();
-       }) + (multiStream.find(fullFrameVid_) != multiStream.end() ? 1 : 0),
-       packOthersTime - startTime,
-       packLastTime - startTime,
-       gatherTime - packLastTime,
-       sortTime - gatherTime,
-       packOthersTime - sortTime);
+//  LOGD("XXX == # ROIs: %lu, # Frames: %d | "
+//       "total: %lld, packLastTime: %lld, gatherTime: %lld, sortTime: %lld, packOthersTime: %lld",
+//       sortedMergedROIs.size(),
+//       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
+//                       [](int sum, const auto& pair) {
+//         return sum + pair.second.size();
+//       }) + (multiStream.find(fullFrameVid_) != multiStream.end() ? 1 : 0),
+//       packOthersTime - startTime,
+//       packLastTime - startTime,
+//       gatherTime - packLastTime,
+//       sortTime - gatherTime,
+//       packOthersTime - sortTime);
 }
 
 void ROIExtractor::work(int extractorId) {
@@ -342,12 +342,12 @@ void ROIExtractor::work(int extractorId) {
       queueLock.unlock();
     }
     time_us end = NowMicros();
-    if (isOF) {
-      LOGD("XXX total: %lld | resize: %lld | merge: %lld",
-           end - start,
-           frame->resizeEndTime - frame->resizeStartTime,
-           frame->mergeROIEndTime - frame->mergeROIStartTime);
-    }
+//    if (isOF) {
+//      LOGD("XXX total: %lld | resize: %lld | merge: %lld",
+//           end - start,
+//           frame->resizeEndTime - frame->resizeStartTime,
+//           frame->mergeROIEndTime - frame->mergeROIStartTime);
+//    }
     queueCV_.notify_all();
   }
 }

@@ -47,7 +47,7 @@ class ROIExtractor {
 
   void postprocessOF(Frame* currFrame);
 
-  void packGatheredMultiStream(const MultiStream& multiStream);
+  void packGatheredMultiStream();
 
   void tryPack(Frame* frame);
 
