@@ -144,10 +144,14 @@ std::pair<float, float> Interpolator::getBbxShift(std::vector<ROI*> rois, int st
 
 void Interpolator::addBoxWithPrevInfo(ROI* currROI, const BoundingBox* prevBox,
                                       const std::pair<float, float>& newCenter) {
-  float newL = std::max(0.0f, newCenter.first - prevBox->loc.w / 2);
-  float newT = std::max(0.0f, newCenter.second - prevBox->loc.h / 2);
-  float newR = std::min(float(currROI->frame->width), newL + prevBox->loc.w);
-  float newB = std::min(float(currROI->frame->height), newT + prevBox->loc.h);
+  float newL = newCenter.first - prevBox->loc.w / 2;
+  float newT = newCenter.second - prevBox->loc.h / 2;
+  float newR = newL + prevBox->loc.w;
+  float newB = newT + prevBox->loc.h;
+  newL = std::min(float(currROI->frame->width), std::max(0.0f, newL));
+  newT = std::min(float(currROI->frame->height), std::max(0.0f, newT));
+  newR = std::min(float(currROI->frame->width), std::max(0.0f, newR));
+  newB = std::min(float(currROI->frame->height), std::max(0.0f, newB));
   assert(0 <= newL && 0 <= newT);
   assert(newL <= newR && newT <= newB);
   Rect newBox(newL, newT, newR, newB);
