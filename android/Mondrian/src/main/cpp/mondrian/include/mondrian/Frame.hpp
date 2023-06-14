@@ -83,6 +83,8 @@ class Frame {
 
   void filterPDROIs(float threshold, bool eatPD);
 
+  void generateMergedROIs(int maxSize, bool merge);
+
   bool isReadyToMarry(int packedFrameIndex) const;
 
   bool readyForOFExtraction() const;

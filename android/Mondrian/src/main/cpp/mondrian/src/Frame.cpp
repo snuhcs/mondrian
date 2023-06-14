@@ -113,6 +113,10 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
   }
 }
 
+void Frame::generateMergedROIs(int maxSize, bool merge) {
+
+}
+
 bool Frame::isReadyToMarry(int packedCanvasIndex) const {
   auto isROIReady = [&packedCanvasIndex](const std::unique_ptr<MergedROI>& mergedROI) {
     return !mergedROI->isPacked() || mergedROI->relativePackedCanvasIndex() <= packedCanvasIndex;
