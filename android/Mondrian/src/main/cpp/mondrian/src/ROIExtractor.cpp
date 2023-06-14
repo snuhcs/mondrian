@@ -358,7 +358,11 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
   currFrame->resizeROIs(ROIResizer_, executionType_, ROISize_);
   currFrame->resizeEndTime = NowMicros();
   currFrame->mergeROIStartTime = NowMicros();
-  currFrame->generateMergedROIs(maxMergeSize_, config_.MERGE);
+  currFrame->generateMergedROIs();
+  if (config_.MERGE) {
+    currFrame->mergeMergedROIs(maxMergeSize_);
+  }
+  currFrame->sortMergedROIs();
   currFrame->mergeROIEndTime = NowMicros();
 
   currFrame->boxesIfLast = getBoxesIfLast(currFrame);

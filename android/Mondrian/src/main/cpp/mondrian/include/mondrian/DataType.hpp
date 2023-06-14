@@ -77,6 +77,10 @@ struct Rect {
     return std::make_pair((r + l) / 2, (b + t) / 2);
   }
 
+  bool overlap(const Rect& other) const {
+    return l < other.r && r > other.l && t < other.b && b > other.t;
+  }
+
   float intersection(const Rect& other) const {
     float width = std::min(r, other.r) - std::max(l, other.l);
     float height = std::min(b, other.b) - std::max(t, other.t);

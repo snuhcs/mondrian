@@ -18,6 +18,8 @@ class MergedROI {
 
   static std::unique_ptr<MergedROI> merge(const MergedROI* m0, const MergedROI* m1);
 
+  static void mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize);
+
   float targetScale() const {
     return targetScale_;
   }
