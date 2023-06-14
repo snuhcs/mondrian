@@ -193,7 +193,7 @@ void ROIExtractor::packGatheredMultiStream() {
   }
   time_us packLastTime = NowMicros();
 
-  // Sort MergedROIs
+  // Order MergedROIs
   auto orderedMergedROIs = ROIPrioritizer::order(packedFrames_, fullFrameVid_);
   time_us orderTime = NowMicros();
 
@@ -209,17 +209,17 @@ void ROIExtractor::packGatheredMultiStream() {
   }
   time_us packOthersTime = NowMicros();
 
-//  LOGD("XXX == # ROIs: %lu, # Frames: %d | "
-//       "total: %lld, packLastTime: %lld, orderTime: %lld, packOthersTime: %lld",
-//       sortedMergedROIs.size(),
-//       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-//                       [](int sum, const auto& pair) {
-//                         return sum + pair.second.size();
-//                       }) + (packedFrames_.find(fullFrameVid_) != packedFrames_.end() ? 1 : 0),
-//       packOthersTime - startTime,
-//       packLastTime - startTime,
-//       orderTime - packLastTime,
-//       packOthersTime - orderTime);
+  LOGD("Packing %d Frames with %lu ROIs | "
+       "total: %lld, packLastTime: %lld, orderTime: %lld, packOthersTime: %lld",
+       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
+                       [](int sum, const auto& pair) {
+                         return sum + pair.second.size();
+                       }) + (packedFrames_.find(fullFrameVid_) != packedFrames_.end() ? 1 : 0),
+       orderedMergedROIs.size(),
+       packOthersTime - startTime,
+       packLastTime - startTime,
+       orderTime - packLastTime,
+       packOthersTime - orderTime);
 }
 
 void ROIExtractor::work(int extractorId) {

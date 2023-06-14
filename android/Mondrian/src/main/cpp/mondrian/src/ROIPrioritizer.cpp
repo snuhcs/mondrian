@@ -5,7 +5,6 @@
 
 #include "mondrian/Frame.hpp"
 #include "mondrian/MergedROI.hpp"
-#include "mondrian/Order.hpp"
 #include "mondrian/ROI.hpp"
 
 namespace md {
@@ -26,46 +25,38 @@ std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& packedFrames, i
     }
   }
 
-  std::map<std::pair<int, int>, int> roiStreamLengths;
+  std::set<StartEndLength> startEndLengths;
   for (const auto& [vid, roiIDMap]: roiMap) {
-    for (const auto& [roiID, frameMap]: roiIDMap) {
-      roiStreamLengths[{vid, roiID}] = int(frameMap.size());
+    for (const auto& [roiID, frameIndexMap]: roiIDMap) {
+      int start = (*frameIndexMap.begin()).first;
+      int end = (*frameIndexMap.rbegin()).first + 1;
+      startEndLengths.emplace(vid, roiID, start, end);
     }
   }
 
   std::vector<MergedROI*> orderedMergedROIs;
-  for (auto& [vid, roiIDMap]: roiMap) {
-    int frameLength = int(packedFrames.at(vid).size());
-    int startIndex = (*packedFrames.at(vid).begin())->frameIndex;
-    LOGD("XXX frameLength: %d startIndex: %d", frameLength, startIndex);
-    for (int i = 0; i < frameLength; i++) {
-      LOGD("XXX ===== i=%d =====", i);
-      for (auto& [roiID, frameMap]: roiIDMap) {
-        int roiLength = roiStreamLengths[{vid, roiID}];
-        if (roiLength <= i) {
-          continue;
-        }
-        int packIndex = startIndex + ORDERS.at(roiLength)[i];
-        auto it = frameMap.find(packIndex);
-        std::stringstream ss;
-        ss << "selected: roi=" << roiID << ", frame=" << packIndex;
-        if (it != frameMap.end()) {
-          MergedROI* mergedROI = (*it).second->mergedROI;
-          orderedMergedROIs.push_back(mergedROI);
-          ss << " | removes ";
-          for (const auto& roi: mergedROI->rois()) {
-            assert(roi->frame->frameIndex == packIndex);
-            roiIDMap[roi->id].erase(packIndex);
-            ss << "(" << roi->id << ", " << roi->frame->frameIndex << "), ";
+  while (!startEndLengths.empty()) {
+    auto longest = startEndLengths.begin();
+    int mid = longest->mid();
+
+    MergedROI* mergedROI = roiMap[longest->vid_][longest->roiID_][mid]->mergedROI;
+    orderedMergedROIs.push_back(mergedROI);
+
+    for (auto& roi: mergedROI->rois()) {
+      for (auto it = startEndLengths.begin(); it != startEndLengths.end(); it++) {
+        if (it->contains(roi->frame->vid, roi->id, mid)) {
+          StartEndLength newStartEndLength1(it->vid_, it->roiID_, it->start_, mid);
+          StartEndLength newStartEndLength2(it->vid_, it->roiID_, mid + 1, it->end_);
+          startEndLengths.erase(it);
+          if (newStartEndLength1.length_ > 0) {
+            startEndLengths.insert(newStartEndLength1);
           }
-        } else {
-          ss << " | already removed";
+          if (newStartEndLength2.length_ > 0) {
+            startEndLengths.insert(newStartEndLength2);
+          }
+          break;
         }
-        LOGD("XXX %s", ss.str().c_str());
       }
-    }
-    for (auto& [roiID, frameMap]: roiIDMap) {
-      assert(frameMap.empty());
     }
   }
 
