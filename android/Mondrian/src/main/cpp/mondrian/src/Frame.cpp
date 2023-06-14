@@ -23,46 +23,6 @@ void Frame::prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize) {
   cv::cvtColor(resizedGrayMat, resizedGrayMat, cv::COLOR_RGB2GRAY);
 }
 
-void Frame::resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize) {
-  if (executionType == EMULATED_BATCH) {
-    for (auto& roi: rois) {
-      float w = roi->paddedLoc.w;
-      float h = roi->paddedLoc.h;
-      float scale = std::min(1.0f, float(roiSize - 2 * MergedROI::BORDER) / std::max(h, w));
-      roi->scaleTo(scale, ROIResizer::INVALID_LEVEL);
-      int bw = MergedROI::borderedLengthOf(w, scale);
-      int bh = MergedROI::borderedLengthOf(h, scale);
-      if (roiSize < std::max(bw, bh)) {
-        LOGE("Frame::resizeROIs: roiSize=%3d | %4.2f*%4.2f=%4.2f => %3d | %4.2f*%4.2f=%4.2f => %3d",
-             roiSize, w, scale, w * scale, bw, h, scale, h * scale, bh);
-        assert(false);
-      }
-    }
-  } else {
-    for (auto& roi: rois) {
-      if (roi->type == OF) {
-        auto[scale, level] = roiResizer->getTargetScale(roi->id, roi->features,
-                                                        roi->maxEdgeLength);
-        assert(0.0f < scale && scale <= 1.0f);
-        roi->scaleTo(scale, level);
-      } else {
-        if (roi->nextROI != nullptr) {
-          roi->scaleTo(roi->nextROI->targetScale(), roi->nextROI->scaleLevel());
-        } else {
-          roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL);
-        }
-      }
-    }
-  }
-}
-
-void Frame::resetProbeROIs() {
-  for (auto& roi: rois) {
-    roi->roisForProbing.clear();
-    probingROIs.clear();
-  }
-}
-
 void Frame::filterPDROIs(float threshold, bool eatPD) {
   std::vector<ROI*> OFROIs;
   for (auto& roi: rois) {
@@ -113,8 +73,48 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
   }
 }
 
+void Frame::resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize) {
+  if (executionType == EMULATED_BATCH) {
+    for (auto& roi: rois) {
+      float w = roi->paddedLoc.w;
+      float h = roi->paddedLoc.h;
+      float scale = std::min(1.0f, float(roiSize - 2 * MergedROI::BORDER) / std::max(h, w));
+      roi->scaleTo(scale, ROIResizer::INVALID_LEVEL);
+      int bw = MergedROI::borderedLengthOf(w, scale);
+      int bh = MergedROI::borderedLengthOf(h, scale);
+      if (roiSize < std::max(bw, bh)) {
+        LOGE("Frame::resizeROIs: roiSize=%3d | %4.2f*%4.2f=%4.2f => %3d | %4.2f*%4.2f=%4.2f => %3d",
+             roiSize, w, scale, w * scale, bw, h, scale, h * scale, bh);
+        assert(false);
+      }
+    }
+  } else {
+    for (auto& roi: rois) {
+      if (roi->type == OF) {
+        auto[scale, level] = roiResizer->getTargetScale(roi->id, roi->features,
+                                                        roi->maxEdgeLength);
+        assert(0.0f < scale && scale <= 1.0f);
+        roi->scaleTo(scale, level);
+      } else {
+        if (roi->nextROI != nullptr) {
+          roi->scaleTo(roi->nextROI->targetScale(), roi->nextROI->scaleLevel());
+        } else {
+          roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL);
+        }
+      }
+    }
+  }
+}
+
 void Frame::generateMergedROIs(int maxSize, bool merge) {
 
+}
+
+void Frame::resetProbeROIs() {
+  for (auto& roi: rois) {
+    roi->roisForProbing.clear();
+    probingROIs.clear();
+  }
 }
 
 bool Frame::isReadyToMarry(int packedCanvasIndex) const {

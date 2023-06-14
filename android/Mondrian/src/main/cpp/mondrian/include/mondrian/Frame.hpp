@@ -77,13 +77,13 @@ class Frame {
 
   void prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize);
 
-  void resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize);
-
-  void resetProbeROIs();
-
   void filterPDROIs(float threshold, bool eatPD);
 
+  void resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize);
+
   void generateMergedROIs(int maxSize, bool merge);
+
+  void resetProbeROIs();
 
   bool isReadyToMarry(int packedFrameIndex) const;
 
