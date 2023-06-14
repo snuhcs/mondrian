@@ -10,8 +10,8 @@
 namespace md {
 
 std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& packedFrames, int fullFrameVid) {
-  // roiMap[vid][roiID][frameIndex] = roi
-  std::map<int, std::map<int, std::map<int, ROI*>>> roiMap;
+  // roiMap[vid, roiID][frameIndex] = roi
+  std::map<std::pair<int, int>, std::map<int, ROI*>> roiMap;
   for (const auto& [vid, frames]: packedFrames) {
     for (Frame* frame: frames) {
       // Skip last frame for not full frame vid.
@@ -20,42 +20,46 @@ std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& packedFrames, i
         continue;
       }
       for (auto& roi: frame->rois) {
-        roiMap[vid][roi->id][frame->frameIndex] = roi.get();
+        roiMap[{vid, roi->id}][frame->frameIndex] = roi.get();
       }
     }
   }
 
   std::set<StartEndLength> startEndLengths;
-  for (const auto& [vid, roiIDMap]: roiMap) {
-    for (const auto& [roiID, frameIndexMap]: roiIDMap) {
-      int start = (*frameIndexMap.begin()).first;
-      int end = (*frameIndexMap.rbegin()).first + 1;
-      startEndLengths.emplace(vid, roiID, start, end);
-    }
+  for (const auto& [key, frameIndexMap]: roiMap) {
+    auto& [vid, roiID] = key;
+    int start = (*frameIndexMap.begin()).first;
+    int end = (*frameIndexMap.rbegin()).first + 1;
+    startEndLengths.emplace(vid, roiID, start, end);
   }
+  assert(roiMap.size() == startEndLengths.size());
 
   std::vector<MergedROI*> orderedMergedROIs;
   while (!startEndLengths.empty()) {
     auto longest = startEndLengths.begin();
-    int mid = longest->mid();
+    int vid = longest->vid_;
+    int fid = longest->mid();
 
-    MergedROI* mergedROI = roiMap[longest->vid_][longest->roiID_][mid]->mergedROI;
+    MergedROI* mergedROI = roiMap[{vid, longest->roiID_}][fid]->mergedROI;
+    assert(std::find(orderedMergedROIs.begin(), orderedMergedROIs.end(),
+                     mergedROI) == orderedMergedROIs.end());
     orderedMergedROIs.push_back(mergedROI);
 
     for (auto& roi: mergedROI->rois()) {
-      for (auto it = startEndLengths.begin(); it != startEndLengths.end(); it++) {
-        if (it->contains(roi->frame->vid, roi->id, mid)) {
-          StartEndLength newStartEndLength1(it->vid_, it->roiID_, it->start_, mid);
-          StartEndLength newStartEndLength2(it->vid_, it->roiID_, mid + 1, it->end_);
-          startEndLengths.erase(it);
-          if (newStartEndLength1.length_ > 0) {
-            startEndLengths.insert(newStartEndLength1);
-          }
-          if (newStartEndLength2.length_ > 0) {
-            startEndLengths.insert(newStartEndLength2);
-          }
+      auto it = startEndLengths.begin();
+      for (; it != startEndLengths.end(); it++) {
+        if (it->vid_ == vid && it->roiID_ == roi->id && it->start_ <= fid && fid < it->end_)
           break;
-        }
+      }
+      assert(it != startEndLengths.end());
+      StartEndLength newStartEndLength1(it->vid_, it->roiID_, it->start_, fid);
+      StartEndLength newStartEndLength2(it->vid_, it->roiID_, fid + 1, it->end_);
+      startEndLengths.erase(it);
+      if (newStartEndLength1.length_ > 0) {
+        startEndLengths.insert(newStartEndLength1);
+      }
+      if (newStartEndLength2.length_ > 0) {
+        startEndLengths.insert(newStartEndLength2);
       }
     }
   }

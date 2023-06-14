@@ -9,8 +9,7 @@ namespace md {
 
 class MergedROI;
 
-class StartEndLength {
- public:
+struct StartEndLength {
   int vid_;
   int roiID_;
   int start_;
@@ -24,15 +23,21 @@ class StartEndLength {
     return start_ + length_ / 2;
   }
 
-  bool contains(int vid, int roiID, int mid) const {
-    return vid_ == vid && roiID_ == roiID && start_ <= mid && mid < end_;
-  }
-
   bool operator<(const StartEndLength& other) const {
-    if (length_ == other.length_) {
+    if (length_ != other.length_) {
+      return length_ > other.length_;
+    }
+    if (start_ != other.start_) {
       return start_ > other.start_;
     }
-    return length_ > other.length_;
+    assert(end_ == other.end_);
+    if (roiID_ != other.roiID_) {
+      return roiID_ > other.roiID_;
+    }
+    if (vid_ != other.vid_) {
+      return vid_ > other.vid_;
+    }
+    return vid_ > other.vid_;
   }
 };
 
