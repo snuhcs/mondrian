@@ -650,8 +650,8 @@ void ROIExtractor::processOF(Frame* currFrame) {
         BoundingBox reliableBox(box->id, Rect(
             std::max(0.0f, box->loc.l),
             std::max(0.0f, box->loc.t),
-            std::min(float(currFrame->width), box->loc.r),
-            std::min(float(currFrame->height), box->loc.b)),
+            std::min(float(currFrame->width()), box->loc.r),
+            std::min(float(currFrame->height()), box->loc.b)),
                                 box->confidence, box->label, O_PACKED_CANVAS);
         reliableBox.srcROI = box->srcROI;
         reliablePrevBoxes.push_back(reliableBox);
@@ -717,67 +717,64 @@ std::vector<OFFeatures> ROIExtractor::opticalFlowTracking(
   assert(!currFrame->resizedGrayMat.empty());
   assert(prevFrame->resizedGrayMat.channels() == currFrame->resizedGrayMat.channels());
 
+  float widthRatio = float(targetSize.width) / float(prevFrame->width());
+  float heightRatio = float(targetSize.height) / float(prevFrame->height());
+
   const cv::Mat& prevImage = prevFrame->resizedGrayMat;
   const cv::Mat& currImage = currFrame->resizedGrayMat;
 
   std::vector<int> startEndIndices = {0};
   std::vector<cv::Point2f> inputPoints;
   for (const Rect& bbx: boundingBoxes) {
-    float xRatio = (float) targetSize.width / (float) prevFrame->width;
-    float yRatio = (float) targetSize.height / (float) prevFrame->height;
-    float x = std::min(bbx.l, bbx.r) * xRatio;
-    float y = std::min(bbx.t, bbx.b) * yRatio;
-    float w = std::abs(bbx.r - bbx.l) * xRatio;
-    float h = std::abs(bbx.b - bbx.t) * yRatio;
-    x = std::min(std::max(0.0f, x), float(prevImage.cols));
-    y = std::min(std::max(0.0f, y), float(prevImage.rows));
-    w = std::min(std::max(0.0f, w), float(prevImage.cols) - x);
-    h = std::min(std::max(0.0f, h), float(prevImage.rows) - y);
+    float l = bbx.l * widthRatio;
+    float t = bbx.t * heightRatio;
+    float r = bbx.r * widthRatio;
+    float b = bbx.b * heightRatio;
+    l = std::min(std::max(0.0f, l), float(targetSize.width));
+    t = std::min(std::max(0.0f, t), float(targetSize.height));
+    r = std::min(std::max(0.0f, r), float(targetSize.width));
+    b = std::min(std::max(0.0f, b), float(targetSize.height));
 
     std::vector<cv::Point2f> points;
-    cv::Rect roiBbx = cv::Rect(int(x), int(y), int(w), int(h));
+    cv::Rect roiBbx = cv::Rect(int(l), int(t), int(r - l), int(b - t));
     cv::goodFeaturesToTrack(prevImage(roiBbx), points, 50, 0.01, 5, cv::Mat(), 3, false, 0.03);
     for (cv::Point2f& p: points) {
-      p.x += x;
-      p.y += y;
+      p.x += l;
+      p.y += t;
     }
     if (points.empty()) {
-      startEndIndices.push_back(startEndIndices.back() + 1);
-      inputPoints.emplace_back(
-          ((float) bbx.l + (float) bbx.w / 2) * xRatio,
-          ((float) bbx.t + (float) bbx.h / 2) * yRatio);
-    } else {
-      startEndIndices.push_back(startEndIndices.back() + int(points.size()));
-      inputPoints.insert(inputPoints.end(), points.begin(), points.end());
+      points.emplace_back(float(bbx.l + bbx.r) / 2 * widthRatio,
+                          float(bbx.t + bbx.b) / 2 * heightRatio);
     }
+    startEndIndices.push_back(startEndIndices.back() + int(points.size()));
+    inputPoints.insert(inputPoints.end(), points.begin(), points.end());
   }
   assert(startEndIndices.back() == inputPoints.size());
 
-  std::vector<uchar> status;
-  std::vector<float> errs;
   std::vector<cv::Point2f> outputPoints;
-  cv::calcOpticalFlowPyrLK(prevImage, currImage, inputPoints, outputPoints, status, errs,
+  std::vector<uchar> statuses;
+  std::vector<float> errs;
+  cv::calcOpticalFlowPyrLK(prevImage, currImage, inputPoints, outputPoints, statuses, errs,
                            cv::Size(15, 15), 2, CRITERIA);
   assert(inputPoints.size() == outputPoints.size());
-  assert(inputPoints.size() == status.size());
+  assert(inputPoints.size() == statuses.size());
   assert(inputPoints.size() == errs.size());
 
   std::vector<OFFeatures> ofFeatures;
   for (int i = 0; i < startEndIndices.size() - 1; i++) {
     int startIndex = startEndIndices[i];
     int endIndex = startEndIndices[i + 1];
-    std::vector<std::pair<float, float>> boxShifts;
-    std::vector<float> boxErrs;
-    std::vector<uchar> boxStatusVec;
+    std::vector<std::pair<float, float>> _shifts;
+    std::vector<int> _statuses;
+    std::vector<float> _errs;
     for (int j = startIndex; j < endIndex; j++) {
-      float x = outputPoints[j].x - inputPoints[j].x;
-      float y = outputPoints[j].y - inputPoints[j].y;
-      boxShifts.emplace_back(x * (float) currFrame->width / (float) targetSize.width,
-                             y * (float) currFrame->height / (float) targetSize.height);
-      boxErrs.push_back(errs[j]);
-      boxStatusVec.push_back(status[j]);
+      float x = (outputPoints[j].x - inputPoints[j].x) / widthRatio;
+      float y = (outputPoints[j].y - inputPoints[j].y) / heightRatio;
+      _shifts.emplace_back(x, y);
+      _statuses.push_back(int(statuses[j]));
+      _errs.push_back(errs[j]);
     }
-    ofFeatures.emplace_back(boxShifts, boxErrs, boxStatusVec);
+    ofFeatures.emplace_back(_shifts, _statuses, _errs);
   }
   return ofFeatures;
 }
@@ -796,10 +793,17 @@ void ROIExtractor::getPixelDiffROIs(Frame* currFrame, const cv::Size& targetSize
     prevFrame = prevFrame->prevFrame;
   }
 
-  assert(!prevFrame->resizedGrayMat.empty());
-  assert(!currFrame->resizedGrayMat.empty());
-  assert(prevFrame->resizedGrayMat.channels() == currFrame->resizedGrayMat.channels());
-  cv::Mat mat = calculateDiffAndThreshold(prevFrame->resizedGrayMat, currFrame->resizedGrayMat);
+  float widthRatio = float(targetSize.width) / float(prevFrame->width());
+  float heightRatio = float(targetSize.height) / float(prevFrame->height());
+//  LOGD("XXX %d %d => %d %d | %f %f",
+//       prevFrame->width(), prevFrame->height(),
+//       targetSize.width, targetSize.height,
+//       widthRatio, heightRatio);
+
+  const cv::Mat& prevImage = prevFrame->resizedGrayMat;
+  const cv::Mat& currImage = currFrame->resizedGrayMat;
+
+  cv::Mat mat = calculateDiffAndThreshold(prevImage, currImage);
   cannyEdgeDetection(mat);
 
   std::vector<std::vector<cv::Point>> contours;
@@ -814,13 +818,19 @@ void ROIExtractor::getPixelDiffROIs(Frame* currFrame, const cv::Size& targetSize
     std::vector<cv::Point> approxCurve;
     cv::approxPolyDP(contour, approxCurve, approxDistance, true);
     cv::Rect2f box = cv::boundingRect(approxCurve);
+    assert(box.width > 0 && box.height > 0);
     if (minPDROISize <= std::min(box.width, box.height)
         && std::max(box.width, box.height) <= maxPDROISize) {
-      boxes.emplace_back(
-              box.x * float(currFrame->rgbMat.cols) / float(targetSize.width),
-              box.y * float(currFrame->rgbMat.rows) / float(targetSize.height),
-              (box.x + box.width) * float(currFrame->rgbMat.cols) / float(targetSize.width),
-              (box.y + box.height) * float(currFrame->rgbMat.rows) / float(targetSize.height));
+      Rect _box(box.x / widthRatio,
+                box.y / heightRatio,
+                (box.x + box.width) / widthRatio,
+                (box.y + box.height) / heightRatio);
+//      LOGD("XXX: %f %f %f %f | %f %f | %f %f %f %f",
+//           box.x, box.y, box.x + box.width, box.y + box.height,
+//           widthRatio, heightRatio,
+//           _box.l, _box.t, _box.r, _box.b);
+      assert(0 <= _box.l && _box.r <= prevFrame->width() && 0 <= _box.t && _box.b <= prevFrame->height());
+      boxes.push_back(_box);
     }
   }
 
@@ -834,7 +844,7 @@ void ROIExtractor::getPixelDiffROIs(Frame* currFrame, const cv::Size& targetSize
           PD,
           O_PD,
           -1,
-          OFFeatures({}, {}, {}),
+          OFFeatures(),
           ROI::INVALID_CONF));
     }
   }
