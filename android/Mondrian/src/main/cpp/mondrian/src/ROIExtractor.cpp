@@ -193,26 +193,12 @@ void ROIExtractor::packGatheredMultiStream() {
   }
   time_us packLastTime = NowMicros();
 
-  // Gather MergedROIs not in last frames
-  std::vector<MergedROI*> mergedROIs;
-  for (const auto&[vid, frames]: packedFrames_) {
-    for (Frame* frame: frames) {
-      if (frame == *frames.rbegin()) {
-        continue;
-      }
-      for (auto& mergedROI: frame->mergedROIs) {
-        mergedROIs.push_back(mergedROI.get());
-      }
-    }
-  }
-  time_us gatherTime = NowMicros();
-
   // Sort MergedROIs
-  auto sortedMergedROIs = ROIPrioritizer::sort(mergedROIs);
-  time_us sortTime = NowMicros();
+  auto orderedMergedROIs = ROIPrioritizer::order(packedFrames_, fullFrameVid_);
+  time_us orderTime = NowMicros();
 
   // Pack MergedROIs
-  for (MergedROI* mergedROI: sortedMergedROIs) {
+  for (MergedROI* mergedROI: orderedMergedROIs) {
     auto[bw, bh] = mergedROI->borderedMatWH();
     auto[indices, locations] = ROIPacker::pack(freeRectsVec_, {{bw, bh}}, /*backward=*/false,
                                                executionType_, ROISize_);
@@ -224,17 +210,16 @@ void ROIExtractor::packGatheredMultiStream() {
   time_us packOthersTime = NowMicros();
 
 //  LOGD("XXX == # ROIs: %lu, # Frames: %d | "
-//       "total: %lld, packLastTime: %lld, gatherTime: %lld, sortTime: %lld, packOthersTime: %lld",
+//       "total: %lld, packLastTime: %lld, orderTime: %lld, packOthersTime: %lld",
 //       sortedMergedROIs.size(),
 //       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
 //                       [](int sum, const auto& pair) {
-//         return sum + pair.second.size();
-//       }) + (multiStream.find(fullFrameVid_) != multiStream.end() ? 1 : 0),
+//                         return sum + pair.second.size();
+//                       }) + (packedFrames_.find(fullFrameVid_) != packedFrames_.end() ? 1 : 0),
 //       packOthersTime - startTime,
 //       packLastTime - startTime,
-//       gatherTime - packLastTime,
-//       sortTime - gatherTime,
-//       packOthersTime - sortTime);
+//       orderTime - packLastTime,
+//       packOthersTime - orderTime);
 }
 
 void ROIExtractor::work(int extractorId) {
