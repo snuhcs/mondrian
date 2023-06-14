@@ -47,69 +47,6 @@ std::unique_ptr<MergedROI> MergedROI::merge(const MergedROI* m0, const MergedROI
   return std::make_unique<MergedROI>(newROIs, newScale, false);
 }
 
-std::vector<std::unique_ptr<MergedROI>>
-MergedROI::mergeROIs(const std::vector<std::unique_ptr<ROI>>& rois, int maxSize, bool doMerge) {
-  std::vector<std::unique_ptr<MergedROI>> mergedROIs;
-  mergedROIs.reserve(rois.size());
-  for (const auto& roi: rois) {
-    std::unique_ptr<MergedROI> mergedROI(new MergedROI({roi.get()}, roi->targetScale(), roi->type));
-    roi->mergedROI = mergedROI.get();
-    mergedROIs.push_back(std::move(mergedROI));
-  }
-  if (!doMerge) {
-    return mergedROIs;
-  }
-
-  while (true) {
-    int i, j;
-    bool updated = false;
-    std::unique_ptr<MergedROI> merged;
-    for (i = 0; i < mergedROIs.size(); i++) {
-      for (j = i + 1; j < mergedROIs.size(); j++) {
-        const auto& mi = mergedROIs[i].get();
-        const auto& mj = mergedROIs[j].get();
-        merged = merge(mi, mj);
-        int bw = borderedLengthOf(merged->loc_.w, merged->targetScale_);
-        int bh = borderedLengthOf(merged->loc_.h, merged->targetScale_);
-        if (std::max(bw, bh) > maxSize) {
-          continue; // would be little more conservative for the general case
-        }
-
-        int newArea = merged->resizedArea();
-        int origArea = mi->resizedArea() + mj->resizedArea();
-        if (newArea >= origArea) {
-          continue;
-        }
-        updated = true;
-        break;
-      }
-      if (updated) {
-        break;
-      }
-    }
-    if (!updated) {
-      break;
-    }
-    assert(j > i);
-    mergedROIs.push_back(std::move(merged));
-    mergedROIs.erase(mergedROIs.begin() + j);
-    mergedROIs.erase(mergedROIs.begin() + i);
-  }
-
-  std::sort(mergedROIs.begin(), mergedROIs.end(),
-            [](const std::unique_ptr<MergedROI>& m0, const std::unique_ptr<MergedROI>& m1) {
-              return m0->loc_.maxWH > m1->loc_.maxWH;
-            });
-
-  for (auto& merged: mergedROIs) {
-    for (auto& roi: merged->rois_) {
-      roi->mergedROI = merged.get();
-    }
-  }
-
-  return mergedROIs;
-}
-
 cv::Mat MergedROI::mat() const {
   int l = std::max(0, std::min(frame_->rgbMat.cols, int(loc_.l)));
   int t = std::max(0, std::min(frame_->rgbMat.rows, int(loc_.t)));

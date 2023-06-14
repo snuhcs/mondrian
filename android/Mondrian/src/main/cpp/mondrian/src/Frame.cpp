@@ -107,7 +107,60 @@ void Frame::resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int 
 }
 
 void Frame::generateMergedROIs(int maxSize, bool merge) {
+  mergedROIs.reserve(rois.size());
+  for (const auto& roi: rois) {
+    std::unique_ptr<MergedROI> mergedROI(new MergedROI({roi.get()}, roi->targetScale(), roi->type));
+    roi->mergedROI = mergedROI.get();
+    mergedROIs.push_back(std::move(mergedROI));
+  }
+  if (!merge) return;
 
+  while (true) {
+    int i, j;
+    bool updated = false;
+    std::unique_ptr<MergedROI> merged;
+    for (i = 0; i < mergedROIs.size(); i++) {
+      for (j = i + 1; j < mergedROIs.size(); j++) {
+        const auto& mi = mergedROIs[i].get();
+        const auto& mj = mergedROIs[j].get();
+        merged = MergedROI::merge(mi, mj);
+        int bw = MergedROI::borderedLengthOf(merged->loc().w, merged->targetScale());
+        int bh = MergedROI::borderedLengthOf(merged->loc().h, merged->targetScale());
+        if (std::max(bw, bh) > maxSize) {
+          continue; // would be little more conservative for the general case
+        }
+
+        int newArea = merged->resizedArea();
+        int origArea = mi->resizedArea() + mj->resizedArea();
+        if (newArea >= origArea) {
+          continue;
+        }
+        updated = true;
+        break;
+      }
+      if (updated) {
+        break;
+      }
+    }
+    if (!updated) {
+      break;
+    }
+    assert(j > i);
+    mergedROIs.push_back(std::move(merged));
+    mergedROIs.erase(mergedROIs.begin() + j);
+    mergedROIs.erase(mergedROIs.begin() + i);
+  }
+
+  std::sort(mergedROIs.begin(), mergedROIs.end(),
+            [](const std::unique_ptr<MergedROI>& m0, const std::unique_ptr<MergedROI>& m1) {
+              return m0->loc().maxWH > m1->loc().maxWH;
+            });
+
+  for (auto& merged: mergedROIs) {
+    for (auto& roi: merged->rois()) {
+      roi->mergedROI = merged.get();
+    }
+  }
 }
 
 void Frame::resetProbeROIs() {
