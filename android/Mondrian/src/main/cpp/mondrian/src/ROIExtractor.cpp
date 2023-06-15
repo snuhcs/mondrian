@@ -678,9 +678,6 @@ void ROIExtractor::getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,
                                       const std::vector<BoundingBox>& boundingBoxes,
                                       const cv::Size& targetSize,
                                       std::vector<std::unique_ptr<ROI>>& outChildROIs) {
-  auto width = float(currFrame->rgbMat.cols);
-  auto height = float(currFrame->rgbMat.rows);
-
   std::vector<Rect> boundingRects;
   boundingRects.reserve(boundingBoxes.size());
   for (const auto& bbx : boundingBoxes) {
@@ -697,15 +694,17 @@ void ROIExtractor::getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,
       const OFFeatures& of = ofFeatures[boxIndex];
       float x = of.shiftAvg.first;
       float y = of.shiftAvg.second;
-      float newL = std::max(0.0f, loc.l + x);
-      float newT = std::max(0.0f, loc.t + y);
-      float newR = std::min(float(width), loc.r + x);
-      float newB = std::min(float(height), loc.b + y);
-      if (newR - newL >= 1.0f && newB - newT >= 1.0f) {
-        outChildROIs.emplace_back(new ROI(
-            box.srcROI, box.id, currFrame, {newL, newT, newR, newB},
-            OF, box.origin, box.label, of, box.confidence));
-      }
+      float newL = loc.l + x;
+      float newT = loc.t + y;
+      float newR = loc.r + x;
+      float newB = loc.b + y;
+      newL = std::min(std::max(newL, 0.0f), float(currFrame->width()));
+      newT = std::min(std::max(newT, 0.0f), float(currFrame->height()));
+      newR = std::min(std::max(newR, 0.0f), float(currFrame->width()));
+      newB = std::min(std::max(newB, 0.0f), float(currFrame->height()));
+      outChildROIs.emplace_back(new ROI(
+          box.srcROI, box.id, currFrame, {newL, newT, newR, newB},
+          OF, box.origin, box.label, of, box.confidence));
     }
   }
 }
