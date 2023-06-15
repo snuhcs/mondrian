@@ -643,23 +643,29 @@ void ROIExtractor::processPD(Frame* currFrame) {
 
 void ROIExtractor::processOF(Frame* currFrame) {
   const Frame* prevFrame = currFrame->prevFrame;
+  Rect imageSize(0.0f, 0.0f, float(currFrame->width()), float(currFrame->height()));
   std::vector<BoundingBox> reliablePrevBoxes;
   if (prevFrame->useInferenceResultForOF) {
-    for (const std::unique_ptr<BoundingBox>& box : prevFrame->boxes) {
+    for (const std::unique_ptr<BoundingBox>& box: prevFrame->boxes) {
       if (box->confidence > config_.OF_CONF_THRESHOLD) {
-        BoundingBox reliableBox(box->id, Rect(
-            std::max(0.0f, box->loc.l),
-            std::max(0.0f, box->loc.t),
-            std::min(float(currFrame->width()), box->loc.r),
-            std::min(float(currFrame->height()), box->loc.b)),
-                                box->confidence, box->label, O_PACKED_CANVAS);
+        BoundingBox reliableBox(
+            box->id,
+            box->loc.clip(imageSize),
+            box->confidence,
+            box->label,
+            /*origin=*/O_PACKED_CANVAS);
         reliableBox.srcROI = box->srcROI;
         reliablePrevBoxes.push_back(reliableBox);
       }
     }
   } else {
     for (auto& roi : currFrame->prevFrame->rois) {
-      BoundingBox reliableBox(roi->id, roi->origLoc, 1, roi->label, roi->origin);
+      BoundingBox reliableBox(
+          roi->id,
+          roi->origLoc,
+          /*confidence=*/1,
+          roi->label,
+          roi->origin);
       reliableBox.srcROI = roi.get();
       reliablePrevBoxes.push_back(reliableBox);
     }
@@ -675,35 +681,30 @@ void ROIExtractor::processOF(Frame* currFrame) {
 }
 
 void ROIExtractor::getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,
-                                      const std::vector<BoundingBox>& boundingBoxes,
+                                      const std::vector<BoundingBox>& prevBoxes,
                                       const cv::Size& targetSize,
                                       std::vector<std::unique_ptr<ROI>>& outChildROIs) {
-  std::vector<Rect> boundingRects;
-  boundingRects.reserve(boundingBoxes.size());
-  for (const auto& bbx : boundingBoxes) {
-    boundingRects.emplace_back(bbx.loc);
+  std::vector<Rect> prevRects;
+  prevRects.reserve(prevBoxes.size());
+  for (const auto& bbx : prevBoxes) {
+    prevRects.emplace_back(bbx.loc);
   }
 
-  if (!boundingBoxes.empty()) {
+  Rect imageSize(0.0f, 0.0f, float(currFrame->width()), float(currFrame->height()));
+
+  if (!prevBoxes.empty()) {
     const std::vector<OFFeatures>& ofFeatures = opticalFlowTracking(
-        prevFrame, currFrame, boundingRects, targetSize);
-    assert(ofFeatures.size() == boundingBoxes.size());
-    for (int boxIndex = 0; boxIndex < boundingBoxes.size(); boxIndex++) {
-      const BoundingBox& box = boundingBoxes[boxIndex];
+        prevFrame, currFrame, prevRects, targetSize);
+    assert(ofFeatures.size() == prevBoxes.size());
+    for (int boxIndex = 0; boxIndex < prevBoxes.size(); boxIndex++) {
+      const BoundingBox& box = prevBoxes[boxIndex];
       const Rect& loc = box.loc;
       const OFFeatures& of = ofFeatures[boxIndex];
       float x = of.shiftAvg.first;
       float y = of.shiftAvg.second;
-      float newL = loc.l + x;
-      float newT = loc.t + y;
-      float newR = loc.r + x;
-      float newB = loc.b + y;
-      newL = std::min(std::max(newL, 0.0f), float(currFrame->width()));
-      newT = std::min(std::max(newT, 0.0f), float(currFrame->height()));
-      newR = std::min(std::max(newR, 0.0f), float(currFrame->width()));
-      newB = std::min(std::max(newB, 0.0f), float(currFrame->height()));
+      Rect newLoc(loc.l + x, loc.t + y, loc.r + x, loc.b + y);
       outChildROIs.emplace_back(new ROI(
-          box.srcROI, box.id, currFrame, {newL, newT, newR, newB},
+          box.srcROI, box.id, currFrame, newLoc.clip(imageSize),
           OF, box.origin, box.label, of, box.confidence));
     }
   }
@@ -722,24 +723,21 @@ std::vector<OFFeatures> ROIExtractor::opticalFlowTracking(
   const cv::Mat& prevImage = prevFrame->resizedGrayMat;
   const cv::Mat& currImage = currFrame->resizedGrayMat;
 
+  Rect target(0.0f, 0.0f, float(targetSize.width), float(targetSize.height));
+
   std::vector<int> startEndIndices = {0};
   std::vector<cv::Point2f> inputPoints;
   for (const Rect& bbx: boundingBoxes) {
-    float l = bbx.l * widthRatio;
-    float t = bbx.t * heightRatio;
-    float r = bbx.r * widthRatio;
-    float b = bbx.b * heightRatio;
-    l = std::min(std::max(0.0f, l), float(targetSize.width));
-    t = std::min(std::max(0.0f, t), float(targetSize.height));
-    r = std::min(std::max(0.0f, r), float(targetSize.width));
-    b = std::min(std::max(0.0f, b), float(targetSize.height));
+    Rect roi(bbx.l * widthRatio, bbx.t * heightRatio,
+             bbx.r * widthRatio, bbx.b * heightRatio);
+    roi = roi.clip(target);
 
     std::vector<cv::Point2f> points;
-    cv::Rect roiBbx = cv::Rect(int(l), int(t), int(r - l), int(b - t));
+    cv::Rect roiBbx = cv::Rect(int(roi.l), int(roi.t), int(roi.w), int(roi.h));
     cv::goodFeaturesToTrack(prevImage(roiBbx), points, 50, 0.01, 5, cv::Mat(), 3, false, 0.03);
     for (cv::Point2f& p: points) {
-      p.x += l;
-      p.y += t;
+      p.x += roi.l;
+      p.y += roi.t;
     }
     if (points.empty()) {
       points.emplace_back(float(bbx.l + bbx.r) / 2 * widthRatio,

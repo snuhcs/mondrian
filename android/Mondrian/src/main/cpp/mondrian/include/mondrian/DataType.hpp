@@ -103,6 +103,13 @@ struct Rect {
             std::max(rect0.r, rect1.r),
             std::max(rect0.b, rect1.b)};
   }
+
+  Rect clip(const Rect& other) const {
+    return {std::min(std::max(l, other.l), other.r),
+            std::min(std::max(t, other.t), other.b),
+            std::min(std::max(r, other.l), other.r),
+            std::min(std::max(b, other.t), other.b)};
+  }
 };
 
 class ROI;
