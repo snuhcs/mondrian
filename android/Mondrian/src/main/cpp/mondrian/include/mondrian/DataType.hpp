@@ -74,7 +74,8 @@ struct Rect {
   Rect(const Rect& r) : Rect(r.l, r.t, r.r, r.b) {};
 
   std::pair<float, float> center() const {
-    return std::make_pair((r + l) / 2, (b + t) / 2);
+    return {(r + l) / 2,
+            (b + t) / 2};
   }
 
   bool overlap(const Rect& other) const {
