@@ -47,11 +47,11 @@ void ROIExtractor::enqueue(Frame* frame) {
   if (!config_.STREAM_MODE) {
     queueCV_.wait(queueLock, [this]() { return PDWaiting_.size() < config_.MAX_QUEUE_SIZE; });
   }
-//  LOGD("XXX == %lu OF Waiting %lu OF Processing %d Processed | %d",
-//       OFWaiting_.size(), OFProcessing_.size(),
-//       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-//                       [](int sum, const auto& pair) { return sum + pair.second.size(); }),
-//       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
+  LOGD("XXX == %lu OF Waiting %lu OF Processing %d Processed | %d",
+       OFWaiting_.size(), OFProcessing_.size(),
+       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
+                       [](int sum, const auto& pair) { return sum + pair.second.size(); }),
+       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
   PDWaiting_.insert(frame);
   queueLock.unlock();
   queueCV_.notify_all();
@@ -73,11 +73,11 @@ PackingResult ROIExtractor::prepareInference(std::vector<InferenceInfo>& nextInf
   if (config_.STREAM_MODE) {
     time_us start = NowMicros();
     queueCV_.wait(queueLock, [this]() { return OFProcessing_.empty(); });
-//    LOGD("XXX == prepareInference %lu OF Waiting %lu OF Processing %d Processed | %d",
-//         OFWaiting_.size(), OFProcessing_.size(),
-//         std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-//                         [](int sum, const auto& pair) { return sum + pair.second.size(); }),
-//         OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
+    LOGD("Getting ROIs: %lu OF Waiting %lu OF Processing %d Processed | %d",
+         OFWaiting_.size(), OFProcessing_.size(),
+         std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
+                         [](int sum, const auto& pair) { return sum + pair.second.size(); }),
+         OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
     packGatheredMultiStream();
     time_us end = NowMicros();
   } else { // Back to back mode
@@ -327,12 +327,20 @@ void ROIExtractor::work(int extractorId) {
       queueLock.unlock();
     }
     time_us end = NowMicros();
-//    if (isOF) {
-//      LOGD("XXX total: %lld | resize: %lld | merge: %lld",
-//           end - start,
-//           frame->resizeEndTime - frame->resizeStartTime,
-//           frame->mergeROIEndTime - frame->mergeROIStartTime);
-//    }
+    if (!isOF) {
+      LOGD("PD took %5lld us for video %d frame %d | %lu PD ROIs",
+           end - start, frame->vid, frame->frameIndex,
+           std::count_if(frame->rois.begin(), frame->rois.end(),
+                         [](auto& roi) { return roi->type == PD; }));
+    } else {
+      LOGD("OF took %5lld us for video %d frame %d | %lu OF ROIs | resize=%lld, merge=%lld",
+           end - start, frame->vid, frame->frameIndex,
+           std::count_if(frame->rois.begin(), frame->rois.end(),
+                         [](auto& roi) { return roi->type == OF; }),
+           frame->resizeEndTime - frame->resizeStartTime,
+           frame->mergeROIEndTime - frame->mergeROIStartTime);
+    }
+
     queueCV_.notify_all();
   }
 }
@@ -636,9 +644,6 @@ void ROIExtractor::processPD(Frame* currFrame) {
                    config_.MAX_PD_ROI_SIZE, config_.MIN_PD_ROI_SIZE,
                    currFrame->rois);
   currFrame->pixelDiffROIProcessEndTime = NowMicros();
-  LOGD("PD ROI Extraction took %5lld us for video %d frame %d // %lu PD ROIs",
-       currFrame->pixelDiffROIProcessEndTime - currFrame->pixelDiffROIProcessStartTime,
-       currFrame->vid, currFrame->frameIndex, currFrame->rois.size());
 }
 
 void ROIExtractor::processOF(Frame* currFrame) {
@@ -673,11 +678,6 @@ void ROIExtractor::processOF(Frame* currFrame) {
   currFrame->opticalFlowROIProcessStartTime = NowMicros();
   getOpticalFlowROIs(prevFrame, currFrame, reliablePrevBoxes, targetSize_, currFrame->rois);
   currFrame->opticalFlowROIProcessEndTime = NowMicros();
-  LOGD("OF ROI Extraction took %5lld us for video %d frame %d // %lu OF ROIs",
-       currFrame->opticalFlowROIProcessEndTime - currFrame->opticalFlowROIProcessStartTime,
-       currFrame->vid, currFrame->frameIndex,
-       std::count_if(currFrame->rois.begin(), currFrame->rois.end(),
-                     [](auto& roi) { return roi->type == OF; }));
 }
 
 void ROIExtractor::getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,

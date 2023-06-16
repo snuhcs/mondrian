@@ -49,7 +49,7 @@ class Mondrian {
   void log(const Frame* frame);
 
   const MondrianConfig config_;
-  const time_us startTime;
+  const time_us startTime_;
 
   // Frame Buffers
   std::mutex frameBuffersMtx_;

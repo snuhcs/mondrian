@@ -72,8 +72,7 @@ std::string str(const std::vector<InferenceInfo>& inferencePlan) {
     const InferenceInfo& info = inferencePlan[i];
     // TODO: support other processors
     ss << "(" << (info.device == GPU ? "GPU" : "DSP") << ", "
-       << info.size << ", "
-       << info.accumulatedLatency << ")";
+       << info.size << ")";
     if (i != 0) {
       ss << ", ";
     }
