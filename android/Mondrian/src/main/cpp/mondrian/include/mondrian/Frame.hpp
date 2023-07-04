@@ -81,7 +81,7 @@ class Frame {
 
   void resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize);
 
-  void generateMergedROIs();
+  void resetMergedROIs();
 
   void mergeMergedROIs(int maxSize);
 

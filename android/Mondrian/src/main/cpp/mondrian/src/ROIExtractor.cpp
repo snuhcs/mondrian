@@ -352,7 +352,7 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
   currFrame->resizeROIs(ROIResizer_, executionType_, ROISize_);
   currFrame->resizeEndTime = NowMicros();
   currFrame->mergeROIStartTime = NowMicros();
-  currFrame->generateMergedROIs();
+  currFrame->resetMergedROIs();
   if (config_.MERGE) {
     currFrame->mergeMergedROIs(maxMergeSize_);
   }
@@ -648,6 +648,11 @@ void ROIExtractor::processPD(Frame* currFrame) {
 }
 
 void ROIExtractor::processOF(Frame* currFrame) {
+  currFrame->rois.erase(std::remove_if(
+      currFrame->rois.begin(), currFrame->rois.end(),
+      [](const std::unique_ptr<ROI>& roi) {
+        return roi->type == OF;
+      }), currFrame->rois.end());
   const Frame* prevFrame = currFrame->prevFrame;
   Rect imageSize(0.0f, 0.0f, float(currFrame->width()), float(currFrame->height()));
   std::vector<BoundingBox> reliablePrevBoxes;
