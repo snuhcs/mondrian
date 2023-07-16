@@ -14,6 +14,7 @@ namespace md {
 constexpr int NUM_LABELS = 80;
 
 struct ROIExtractorConfig {
+  bool STREAM_MODE;
   int MAX_QUEUE_SIZE;
   int NUM_WORKERS;
   float EXTRACTION_RESIZE_WIDTH;
@@ -81,6 +82,7 @@ struct MondrianConfig {
   bool LOG_BOXES;
   bool LOG_FRAME;
   bool LOG_ROI;
+  bool STREAM_MODE;
   float INTERPOLATION_THRESHOLD;
   int FULL_FRAME_INTERVAL;
   int FULL_FRAME_SIZE;

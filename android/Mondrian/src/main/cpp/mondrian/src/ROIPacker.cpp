@@ -42,6 +42,7 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
     }
   }
   assert(packIndices.size() == packLocations.size());
+  assert(packIndices.size() <= boxWHs.size());
   return {packIndices, packLocations};
 }
 

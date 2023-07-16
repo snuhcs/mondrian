@@ -2,14 +2,15 @@
     "video_configs": [
         {
             "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
-            "fps": 0
+            "fps": 30
         }
     ],
     "execution_type": "mondrian",
     "log_boxes": true,
     "log_roi": true,
     "log_frame": true,
-    "interpolation_threshold": 1,
+    "stream_mode": true,
+    "interpolation_threshold": 0,
     "full_frame_interval": 3,
     "full_frame_size": 1024,
     "full_device": "GPU",
@@ -17,6 +18,7 @@
     "latency_slo_ms": 5000,
     "roi_size": 64,
     "roi_extractor": {
+        "stream_mode": true,
         "max_queue_size": 200,
         "num_workers": 2,
         "extraction_resize_width": 960,

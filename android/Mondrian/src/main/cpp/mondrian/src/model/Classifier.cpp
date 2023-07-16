@@ -56,14 +56,12 @@ std::vector<BoundingBox> Classifier::postprocess(int width, int height) const {
     }
     maxConfidence *= getObjectConfidence(i);
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
-      boxes.emplace_back(
-          INVALID_ID,
-          reconstructBox(float(box[0]),
-                         float(box[1]),
-                         float(box[2]),
-                         float(box[3]),
-                         float(width), float(height)),
-          maxConfidence, maxLabel, O_INVALID);
+      Rect rect = reconstructBox(float(box[0]), float(box[1]),
+                                 float(box[2]), float(box[3]),
+                                 float(width), float(height));
+      if (rect.l <= rect.r && rect.t <= rect.b) {
+        boxes.emplace_back(INVALID_ID, rect, maxConfidence, maxLabel, O_INVALID);
+      }
     }
   }
   return boxes;

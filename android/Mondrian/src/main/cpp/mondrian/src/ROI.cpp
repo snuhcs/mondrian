@@ -28,8 +28,7 @@ ROI::ROI(ROI* prevROI,
         confidence, // confidence
         ofFeatures  // OFFeatures
     }, targetScale_(1.0f), // TODO: Start with targetScale_(-1) and assert
-      scaleLevel_(ROIResizer::INVALID_LEVEL), nextROI(nullptr), mergedROI(nullptr), box(nullptr),
-      priority(-1) {
+      scaleLevel_(ROIResizer::INVALID_LEVEL), nextROI(nullptr), mergedROI(nullptr), box(nullptr) {
   if (prevROI != nullptr) {
     prevROI->nextROI = this;
   }

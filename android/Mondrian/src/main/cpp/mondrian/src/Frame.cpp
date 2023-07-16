@@ -108,11 +108,11 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
 }
 
 bool Frame::isReadyToMarry(int packedCanvasIndex) const {
-  auto isROIPacked = [&packedCanvasIndex](const std::unique_ptr<MergedROI>& mergedROI) {
-    return mergedROI->isPacked() && mergedROI->relativePackedCanvasIndex() <= packedCanvasIndex;
+  auto isROIReady = [&packedCanvasIndex](const std::unique_ptr<MergedROI>& mergedROI) {
+    return !mergedROI->isPacked() || mergedROI->relativePackedCanvasIndex() <= packedCanvasIndex;
   };
-  bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIPacked)
-                    && std::all_of(probingROIs.begin(), probingROIs.end(), isROIPacked);
+  bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIReady)
+                    && std::all_of(probingROIs.begin(), probingROIs.end(), isROIReady);
   bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
                                      [](auto& box) { return box->id == INVALID_ID; });
   bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),

@@ -30,7 +30,6 @@ class ROI {
   Features features;
   std::vector<float> probeScales;
   std::vector<MergedROI*> roisForProbing;
-  float priority;
 
   inline static std::atomic<ID> lastId = 0;
   ID id;

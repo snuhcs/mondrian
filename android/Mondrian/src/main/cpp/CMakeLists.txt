@@ -43,6 +43,7 @@ add_library(
     mondrian/src/ROI.cpp
     mondrian/src/ROIExtractor.cpp
     mondrian/src/ROIPacker.cpp
+    mondrian/src/ROIPrioritizer.cpp
     mondrian/src/ROIResizer.cpp
     mondrian/src/Time.cpp
     mondrian/src/Utils.cpp
