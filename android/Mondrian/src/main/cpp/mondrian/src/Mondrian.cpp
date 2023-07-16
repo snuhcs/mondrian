@@ -22,7 +22,6 @@ namespace md {
 
 Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app)
     : config_(config), numVideos_(numVideos), stop_(false),
-      resultLogger_(new Logger("/data/data/hcs.offloading.mondrian/boxes.txt")),
       targetSize_(int(config_.roiExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                   int(config_.roiExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
       inputSizes_(config_.inferenceEngineConfig.INPUT_SIZES),
@@ -35,8 +34,24 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   config_.test();
   ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
-  inferenceEngine_->profileLatency();
-  if (config_.FULL_FRAME_INTERVAL != 0) {
+
+  if (config.LOG_BOXES) {
+    loggerBoxes_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
+    loggerBoxes_->logBoxesHeader();
+  }
+  if (config.LOG_ROI) {
+    loggerROI_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/roi.csv");
+    loggerROI_->logROIHeader();
+  }
+  if (config.LOG_FRAME) {
+    loggerFrame_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/frame.csv");
+    loggerFrame_->logTimelineHeader();
+  }
+
+  resultThread_ = std::thread([this]() { outputWork(); });
+
+  if (config_.EXECUTION_TYPE != FRAME_WISE_INFERENCE) {
+    inferenceEngine_->profileLatency();
     int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
                        ? *inputSizes_.begin()
                        : config.ROI_SIZE;
@@ -46,18 +61,8 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
     ROIExtractor_ = std::make_unique<ROIExtractor>(
         config_.roiExtractorConfig, maxMergeSize, ROIResizer_.get(),
         config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, numVideos_);
+    thread_ = std::thread([this]() { work(); });
   }
-
-  if (config.LOG_EXECUTION) {
-    executionLogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/timeline.csv");
-    executionLogger_->logExecutionHeader();
-  }
-  if (config.LOG_ROI) {
-    ROILogger_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/roi.csv");
-    ROILogger_->logROIHeader();
-  }
-  thread_ = std::thread([this]() { work(); });
-  resultThread_ = std::thread([this]() { outputWork(); });
 }
 
 Mondrian::~Mondrian() {
@@ -80,9 +85,7 @@ void Mondrian::work() {
   TimeLogger logger;
   logger.start();
 
-  // When FULL_FRAME_INTERVAL == 0, always run full frame inference
-  // See Mondrian::enqueueImage(...)
-  while (!stop_ && config_.FULL_FRAME_INTERVAL > 0) {
+  while (!stop_) {
     scheduleID++;
     bool fullFramePlan = scheduleID % config_.FULL_FRAME_INTERVAL == 0;
 
@@ -340,12 +343,12 @@ void Mondrian::releaseFrames(const MultiStream& frames) {
 }
 
 void Mondrian::log(const Frame* frame) {
-  if (executionLogger_) {
-    executionLogger_->logExecution(frame);
+  if (loggerFrame_) {
+    loggerFrame_->logTimeline(frame);
   }
-  if (ROILogger_) {
+  if (loggerROI_) {
     for (auto& roi: frame->rois) {
-      ROILogger_->logROI(roi.get());
+      loggerROI_->logROI(roi.get());
     }
   }
 }
@@ -367,7 +370,21 @@ int Mondrian::enqueueImage(const int vid, const cv::Mat& yuvMat) {
   preprocess(frame);
   LOGD("%-25s took %-7lld us for video %-5d frame %-4d",
        "Mondrian::preprocess", NowMicros() - startTime, frame->vid, frame->frameIndex);
-  if (config_.FULL_FRAME_INTERVAL == 0 || frame->frameIndex == 0) {
+
+  if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
+    frame->useInferenceResultForOF = true;
+    inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
+                              frame->getKey());
+    frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
+    frame->inferenceDevice = config_.FULL_DEVICE;
+    handleFullFrameResults(frame);
+    std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
+    log(frame);
+    frameBuffers_.at(frame->vid)->freeImage({frame->frameIndex});
+    return frame->frameIndex;
+  }
+
+  if (frame->frameIndex == 0) {
     frame->useInferenceResultForOF = true;
     inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
                               frame->getKey());
@@ -376,11 +393,6 @@ int Mondrian::enqueueImage(const int vid, const cv::Mat& yuvMat) {
     LOGD("inferenceEngine_->enqueue %d sized fullFrame to %s | %d",
          config_.FULL_FRAME_SIZE, str(config_.FULL_DEVICE).c_str(), frame->frameIndex);
     handleFullFrameResults(frame);
-    if (config_.FULL_FRAME_INTERVAL == 0) {
-      std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
-      log(frame);
-      frameBuffers_.at(frame->vid)->freeImage({frame->frameIndex});
-    }
   } else {
     if (frame->frameIndex == 1) {
       std::unique_lock<std::mutex> startLock(startMtx_);
@@ -412,8 +424,8 @@ void Mondrian::outputWork() {
     for (const auto&[vid, frameResults]: results_) {
       for (const auto&[frameIndex, endTimeBoxes]: frameResults) {
         const auto&[endTime, boxes] = endTimeBoxes;
-        resultLogger_->logResult(vid, frameIndex, endTime, boxes);
-        LOGD("Logger::logResult                         for video %-5d frame %-4d // %4lu boxes",
+        loggerBoxes_->logBoxes(vid, frameIndex, boxes);
+        LOGD("Logger::logBoxes                          for video %-5d frame %-4d // %4lu boxes",
              vid, frameIndex, boxes.size());
       }
     }

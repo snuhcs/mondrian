@@ -5,14 +5,14 @@ adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/
 r1=$?
 adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/exec.csv > csvs/exec.csv
 r2=$?
-adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/boxes.txt > csvs/boxes.txt
+adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/boxes.csv > csvs/boxes.csv
 r3=$?
 if [ $r1 -eq 0 ] || [ $r2 -eq 0 ] || [ $r3 -eq 0]
 then
     mkdir csvs/$dirname
     mv csvs/roi.csv csvs/$dirname/roi.csv
     mv csvs/exec.csv csvs/$dirname/exec.csv
-    mv csvs/boxes.txt csvs/$dirname/boxes.txt
-    echo "STATUS: roi.csv $r1 | exec.csv $r2 | boxes.txt $r3"
+    mv csvs/boxes.csv csvs/$dirname/boxes.csv
+    echo "STATUS: roi.csv $r1 | exec.csv $r2 | boxes.csv $r3"
     echo "SAVED AT csvs/$dirname"
 fi

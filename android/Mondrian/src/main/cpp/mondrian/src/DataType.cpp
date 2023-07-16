@@ -40,6 +40,8 @@ ExecutionType executionTypeOf(const std::string& executionTypeStr) {
     return EMULATED_BATCH;
   } else if (executionTypeStr == "roi_wise_inference") {
     return ROI_WISE_INFERENCE;
+  } else if (executionTypeStr == "frame_wise_inference") {
+    return FRAME_WISE_INFERENCE;
   } else {
     LOGE("Unknown execution type: %s", executionTypeStr.c_str());
     assert(false);
@@ -53,6 +55,8 @@ std::string str(const ExecutionType& executionType) {
     return "emulated_batch";
   } else if (executionType == ROI_WISE_INFERENCE) {
     return "roi_wise_inference";
+  } else if (executionType == FRAME_WISE_INFERENCE) {
+    return "frame_wise_inference";
   } else {
     LOGE("Unknown execution type: %d", executionType);
     assert(false);

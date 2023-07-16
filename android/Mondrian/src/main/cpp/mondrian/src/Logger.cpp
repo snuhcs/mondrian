@@ -29,7 +29,35 @@ Logger::~Logger() {
   }
 }
 
-void Logger::logExecutionHeader() {
+time_us Logger::fromBaseTime(const time_us& time) const {
+  return time != 0 ? time - baseTime : 0;
+}
+
+void Logger::logBoxesHeader() {
+  if (!logFile.is_open()) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(mtx);
+  logFile << "videoId" << delim
+          << "frameIndex" << delim
+          << BoundingBox::header(delim) << '\n';
+  logFile.flush();
+}
+
+void Logger::logBoxes(int vid, int frameIndex, const std::vector<BoundingBox>& boxes) {
+  if (!logFile.is_open()) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(mtx);
+  for (const auto& box: boxes) {
+    logFile << vid << delim
+            << frameIndex << delim
+            << box.str(delim) << '\n';
+  }
+  logFile.flush();
+}
+
+void Logger::logTimelineHeader() {
   if (!logFile.is_open()) {
     return;
   }
@@ -66,7 +94,7 @@ void Logger::logExecutionHeader() {
   logFile.flush();
 }
 
-void Logger::logExecution(const Frame* frame) {
+void Logger::logTimeline(const Frame* frame) {
   if (!logFile.is_open() || frame == nullptr) {
     return;
   }
@@ -100,29 +128,6 @@ void Logger::logExecution(const Frame* frame) {
           << fromBaseTime(frame->reconstructStartTime) << delim
           << fromBaseTime(frame->reconstructEndTime) << delim
           << fromBaseTime(frame->endTime) << '\n';
-  logFile.flush();
-}
-
-time_us Logger::fromBaseTime(const time_us& time) const {
-  return time != 0 ? time - baseTime : 0;
-}
-
-void Logger::logResult(int vid, int frameIndex, time_us endTime,
-                       const std::vector<BoundingBox>& boxes) {
-  if (!logFile.is_open()) {
-    return;
-  }
-  std::lock_guard<std::mutex> lock(mtx);
-  logFile << vid << ','
-          << frameIndex << ','
-          << endTime << ',';
-  for (int i = 0; i < boxes.size(); i++) {
-    logFile << boxes[i].str();
-    if (i != boxes.size() - 1) {
-      logFile << ',';
-    }
-  }
-  logFile << '\n';
   logFile.flush();
 }
 
