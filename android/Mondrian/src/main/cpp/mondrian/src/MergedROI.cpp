@@ -47,14 +47,7 @@ std::unique_ptr<MergedROI> MergedROI::merge(const MergedROI* m0, const MergedROI
   return std::make_unique<MergedROI>(newROIs, newScale, false);
 }
 
-std::vector<std::unique_ptr<MergedROI>>
-MergedROI::mergeROIs(const std::vector<std::unique_ptr<ROI>>& rois, int maxSize) {
-  std::vector<std::unique_ptr<MergedROI>> mergedROIs;
-  mergedROIs.reserve(rois.size());
-  for (const auto& roi: rois) {
-    mergedROIs.emplace_back(new MergedROI({roi.get()}, roi->targetScale(), roi->type));
-  }
-
+void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize) {
   while (true) {
     int i, j;
     bool updated = false;
@@ -91,18 +84,11 @@ MergedROI::mergeROIs(const std::vector<std::unique_ptr<ROI>>& rois, int maxSize)
     mergedROIs.erase(mergedROIs.begin() + i);
   }
 
-  std::sort(mergedROIs.begin(), mergedROIs.end(),
-            [](const std::unique_ptr<MergedROI>& m0, const std::unique_ptr<MergedROI>& m1) {
-              return m0->loc_.maxWH > m1->loc_.maxWH;
-            });
-
   for (auto& merged: mergedROIs) {
-    for (auto& roi: merged->rois_) {
+    for (auto& roi: merged->rois()) {
       roi->mergedROI = merged.get();
     }
   }
-
-  return mergedROIs;
 }
 
 cv::Mat MergedROI::mat() const {

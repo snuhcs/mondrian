@@ -2,7 +2,8 @@
 #define ROI_PRIORITIZER_HPP_
 
 #include <set>
-#include <vector>
+
+#include "mondrian/Frame.hpp"
 
 namespace md {
 
@@ -10,7 +11,7 @@ class MergedROI;
 
 class ROIPrioritizer {
  public:
-  static std::vector<MergedROI*> sort(const std::vector<MergedROI*>& mergedROIs);
+  static std::vector<MergedROI*> order(const MultiStream& mergedROIs, int fullFrameVid);
 };
 
 } // namespace md

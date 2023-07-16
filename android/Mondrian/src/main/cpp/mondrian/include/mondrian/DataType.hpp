@@ -2,6 +2,7 @@
 #define DATA_TYPE_HPP_
 
 #include <sstream>
+#include <queue>
 
 #include "mondrian/Time.hpp"
 #include "mondrian/Utils.hpp"
@@ -76,6 +77,10 @@ struct Rect {
     return std::make_pair((r + l) / 2, (b + t) / 2);
   }
 
+  bool overlap(const Rect& other) const {
+    return l < other.r && r > other.l && t < other.b && b > other.t;
+  }
+
   float intersection(const Rect& other) const {
     float width = std::min(r, other.r) - std::max(l, other.l);
     float height = std::min(b, other.b) - std::max(t, other.t);
@@ -141,6 +146,22 @@ struct BoundingBox {
        << choiceOfBox;
     return ss.str();
   }
+};
+
+template<typename T>
+class BlockingQueue {
+ public:
+  BlockingQueue(int maxElem = INT_MAX);
+
+  void put(const T& v);
+
+  T take();
+
+ private:
+  std::mutex mtx_;
+  std::condition_variable cv_;
+  std::queue<T> queue_;
+  int maxElem_;
 };
 
 struct InferenceInfo {

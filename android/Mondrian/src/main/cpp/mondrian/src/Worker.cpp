@@ -65,8 +65,6 @@ void Worker::work() {
     time_us newLatency = end - start;
     time_us estimatedLatency = (3 * newLatency + 7 * origLatency) / 10;
     latencyMap_[{size, isFullFrame}] = estimatedLatency;
-    LOGV("Inference time (%dx%d, %s) : %lld us",
-         size, size, isFullFrame ? "Full" : "Pack", estimatedLatency);
   }
 }
 
