@@ -12,7 +12,12 @@ MergedROI::MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isPr
     : rois_(rois), targetScale_(targetScale), isProbing_(isProbing),
       frame_(frameOf(rois)), loc_(locOf(rois)),
       packedXY_(INVALID_XY), relativePackedCanvasIndex_(-1), absolutePackedCanvasIndex_(-1),
-      packedCanvasSize_(-1), probingBox_(nullptr) {}
+      packedCanvasSize_(-1), probingBox_(nullptr) {
+  for (ROI* roi : rois) {
+    assert(roi->mergedROI == nullptr || roi->mergedROI->frame() == frame_);
+    roi->mergedROI = this;
+  }
+}
 
 Frame* MergedROI::frameOf(const std::vector<ROI*>& rois) {
   assert(!rois.empty());
@@ -48,9 +53,24 @@ std::unique_ptr<MergedROI> MergedROI::merge(const MergedROI* m0, const MergedROI
 }
 
 void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize) {
+  Frame* frame = mergedROIs.empty() ? nullptr : mergedROIs[0]->frame();
+  for (const auto& mergedROI: mergedROIs) {
+    assert(mergedROI->frame() == frame);
+    for (const auto& roi : mergedROI->rois()) {
+      assert(roi->frame == mergedROI->frame());
+    }
+  }
   while (true) {
     int i, j;
     bool updated = false;
+    frame = mergedROIs.empty() ? nullptr : mergedROIs[0]->frame();
+    for (const auto& mergedROI: mergedROIs) {
+      assert(mergedROI->frame() == frame);
+
+      for (const auto& roi : mergedROI->rois()) {
+        assert(roi->frame == mergedROI->frame());
+      }
+    }
     std::unique_ptr<MergedROI> merged;
     for (i = 0; i < mergedROIs.size(); i++) {
       for (j = i + 1; j < mergedROIs.size(); j++) {

@@ -32,7 +32,8 @@
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
         "merge": true,
-        "no_downsampling_for_last_frame": true
+        "no_downsampling_for_last_frame": true,
+        "roi_prioritizer_type": "min_max_propagation"
     },
     "roi_resizer": {
         "dataset": "mta",
@@ -55,8 +56,8 @@
         "use_tiny": false,
         "conf_threshold": 0.5,
         "iou_threshold": 0.5,
-        "profile_warmups": 0,
-        "profile_runs": 1,
+        "profile_warmups": 3,
+        "profile_runs": 3,
         "full_frame_size": 1024,
         "input_sizes": [
             640,
