@@ -112,14 +112,18 @@ const float* MnnYoloV4Classifier::getClassConfidences(const int i) const {
 }
 
 Rect MnnYoloV4Classifier::reconstructBox(float x, float y, float w, float h,
-                                         float imageWidth, float imageHeight) {
+                                         float imageWidth, float imageHeight) const {
   float widthRatio = (float) imageWidth / (float) inputSize.width;
   float heightRatio = (float) imageHeight / (float) inputSize.height;
-  return Rect(
+  return {
       std::max(0.0f, ((x - w / 2) * widthRatio)),
       std::max(0.0f, ((y - h / 2) * heightRatio)),
       std::min(imageWidth, ((x + w / 2) * widthRatio)),
-      std::min(imageHeight, ((y + h / 2) * heightRatio)));
+      std::min(imageHeight, ((y + h / 2) * heightRatio))};
+}
+
+Device MnnYoloV4Classifier::device() const {
+  return GPU;
 }
 
 } // namespace md

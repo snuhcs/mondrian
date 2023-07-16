@@ -20,6 +20,8 @@ class Classifier {
   const cv::Size& getInputSize() const;
 
  protected:
+  std::vector<BoundingBox> postprocess(int width, int height) const;
+
   virtual cv::Mat preprocess(const cv::Mat& mat) = 0;
 
   virtual void inference(const cv::Mat& mat) = 0;
@@ -31,7 +33,9 @@ class Classifier {
   virtual const float* getClassConfidences(const int i) const;
 
   virtual Rect reconstructBox(float x, float y, float w, float h,
-                              float imageWidth, float imageHeight) = 0;
+                              float imageWidth, float imageHeight) const = 0;
+
+  virtual Device device() const = 0;
 
   const int numLabels;
   const cv::Size inputSize; // width, height

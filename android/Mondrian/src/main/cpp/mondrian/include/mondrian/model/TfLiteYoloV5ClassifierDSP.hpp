@@ -21,7 +21,10 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
 
   void inference(const cv::Mat& mat) override;
 
-  Rect reconstructBox(float x, float y, float w, float h, float imageWidth, float imageHeight) override;
+  Rect reconstructBox(float x, float y, float w, float h,
+                      float imageWidth, float imageHeight) const override;
+
+  Device device() const override;
 
   tflite::Interpreter::TfLiteDelegatePtr delegate;
   std::unique_ptr<tflite::Interpreter> interpreter;

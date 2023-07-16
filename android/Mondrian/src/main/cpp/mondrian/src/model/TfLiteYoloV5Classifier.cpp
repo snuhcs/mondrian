@@ -119,7 +119,7 @@ const float* TfLiteYoloV5Classifier::getClassConfidences(const int i) const {
 }
 
 Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
-                                            float imageWidth, float imageHeight) {
+                                            float imageWidth, float imageHeight) const {
   x *= (float) inputSize.width;
   y *= (float) inputSize.height;
   w *= (float) inputSize.width;
@@ -128,11 +128,15 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
                         (float) inputSize.height / (float) imageHeight);
   float xPad = ((float) inputSize.width - (float) imageWidth * gain) / 2;
   float yPad = ((float) inputSize.height - (float) imageHeight * gain) / 2;
-  return Rect(
+  return {
       std::max(0.0f, ((x - w / 2 - xPad) / gain)),
       std::max(0.0f, ((y - h / 2 - yPad) / gain)),
       std::min(imageWidth, ((x + w / 2 - xPad) / gain)),
-      std::min(imageHeight, ((y + h / 2 - yPad) / gain)));
+      std::min(imageHeight, ((y + h / 2 - yPad) / gain))};
+}
+
+Device TfLiteYoloV5Classifier::device() const {
+  return GPU;
 }
 
 } // namespace md
