@@ -44,6 +44,7 @@ ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   config.PD_INTERVAL = parseInt(json, "pd_interval");
   config.MERGE = parseBool(json, "merge");
   config.NO_DOWNSAMPLING_FOR_LAST_FRAME = parseBool(json, "no_downsampling_for_last_frame");
+  config.ROI_PRIORITIZER_TYPE = roiPrioritizerTypeOf(parseString(json, "roi_prioritizer_type"));
   return config;
 }
 

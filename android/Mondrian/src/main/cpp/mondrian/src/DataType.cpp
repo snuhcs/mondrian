@@ -66,6 +66,28 @@ std::string str(const ExecutionType& executionType) {
   }
 }
 
+ROIPrioritizerType roiPrioritizerTypeOf(const std::string& roiPrioritizerTypeStr) {
+  if (roiPrioritizerTypeStr == "min_max_propagation") {
+    return MIN_MAX_PROPAGATION;
+  } else if (roiPrioritizerTypeStr == "of_confidence") {
+    return OF_CONFIDENCE;
+  } else {
+    LOGE("Unknown ROI prioritizer type: %s", roiPrioritizerTypeStr.c_str());
+    assert(false);
+  }
+}
+
+std::string str(const ROIPrioritizerType& roiPrioritizerType) {
+  if (roiPrioritizerType == MIN_MAX_PROPAGATION) {
+    return "min_max_propagation";
+  } else if (roiPrioritizerType == OF_CONFIDENCE) {
+    return "of_confidence";
+  } else {
+    LOGE("Unknown ROI prioritizer type: %d", roiPrioritizerType);
+    assert(false);
+  }
+}
+
 std::string str(const std::vector<InferenceInfo>& inferencePlan) {
   std::stringstream ss;
   for (int i = int(inferencePlan.size()) - 1; i >= 0; i--) {

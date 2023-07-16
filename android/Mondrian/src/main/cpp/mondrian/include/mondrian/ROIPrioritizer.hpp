@@ -41,9 +41,38 @@ struct StartEndLength {
   }
 };
 
+struct MergedROIoFPriorityComparator {
+  bool operator()(const MergedROI* lhs, const MergedROI* rhs) const {
+    auto errOf = [](const MergedROI* mergedROI) {
+      float err = 0;
+      for (const auto& roi : mergedROI->rois()) {
+        err += roi->features.ofFeatures.shiftNcc + roi->features.ofFeatures.avgErr;
+      }
+      return err;
+    };
+    float lErr = errOf(lhs);
+    float rErr = errOf(rhs);
+    if (lErr != rErr) {
+      return lErr > rErr;
+    }
+
+    // For MergedROI identity.
+    if (lhs->frame() != rhs->frame()) {
+      return lhs->frame() > rhs->frame();
+    }
+    return lhs > rhs;
+  }
+};
+
 class ROIPrioritizer {
  public:
-  static std::vector<MergedROI*> order(const MultiStream& mergedROIs, int fullFrameVid);
+  static std::vector<MergedROI*> order(const MultiStream& packedFrames, int fullFrameVid,
+                                       ROIPrioritizerType type);
+
+ private:
+  static std::vector<MergedROI*> minMaxPropagation(const MultiStream& packedFrames, int fullFrameVid);
+
+  static std::vector<MergedROI*> ofConfidence(const MultiStream& packedFrames, int fullFrameVid);
 };
 
 } // namespace md

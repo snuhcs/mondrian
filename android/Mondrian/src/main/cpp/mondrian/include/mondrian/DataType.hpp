@@ -51,6 +51,15 @@ enum Origin {
   O_NEW_PACKED_CANVAS = 6, // (Box) unmatched Box from packed canvas
 };
 
+enum ROIPrioritizerType {
+  MIN_MAX_PROPAGATION = 0,
+  OF_CONFIDENCE,
+};
+
+ROIPrioritizerType roiPrioritizerTypeOf(const std::string& roiPrioritizerTypeStr);
+
+std::string str(const ROIPrioritizerType& roiPrioritizerType);
+
 struct Rect {
   float l;
   float t;

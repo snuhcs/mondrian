@@ -194,7 +194,8 @@ void ROIExtractor::packGatheredMultiStream() {
   time_us packLastTime = NowMicros();
 
   // Order MergedROIs
-  auto orderedMergedROIs = ROIPrioritizer::order(packedFrames_, fullFrameVid_);
+  auto orderedMergedROIs = ROIPrioritizer::order(packedFrames_, fullFrameVid_,
+                                                 config_.ROI_PRIORITIZER_TYPE);
   time_us orderTime = NowMicros();
 
   // Pack MergedROIs

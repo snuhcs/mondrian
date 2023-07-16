@@ -1,6 +1,7 @@
 #include "mondrian/ROIPrioritizer.hpp"
 
 #include <map>
+#include <numeric>
 #include <set>
 
 #include "mondrian/Frame.hpp"
@@ -9,7 +10,20 @@
 
 namespace md {
 
-std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& packedFrames, int fullFrameVid) {
+std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& packedFrames, int fullFrameVid,
+                                              ROIPrioritizerType type) {
+  switch (type) {
+    case MIN_MAX_PROPAGATION:
+      return minMaxPropagation(packedFrames, fullFrameVid);
+    case OF_CONFIDENCE:
+      return ofConfidence(packedFrames, fullFrameVid);
+    default:
+      assert(false);
+  }
+}
+
+std::vector<MergedROI*> ROIPrioritizer::minMaxPropagation(const MultiStream& packedFrames,
+                                                          int fullFrameVid) {
   // roiMap[vid, roiID][frameIndex] = roi
   std::map<std::pair<int, int>, std::map<int, ROI*>> roiMap;
   for (const auto& [vid, frames]: packedFrames) {
@@ -65,6 +79,36 @@ std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& packedFrames, i
   }
 
   return orderedMergedROIs;
+}
+
+std::vector<MergedROI*> ROIPrioritizer::ofConfidence(const MultiStream& packedFrames,
+                                                     int fullFrameVid) {
+  auto priorityOf = [](const MergedROI* mergedROI) -> float {
+    float mergedROIPriority = 0.0f;
+    for (const auto& roi: mergedROI->rois()) {
+      mergedROIPriority += roi->features.ofFeatures.shiftNcc
+                           + roi->features.ofFeatures.avgErr;
+    }
+    return mergedROIPriority;
+  };
+
+  priorityOf(nullptr); // To suppress unused warning.
+
+  std::set<MergedROI*, MergedROIoFPriorityComparator> orderedMergedROIs;
+  for (const auto& [vid, frames]: packedFrames) {
+    for (Frame* frame: frames) {
+      // Skip last frame for not full frame vid.
+      // Last frame of full frame vid is already excluded.
+      if (vid != fullFrameVid && frame == *frames.rbegin()) {
+        continue;
+      }
+      for (auto& roi: frame->rois) {
+        orderedMergedROIs.insert(roi->mergedROI);
+      }
+    }
+  }
+  std::vector<MergedROI*> mergedROIs(orderedMergedROIs.begin(), orderedMergedROIs.end());
+  return mergedROIs;
 }
 
 } // namespace md
