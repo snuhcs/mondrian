@@ -35,6 +35,7 @@ Rect MergedROI::locOf(const std::vector<ROI*>& rois) {
     newR = std::max(newR, rois[i]->paddedLoc.r);
     newB = std::max(newB, rois[i]->paddedLoc.b);
   }
+  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
   return {newL, newT, newR, newB};
 }
 

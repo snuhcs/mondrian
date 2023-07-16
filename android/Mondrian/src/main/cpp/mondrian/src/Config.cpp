@@ -124,7 +124,12 @@ void MondrianConfig::test() const {
   std::set<std::string> datasets = {"virat", "mta"};
 
   // Common
-  assert(EXECUTION_TYPE == FRAME_WISE_INFERENCE || FULL_FRAME_INTERVAL > 0);
+  if (EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
+    assert(STREAM_MODE);
+    assert(FULL_FRAME_INTERVAL == 0);
+  } else {
+    assert(FULL_FRAME_INTERVAL > 0);
+  }
   assert(STREAM_MODE == roiExtractorConfig.STREAM_MODE);
   assert(FULL_FRAME_SIZE == inferenceEngineConfig.FULL_FRAME_SIZE);
   assert(inferenceEngineConfig.DATASET == roiResizerConfig.DATASET);

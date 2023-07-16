@@ -26,14 +26,12 @@ class Mondrian {
 
   ~Mondrian();
 
-  int enqueueImage(const int vid, const cv::Mat& yuvMat);
+  void enqueue(const int vid, const cv::Mat& yuvMat);
 
  private:
   void work();
 
   void outputWork();
-
-  void preprocess(Frame* frame) const;
 
   void handleFullFrameResults(Frame* frame);
 

@@ -23,7 +23,7 @@ Java_hcs_offloading_mondrian_MondrianApp_enqueueImage(JNIEnv* env, jobject thiz,
                                                       jlong handle, jint vid, jlong yuvMatAddr) {
   auto* mondrian = (md::Mondrian*) handle;
   auto* yuvMat = (cv::Mat*) yuvMatAddr;
-  mondrian->enqueueImage(vid, *yuvMat);
+  mondrian->enqueue(vid, *yuvMat);
 }
 
 extern "C"

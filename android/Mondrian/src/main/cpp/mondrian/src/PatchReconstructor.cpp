@@ -18,7 +18,12 @@ static Rect moveResizeROIPos(const MergedROI* mergedROI) {
   auto[x, y] = mergedROI->packedXY();
   auto packX = x + MergedROI::BORDER;
   auto packY = y + MergedROI::BORDER;
-  return {float(packX), float(packY), float(packX + rw), float(packY + rh)};
+  auto newL = float(packX);
+  auto newT = float(packY);
+  auto newR = float(packX + rw);
+  auto newB = float(packY + rh);
+  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
+  return {newL, newT, newR, newB};
 }
 
 static Rect reconstructBoxPos(const BoundingBox& packedBox, const MergedROI* mergedROI) {
@@ -28,14 +33,14 @@ static Rect reconstructBoxPos(const BoundingBox& packedBox, const MergedROI* mer
   auto[x, y] = mergedROI->packedXY();
   auto packX = float(x + MergedROI::BORDER);
   auto packY = float(y + MergedROI::BORDER);
-  float newL = (packedBoxLoc.l - packX) / scale + mergedROILoc.l;
-  float newT = (packedBoxLoc.t - packY) / scale + mergedROILoc.t;
-  float newR = (packedBoxLoc.r - packX) / scale + mergedROILoc.l;
-  float newB = (packedBoxLoc.b - packY) / scale + mergedROILoc.t;
-  return {std::max(0.0f, newL),
-          std::max(0.0f, newT),
-          std::min(float(mergedROI->frame()->rgbMat.cols), newR),
-          std::min(float(mergedROI->frame()->rgbMat.rows), newB)};
+  auto width = float(mergedROI->frame()->width);
+  auto height = float(mergedROI->frame()->height);
+  float newL = std::max(0.0f, (packedBoxLoc.l - packX) / scale + mergedROILoc.l);
+  float newT = std::max(0.0f, (packedBoxLoc.t - packY) / scale + mergedROILoc.t);
+  float newR = std::min(width, (packedBoxLoc.r - packX) / scale + mergedROILoc.l);
+  float newB = std::min(height, (packedBoxLoc.b - packY) / scale + mergedROILoc.t);
+  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
+  return {newL, newT, newR, newB};
 }
 
 void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
@@ -99,17 +104,15 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
 void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   std::vector<std::unique_ptr<ROI>>& rois = frame->rois;
   std::vector<std::unique_ptr<BoundingBox>>& boxes = frame->boxes;
-
-  std::vector<BoundingBox*> unassignedBoxes;
-
-  assert(std::all_of(rois.begin(), rois.end(),
-                     [](auto& roi) { return roi->id != INVALID_ID && roi->box == nullptr; }));
-  assert(std::all_of(boxes.begin(), boxes.end(),
-                     [](auto& box) { return box->id == INVALID_ID && box->srcROI == nullptr; }));
+  assert(std::all_of(rois.begin(), rois.end(), [](auto& roi) { return roi->id != INVALID_ID; }));
+  assert(std::all_of(boxes.begin(), boxes.end(), [](auto& box) { return box->id == INVALID_ID; }));
+  assert(std::all_of(rois.begin(), rois.end(), [](auto& roi) { return roi->box == nullptr; }));
+  assert(std::all_of(boxes.begin(), boxes.end(), [](auto& box) { return box->srcROI == nullptr; }));
 
   // 1. Let Boxes to select their favorite ROI.
   // - Boxes can be unmatched, if overlap ratio is lower than threshold
   // - Selection result is saved in roi.boxes
+  std::vector<BoundingBox*> unassignedBoxes;
   std::map<ROI*, std::vector<BoundingBox*>> roiToBoxesMap;
   for (std::unique_ptr<BoundingBox>& box: boxes) {
     // find ROI with largest overlap

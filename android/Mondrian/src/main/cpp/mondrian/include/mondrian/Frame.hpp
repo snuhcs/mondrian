@@ -23,10 +23,10 @@ class Frame {
   const int vid;
   const int frameIndex;
   int scheduleID;
+  cv::Mat yuvMat;
   cv::Mat rgbMat;
   cv::Mat resizedGrayMat;
   Frame* prevFrame;
-  Frame* nextFrame;
   int PDExtractorID;
   int OFExtractorID;
 
@@ -72,8 +72,10 @@ class Frame {
   time_us reconstructEndTime = 0;
   time_us endTime = 0;
 
-  Frame(const int vid, const int frameIndex, const cv::Mat& mat,
+  Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
         Frame* prevFrame, const time_us& enqueueTime);
+
+  void prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize);
 
   void resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize);
 

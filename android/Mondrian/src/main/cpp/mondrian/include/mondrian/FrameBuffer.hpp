@@ -1,8 +1,8 @@
 #ifndef FRAME_BUFFER_HPP_
 #define FRAME_BUFFER_HPP_
 
+#include <atomic>
 #include <condition_variable>
-#include <map>
 #include <mutex>
 
 #include "opencv2/core/mat.hpp"
@@ -13,19 +13,29 @@ class Frame;
 
 class FrameBuffer {
  public:
-  FrameBuffer(int vid, int capacity);
+  FrameBuffer(int vid, int capacity, bool blocking);
 
-  Frame* enqueue(const cv::Mat& mat);
+  Frame* enqueue(const cv::Mat& yuvMat);
 
-  void freeImage(const std::vector<int>& frameIndices);
+  void free(int tailIndex);
 
  private:
+  Frame* enqueue(int frameIndex, const cv::Mat& yuvMat);
+
   const int vid;
   const int capacity;
-  int count;
+  const bool blocking;
+
+  std::vector<std::unique_ptr<Frame>> frames;
+
+  // For non-blocking buffer
+  std::atomic<int> count;
+
+  // For blocking buffer
+  int head;
+  int tail;
   std::mutex mtx;
   std::condition_variable cv;
-  std::map<int, std::unique_ptr<Frame>> frames;
 };
 
 } // namespace md
