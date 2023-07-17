@@ -7,7 +7,7 @@ namespace md {
 
 FrameBuffer::FrameBuffer(int vid, int capacity, bool blocking)
     : vid(vid), capacity(capacity), blocking(blocking),
-      head(0), tail(0) {
+      count(0), head(0), tail(0) {
   frames.reserve(capacity);
   for (int i = 0; i < capacity; ++i) {
     frames.emplace_back(nullptr);
@@ -20,8 +20,7 @@ Frame* FrameBuffer::enqueue(const cv::Mat& yuvMat) {
     cv.wait(lock, [this] { return head - tail < capacity; });
     return enqueue(head++, yuvMat);
   } else {
-    assert(head - tail < capacity);
-    return enqueue(head++, yuvMat);
+    return enqueue(count++, yuvMat);
   }
 }
 
@@ -35,6 +34,8 @@ Frame* FrameBuffer::enqueue(int frameIndex, const cv::Mat& yuvMat) {
 }
 
 void FrameBuffer::free(int tailIndex) {
+  if (!blocking) return;
+
   std::unique_lock<std::mutex> lock(mtx);
   tail = std::max(tail, tailIndex);
   lock.unlock();

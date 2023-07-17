@@ -2,7 +2,6 @@
 #define DATA_TYPE_HPP_
 
 #include <sstream>
-#include <queue>
 
 #include "mondrian/Time.hpp"
 #include "mondrian/Utils.hpp"
@@ -51,15 +50,6 @@ enum Origin {
   O_NEW_PACKED_CANVAS = 6, // (Box) unmatched Box from packed canvas
 };
 
-enum ROIPrioritizerType {
-  MIN_MAX_PROPAGATION = 0,
-  OF_CONFIDENCE,
-};
-
-ROIPrioritizerType roiPrioritizerTypeOf(const std::string& roiPrioritizerTypeStr);
-
-std::string str(const ROIPrioritizerType& roiPrioritizerType);
-
 struct Rect {
   float l;
   float t;
@@ -83,12 +73,7 @@ struct Rect {
   Rect(const Rect& r) : Rect(r.l, r.t, r.r, r.b) {};
 
   std::pair<float, float> center() const {
-    return {(r + l) / 2,
-            (b + t) / 2};
-  }
-
-  bool overlap(const Rect& other) const {
-    return l < other.r && r > other.l && t < other.b && b > other.t;
+    return std::make_pair((r + l) / 2, (b + t) / 2);
   }
 
   float intersection(const Rect& other) const {
@@ -111,13 +96,6 @@ struct Rect {
             std::min(rect0.t, rect1.t),
             std::max(rect0.r, rect1.r),
             std::max(rect0.b, rect1.b)};
-  }
-
-  Rect clip(const Rect& other) const {
-    return {std::min(std::max(l, other.l), other.r),
-            std::min(std::max(t, other.t), other.b),
-            std::min(std::max(r, other.l), other.r),
-            std::min(std::max(b, other.t), other.b)};
   }
 };
 
@@ -163,22 +141,6 @@ struct BoundingBox {
        << choiceOfBox;
     return ss.str();
   }
-};
-
-template<typename T>
-class BlockingQueue {
- public:
-  BlockingQueue(int maxElem = INT_MAX);
-
-  void put(const T& v);
-
-  T take();
-
- private:
-  std::mutex mtx_;
-  std::condition_variable cv_;
-  std::queue<T> queue_;
-  int maxElem_;
 };
 
 struct InferenceInfo {

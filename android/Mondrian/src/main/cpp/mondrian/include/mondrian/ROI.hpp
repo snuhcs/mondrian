@@ -20,7 +20,7 @@ class ROI {
   static float PADDING;
   static const float INVALID_CONF;
 
-  Frame* const frame;
+  Frame* frame;
   const Rect origLoc;
   Rect paddedLoc;
 

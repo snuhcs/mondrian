@@ -14,12 +14,12 @@
     "full_frame_interval": 3,
     "full_frame_size": 1024,
     "full_device": "GPU",
-    "buffer_size": 250,
-    "latency_slo_ms": 5000,
+    "buffer_size": 300,
+    "latency_slo_ms": 3000,
     "roi_size": 64,
     "roi_extractor": {
         "stream_mode": true,
-        "max_queue_size": 250,
+        "max_queue_size": 200,
         "num_workers": 2,
         "extraction_resize_width": 960,
         "extraction_resize_height": 540,
@@ -32,8 +32,7 @@
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
         "merge": true,
-        "no_downsampling_for_last_frame": true,
-        "roi_prioritizer_type": "min_max_propagation"
+        "no_downsampling_for_last_frame": true
     },
     "roi_resizer": {
         "dataset": "mta",

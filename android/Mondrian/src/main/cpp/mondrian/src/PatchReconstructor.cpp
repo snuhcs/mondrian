@@ -33,8 +33,8 @@ static Rect reconstructBoxPos(const BoundingBox& packedBox, const MergedROI* mer
   auto[x, y] = mergedROI->packedXY();
   auto packX = float(x + MergedROI::BORDER);
   auto packY = float(y + MergedROI::BORDER);
-  auto width = float(mergedROI->frame()->width());
-  auto height = float(mergedROI->frame()->height());
+  auto width = float(mergedROI->frame()->width);
+  auto height = float(mergedROI->frame()->height);
   float newL = std::max(0.0f, (packedBoxLoc.l - packX) / scale + mergedROILoc.l);
   float newT = std::max(0.0f, (packedBoxLoc.t - packY) / scale + mergedROILoc.t);
   float newR = std::min(width, (packedBoxLoc.r - packX) / scale + mergedROILoc.l);
@@ -96,6 +96,9 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
     frame->reconstructStartTime = reconstructStartTime;
     frame->reconstructEndTime = reconstructEndTime;
   }
+  LOGD("%-25s took %-7lld us for             packed %-4d // %4lu packedROIs %4lu boxes",
+       "PR::assignBoxesToFrame", reconstructEndTime - reconstructStartTime,
+       packedCanvas.absolutePackedCanvasIndex, packedFrames.size(), results.size());
 }
 
 void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {

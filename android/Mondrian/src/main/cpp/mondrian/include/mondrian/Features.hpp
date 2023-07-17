@@ -16,17 +16,15 @@ class OFFeatures {
   float shiftNcc;
   float avgErr;
 
-  OFFeatures();
-
   OFFeatures(const std::vector<Shift>& shifts,
-             const std::vector<int>& statuses,
-             const std::vector<float>& errs);
+             const std::vector<float>& errs,
+             const std::vector<uchar>& statusVec);
 
  private:
   static std::pair<std::vector<Shift>, std::vector<float>>
   filterInvalid(const std::vector<Shift>& shifts,
-                const std::vector<int>& statuses,
-                const std::vector<float>& errs);
+                const std::vector<float>& errs,
+                const std::vector<uchar>& statusVec);
 
   static std::pair<std::vector<Shift>, std::vector<float>>
   filterOutlier(const std::vector<Shift>& shifts,

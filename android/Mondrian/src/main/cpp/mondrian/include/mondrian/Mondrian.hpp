@@ -8,9 +8,7 @@
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
-#include "mondrian/DataType.hpp"
 #include "mondrian/Frame.hpp"
-#include "mondrian/ROIExtractor.hpp"
 
 namespace md {
 
@@ -18,6 +16,7 @@ class FrameBuffer;
 class InferenceEngine;
 class Logger;
 class PackedCanvas;
+class ROIExtractor;
 class ROIResizer;
 class PatchReconstructor;
 
@@ -30,17 +29,13 @@ class Mondrian {
   void enqueue(const int vid, const cv::Mat& yuvMat);
 
  private:
-  void workSchedule();
+  void work();
 
-  void workPreprocess();
+  void outputWork();
 
-  void workPostprocess();
+  void handleFullFrameResults(Frame* frame);
 
-  void workLog();
-
-  void handleFullFrameResults(Frame* frame, int currID);
-
-  void handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanvases, int currID);
+  void handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanvases);
 
   void handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases);
 
@@ -49,47 +44,32 @@ class Mondrian {
   void log(const Frame* frame);
 
   const MondrianConfig config_;
-  const time_us startTime_;
+  const time_us scheduleInterval_;
+  std::thread thread_;
+  bool stop_;
 
-  // Frame Buffers
-  std::mutex frameBuffersMtx_;
-  std::map<int, std::unique_ptr<FrameBuffer>> frameBuffers_;
+  std::thread resultThread_;
+  std::unique_ptr<Logger> loggerBoxes_;
+  std::unique_ptr<Logger> loggerFrame_;
+  std::unique_ptr<Logger> loggerROI_;
+  const cv::Size targetSize_;
+  const std::set<int> inputSizes_;
 
-  // Components
   std::unique_ptr<ROIExtractor> ROIExtractor_;
   std::unique_ptr<ROIResizer> ROIResizer_;
   std::unique_ptr<InferenceEngine> inferenceEngine_;
   std::unique_ptr<PatchReconstructor> patchReconstructor_;
 
-  // To support synchronized start
+  std::mutex frameBuffersMtx_;
+  std::map<int, std::unique_ptr<FrameBuffer>> frameBuffers_;
+
   int numVideos_;
-  int numFirstFrameReadyVideos_;
   std::mutex startMtx_;
   std::condition_variable startCV_;
 
-  // Thread: Scheduling
-  std::thread scheduleThread_;
-  const time_us scheduleInterval_;
-  int numIntervals_;
-  bool stop_;
-
-  // Thread: Preprocessing
-  std::thread preprocessThread_;
-  const cv::Size preprocessTargetSize_;
-  BlockingQueue<Frame*> preprocessQueue_;
-
-  // Thread: Postprocessing
-  std::thread postprocessThread_;
-  BlockingQueue<PackingResult> packingResults_;
-
-  // Thread : Logging
-  std::thread logThread_;
-  std::mutex logMtx_;
+  std::mutex resultsMtx_;
   std::condition_variable resultsCV_;
   std::map<int, std::map<int, std::pair<time_us, std::vector<BoundingBox>>>> results_;
-  std::unique_ptr<Logger> loggerBoxes_;
-  std::unique_ptr<Logger> loggerFrame_;
-  std::unique_ptr<Logger> loggerROI_;
 };
 
 } // namespace md
