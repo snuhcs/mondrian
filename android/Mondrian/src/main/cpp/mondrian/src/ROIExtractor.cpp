@@ -19,13 +19,13 @@ const cv::TermCriteria ROIExtractor::CRITERIA = cv::TermCriteria(
 ROIExtractor::ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
                            ROIResizer* roiResizer, ExecutionType executionType, int roiSize,
                            std::vector<InferenceInfo> inferencePlan, int numVideos)
-    : config_(config), maxMergeSize_(maxMergeSize),
+    : config_(config), maxMergeSize_(maxMergeSize), border_(config.ROI_BORDER),
       ROIResizer_(roiResizer), executionType_(executionType), ROISize_(roiSize),
       targetSize_(cv::Size(int(config.EXTRACTION_RESIZE_WIDTH),
                            int(config.EXTRACTION_RESIZE_HEIGHT))),
       inferencePlan_(std::move(inferencePlan)),
       fullFrameInferenceCount_(0), fullFrameTarget_(nullptr), fullFrameVid_(-1),
-      numVideos_(numVideos), stop_(false), pull_(false), fullyPacked_(false) {
+      numVideos_(numVideos), stop_(false), fullyPacked_(false) {
   assert(executionType_ == MONDRIAN || ROISize_ == maxMergeSize_);
   resetPatchMixerWithPlan(inferencePlan_);
   threads_.reserve(config.NUM_WORKERS);
@@ -47,12 +47,12 @@ void ROIExtractor::enqueue(Frame* frame) {
   if (!config_.STREAM_MODE) {
     queueCV_.wait(queueLock, [this]() { return PDWaiting_.size() < config_.MAX_QUEUE_SIZE; });
   }
-//  LOGD("XXX == %lu OF Waiting %lu OF Processing %d Processed | %d",
-//       OFWaiting_.size(), OFProcessing_.size(),
-//       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-//                       [](int sum, const auto& pair) { return sum + pair.second.size(); }),
-//       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
   PDWaiting_.insert(frame);
+  LOGD("%-25s                 for video %-5d frame %-4d // %4lu PD | %4lu OF | %4d Processed",
+       "ROIExtractor::enqueue", frame->vid, frame->frameIndex,
+       PDWaiting_.size(), OFWaiting_.size(),
+       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
+                       [](int cnt, const auto& it) { return cnt + it.second.size(); }));
   queueLock.unlock();
   queueCV_.notify_all();
 }
@@ -61,25 +61,15 @@ void ROIExtractor::notify() {
   queueCV_.notify_all();
 }
 
-PackingResult ROIExtractor::prepareInference(std::vector<InferenceInfo>& nextInferencePlan,
-                                             bool runFull, int scheduleID) {
+std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> ROIExtractor::prepareInference(
+    std::vector<InferenceInfo>& nextInferencePlan, bool runFull, int scheduleID) {
   // Should be packLock => queueLock sort.
   // See postprocessOF() for detail
   std::unique_lock<std::mutex> packLock(packMtx_);
   std::unique_lock<std::mutex> queueLock(queueMtx_);
 
-  pull_ = true;
-
   if (config_.STREAM_MODE) {
-    time_us start = NowMicros();
-    queueCV_.wait(queueLock, [this]() { return OFProcessing_.empty(); });
-//    LOGD("XXX == prepareInference %lu OF Waiting %lu OF Processing %d Processed | %d",
-//         OFWaiting_.size(), OFProcessing_.size(),
-//         std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-//                         [](int sum, const auto& pair) { return sum + pair.second.size(); }),
-//         OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
-    packGatheredMultiStream();
-    time_us end = NowMicros();
+    packGatheredMultiStream(packedFrames_);
   } else { // Back to back mode
     if (!fullyPacked_) {
       applyLasts();
@@ -153,22 +143,19 @@ PackingResult ROIExtractor::prepareInference(std::vector<InferenceInfo>& nextInf
   packLock.unlock();
   queueCV_.notify_all();
 
-  pull_ = false;
-
   return {packedCanvases, fullFrameTarget, selectedFrames, droppedFrames};
 }
 
-void ROIExtractor::packGatheredMultiStream() {
+void ROIExtractor::packGatheredMultiStream(const MultiStream& multiStream) {
   time_us startTime = NowMicros();
   // Full frame
-  if (packedFrames_.find(fullFrameVid_) != packedFrames_.end()) {
-    fullFrameTarget_ = *packedFrames_.at(fullFrameVid_).rbegin();
+  if (multiStream.find(fullFrameVid_) != multiStream.end()) {
+    fullFrameTarget_ = *multiStream.at(fullFrameVid_).rbegin();
     packedFrames_[fullFrameVid_].erase(fullFrameTarget_);
-//    LOGD("XXX == Last Full Frame %d", fullFrameTarget_->frameIndex);
   }
 
   // Last frames
-  for (const auto&[vid, frames]: packedFrames_) {
+  for (const auto&[vid, frames]: multiStream) {
     if (vid == fullFrameVid_) {
       continue;
     }
@@ -176,12 +163,6 @@ void ROIExtractor::packGatheredMultiStream() {
     auto[indices, locations] = ROIPacker::pack(freeRectsVec_, lastFrame->boxesIfLast,
                                                /*backward=*/false, executionType_, ROISize_);
     bool fullyPacked = indices.size() == lastFrame->boxesIfLast.size();
-    int maxPackedCanvasIndex = -1;
-    for (auto& [packedCanvasIndex, freeRectIndex]: indices) {
-      maxPackedCanvasIndex = std::max(maxPackedCanvasIndex, packedCanvasIndex);
-    }
-//    LOGD("XXX == Last Pack Frame %d: %lu / %lu Packed, Last Packed Frame=%d",
-//         lastFrame->frameIndex, indices.size(), lastFrame->boxesIfLast.size(), maxPackedCanvasIndex);
     if (fullyPacked) {
       ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
     } else {
@@ -193,12 +174,26 @@ void ROIExtractor::packGatheredMultiStream() {
   }
   time_us packLastTime = NowMicros();
 
+  // Gather MergedROIs not in last frames
+  std::vector<MergedROI*> mergedROIs;
+  for (const auto&[vid, frames]: multiStream) {
+    for (Frame* frame: frames) {
+      if (frame == *frames.rbegin()) {
+        continue;
+      }
+      for (auto& mergedROI: frame->mergedROIs) {
+        mergedROIs.push_back(mergedROI.get());
+      }
+    }
+  }
+  time_us gatherTime = NowMicros();
+
   // Sort MergedROIs
-  auto orderedMergedROIs = ROIPrioritizer::order(packedFrames_, fullFrameVid_);
-  time_us orderTime = NowMicros();
+  auto sortedMergedROIs = ROIPrioritizer::sort(mergedROIs);
+  time_us sortTime = NowMicros();
 
   // Pack MergedROIs
-  for (MergedROI* mergedROI: orderedMergedROIs) {
+  for (MergedROI* mergedROI: sortedMergedROIs) {
     auto[bw, bh] = mergedROI->borderedMatWH();
     auto[indices, locations] = ROIPacker::pack(freeRectsVec_, {{bw, bh}}, /*backward=*/false,
                                                executionType_, ROISize_);
@@ -209,17 +204,11 @@ void ROIExtractor::packGatheredMultiStream() {
   }
   time_us packOthersTime = NowMicros();
 
-//  LOGD("XXX == # ROIs: %lu, # Frames: %d | "
-//       "total: %lld, packLastTime: %lld, orderTime: %lld, packOthersTime: %lld",
-//       sortedMergedROIs.size(),
-//       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-//                       [](int sum, const auto& pair) {
-//                         return sum + pair.second.size();
-//                       }) + (packedFrames_.find(fullFrameVid_) != packedFrames_.end() ? 1 : 0),
-//       packOthersTime - startTime,
+//  LOGD("XXX packLastTime: %lld, gatherTime: %lld, sortTime: %lld, packOthersTime: %lld",
 //       packLastTime - startTime,
-//       orderTime - packLastTime,
-//       packOthersTime - orderTime);
+//       gatherTime - packLastTime,
+//       sortTime - gatherTime,
+//       packOthersTime - sortTime);
 }
 
 void ROIExtractor::work(int extractorId) {
@@ -243,7 +232,7 @@ void ROIExtractor::work(int extractorId) {
     bool ofFrameExists = !OFWaiting_.empty();
     bool notFullyPacked = !fullyPacked_;
     bool readyForOFExtraction = ofFrameExists && (*OFWaiting_.begin())->readyForOFExtraction();
-    if (!pull_ && ofFrameExists && notFullyPacked && readyForOFExtraction) {
+    if (ofFrameExists && notFullyPacked && readyForOFExtraction) {
       return *OFWaiting_.begin();
     } else {
 //      LOGD("XXX %s %s %s",
@@ -292,7 +281,6 @@ void ROIExtractor::work(int extractorId) {
       }
       return false;
     });
-    time_us start = NowMicros();
 
     if (stop_) {
       queueLock.unlock();
@@ -302,12 +290,11 @@ void ROIExtractor::work(int extractorId) {
 
     if (isOF) {
       frame->OFExtractorID = extractorId;
-      OFWaiting_.erase(frame);
+      OFWaiting_.erase(OFWaiting_.begin());
       OFProcessing_.insert(frame);
     } else {
       frame->PDExtractorID = extractorId;
-      PDWaiting_.erase(frame);
-      PDProcessing_.insert(frame);
+      PDWaiting_.erase(PDWaiting_.begin());
     }
     queueLock.unlock();
     queueCV_.notify_all();
@@ -322,17 +309,9 @@ void ROIExtractor::work(int extractorId) {
       postprocessOF(frame);
     } else {
       queueLock.lock();
-      PDProcessing_.erase(frame);
       OFWaiting_.insert(frame);
       queueLock.unlock();
     }
-    time_us end = NowMicros();
-//    if (isOF) {
-//      LOGD("XXX total: %lld | resize: %lld | merge: %lld",
-//           end - start,
-//           frame->resizeEndTime - frame->resizeStartTime,
-//           frame->mergeROIEndTime - frame->mergeROIStartTime);
-//    }
     queueCV_.notify_all();
   }
 }
@@ -343,11 +322,9 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
   currFrame->resizeROIs(ROIResizer_, executionType_, ROISize_);
   currFrame->resizeEndTime = NowMicros();
   currFrame->mergeROIStartTime = NowMicros();
-  currFrame->generateMergedROIs();
   if (config_.MERGE) {
-    currFrame->mergeMergedROIs(maxMergeSize_);
+    currFrame->mergedROIs = MergedROI::mergeROIs(currFrame->rois, maxMergeSize_);
   }
-  currFrame->sortMergedROIs();
   currFrame->mergeROIEndTime = NowMicros();
 
   currFrame->boxesIfLast = getBoxesIfLast(currFrame);
@@ -362,7 +339,6 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
 
   if (config_.STREAM_MODE) {
     packedFrames_[currFrame->vid].insert(currFrame);
-    OFProcessing_.erase(currFrame);
     currFrame->isROIsReady = true;
   } else {
     currFrame->packingStartTime = NowMicros();
@@ -636,13 +612,14 @@ void ROIExtractor::processPD(Frame* currFrame) {
                    config_.MAX_PD_ROI_SIZE, config_.MIN_PD_ROI_SIZE,
                    currFrame->rois);
   currFrame->pixelDiffROIProcessEndTime = NowMicros();
-  LOGD("PD ROI Extraction took %5lld us for video %d frame %d // %lu PD ROIs",
+  LOGD("%-25s took %-7lld us for video %-5d frame %-4d // %4lu PD ROIs",
+       "ROIExtractor::processPD",
        currFrame->pixelDiffROIProcessEndTime - currFrame->pixelDiffROIProcessStartTime,
        currFrame->vid, currFrame->frameIndex, currFrame->rois.size());
 }
 
 void ROIExtractor::processOF(Frame* currFrame) {
-  const Frame* prevFrame = currFrame->prevFrame;
+  Frame* prevFrame = currFrame->prevFrame;
   std::vector<BoundingBox> reliablePrevBoxes;
   if (prevFrame->useInferenceResultForOF) {
     for (const std::unique_ptr<BoundingBox>& box : prevFrame->boxes) {
@@ -667,7 +644,7 @@ void ROIExtractor::processOF(Frame* currFrame) {
   currFrame->opticalFlowROIProcessStartTime = NowMicros();
   getOpticalFlowROIs(prevFrame, currFrame, reliablePrevBoxes, targetSize_, currFrame->rois);
   currFrame->opticalFlowROIProcessEndTime = NowMicros();
-  LOGD("OF ROI Extraction took %5lld us for video %d frame %d // %lu OF ROIs",
+  LOGD("%-25s took %-7lld us for video %-5d frame %-4d // %4lu OF ROIs", "ROIExtractor::processOF",
        currFrame->opticalFlowROIProcessEndTime - currFrame->opticalFlowROIProcessStartTime,
        currFrame->vid, currFrame->frameIndex,
        std::count_if(currFrame->rois.begin(), currFrame->rois.end(),
@@ -787,8 +764,8 @@ void ROIExtractor::getPixelDiffROIs(Frame* currFrame, const cv::Size& targetSize
                                     std::vector<std::unique_ptr<ROI>>& outChildROIs) const {
 
   // Find {PD_INTERVAL}th previous frame. If not available, use farthest frame.
-  const Frame* prevFrame = currFrame;
-  for (int i = 0; i < config_.PD_INTERVAL; i++) {
+  Frame* prevFrame = currFrame;
+  for (int i = 0; i < config_.PD_INTERVAL; ++i) {
     assert(prevFrame != nullptr);
     if (prevFrame->prevFrame == nullptr) {
       break;

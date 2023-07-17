@@ -59,7 +59,7 @@ public class MondrianApp implements VideoLoader.Callback {
 
     @Override
     public void onFrame(int vid, Mat yuvMat) {
-        enqueue(handle, vid, yuvMat.getNativeObjAddr());
+        enqueueImage(handle, vid, yuvMat.getNativeObjAddr());
     }
 
     public void close() {
@@ -96,7 +96,7 @@ public class MondrianApp implements VideoLoader.Callback {
 
     private native long createHandle(int numVideos);
 
-    private native void enqueue(long handle, int vid, long yuvMatAddr);
+    private native void enqueueImage(long handle, int vid, long yuvMatAddr);
 
     private native void close(long handle);
 }

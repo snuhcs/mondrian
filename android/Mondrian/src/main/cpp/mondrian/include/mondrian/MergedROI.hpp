@@ -18,7 +18,7 @@ class MergedROI {
 
   static std::unique_ptr<MergedROI> merge(const MergedROI* m0, const MergedROI* m1);
 
-  static void mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize);
+  static std::vector<std::unique_ptr<MergedROI>> mergeROIs(const std::vector<std::unique_ptr<ROI>>& rois, int maxSize);
 
   float targetScale() const {
     return targetScale_;
@@ -38,6 +38,14 @@ class MergedROI {
 
   const std::vector<ROI*>& rois() const {
     return rois_;
+  }
+
+  float priority() const {
+    return priority_;
+  }
+
+  void setPriority(float priority) {
+    priority_ = priority;
   }
 
   Rect loc() const {
@@ -134,6 +142,7 @@ class MergedROI {
 
   const std::vector<ROI*> rois_;
   float targetScale_;
+  float priority_;
 
   Frame* frame_;
   const Rect loc_;
