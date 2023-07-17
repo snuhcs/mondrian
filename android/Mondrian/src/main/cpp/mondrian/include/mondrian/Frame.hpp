@@ -19,9 +19,6 @@ class Frame {
  private:
   static const int FULL_KEY_OFFSET;
 
-  int width_;
-  int height_;
-
  public:
   const int vid;
   const int frameIndex;
@@ -32,6 +29,9 @@ class Frame {
   cv::Mat resizedGrayMat;
   int PDExtractorID;
   int OFExtractorID;
+
+  const int width;
+  const int height;
 
   bool useInferenceResultForOF;
 
@@ -81,7 +81,7 @@ class Frame {
 
   void resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize);
 
-  void resetMergedROIs();
+  void generateMergedROIs();
 
   void mergeMergedROIs(int maxSize);
 
@@ -94,16 +94,6 @@ class Frame {
   bool readyForOFExtraction() const;
 
   void resetOFROIExtraction();
-
-  int width() const {
-    assert(width_ != 0);
-    return width_;
-  }
-
-  int height() const {
-    assert(height_ != 0);
-    return height_;
-  }
 
   int getKey() const {
     return frameIndex + FULL_KEY_OFFSET;

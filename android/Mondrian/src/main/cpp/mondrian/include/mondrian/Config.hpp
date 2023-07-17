@@ -29,7 +29,6 @@ struct ROIExtractorConfig {
   int PD_INTERVAL;
   bool MERGE;
   bool NO_DOWNSAMPLING_FOR_LAST_FRAME;
-  ROIPrioritizerType ROI_PRIORITIZER_TYPE;
 
   void print() const;
 };

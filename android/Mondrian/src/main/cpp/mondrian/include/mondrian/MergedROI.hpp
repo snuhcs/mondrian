@@ -135,7 +135,7 @@ class MergedROI {
   const std::vector<ROI*> rois_;
   float targetScale_;
 
-  Frame* const frame_;
+  Frame* frame_;
   const Rect loc_;
 
   IntPair packedXY_;

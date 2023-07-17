@@ -1,30 +1,13 @@
 #include "mondrian/Features.hpp"
 
-#include <sstream>
-
-#include "mondrian/Log.hpp"
-
 namespace md {
 
-OFFeatures::OFFeatures() {
-  shiftAvg = {0, 0};
-  shiftStd = {0, 0};
-  shiftNcc = 100;
-  avgErr = 100;
-}
-
 OFFeatures::OFFeatures(const std::vector<Shift>& shifts,
-                       const std::vector<int>& statuses,
-                       const std::vector<float>& errs) {
-//  std::stringstream ss;
-//  for (int i = 0; i < shifts.size(); i++) {
-//    ss << "(" << shifts[i].first << ", " << shifts[i].second << ", " << statuses[i] << ", " << errs[i] << ") ";
-//  }
-//  LOGD("XXX %s", ss.str().c_str());
-  assert(shifts.size() == errs.size() && errs.size() == statuses.size());
-  bool allInvalid = std::all_of(statuses.begin(), statuses.end(),
+                       const std::vector<float>& errs,
+                       const std::vector<uchar>& statusVec) {
+  assert(shifts.size() == errs.size() && errs.size() == statusVec.size());
+  bool allInvalid = std::all_of(statusVec.begin(), statusVec.end(),
                                 [](const uchar& status) { return status == 0; });
-//  assert(!allInvalid);
   if (allInvalid) {
     shiftAvg = {0, 0};
     shiftStd = {0, 0};
@@ -32,7 +15,7 @@ OFFeatures::OFFeatures(const std::vector<Shift>& shifts,
     avgErr = 100;
     return;
   }
-  auto[validShifts, validErrs] = filterInvalid(shifts, statuses, errs);
+  auto[validShifts, validErrs] = filterInvalid(shifts, errs, statusVec);
   auto[inlierShifts, inlierErrs] = filterOutlier(validShifts, validErrs);
   assert(!inlierShifts.empty());
   shiftAvg = avgOf(inlierShifts);
@@ -43,13 +26,13 @@ OFFeatures::OFFeatures(const std::vector<Shift>& shifts,
 
 std::pair<std::vector<Shift>, std::vector<float>>
 OFFeatures::filterInvalid(const std::vector<Shift>& shifts,
-                          const std::vector<int>& statuses,
-                          const std::vector<float>& errs) {
+                          const std::vector<float>& errs,
+                          const std::vector<uchar>& statusVec) {
   std::vector<Shift> validShifts;
   std::vector<float> validErrs;
   for (int i = 0; i < shifts.size(); i++) {
-    assert(statuses[i] == 0 || statuses[i] == 1);
-    if (statuses[i] == 1) {
+    assert(statusVec[i] == 0 || statusVec[i] == 1);
+    if (statusVec[i] == 1) {
       validShifts.push_back(shifts[i]);
       validErrs.push_back(errs[i]);
     }

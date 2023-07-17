@@ -25,7 +25,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
       preprocessTargetSize_(int(config_.roiExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                             int(config_.roiExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
       scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2), numIntervals_(0),
-      ROIResizer_(new ROIResizer(config.roiResizerConfig)), startTime_(NowMicros()),
+      ROIResizer_(new ROIResizer(config.roiResizerConfig)), startTime(NowMicros()),
       inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)),
       patchReconstructor_(new PatchReconstructor(config.patchReconstructorConfig,
                                                  ROIResizer_.get())) {
@@ -91,13 +91,13 @@ Mondrian::~Mondrian() {
 
 void Mondrian::workSchedule() {
   std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval_));
+  time_us start = NowMicros();
   while (!stop_) {
-    time_us scheduleStart = NowMicros();
     int currID = numIntervals_++;
     bool fullFramePlan = currID % config_.FULL_FRAME_INTERVAL == 0;
 
-    LOGD("========== Schedule %d Start at %.2f ms ==========",
-         currID, float(NowMicros() - startTime_) / 1000);
+    LOGD("========== Schedule %d Start at %.2fs ==========", currID, float(NowMicros() - start) / 1e6);
+//    LOGD("XXXX Schedule %d: Start at %lld ms", currID, (NowMicros() - startTime) / 1000);
     // Inference planning
     auto latencyTable = inferenceEngine_->latencyTable();
     time_us fullStartTime = fullFramePlan
@@ -107,25 +107,28 @@ void Mondrian::workSchedule() {
     std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
         latencyTable, budget, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE,
         {{config_.FULL_DEVICE, fullStartTime}});
-    assert(!inferencePlan.empty());
     std::stringstream ss;
     for (auto&[device, sizeIsFullLatency] : latencyTable) {
       for (auto&[sizeIsFull, latency] : sizeIsFullLatency) {
-        ss << sizeIsFull.first << ": " << latency << " us, ";
+        ss << sizeIsFull.first << " " << latency << " ";
       }
     }
-    LOGD("Schedule %d Plan at %lld ms: %lld us budget, %s | %s",
-         currID, (NowMicros() - startTime_) / 1000,
-         budget, str(inferencePlan).c_str(), ss.str().c_str());
+//    LOGD("XXX Planning: %lld us budget, %s | %s", budget, str(inferencePlan).c_str(), ss.str().c_str());
+    assert(!inferencePlan.empty());
+//    LOGD("XXXX Schedule %d: Plan at %lld ms", currID, (NowMicros() - startTime) / 1000);
 
     // Getting PackedFrames
     auto packingResult = ROIExtractor_->prepareInference(inferencePlan, fullFramePlan, currID);
+//    LOGD("Getting PackedFrames // %4lu PackedCanvases | Full Frame Target = %d",
+//         packingResult.packedCanvases.size(),
+//         packingResult.fullFrameTarget != nullptr ? packingResult.fullFrameTarget->frameIndex : -1);
+//    LOGD("XXXX Schedule %d: Packed at %lld ms", currID, (NowMicros() - startTime) / 1000);
     packingResults_.put(packingResult);
-    LOGD("========== Schedule %d End   at %.2f ms ==========",
-         currID, float(NowMicros() - startTime_) / 1000);
+    LOGD("========== Schedule %d End   at %.2fs ==========", currID, float(NowMicros() - start) / 1e6);
 
     // Wait for scheduling interval
-    time_us sleepTime = scheduleInterval_ - (NowMicros() - scheduleStart);
+    time_us nextStartTime = (currID + 1) * scheduleInterval_;
+    time_us sleepTime = nextStartTime - (NowMicros() - start);
     if (sleepTime > 0) {
       std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
     }
@@ -134,9 +137,7 @@ void Mondrian::workSchedule() {
 
 void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   auto [boxes, times, device] = inferenceEngine_->getResults(frame->getKey());
-  LOGD("Inference %d (%d, %s, FULL) at %lld ms | %d",
-       currID, config_.FULL_FRAME_SIZE, str(device).c_str(),
-       (NowMicros() - startTime_) / 1000, frame->frameIndex);
+//  LOGD("XXXX Inference %d: Full %lld ms | %d", currID, (NowMicros() - startTime) / 1000, frame->frameIndex);
   frame->fullInferenceStartTime = times.first;
   frame->fullInferenceEndTime = times.second;
   for (const BoundingBox& box: boxes) {
@@ -172,18 +173,15 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
   // Get results of packed canvases sequentially
   for (int i = 0; i < packedCanvases.size(); i++) {
     auto [boxes, times, device] = inferenceEngine_->getResults(packedCanvases[i].getKey());
-    const int inputSize = packedCanvases[i].packedCanvasSize;
     std::stringstream ss;
     for (Frame* frame: packedCanvases[i].getPackedFrames()) {
       ss << frame->frameIndex << ", ";
     }
-    LOGD("Inference %d (%d, %s, PACK) at %lld ms | %s",
-         currID, inputSize, str(device).c_str(),
-         (NowMicros() - startTime_) / 1000, ss.str().c_str());
+//    LOGD("XXXX Inference %d: Pack %lld ms | %s", currID, (NowMicros() - startTime) / 1000, ss.str().c_str());
     assert(device == packedCanvases[i].device);
     for (Frame* frame: packedCanvases[i].getPackedFrames()) {
       if (frame->inferenceDevice == NO_DEVICE) {
-        frame->inferenceFrameSize = inputSize;
+        frame->inferenceFrameSize = packedCanvases[i].packedCanvasSize;
         frame->inferenceDevice = device;
         frame->packedInferenceStartTime = times.first;
         frame->packedInferenceEndTime = times.second;
