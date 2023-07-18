@@ -44,6 +44,7 @@ ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   config.PD_INTERVAL = parseInt(json, "pd_interval");
   config.MERGE = parseBool(json, "merge");
   config.NO_DOWNSAMPLING_FOR_LAST_FRAME = parseBool(json, "no_downsampling_for_last_frame");
+  config.ROI_PRIORITIZER_TYPE = roiPrioritizerTypeOf(parseString(json, "roi_prioritizer_type"));
   return config;
 }
 
@@ -121,7 +122,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
 }
 
 void MondrianConfig::test() const {
-  std::set<std::string> datasets = {"virat", "mta"};
+  std::set<std::string> datasets = {"pretrained", "virat", "mta"};
 
   // Common
   if (EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
@@ -132,14 +133,18 @@ void MondrianConfig::test() const {
   }
   assert(STREAM_MODE == roiExtractorConfig.STREAM_MODE);
   assert(FULL_FRAME_SIZE == inferenceEngineConfig.FULL_FRAME_SIZE);
-  assert(inferenceEngineConfig.DATASET == roiResizerConfig.DATASET);
 
   // ROIResizer
-  assert(datasets.find(roiResizerConfig.DATASET) != datasets.end());
-  assert(roiResizerConfig.PROBE_STEP_SIZE > 0);
-  assert(EXECUTION_TYPE == MONDRIAN || roiResizerConfig.NUM_PROBE_STEPS == 0);
+  if (roiResizerConfig.STATIC_SCALE) {
+    assert(roiResizerConfig.STATIC_TARGET_SCALE > 0);
+  } else {
+    assert(inferenceEngineConfig.DATASET == roiResizerConfig.DATASET);
+    assert(roiResizerConfig.NUM_PROBE_STEPS == 0 || roiResizerConfig.PROBE_STEP_SIZE > 0);
+    assert(EXECUTION_TYPE == MONDRIAN || roiResizerConfig.NUM_PROBE_STEPS == 0);
+  }
 
   // InferenceEngine
+  assert(datasets.find(inferenceEngineConfig.DATASET) != datasets.end());
   assert(!inferenceEngineConfig.DEVICES.empty());
   assert(!inferenceEngineConfig.INPUT_SIZES.empty());
   if (EXECUTION_TYPE == ROI_WISE_INFERENCE) {

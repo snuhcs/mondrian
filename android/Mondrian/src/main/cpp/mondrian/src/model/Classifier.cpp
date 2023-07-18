@@ -29,10 +29,10 @@ std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& rgbMat) {
   std::vector<BoundingBox> boxesNms = nms(boxesAll, numLabels, iouThreshold);
   time_us nmsTime = NowMicros();
 
-  // TODO: remove android log and add detailed latency to frame.csv
   LOGD("Latency with %dx%d input on %s: "
-       "preprocess %7lld us, inference %7lld us, postprocess %7lld us, nms %7lld us",
+       "total %lld, preprocess %lld, inference %lld, postprocess %lld, nms %lld",
        inputSize.width, inputSize.height, str(device()).c_str(),
+       nmsTime - start,
        preprocessTime - start,
        inferenceTime - preprocessTime,
        postprocessTime - inferenceTime,

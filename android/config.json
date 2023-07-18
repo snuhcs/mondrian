@@ -32,7 +32,8 @@
         "pd_filter_threshold": 0.5,
         "pd_interval": 5,
         "merge": true,
-        "no_downsampling_for_last_frame": true
+        "no_downsampling_for_last_frame": true,
+        "roi_prioritizer_type": "min_max_propagation"
     },
     "roi_resizer": {
         "dataset": "mta",

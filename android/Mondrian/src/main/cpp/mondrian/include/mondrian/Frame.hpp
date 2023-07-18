@@ -19,19 +19,19 @@ class Frame {
  private:
   static const int FULL_KEY_OFFSET;
 
+  int width_;
+  int height_;
+
  public:
   const int vid;
   const int frameIndex;
+  const Frame* prevFrame;
   int scheduleID;
   cv::Mat yuvMat;
   cv::Mat rgbMat;
   cv::Mat resizedGrayMat;
-  Frame* prevFrame;
   int PDExtractorID;
   int OFExtractorID;
-
-  const int width;
-  const int height;
 
   bool useInferenceResultForOF;
 
@@ -73,21 +73,37 @@ class Frame {
   time_us endTime = 0;
 
   Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
-        Frame* prevFrame, const time_us& enqueueTime);
+        const Frame* prevFrame, const time_us& enqueueTime);
 
   void prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize);
 
+  void filterPDROIs(float threshold, bool eatPD);
+
   void resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize);
 
-  void resetProbeROIs();
+  void resetMergedROIs();
 
-  void filterPDROIs(float threshold, bool eatPD);
+  void mergeMergedROIs(int maxSize);
+
+  void sortMergedROIs();
+
+  void resetProbeROIs();
 
   bool isReadyToMarry(int packedFrameIndex) const;
 
   bool readyForOFExtraction() const;
 
   void resetOFROIExtraction();
+
+  int width() const {
+    assert(width_ != 0);
+    return width_;
+  }
+
+  int height() const {
+    assert(height_ != 0);
+    return height_;
+  }
 
   int getKey() const {
     return frameIndex + FULL_KEY_OFFSET;
