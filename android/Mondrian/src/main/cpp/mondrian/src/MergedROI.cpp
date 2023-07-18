@@ -14,7 +14,6 @@ MergedROI::MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isPr
       packedXY_(INVALID_XY), relativePackedCanvasIndex_(-1), absolutePackedCanvasIndex_(-1),
       packedCanvasSize_(-1), probingBox_(nullptr) {
   for (ROI* roi : rois) {
-    assert(roi->mergedROI == nullptr || roi->mergedROI->frame() == frame_);
     roi->mergedROI = this;
   }
 }
