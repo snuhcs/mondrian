@@ -19,8 +19,8 @@ Java_hcs_offloading_mondrian_MondrianApp_createHandle(JNIEnv* env, jobject thiz,
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_hcs_offloading_mondrian_MondrianApp_enqueueImage(JNIEnv* env, jobject thiz,
-                                                      jlong handle, jint vid, jlong yuvMatAddr) {
+Java_hcs_offloading_mondrian_MondrianApp_enqueue(JNIEnv* env, jobject thiz,
+                                                 jlong handle, jint vid, jlong yuvMatAddr) {
   auto* mondrian = (md::Mondrian*) handle;
   auto* yuvMat = (cv::Mat*) yuvMatAddr;
   mondrian->enqueue(vid, *yuvMat);
