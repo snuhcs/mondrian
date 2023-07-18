@@ -263,7 +263,7 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
   assert(!yuvMat.empty());
 
   Frame* frame = frameBuffers_.at(vid)->enqueue(yuvMat);
-  if (frame->frameIndex == 1) {
+  if (numVideos_ > 1 && frame->frameIndex == 1) {
     std::unique_lock<std::mutex> startLock(startMtx_);
     startCV_.wait(startLock, [this]() {
       assert(numFirstFrameReadyVideos_ <= numVideos_);

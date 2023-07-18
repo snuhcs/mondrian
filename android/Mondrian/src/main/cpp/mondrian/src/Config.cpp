@@ -126,7 +126,7 @@ void MondrianConfig::test() const {
 
   // Common
   if (EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
-    assert(STREAM_MODE);
+    assert(!STREAM_MODE);
     assert(FULL_FRAME_INTERVAL == 0);
   } else {
     assert(FULL_FRAME_INTERVAL > 0);
