@@ -614,6 +614,7 @@ def main(
     X_test, Y_test, orig_areas_test = X[test_mask], Y[test_mask], orig_areas[test_mask]
     print(f'Avg area change: {round(np.mean(orig_areas_test))} => {round(np.mean(Y_test))}')
     print(f'# Train Samples: {len(X_train)}, # Test Samples: {len(X_test)}')
+    print(f'90% quantile: {round(np.quantile(Y_test, 0.9))}')
 
     exp_dir = Path('scaler') / current_time()
     exp_dir.mkdir()
@@ -624,6 +625,7 @@ def main(
     Y_train_q, Y_test_q, thresholds = quantize(Y_train, Y_test, num_levels)
 
     info = {
+        'quantile_0.9': round(np.quantile(Y_test, 0.9)),
         'thresholds': thresholds,
     }
     for clf_name in ['dt', 'rf']:
