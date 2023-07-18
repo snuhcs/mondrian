@@ -12,7 +12,11 @@ MergedROI::MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isPr
     : rois_(rois), targetScale_(targetScale), isProbing_(isProbing),
       frame_(frameOf(rois)), loc_(locOf(rois)),
       packedXY_(INVALID_XY), relativePackedCanvasIndex_(-1), absolutePackedCanvasIndex_(-1),
-      packedCanvasSize_(-1), probingBox_(nullptr) {}
+      packedCanvasSize_(-1), probingBox_(nullptr) {
+  for (ROI* roi : rois) {
+    roi->mergedROI = this;
+  }
+}
 
 Frame* MergedROI::frameOf(const std::vector<ROI*>& rois) {
   assert(!rois.empty());
@@ -47,12 +51,14 @@ std::unique_ptr<MergedROI> MergedROI::merge(const MergedROI* m0, const MergedROI
   return std::make_unique<MergedROI>(newROIs, newScale, false);
 }
 
-std::vector<std::unique_ptr<MergedROI>>
-MergedROI::mergeROIs(const std::vector<std::unique_ptr<ROI>>& rois, int maxSize) {
-  std::vector<std::unique_ptr<MergedROI>> mergedROIs;
-  mergedROIs.reserve(rois.size());
-  for (const auto& roi: rois) {
-    mergedROIs.emplace_back(new MergedROI({roi.get()}, roi->targetScale(), roi->type));
+void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize) {
+  assert(!mergedROIs.empty());
+  Frame* frame = mergedROIs[0]->frame();
+  for (const auto& mergedROI: mergedROIs) {
+    assert(mergedROI->frame() == frame);
+    for (const auto& roi : mergedROI->rois()) {
+      assert(roi->frame == mergedROI->frame());
+    }
   }
 
   while (true) {
@@ -91,18 +97,11 @@ MergedROI::mergeROIs(const std::vector<std::unique_ptr<ROI>>& rois, int maxSize)
     mergedROIs.erase(mergedROIs.begin() + i);
   }
 
-  std::sort(mergedROIs.begin(), mergedROIs.end(),
-            [](const std::unique_ptr<MergedROI>& m0, const std::unique_ptr<MergedROI>& m1) {
-              return m0->loc_.maxWH > m1->loc_.maxWH;
-            });
-
   for (auto& merged: mergedROIs) {
-    for (auto& roi: merged->rois_) {
+    for (auto& roi: merged->rois()) {
       roi->mergedROI = merged.get();
     }
   }
-
-  return mergedROIs;
 }
 
 cv::Mat MergedROI::mat() const {

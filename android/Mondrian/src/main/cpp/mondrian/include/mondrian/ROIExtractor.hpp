@@ -16,6 +16,13 @@
 
 namespace md {
 
+struct PackingResult {
+  std::vector<PackedCanvas> packedCanvases;
+  Frame* fullFrameTarget;
+  MultiStream selectedFrames;
+  Stream droppedFrames;
+};
+
 class ROIExtractor {
  public:
   ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
@@ -28,8 +35,8 @@ class ROIExtractor {
 
   void notify();
 
-  std::tuple<std::vector<PackedCanvas>, Frame*, MultiStream, Stream> prepareInference(
-      std::vector<InferenceInfo>& nextInferencePlan, bool runFull, int scheduleID);
+  PackingResult prepareInference(std::vector<InferenceInfo>& nextInferencePlan,
+                                 bool runFull, int scheduleID);
 
  private:
   void work(int extractorId);
@@ -40,7 +47,7 @@ class ROIExtractor {
 
   void postprocessOF(Frame* currFrame);
 
-  void packGatheredMultiStream(const MultiStream& multiStream);
+  void packGatheredMultiStream();
 
   void tryPack(Frame* frame);
 
@@ -80,6 +87,7 @@ class ROIExtractor {
   void applyLasts();
 
   std::vector<std::thread> threads_;
+  bool pull_;
   bool stop_;
 
   static const cv::TermCriteria CRITERIA;
@@ -88,7 +96,6 @@ class ROIExtractor {
   const int ROISize_;
   const cv::Size targetSize_;
   const int maxMergeSize_;
-  const int border_;
   const ROIExtractorConfig config_;
   const int numVideos_;
   int fullFrameVid_;
@@ -108,6 +115,7 @@ class ROIExtractor {
   std::condition_variable queueCV_;
 
   Stream PDWaiting_;
+  Stream PDProcessing_;
   Stream OFWaiting_;
   Stream OFProcessing_;
   MultiStream packedFrames_;

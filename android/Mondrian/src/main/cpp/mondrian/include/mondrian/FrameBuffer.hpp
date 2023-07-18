@@ -28,11 +28,7 @@ class FrameBuffer {
 
   std::vector<std::unique_ptr<Frame>> frames;
 
-  // For non-blocking buffer
-  std::atomic<int> count;
-
-  // For blocking buffer
-  int head;
+  std::atomic<int> head;
   int tail;
   std::mutex mtx;
   std::condition_variable cv;
