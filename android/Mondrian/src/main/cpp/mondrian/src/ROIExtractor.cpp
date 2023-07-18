@@ -173,23 +173,33 @@ void ROIExtractor::packGatheredMultiStream() {
       continue;
     }
     Frame* lastFrame = *frames.rbegin();
-    auto[indices, locations] = ROIPacker::pack(freeRectsVec_, lastFrame->boxesIfLast,
-                                               /*backward=*/false, executionType_, ROISize_);
-    bool fullyPacked = indices.size() == lastFrame->boxesIfLast.size();
-    int maxPackedCanvasIndex = -1;
-    for (auto& [packedCanvasIndex, freeRectIndex]: indices) {
-      maxPackedCanvasIndex = std::max(maxPackedCanvasIndex, packedCanvasIndex);
-    }
+    if (executionType_ == ROI_WISE_INFERENCE) {
+      for (auto& mergedROI: lastFrame->mergedROIs) {
+        auto [bw, bh] = mergedROI->borderedMatWH();
+        if (!freeRectsVec_.empty()) {
+          mergedROI->setPackInfo({0, 0}, freeRectsVec_.size() - 1, executionType_, ROISize_);
+          freeRectsVec_.erase(freeRectsVec_.end() - 1);
+        }
+      }
+    } else { // MONDRIAN, EMULATED_BATCH
+      auto[indices, locations] = ROIPacker::pack(freeRectsVec_, lastFrame->boxesIfLast,
+          /*backward=*/false, executionType_, ROISize_);
+      bool fullyPacked = indices.size() == lastFrame->boxesIfLast.size();
+      int maxPackedCanvasIndex = -1;
+      for (auto& [packedCanvasIndex, freeRectIndex]: indices) {
+        maxPackedCanvasIndex = std::max(maxPackedCanvasIndex, packedCanvasIndex);
+      }
 //    LOGD("XXX == Last Pack Frame %d: %lu / %lu Packed, Last Packed Frame=%d",
 //         lastFrame->frameIndex, indices.size(), lastFrame->boxesIfLast.size(), maxPackedCanvasIndex);
-    if (fullyPacked) {
-      ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
-    } else {
-      indices.resize(lastFrame->boxesIfLast.size());
-      locations.resize(lastFrame->boxesIfLast.size());
-      ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
+      if (fullyPacked) {
+        ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
+      } else {
+        indices.resize(lastFrame->boxesIfLast.size());
+        locations.resize(lastFrame->boxesIfLast.size());
+        ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
+      }
+      prepareFrameLast(lastFrame, indices, locations);
     }
-    prepareFrameLast(lastFrame, indices, locations);
   }
   time_us packLastTime = NowMicros();
 
@@ -200,12 +210,19 @@ void ROIExtractor::packGatheredMultiStream() {
 
   // Pack MergedROIs
   for (MergedROI* mergedROI: orderedMergedROIs) {
-    auto[bw, bh] = mergedROI->borderedMatWH();
-    auto[indices, locations] = ROIPacker::pack(freeRectsVec_, {{bw, bh}}, /*backward=*/false,
-                                               executionType_, ROISize_);
-    if (!indices.empty()) {
-      ROIPacker::apply(freeRectsVec_, {{bw, bh}}, indices, executionType_, ROISize_);
-      mergedROI->setPackInfo(locations[0], indices[0].first, executionType_, ROISize_);
+    if (executionType_ == ROI_WISE_INFERENCE) {
+      if (!freeRectsVec_.empty()) {
+        mergedROI->setPackInfo({0, 0}, freeRectsVec_.size() - 1, executionType_, ROISize_);
+        freeRectsVec_.erase(freeRectsVec_.end() - 1);
+      }
+    } else {
+      auto[bw, bh] = mergedROI->borderedMatWH();
+      auto [indices, locations] = ROIPacker::pack(freeRectsVec_, {{bw, bh}}, /*backward=*/false,
+                                                  executionType_, ROISize_);
+      if (!indices.empty()) {
+        ROIPacker::apply(freeRectsVec_, {{bw, bh}}, indices, executionType_, ROISize_);
+        mergedROI->setPackInfo(locations[0], indices[0].first, executionType_, ROISize_);
+      }
     }
   }
   time_us packOthersTime = NowMicros();

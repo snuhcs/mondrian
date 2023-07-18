@@ -78,7 +78,7 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
 }
 
 void Frame::resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize) {
-  if (executionType == EMULATED_BATCH) {
+  if (executionType == EMULATED_BATCH || executionType == ROI_WISE_INFERENCE) {
     for (auto& roi: rois) {
       float w = roi->paddedLoc.w;
       float h = roi->paddedLoc.h;
