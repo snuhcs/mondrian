@@ -40,8 +40,8 @@ struct ROIResizerConfig {
   int VOTING_WINDOW;
   float SCALE_SHIFT;
   float AREA_SHIFT;
-  bool STATIC_SCALE;
-  float STATIC_TARGET_SCALE;
+  bool STATIC_AREA;
+  float STATIC_TARGET_AREA;
   float MAX_OF_ROI_SIZE;
 
   // Reactive probing configs

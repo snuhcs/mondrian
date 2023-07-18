@@ -69,7 +69,7 @@ class ROIResizer {
   float calculateTargetScale(float targetArea, float originalArea) const;
 
   static const std::map<std::string, Predictor> CANDIDATE_PREDICTORS;
-  static const std::map<std::string, std::vector<float>> SCALE_LEVELS;
+  static const std::map<std::string, std::vector<float>> AREA_LEVELS;
 
   const ROIResizerConfig config_;
   const Predictor predictor_;
