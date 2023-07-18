@@ -47,11 +47,11 @@ void ROIExtractor::enqueue(Frame* frame) {
   if (!config_.STREAM_MODE) {
     queueCV_.wait(queueLock, [this]() { return PDWaiting_.size() < config_.MAX_QUEUE_SIZE; });
   }
-  LOGD("XXX == %lu OF Waiting %lu OF Processing %d Processed | %d",
-       OFWaiting_.size(), OFProcessing_.size(),
-       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
-                       [](int sum, const auto& pair) { return sum + pair.second.size(); }),
-       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
+//  LOGD("XXX == %lu OF Waiting %lu OF Processing %d Processed | %d",
+//       OFWaiting_.size(), OFProcessing_.size(),
+//       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
+//                       [](int sum, const auto& pair) { return sum + pair.second.size(); }),
+//       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
   PDWaiting_.insert(frame);
   queueLock.unlock();
   queueCV_.notify_all();

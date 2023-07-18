@@ -117,7 +117,13 @@ void Frame::resetMergedROIs() {
   for (const auto& mergedROI : mergedROIs) {
     assert(mergedROI->frame() == this);
   }
+  for (const auto& mergedROI: mergedROIs) {
+    for (const auto& roi: mergedROI->rois()) {
+      roi->mergedROI = nullptr;
+    }
+  }
   mergedROIs.clear();
+
   for (const auto& roi: rois) {
     std::unique_ptr<MergedROI> mergedROI(new MergedROI({roi.get()}, roi->targetScale(), roi->type));
 
@@ -126,11 +132,6 @@ void Frame::resetMergedROIs() {
       assert(r->frame == mergedROI->frame());
     }
     mergedROIs.push_back(std::move(mergedROI));
-
-    assert((*mergedROIs.rbegin())->frame() == this);
-    for (const auto& r : (*mergedROIs.rbegin())->rois()) {
-      assert(r->frame == this);
-    }
   }
 
   for (const auto& mergedROI: mergedROIs) {
@@ -180,11 +181,13 @@ void Frame::mergeMergedROIs(int maxSize) {
   for (auto& [_, aMergedROIsGroup]: groupedMergedROIs) {
     for (const auto& mergedROI: aMergedROIsGroup) {
       assert(mergedROI->frame() == this);
-      for (const auto& roi : mergedROI->rois()) {
+      for (const auto& roi: mergedROI->rois()) {
         assert(roi->frame == mergedROI->frame());
       }
     }
+  }
 
+  for (auto& [_, aMergedROIsGroup]: groupedMergedROIs) {
     MergedROI::mergeROIs(aMergedROIsGroup, maxSize);
     mergedROIs.insert(mergedROIs.end(),
                       std::make_move_iterator(aMergedROIsGroup.begin()),
@@ -233,7 +236,8 @@ void Frame::resetOFROIExtraction() {
                             [](const auto& roi) { return roi->type == OF; }),
              rois.end());
   std::for_each(rois.begin(), rois.end(), [](auto& roi) {
-    if (roi->type == PD) { roi->id = INVALID_ID; }
+    assert(roi->type == PD);
+    roi->mergedROI = nullptr;
   });
   useInferenceResultForOF = false;
   extractOFAgain = false;

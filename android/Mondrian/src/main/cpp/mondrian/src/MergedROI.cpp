@@ -53,24 +53,18 @@ std::unique_ptr<MergedROI> MergedROI::merge(const MergedROI* m0, const MergedROI
 }
 
 void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize) {
-  Frame* frame = mergedROIs.empty() ? nullptr : mergedROIs[0]->frame();
+  assert(!mergedROIs.empty());
+  Frame* frame = mergedROIs[0]->frame();
   for (const auto& mergedROI: mergedROIs) {
     assert(mergedROI->frame() == frame);
     for (const auto& roi : mergedROI->rois()) {
       assert(roi->frame == mergedROI->frame());
     }
   }
+
   while (true) {
     int i, j;
     bool updated = false;
-    frame = mergedROIs.empty() ? nullptr : mergedROIs[0]->frame();
-    for (const auto& mergedROI: mergedROIs) {
-      assert(mergedROI->frame() == frame);
-
-      for (const auto& roi : mergedROI->rois()) {
-        assert(roi->frame == mergedROI->frame());
-      }
-    }
     std::unique_ptr<MergedROI> merged;
     for (i = 0; i < mergedROIs.size(); i++) {
       for (j = i + 1; j < mergedROIs.size(); j++) {
