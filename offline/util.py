@@ -27,15 +27,38 @@ def current_time():
 
 def plot_error_cdf(Y_true, Y_pred,
                    save_path=None, figsize=(6, 6)):
-    err = np.sort(Y_pred - Y_true)
     fig, ax = plt.subplots(figsize=figsize)
-    ax.plot(err, np.linspace(0, 1, len(err)))
-    ax.set_xlabel('Error')
-    ax.set_ylabel('Probability')
-    ax.set_title(f'{np.sum(err < 0) / len(err) * 100:.2f}%')
+    ax.axvline(x=0, color='red', linewidth=2, linestyle='--')
+    plot_cdf(Y_pred - Y_true, ax=ax)
+    ax.set_xlabel('Area Error (pixel)', fontsize=20, fontweight='bold')
+    ax.set_ylabel('Probability', fontsize=20, fontweight='bold')
+    ax.set_xlim(-60000, 60000)
+    decorate_cdf(ax)
+
     if save_path is not None:
         plt.savefig(save_path)
     return fig
+
+
+def plot_cdf(value, save_path=None, ax=None, figsize=(6, 6)):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = None
+    ax.plot(np.sort(value), np.linspace(0, 1, len(value)), linewidth=3, color='blue')
+    ax.set_xlim(np.min(value), np.max(value))
+    decorate_cdf(ax)
+    if save_path is not None:
+        plt.savefig(save_path)
+    return fig
+
+
+def decorate_cdf(ax):
+    ax.set_ylim(0, 1)
+    labels = ax.get_xticklabels() + ax.get_yticklabels()
+    [label.set_fontsize(12) for label in labels]
+    [label.set_fontweight('bold') for label in labels]
+
 
 
 # Ref https://www.kaggle.com/grfiv4/plot-a-confusion-matrix
@@ -43,7 +66,7 @@ def plot_confusion_matrix(y_true, y_pred,
                           save_path=None,
                           target_names=None,
                           normalize=False,
-                          figsize=(18, 16),
+                          figsize=(12, 10),
                           title='Confusion matrix',
                           cmap=plt.get_cmap('Blues'),
                           fontsize=30,
@@ -93,7 +116,7 @@ def plot_confusion_matrix(y_true, y_pred,
                    vmax=1 if normalize else (None if vmax is None else vmax))
     cb = fig.colorbar(im, fraction=0.046, pad=0.04)
     cb.ax.tick_params(labelsize=fontsize)
-    ax.set_title(title, fontsize=fontsize)
+    # ax.set_title(title, fontsize=fontsize)
 
     if target_names is None:
         ax.get_xaxis().set_ticks([])

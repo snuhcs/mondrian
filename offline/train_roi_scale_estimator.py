@@ -20,7 +20,7 @@ from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
 
 from datatype import Rect, BBox, OFFeatures, ROI
-from util import NpEncoder, current_time, plot_confusion_matrix, plot_error_cdf, tree_to_code_cpp
+from util import NpEncoder, current_time, plot_confusion_matrix, plot_cdf, plot_error_cdf, tree_to_code_cpp
 
 
 Vid = int
@@ -640,18 +640,20 @@ def main(
         info[f'area_resize_pred_shift_{clf_name}'] = round(np.mean(Y_pred_shift))
         info[f'feature_importances_{clf_name}'] = \
             list(zip(feature_names, clf.feature_importances_))
+        info[f'under_estimation_error_{clf_name}'] = np.sum(Y_pred_shift < Y_test) / len(Y_pred)
 
         if clf_name == 'dt':
             with (exp_dir / f'scaler.cpp').open('w') as f:
                 f.write(tree_to_code_cpp(clf, feature_names))
         np.save(str(exp_dir / f'Y_pred_shift_{clf_name}.npy'), Y_pred_shift)
         np.savetxt(str(exp_dir / f'cm_{clf_name}.txt'),
-                   confusion_matrix(Y_test_q, Y_pred_shift_q), delimiter=',', fmt='%d')
+                   confusion_matrix(Y_test_q, Y_pred_q), delimiter=',', fmt='%d')
+        plt.close(plot_cdf(Y_test / orig_areas_test, save_path=exp_dir / f'safe_scale_cdf_{clf_name}.png'))
         plt.close(plot_error_cdf(Y_test, Y_pred_shift,
                   save_path=exp_dir / f'error_cdf_{clf_name}.png'))
-        plt.close(plot_confusion_matrix(Y_test_q, Y_pred_shift_q,
+        plt.close(plot_confusion_matrix(Y_test_q, Y_pred_q, target_names=['L0', 'L1', 'L2', 'L3', 'L4'],
                   save_path=exp_dir / f'cm_{clf_name}.png'))
-        plt.close(plot_confusion_matrix(Y_test_q, Y_pred_shift_q,
+        plt.close(plot_confusion_matrix(Y_test_q, Y_pred_q, target_names=['L0', 'L1', 'L2', 'L3', 'L4'],
                   save_path=exp_dir / f'cm_norm_{clf_name}.png', normalize=True))
         print(f'Done ({time() - start_time:.2f})')
     with (exp_dir / 'info.json').open('w') as f:
