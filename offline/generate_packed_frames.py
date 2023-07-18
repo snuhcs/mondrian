@@ -257,6 +257,12 @@ def type_of(video_path: Path) -> str:
 
 
 def frame_indices_of(dataset, data_type, video_path, full):
+    if data_type == 'test':
+        cap = cv2.VideoCapture(str(video_path))
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.release()
+        return list(range(frame_count))
+
     if dataset == 'mta':
         FPS = 41
         if data_type == 'train':
@@ -673,7 +679,7 @@ def save_full_frames(dataset, data_type, base_dir):
     
     def save_frames(video_path, frame_indices):
         frames = load_frames(video_path, frame_indices)
-        for frame_index in frame_indices:
+        for frame_index in tqdm(frame_indices, desc=f"Saving {video_path.name}"):
             save_name = save_name_of(video_path, frame_index)
             cv2.imwrite(
                 str(image_dir / f'{save_name}.png'), frames[frame_index])
@@ -814,6 +820,7 @@ if __name__ == '__main__':
                             'train',
                             'val',
                             'scale',
+                            'test',
                         ])
     parser.add_argument('-i', '--iou-thres', type=float, default=0.3)
     parser.add_argument('--sort-by', choices=['frame', 'area'],
