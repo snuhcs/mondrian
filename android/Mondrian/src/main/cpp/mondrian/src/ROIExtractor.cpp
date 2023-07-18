@@ -631,13 +631,11 @@ IntPairs ROIExtractor::getBoxesIfScaled(const Frame* frame) {
 void ROIExtractor::prepareFrameScaled(Frame* frame,
                                       const IntPairs& indices, const IntPairs& locations) {
   assert(indices.size() == locations.size());
+  assert(frame->mergedROIs.size() == locations.size());
   frame->resetProbeROIs();
-  int i = 0;
-  for (const auto& mergedROI: frame->mergedROIs) {
-    mergedROI->setPackInfo(locations[i], indices[i].first, executionType_, ROISize_);
-    i++;
+  for (int i = 0; i < frame->mergedROIs.size(); i++) {
+    frame->mergedROIs[i]->setPackInfo(locations[i], indices[i].first, executionType_, ROISize_);
   }
-  assert(i == locations.size());
 }
 
 void ROIExtractor::processPD(Frame* currFrame) {
