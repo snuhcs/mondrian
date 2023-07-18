@@ -16,7 +16,7 @@
     "full_device": "GPU",
     "buffer_size": 250,
     "latency_slo_ms": 5000,
-    "roi_size": 64,
+    "roi_size": 80,
     "roi_extractor": {
         "stream_mode": true,
         "max_queue_size": 250,

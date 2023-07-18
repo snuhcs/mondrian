@@ -567,8 +567,10 @@ IntPairs ROIExtractor::getBoxesIfLast(const Frame* frame) {
   IntPairs boxesIfLast;
   for (const auto& mergedROI: frame->mergedROIs) {
     // TODO: Make below two condition as single value(or function) of condition
-    bool noScaleForLast = executionType_ != MONDRIAN || config_.NO_DOWNSAMPLING_FOR_LAST_FRAME;
-    float scale = noScaleForLast ? 1.0f : mergedROI->targetScale();
+    float scale = mergedROI->targetScale();
+    if (executionType_ == MONDRIAN && config_.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
+      scale = 1.0f;
+    }
     auto[bw, bh] = mergedROI->borderedMatWH(scale);
     boxesIfLast.emplace_back(bw, bh);
   }
@@ -594,7 +596,7 @@ void ROIExtractor::prepareFrameLast(Frame* frame, const IntPairs& indices,
   frame->resetProbeROIs();
   int i = 0;
   for (const auto& mergedROI: frame->mergedROIs) {
-    if (executionType_ != MONDRIAN || config_.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
+    if (executionType_ == MONDRIAN && config_.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
       mergedROI->setTargetScale(1.0f);
     }
     mergedROI->setPackInfo(locations[i], indices[i].first, executionType_, ROISize_);
@@ -619,11 +621,11 @@ void ROIExtractor::prepareFrameLast(Frame* frame, const IntPairs& indices,
 
 IntPairs ROIExtractor::getBoxesIfScaled(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
-  IntPairs BoxesIfIntermediate;
+  IntPairs boxesIfIntermediate;
   for (const auto& mergedROI: frame->mergedROIs) {
-    BoxesIfIntermediate.push_back(mergedROI->borderedMatWH());
+    boxesIfIntermediate.push_back(mergedROI->borderedMatWH());
   }
-  return BoxesIfIntermediate;
+  return boxesIfIntermediate;
 }
 
 void ROIExtractor::prepareFrameScaled(Frame* frame,
@@ -632,7 +634,6 @@ void ROIExtractor::prepareFrameScaled(Frame* frame,
   frame->resetProbeROIs();
   int i = 0;
   for (const auto& mergedROI: frame->mergedROIs) {
-    auto[bw, bh] = mergedROI->borderedMatWH();
     mergedROI->setPackInfo(locations[i], indices[i].first, executionType_, ROISize_);
     i++;
   }

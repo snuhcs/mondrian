@@ -144,6 +144,9 @@ void MondrianConfig::test() const {
     assert(roiResizerConfig.NUM_PROBE_STEPS == 0 || roiResizerConfig.PROBE_STEP_SIZE > 0);
     assert(EXECUTION_TYPE == MONDRIAN || roiResizerConfig.NUM_PROBE_STEPS == 0);
   }
+  if (EXECUTION_TYPE == ROI_WISE_INFERENCE || EXECUTION_TYPE == EMULATED_BATCH) {
+    assert(roiResizerConfig.NUM_PROBE_STEPS == 0);
+  }
 
   // InferenceEngine
   assert(datasets.find(inferenceEngineConfig.DATASET) != datasets.end());
