@@ -604,17 +604,15 @@ def main(
         lambda: prepare_XY_vid_fid(dataset, model, int8, input_size, border, iou_thres, conf_thres, no_cache),
         cache_path_of('XY_vid_fid', dataset, model, int8, input_size, border, iou_thres, conf_thres), no_cache)
     assert np.all(Y <= orig_areas)
-    avg_decreased_area = round(np.mean(orig_areas - Y))
-    avg_orig_area = round(np.mean(orig_areas))
-    avg_resized_area = round(np.mean(Y))
 
     train_mask, test_mask = masks_of(
         dataset, data_split_type, video_ids, frame_indices)
     assert not np.any(train_mask & test_mask)
     assert np.all(train_mask | test_mask)
+
     X_train, Y_train = X[train_mask], Y[train_mask]
     X_test, Y_test, orig_areas_test = X[test_mask], Y[test_mask], orig_areas[test_mask]
-    print(f'Average area decrease: {avg_decreased_area} / {avg_orig_area}')
+    print(f'Avg area change: {round(np.mean(orig_areas_test))} => {round(np.mean(Y_test))}')
     print(f'# Train Samples: {len(X_train)}, # Test Samples: {len(X_test)}')
 
     exp_dir = Path('scaler') / current_time()
@@ -626,34 +624,34 @@ def main(
     Y_train_q, Y_test_q, thresholds = quantize(Y_train, Y_test, num_levels)
 
     info = {
-        'avg_decreased_area': avg_decreased_area,
-        'avg_orig_area': avg_orig_area,
-        'avg_resized_area': avg_resized_area,
         'thresholds': thresholds,
-        'Y_train_q': sorted(Counter(Y_train_q).items()),
-        'Y_test_q': sorted(Counter(Y_test_q).items()),
     }
     for clf_name in ['dt', 'rf']:
         print(f'Start processing {clf_name}...', end='')
         start_time = time()
         clf, Y_pred_q = fit_and_predict(X_train, Y_train_q, X_test, clf_name)
-        info[f'Y_pred_q_{clf_name}'] = sorted(Counter(Y_pred_q).items())
+        Y_pred = np.clip(np.array([thresholds[i] for i in Y_pred_q]), None, orig_areas_test)
+        Y_pred_shift = np.clip(Y_pred + area_shift, None, orig_areas_test)
+        Y_pred_shift_q = np.digitize(Y_pred_shift, thresholds, right=True)
+
+        info[f'area_orig_{clf_name}'] = round(np.mean(orig_areas_test))
+        info[f'area_resize_true_{clf_name}'] = round(np.mean(Y_test))
+        info[f'area_resize_pred_{clf_name}'] = round(np.mean(Y_pred))
+        info[f'area_resize_pred_shift_{clf_name}'] = round(np.mean(Y_pred_shift))
         info[f'feature_importances_{clf_name}'] = \
             list(zip(feature_names, clf.feature_importances_))
+
         if clf_name == 'dt':
             with (exp_dir / f'scaler.cpp').open('w') as f:
                 f.write(tree_to_code_cpp(clf, feature_names))
-        Y_pred = np.array([thresholds[i] for i in Y_pred_q]) + area_shift
-        mask = orig_areas_test < Y_pred
-        Y_pred[mask] = orig_areas_test[mask]
-        np.save(str(exp_dir / f'Y_pred_{clf_name}.npy'), Y_pred)
+        np.save(str(exp_dir / f'Y_pred_shift_{clf_name}.npy'), Y_pred_shift)
         np.savetxt(str(exp_dir / f'cm_{clf_name}.txt'),
-                   confusion_matrix(Y_test_q, Y_pred_q), delimiter=',', fmt='%d')
-        plt.close(plot_error_cdf(Y_test, Y_pred,
+                   confusion_matrix(Y_test_q, Y_pred_shift_q), delimiter=',', fmt='%d')
+        plt.close(plot_error_cdf(Y_test, Y_pred_shift,
                   save_path=exp_dir / f'error_cdf_{clf_name}.png'))
-        plt.close(plot_confusion_matrix(Y_test_q, Y_pred_q,
+        plt.close(plot_confusion_matrix(Y_test_q, Y_pred_shift_q,
                   save_path=exp_dir / f'cm_{clf_name}.png'))
-        plt.close(plot_confusion_matrix(Y_test_q, Y_pred_q,
+        plt.close(plot_confusion_matrix(Y_test_q, Y_pred_shift_q,
                   save_path=exp_dir / f'cm_norm_{clf_name}.png', normalize=True))
         print(f'Done ({time() - start_time:.2f})')
     with (exp_dir / 'info.json').open('w') as f:
