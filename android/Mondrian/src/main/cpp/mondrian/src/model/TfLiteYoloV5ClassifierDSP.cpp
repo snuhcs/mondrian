@@ -19,18 +19,32 @@ namespace md {
 TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int inputSize,
                                                      float confidenceThreshold, float iouThreshold,
                                                      bool isTiny, bool forFullFrame)
-    : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
+    : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
                  confidenceThreshold, iouThreshold),
       delegate(nullptr, [](TfLiteDelegate* d) {}) {
-  // TODO : use forFullFrame
   std::stringstream ss;
-  ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "x-") << inputSize << "-int8.tflite";
+  ss << "/data/local/tmp/models/";
+
+  if (dataset != "pretrained") {
+    ss << dataset << "-";
+    if (forFullFrame) {
+      ss << "full-";
+    } else {
+      ss << "pack-";
+    }
+  }
+
+  // Note: currently not using isTiny. It's just placeholder.
+  ss << "yolov5" << (forFullFrame ? "l" : (isTiny ? "s" : "m")) << "-";
+  ss << inputSize << "-int8.tflite";
+
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
   if (model == nullptr) {
     LOGE("YoloV5 model load failed");
   } else {
     LOGD("YoloV5 model loaded");
   }
+
 
   tflite::ops::builtin::BuiltinOpResolver resolver;
   if (tflite::InterpreterBuilder(*model, resolver)(&interpreter) != kTfLiteOk) {
