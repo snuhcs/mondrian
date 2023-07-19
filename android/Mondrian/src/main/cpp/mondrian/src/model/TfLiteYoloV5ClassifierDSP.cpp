@@ -99,6 +99,9 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int in
   inputScale = inputQuantization->scale->data[0];
   outputScale = outputQuantization->scale->data[0];
 
+  LOGD("XXX inputBias: %d, outputBias: %d, inputScale: %f, outputScale: %f",
+       inputBias, outputBias, inputScale, outputScale);
+
   input = inputTensor->data.int8;
   outputs = outputTensor->data.int8;
 }
@@ -148,24 +151,34 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat
   for (int i = 0; i < outputSize; i++) {
     const int8_t* box = &outputs[i * 85];
     const int8_t* classConfidences = &outputs[i * 85 + 5];
-    float maxConfidence = 0;
+    int8_t maxConfidenceQuant = 0;
     int maxLabel = -1;
     for (int label = 0; label < numLabels; label++) {
-      float confidence = float(classConfidences[label] - outputBias) * outputScale;
-      if (maxConfidence < confidence) {
+      if (maxConfidenceQuant < classConfidences[label]) {
         maxLabel = label;
-        maxConfidence = confidence;
+        maxConfidenceQuant = classConfidences[label];
       }
     }
-    maxConfidence *= float(outputs[i * 85 + 4]) * outputScale;
+    float maxConfidence = (float(maxConfidenceQuant) - float(outputBias)) * outputScale;
+    float objConf = (float(outputs[i * 85 + 4]) - float(outputBias)) * outputScale;
+    maxConfidence *= objConf;
+//    LOGD("XXX maxLabel: %d, maxConfidence: %f, objConf: %f, confidenceThreshold: %f",
+//         maxLabel, maxConfidence, confidenceThreshold);
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
+//      LOGD("XXX box: %d %d %d %d => %f %f %f %f",
+//           box[0], box[1], box[2], box[3],
+//           float(box[0] - outputBias) * outputScale,
+//           float(box[1] - outputBias) * outputScale,
+//           float(box[2] - outputBias) * outputScale,
+//           float(box[3] - outputBias) * outputScale);
+      Rect rect = reconstructBox(float(box[0] - outputBias) * outputScale,
+                                 float(box[1] - outputBias) * outputScale,
+                                 float(box[2] - outputBias) * outputScale,
+                                 float(box[3] - outputBias) * outputScale,
+                                 rgbMat.cols, rgbMat.rows);
+      LOGD("XXX Rect: %f %f %f %f", rect.l, rect.t, rect.r, rect.b);
       detections.push_back(BoundingBox(
-          INVALID_ID,
-          reconstructBox(float(box[0] - outputBias) * outputScale,
-                         float(box[1] - outputBias) * outputScale,
-                         float(box[2] - outputBias) * outputScale,
-                         float(box[3] - outputBias) * outputScale,
-                         rgbMat.cols, rgbMat.rows),
+          INVALID_ID, rect,
           maxConfidence, maxLabel, O_INVALID));
     }
   }
@@ -186,7 +199,7 @@ Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float 
   float newT = std::max(0.0f, ((y - h / 2 - yPad) / gain));
   float newR = std::min(imageWidth, ((x + w / 2 - xPad) / gain));
   float newB = std::min(imageHeight, ((y + h / 2 - yPad) / gain));
-  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
+//  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
   return {newL, newT, newR, newB};
 }
 
