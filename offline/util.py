@@ -25,36 +25,44 @@ def current_time():
     return time_str[:time_str.find('.')]
 
 
-def plot_error_cdf(Y_true, Y_pred,
-                   save_path=None, figsize=(6, 6)):
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.axvline(x=0, color='red', linewidth=2, linestyle='--')
-    plot_cdf(Y_pred - Y_true, ax=ax)
-    ax.set_xlabel('Area Error (pixel)', fontsize=20, fontweight='bold')
-    ax.set_ylabel('Probability', fontsize=20, fontweight='bold')
-    ax.set_xlim(-60000, 60000)
-    decorate_cdf(ax)
+def plot_cdf(values,
+             labels=None,
+             colors='blue',
+             save_path=None,
+             vlines=[],
+             hlines=[],
+             fig_ax=None,
+             figsize=(6, 6),
+             title=None,
+             xlabel=None,
+             ylabel='Probability',
+             xlim=None,
+             ylim=(0, 1)):
+    fig, ax = fig_ax if fig_ax is not None else plt.subplots(figsize=figsize)
+    values = values if isinstance(values, list) else [values]
+    labels = labels if isinstance(labels, list) else ([labels] * len(values))
+    colors = colors if isinstance(colors, list) else ([colors] * len(values))
+    assert len(values) == len(labels) == len(colors)
 
-    if save_path is not None:
-        plt.savefig(save_path)
-    return fig
+    for value, label, color in zip(values, labels, colors):
+        ax.plot(np.sort(value), np.linspace(0, 1, len(value)),
+                linewidth=3, label=label, color=color)
+    for x in vlines:
+        ax.axvline(x=x, color='red', linewidth=2, linestyle='--')
+    for y in hlines:
+        ax.axhline(y=y, color='red', linewidth=2, linestyle='--')
+
+    decorate_cdf(ax, title, xlabel, ylabel, xlim, ylim)
+    fig.savefig(save_path) if save_path else None
 
 
-def plot_cdf(value, save_path=None, ax=None, figsize=(6, 6)):
-    if ax is None:
-        fig, ax = plt.subplots(figsize=figsize)
-    else:
-        fig = None
-    ax.plot(np.sort(value), np.linspace(0, 1, len(value)), linewidth=3, color='blue')
-    ax.set_xlim(np.min(value), np.max(value))
-    decorate_cdf(ax)
-    if save_path is not None:
-        plt.savefig(save_path)
-    return fig
-
-
-def decorate_cdf(ax):
-    ax.set_ylim(0, 1)
+def decorate_cdf(ax, title, xlabel, ylabel, xlim, ylim):
+    ax.set_title(title, fontsize=20, fontweight='bold') if title else None
+    ax.set_xlim(xlim) if xlim else None
+    ax.set_ylim(ylim) if ylim else None
+    ax.set_xlabel(xlabel, fontsize=14, fontweight='bold') if xlabel else None
+    ax.set_ylabel(ylabel, fontsize=14, fontweight='bold') if ylabel else None
+    ax.legend(prop={'weight': 'bold', 'size': 15}, loc='lower right')  # noqa
     labels = ax.get_xticklabels() + ax.get_yticklabels()
     [label.set_fontsize(12) for label in labels]
     [label.set_fontweight('bold') for label in labels]
