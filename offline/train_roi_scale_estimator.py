@@ -1,5 +1,5 @@
 import argparse
-from collections import Counter, defaultdict
+from collections import defaultdict
 from functools import partial
 from itertools import chain
 import json
@@ -11,7 +11,6 @@ from time import time
 from typing import Dict, List, Tuple
 
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 from sklearn.ensemble import RandomForestClassifier
@@ -20,7 +19,7 @@ from sklearn.tree import DecisionTreeClassifier
 from tqdm import tqdm
 
 from datatype import Rect, BBox, OFFeatures, ROI
-from util import NpEncoder, current_time, plot_confusion_matrix, plot_error_cdf, tree_to_code_cpp
+from util import NpEncoder, current_time, plot_confusion_matrix, plot_cdf, tree_to_code_cpp
 
 
 Vid = int
@@ -580,19 +579,18 @@ def fit_and_predict(X_train, Y_train_q, X_test, clf_name):
     return clf, Y_pred_q
 
 
-def main(
-        args,
-        dataset: str,
-        model: str,
-        data_split_type: str,
-        area_shift: float,
-        no_cache: bool,
-        int8: bool,
-        num_levels: int,
-        border: int,
-        iou_thres: float,
-        conf_thres: float,
-) -> None:
+def main(args,
+         dataset: str,
+         model: str,
+         data_split_type: str,
+         area_shift: float,
+         no_cache: bool,
+         int8: bool,
+         num_levels: int,
+         border: int,
+         iou_thres: float,
+         conf_thres: float,
+         ) -> None:
     input_size = {
         'yolov5x': 1024,
         'yolov5l': 1024,
@@ -601,21 +599,20 @@ def main(
         'yolov5n': 1536,
     }[model]
     X, Y, orig_areas, video_ids, frame_indices = cache(
-        lambda: prepare_XY_vid_fid(dataset, model, int8, input_size, border, iou_thres, conf_thres, no_cache),
+        lambda: prepare_XY_vid_fid(dataset, model, int8, input_size, border, iou_thres, conf_thres, no_cache),  # noqa
         cache_path_of('XY_vid_fid', dataset, model, int8, input_size, border, iou_thres, conf_thres), no_cache)
     assert np.all(Y <= orig_areas)
-    avg_decreased_area = round(np.mean(orig_areas - Y))
-    avg_orig_area = round(np.mean(orig_areas))
-    avg_resized_area = round(np.mean(Y))
 
     train_mask, test_mask = masks_of(
         dataset, data_split_type, video_ids, frame_indices)
     assert not np.any(train_mask & test_mask)
     assert np.all(train_mask | test_mask)
+
     X_train, Y_train = X[train_mask], Y[train_mask]
     X_test, Y_test, orig_areas_test = X[test_mask], Y[test_mask], orig_areas[test_mask]
-    print(f'Average area decrease: {avg_decreased_area} / {avg_orig_area}')
+    print(f'Avg area change: {round(np.mean(orig_areas_test))} => {round(np.mean(Y_test))}')  # noqa
     print(f'# Train Samples: {len(X_train)}, # Test Samples: {len(X_test)}')
+    print(f'90% quantile: {round(np.quantile(Y_test, 0.9))}')
 
     exp_dir = Path('scaler') / current_time()
     exp_dir.mkdir()
@@ -626,36 +623,74 @@ def main(
     Y_train_q, Y_test_q, thresholds = quantize(Y_train, Y_test, num_levels)
 
     info = {
-        'avg_decreased_area': avg_decreased_area,
-        'avg_orig_area': avg_orig_area,
-        'avg_resized_area': avg_resized_area,
+        'quantile_0.9': round(np.quantile(Y_test, 0.9)),
         'thresholds': thresholds,
-        'Y_train_q': sorted(Counter(Y_train_q).items()),
-        'Y_test_q': sorted(Counter(Y_test_q).items()),
     }
-    for clf_name in ['dt', 'rf']:
+
+    # clf_names = ['dt', 'rf']
+    clf_names = ['dt']
+    for clf_name in clf_names:
         print(f'Start processing {clf_name}...', end='')
         start_time = time()
         clf, Y_pred_q = fit_and_predict(X_train, Y_train_q, X_test, clf_name)
-        info[f'Y_pred_q_{clf_name}'] = sorted(Counter(Y_pred_q).items())
-        info[f'feature_importances_{clf_name}'] = \
-            list(zip(feature_names, clf.feature_importances_))
+        Y_pred = np.clip(np.array([thresholds[i] for i in Y_pred_q]),
+                         None, orig_areas_test)
+        Y_pred_shift = np.clip(Y_pred + area_shift, None, orig_areas_test)
+        Y_pred_shift_q = np.digitize(Y_pred_shift, thresholds, right=True)
+        print(f'Wrong: {np.mean(orig_areas_test[Y_pred - Y_test < 0])}')
+        print(f'OK   : {np.mean(orig_areas_test[Y_pred - Y_test >= 0])}')
+
+        info[f'area_orig_{clf_name}'] = round(np.mean(orig_areas_test))
+        info[f'area_resize_true_{clf_name}'] = round(np.mean(Y_test))
+        info[f'area_resize_pred_{clf_name}'] = round(np.mean(Y_pred))
+        info[f'area_resize_pred_shift_{clf_name}'] = round(np.mean(Y_pred_shift))  # noqa
+        info[f'feature_importances_{clf_name}'] = list(zip(feature_names, clf.feature_importances_))  # noqa
+        info[f'under_estimation_error_{clf_name}'] = np.sum(Y_pred_shift < Y_test) / len(Y_pred)  # noqa
+
+        # scaler.cpp
         if clf_name == 'dt':
             with (exp_dir / f'scaler.cpp').open('w') as f:
                 f.write(tree_to_code_cpp(clf, feature_names))
-        Y_pred = np.array([thresholds[i] for i in Y_pred_q]) + area_shift
-        mask = orig_areas_test < Y_pred
-        Y_pred[mask] = orig_areas_test[mask]
-        np.save(str(exp_dir / f'Y_pred_{clf_name}.npy'), Y_pred)
-        np.savetxt(str(exp_dir / f'cm_{clf_name}.txt'),
-                   confusion_matrix(Y_test_q, Y_pred_q), delimiter=',', fmt='%d')
-        plt.close(plot_error_cdf(Y_test, Y_pred,
-                  save_path=exp_dir / f'error_cdf_{clf_name}.png'))
-        plt.close(plot_confusion_matrix(Y_test_q, Y_pred_q,
-                  save_path=exp_dir / f'cm_{clf_name}.png'))
-        plt.close(plot_confusion_matrix(Y_test_q, Y_pred_q,
-                  save_path=exp_dir / f'cm_norm_{clf_name}.png', normalize=True))
+
+        # CDF
+        plot_cdf((Y_pred - Y_test) / orig_areas_test,
+                 labels='Scale Error',
+                 vlines=[0],
+                 xlim=(-1, 1),
+                 xlabel='Scale',
+                 save_path=exp_dir / f'error_scale_cdf_{clf_name}.png')
+        plot_cdf(Y_test / orig_areas_test,
+                 labels='Safe Scale',
+                 xlabel='Scale',
+                 xlim=(0, 1),
+                 save_path=exp_dir / f'safe_scale_cdf_{clf_name}.png')
+        plot_cdf([Y_test / orig_areas_test, Y_pred_shift / orig_areas_test],
+                 labels=['True', 'Pred'],
+                 colors=['blue', 'red'],
+                 xlabel='Scale',
+                 ylabel='Probability',
+                 xlim=(0, 1),
+                 ylim=(0, 1),
+                 save_path=exp_dir / f'scale_cdf_{clf_name}')
+        plot_cdf(Y_pred_shift - Y_test,
+                 labels='Area Error',
+                 vlines=[0],
+                 xlabel='Area Error (pixel)',
+                 ylabel='Probability',
+                 xlim=(-60000, 60000),
+                 save_path=exp_dir / f'error_area_cdf_{clf_name}.png')
+
+        # Confusion Matrix
+        np.savetxt(str(exp_dir / f'cm_{clf_name}.txt'), confusion_matrix(Y_test_q, Y_pred_q),
+                   delimiter=',', fmt='%d')
+        plot_confusion_matrix(Y_test_q, Y_pred_q,
+                              target_names=['L0', 'L1', 'L2', 'L3', 'L4'],
+                              save_path=exp_dir / f'cm_{clf_name}.png')
+        plot_confusion_matrix(Y_test_q, Y_pred_q,
+                              target_names=['L0', 'L1', 'L2', 'L3', 'L4'],
+                              save_path=exp_dir / f'cm_norm_{clf_name}.png', normalize=True)
         print(f'Done ({time() - start_time:.2f})')
+
     with (exp_dir / 'info.json').open('w') as f:
         json.dump({**info, **vars(args)}, f, indent=4, cls=NpEncoder)
 

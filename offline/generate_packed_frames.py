@@ -257,6 +257,12 @@ def type_of(video_path: Path) -> str:
 
 
 def frame_indices_of(dataset, data_type, video_path, full):
+    if data_type == 'test':
+        cap = cv2.VideoCapture(str(video_path))
+        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.release()
+        return list(range(frame_count))
+
     if dataset == 'mta':
         FPS = 41
         if data_type == 'train':
@@ -299,9 +305,12 @@ def frame_indices_of(dataset, data_type, video_path, full):
         raise ValueError()
 
 
-def mta_video_paths():
+def mta_video_paths(data_type: str):
     base_dir = Path('/data1/mondrian/dataset/mta/MTA_ext_short/')
-    return sorted(base_dir.glob(f'train/cam_*/cam_*.mp4'))
+    if data_type == 'test':
+        return sorted(base_dir.glob(f'test/cam_*/cam_*.mp4'))
+    else:
+        return sorted(base_dir.glob(f'train/cam_*/cam_*.mp4'))
 
 
 def mta_annotation_path_of(video_path):
@@ -309,8 +318,11 @@ def mta_annotation_path_of(video_path):
     return Path(f'/data1/mondrian/dataset/mta/MTA_ext_short/train/cam_{video_id}/coords_fib_cam_{video_id}.csv')
 
 
-def virat_video_paths():
-    base_dir = Path('/data1/mondrian/dataset/virat/video/train/')
+def virat_video_paths(data_type):
+    if data_type == 'test':
+        base_dir = Path('/data1/mondrian/dataset/virat/video/test/')
+    else:
+        base_dir = Path('/data1/mondrian/dataset/virat/video/train/')
     return sorted(base_dir.glob('*.mp4'))
 
 
@@ -326,11 +338,11 @@ def video_id_of(video_path):
     return int(Path(video_path).stem[-1])
 
 
-def video_paths_of(dataset):
+def video_paths_of(dataset, data_type):
     if dataset == 'mta':
-        return mta_video_paths()
+        return mta_video_paths(data_type)
     elif dataset == 'virat':
-        return virat_video_paths()
+        return virat_video_paths(data_type)
     else:
         raise ValueError()
 
@@ -421,7 +433,7 @@ def load_rois(dataset,
               data_type,
               avg_padding,
               filter_size) -> List[ROI]:
-    video_paths = video_paths_of(dataset)
+    video_paths = video_paths_of(dataset, data_type)
     if data_type in ['train', 'val']:
         rois = [roi
                 for video_path in video_paths
@@ -673,12 +685,12 @@ def save_full_frames(dataset, data_type, base_dir):
     
     def save_frames(video_path, frame_indices):
         frames = load_frames(video_path, frame_indices)
-        for frame_index in frame_indices:
+        for frame_index in tqdm(frame_indices, desc=f"Saving {video_path.name}"):
             save_name = save_name_of(video_path, frame_index)
             cv2.imwrite(
                 str(image_dir / f'{save_name}.png'), frames[frame_index])
 
-    video_paths = video_paths_of(dataset)
+    video_paths = video_paths_of(dataset, data_type)
     if dataset == 'mta':
         for video_path in video_paths:
             frame_indices = frame_indices_of(
@@ -814,6 +826,7 @@ if __name__ == '__main__':
                             'train',
                             'val',
                             'scale',
+                            'test',
                         ])
     parser.add_argument('-i', '--iou-thres', type=float, default=0.3)
     parser.add_argument('--sort-by', choices=['frame', 'area'],

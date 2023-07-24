@@ -25,17 +25,48 @@ def current_time():
     return time_str[:time_str.find('.')]
 
 
-def plot_error_cdf(Y_true, Y_pred,
-                   save_path=None, figsize=(6, 6)):
-    err = np.sort(Y_pred - Y_true)
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.plot(err, np.linspace(0, 1, len(err)))
-    ax.set_xlabel('Error')
-    ax.set_ylabel('Probability')
-    ax.set_title(f'{np.sum(err < 0) / len(err) * 100:.2f}%')
-    if save_path is not None:
-        plt.savefig(save_path)
-    return fig
+def plot_cdf(values,
+             labels=None,
+             colors='blue',
+             save_path=None,
+             vlines=[],
+             hlines=[],
+             fig_ax=None,
+             figsize=(6, 6),
+             title=None,
+             xlabel=None,
+             ylabel='Probability',
+             xlim=None,
+             ylim=(0, 1)):
+    fig, ax = fig_ax if fig_ax is not None else plt.subplots(figsize=figsize)
+    values = values if isinstance(values, list) else [values]
+    labels = labels if isinstance(labels, list) else ([labels] * len(values))
+    colors = colors if isinstance(colors, list) else ([colors] * len(values))
+    assert len(values) == len(labels) == len(colors)
+
+    for value, label, color in zip(values, labels, colors):
+        ax.plot(np.sort(value), np.linspace(0, 1, len(value)),
+                linewidth=3, label=label, color=color)
+    for x in vlines:
+        ax.axvline(x=x, color='red', linewidth=2, linestyle='--')
+    for y in hlines:
+        ax.axhline(y=y, color='red', linewidth=2, linestyle='--')
+
+    decorate_cdf(ax, title, xlabel, ylabel, xlim, ylim)
+    fig.savefig(save_path) if save_path else None
+
+
+def decorate_cdf(ax, title, xlabel, ylabel, xlim, ylim):
+    ax.set_title(title, fontsize=20, fontweight='bold') if title else None
+    ax.set_xlim(xlim) if xlim else None
+    ax.set_ylim(ylim) if ylim else None
+    ax.set_xlabel(xlabel, fontsize=14, fontweight='bold') if xlabel else None
+    ax.set_ylabel(ylabel, fontsize=14, fontweight='bold') if ylabel else None
+    ax.legend(prop={'weight': 'bold', 'size': 15}, loc='lower right')  # noqa
+    labels = ax.get_xticklabels() + ax.get_yticklabels()
+    [label.set_fontsize(12) for label in labels]
+    [label.set_fontweight('bold') for label in labels]
+
 
 
 # Ref https://www.kaggle.com/grfiv4/plot-a-confusion-matrix
@@ -43,7 +74,7 @@ def plot_confusion_matrix(y_true, y_pred,
                           save_path=None,
                           target_names=None,
                           normalize=False,
-                          figsize=(18, 16),
+                          figsize=(12, 10),
                           title='Confusion matrix',
                           cmap=plt.get_cmap('Blues'),
                           fontsize=30,
@@ -93,7 +124,7 @@ def plot_confusion_matrix(y_true, y_pred,
                    vmax=1 if normalize else (None if vmax is None else vmax))
     cb = fig.colorbar(im, fraction=0.046, pad=0.04)
     cb.ax.tick_params(labelsize=fontsize)
-    ax.set_title(title, fontsize=fontsize)
+    # ax.set_title(title, fontsize=fontsize)
 
     if target_names is None:
         ax.get_xaxis().set_ticks([])
