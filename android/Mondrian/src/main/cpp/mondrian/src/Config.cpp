@@ -54,8 +54,8 @@ ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
   config.VOTING_WINDOW = parseInt(json, "voting_window");
   config.SCALE_SHIFT = parseFloat(json, "scale_shift");
   config.AREA_SHIFT = parseFloat(json, "area_shift");
-  config.STATIC_SCALE = parseBool(json, "static_scale");
-  config.STATIC_TARGET_SCALE = parseFloat(json, "static_target_scale");
+  config.STATIC_AREA = parseBool(json, "static_area");
+  config.STATIC_TARGET_AREA = parseFloat(json, "static_target_area");
   config.MAX_OF_ROI_SIZE = parseFloat(json, "max_of_roi_size");
   config.PROBE_STEP_SIZE = parseFloat(json, "probe_step_size");
   config.NUM_PROBE_STEPS = parseInt(json, "num_probe_steps");
@@ -135,8 +135,10 @@ void MondrianConfig::test() const {
   assert(FULL_FRAME_SIZE == inferenceEngineConfig.FULL_FRAME_SIZE);
 
   // ROIResizer
-  if (roiResizerConfig.STATIC_SCALE) {
-    assert(roiResizerConfig.STATIC_TARGET_SCALE > 0);
+  if (roiResizerConfig.STATIC_AREA) {
+    assert(roiResizerConfig.AREA_SHIFT == 0.0f);
+    assert(roiResizerConfig.SCALE_SHIFT == 0.0f);
+    assert(roiResizerConfig.STATIC_TARGET_AREA > 0);
   } else {
     assert(inferenceEngineConfig.DATASET == roiResizerConfig.DATASET);
     assert(roiResizerConfig.NUM_PROBE_STEPS == 0 || roiResizerConfig.PROBE_STEP_SIZE > 0);
@@ -211,8 +213,8 @@ void ROIResizerConfig::print() const {
   ss << "VOTING_WINDOW: " << VOTING_WINDOW << std::endl;
   ss << "SCALE_SHIFT: " << SCALE_SHIFT << std::endl;
   ss << "AREA_SHIFT: " << AREA_SHIFT << std::endl;
-  ss << "STATIC_SCALE: " << STATIC_SCALE << std::endl;
-  ss << "STATIC_TARGET_SCALE: " << STATIC_TARGET_SCALE << std::endl;
+  ss << "STATIC_AREA: " << STATIC_AREA << std::endl;
+  ss << "STATIC_TARGET_AREA: " << STATIC_TARGET_AREA << std::endl;
   ss << "MAX_OF_ROI_SIZE: " << MAX_OF_ROI_SIZE << std::endl;
   ss << "PROBE_STEP_SIZE: " << PROBE_STEP_SIZE << std::endl;
   ss << "NUM_PROBE_STEPS: " << NUM_PROBE_STEPS << std::endl;

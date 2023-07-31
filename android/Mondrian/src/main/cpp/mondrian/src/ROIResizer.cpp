@@ -18,7 +18,7 @@ const std::map<std::string, Predictor> ROIResizer::CANDIDATE_PREDICTORS = {
     {"mta",   MTA},
 };
 
-const std::map<std::string, std::vector<float>> ROIResizer::SCALE_LEVELS = {
+const std::map<std::string, std::vector<float>> ROIResizer::AREA_LEVELS = {
         {"virat", {
                           333.913147627257,
                           638.5106976744186,
@@ -42,9 +42,9 @@ static const auto toVec = [](float staticScale) -> std::vector<float> {
 ROIResizer::ROIResizer(const ROIResizerConfig& config)
     : config_(config),
       predictor_(CANDIDATE_PREDICTORS.at(config.DATASET)),
-      targetAreas_(config.STATIC_SCALE
-                    ? toVec(config.STATIC_TARGET_SCALE)
-                    : SCALE_LEVELS.at(config.DATASET)) {}
+      targetAreas_(config.STATIC_AREA
+                    ? toVec(config.STATIC_TARGET_AREA)
+                    : AREA_LEVELS.at(config.DATASET)) {}
 
 std::pair<float, int> ROIResizer::getTargetScale(const ID id,
                                                  const Features& features,
@@ -102,7 +102,7 @@ int ROIResizer::getMaxVotedLevel(const ID id, const Features& features) {
 }
 
 int ROIResizer::predictLevelWithFeatures(const Features& features) const {
-  if (config_.STATIC_SCALE) {
+  if (config_.STATIC_AREA) {
     return STATIC_LEVEL;
   }
   assert(features.type == OF);
@@ -163,7 +163,7 @@ void ROIResizer::getProbingCandidates(ROI* roi) const {
   float originalArea = roi->features.width * roi->features.height;
   assert(0.0f <= scale && scale <= 1.0f);
   std::vector<float>& candidates = roi->probeScales;
-  if (config_.STATIC_SCALE) {
+  if (config_.STATIC_AREA) {
     for (int i = 0; i < numProbeSteps; i++) {
       if (i == 0) {
         candidates.push_back(scale);
@@ -196,7 +196,7 @@ bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
 }
 
 float ROIResizer::calculateTargetScale(float targetArea, float originalArea) const {
-  if (config_.STATIC_SCALE) {
+  if (config_.STATIC_AREA) {
     return std::min(1.0f, sqrt(targetArea / originalArea));
   } else {
     float scale = sqrt((targetArea + config_.AREA_SHIFT) / originalArea) + config_.SCALE_SHIFT;
