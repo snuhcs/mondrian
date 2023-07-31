@@ -14,22 +14,15 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  JNIEnv* env, jobject app)
     : mConfig(config) {
   for (Device device: config.DEVICES) {
-    if (device == GPU) {
-      if (config.MODEL == "YOLO_V4") {
-        addClassifiers<TfLiteYoloV4Classifier>(device, config, env, app);
-      } else if (config.MODEL == "YOLO_V5") {
-        addClassifiers<TfLiteYoloV5Classifier>(device, config, env, app);
-      } else {
-        LOGE("Running %s model on GPU is not supported yet", config.MODEL.c_str());
-      }
-    } else if (device == DSP) {
-      if (config.MODEL == "YOLO_V5") {
-        addClassifiers<TfLiteYoloV5ClassifierDSP>(device, config, env, app);
-      } else {
-        LOGE("Running %s model on DSP is not supported yet", config.MODEL.c_str());
-      }
+    if (config.MODEL == "YOLO_V4" && device == GPU) {
+      addClassifiers<TfLiteYoloV4Classifier>(device, config, env, app);
+    } else if (config.MODEL == "YOLO_V5" && device == GPU) {
+      addClassifiers<TfLiteYoloV5Classifier>(device, config, env, app);
+    } else if (config.MODEL == "YOLO_V5" && device == DSP) {
+      addClassifiers<TfLiteYoloV5ClassifierDSP>(device, config, env, app);
     } else {
-      LOGE("Device %d is not supported yet", device);
+      LOGE("Running %s model on %s is not supported yet",
+           config.MODEL.c_str(), str(device).c_str());
     }
   }
 }
