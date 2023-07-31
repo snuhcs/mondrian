@@ -13,7 +13,7 @@ class Frame;
 
 class FrameBuffer {
  public:
-  FrameBuffer(int vid, int capacity, bool blocking);
+  FrameBuffer(int vid, int capacity);
 
   Frame* enqueue(const cv::Mat& yuvMat);
 
@@ -24,14 +24,12 @@ class FrameBuffer {
 
   const int vid;
   const int capacity;
-  const bool blocking;
 
   std::vector<std::unique_ptr<Frame>> frames;
 
   std::atomic<int> head;
   int tail;
   std::mutex mtx;
-  std::condition_variable cv;
 };
 
 } // namespace md

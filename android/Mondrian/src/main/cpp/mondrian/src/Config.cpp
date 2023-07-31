@@ -29,7 +29,6 @@ static std::string parseString(const Json::Value& json, const std::string& key) 
 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   ROIExtractorConfig config = {};
-  config.STREAM_MODE = parseBool(json, "stream_mode");
   config.MAX_QUEUE_SIZE = parseInt(json, "max_queue_size");
   config.NUM_WORKERS = parseInt(json, "num_workers");
   config.EXTRACTION_RESIZE_WIDTH = parseFloat(json, "extraction_resize_width");
@@ -104,7 +103,6 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.LOG_BOXES = parseBool(json, "log_boxes");
   config.LOG_ROI = parseBool(json, "log_roi");
   config.LOG_FRAME = parseBool(json, "log_frame");
-  config.STREAM_MODE = parseBool(json, "stream_mode");
   config.INTERPOLATION_THRESHOLD = parseFloat(json, "interpolation_threshold");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
@@ -125,12 +123,10 @@ void MondrianConfig::test() const {
 
   // Common
   if (EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
-    assert(!STREAM_MODE);
     assert(FULL_FRAME_INTERVAL == 0);
   } else {
     assert(FULL_FRAME_INTERVAL > 0);
   }
-  assert(STREAM_MODE == roiExtractorConfig.STREAM_MODE);
   assert(FULL_FRAME_SIZE == inferenceEngineConfig.FULL_FRAME_SIZE);
 
   // ROIResizer
@@ -171,7 +167,6 @@ void MondrianConfig::print() const {
   ss << "LOG_BOXES: " << LOG_BOXES << std::endl;
   ss << "LOG_ROI: " << LOG_ROI << std::endl;
   ss << "LOG_FRAME: " << LOG_FRAME << std::endl;
-  ss << "STREAM_MODE: " << STREAM_MODE << std::endl;
   ss << "INTERPOLATION_THRESHOLD: " << INTERPOLATION_THRESHOLD << std::endl;
   ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
@@ -190,7 +185,6 @@ void MondrianConfig::print() const {
 void ROIExtractorConfig::print() const {
   std::stringstream ss;
   ss << "========== ROIExtractorConfig ==========" << std::endl;
-  ss << "STREAM_MODE: " << STREAM_MODE << std::endl;
   ss << "MAX_QUEUE_SIZE: " << MAX_QUEUE_SIZE << std::endl;
   ss << "NUM_WORKERS: " << NUM_WORKERS << std::endl;
   ss << "EXTRACTION_RESIZE_WIDTH: " << EXTRACTION_RESIZE_WIDTH << std::endl;
