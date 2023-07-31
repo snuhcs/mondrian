@@ -14,7 +14,6 @@ namespace md {
 constexpr int NUM_LABELS = 80;
 
 struct ROIExtractorConfig {
-  int MAX_QUEUE_SIZE;
   int NUM_WORKERS;
   float EXTRACTION_RESIZE_WIDTH;
   float EXTRACTION_RESIZE_HEIGHT;

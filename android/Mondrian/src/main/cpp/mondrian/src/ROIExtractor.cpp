@@ -255,7 +255,7 @@ void ROIExtractor::work(int extractorId) {
    */
 
   auto getPDJob = [this]() {
-    if (!PDWaiting_.empty() && OFWaiting_.size() < config_.MAX_QUEUE_SIZE) {
+    if (!PDWaiting_.empty()) {
       return *PDWaiting_.begin();
     } else {
       return (Frame*) nullptr;

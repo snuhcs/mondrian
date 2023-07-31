@@ -29,7 +29,6 @@ static std::string parseString(const Json::Value& json, const std::string& key) 
 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   ROIExtractorConfig config = {};
-  config.MAX_QUEUE_SIZE = parseInt(json, "max_queue_size");
   config.NUM_WORKERS = parseInt(json, "num_workers");
   config.EXTRACTION_RESIZE_WIDTH = parseFloat(json, "extraction_resize_width");
   config.EXTRACTION_RESIZE_HEIGHT = parseFloat(json, "extraction_resize_height");
@@ -183,7 +182,6 @@ void MondrianConfig::print() const {
 void ROIExtractorConfig::print() const {
   std::stringstream ss;
   ss << "========== ROIExtractorConfig ==========" << std::endl;
-  ss << "MAX_QUEUE_SIZE: " << MAX_QUEUE_SIZE << std::endl;
   ss << "NUM_WORKERS: " << NUM_WORKERS << std::endl;
   ss << "EXTRACTION_RESIZE_WIDTH: " << EXTRACTION_RESIZE_WIDTH << std::endl;
   ss << "EXTRACTION_RESIZE_HEIGHT: " << EXTRACTION_RESIZE_HEIGHT << std::endl;
