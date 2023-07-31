@@ -10,6 +10,9 @@ import org.json.JSONObject;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -86,8 +89,15 @@ public class MondrianApp implements VideoLoader.Callback {
         return videoConfigs;
     }
 
-    public void drawOutput(long rgbMatAddr, List<BoundingBox> results) {
+    public void drawOutput(long rgbMatAddr, List<BoundingBox> results, long device) {
         Mat rgbMat = new Mat(rgbMatAddr);
+        if (device == 0) {
+            Imgproc.putText(rgbMat, "GPU", new Point(10, 80), 0, 3, new Scalar(0, 0, 255), 8);
+        } else if (device == 1) {
+            Imgproc.putText(rgbMat, "DSP", new Point(10, 80), 0, 3, new Scalar(255, 0, 0), 8);
+        } else {
+            assert(false);
+        }
         Bitmap bitmap = Bitmap.createBitmap(rgbMat.cols(), rgbMat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(rgbMat, bitmap);
         Bitmap outputBitmap = ImageUtils.drawBoxes(bitmap, results);

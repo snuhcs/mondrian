@@ -54,15 +54,17 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
     classifiers.push_back(std::move(classifier));
   }
 
-  // classifier for full frame inference
-  // identical with above code block inside the for loop
-  int inputSize = config.FULL_FRAME_SIZE;
-  forFullFrame = true;
-  std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-      config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
-      config.USE_TINY, forFullFrame);
-  classifierMap[{inputSize, forFullFrame}] = classifier.get();
-  classifiers.push_back(std::move(classifier));
+  if (device == GPU) {
+    // classifier for full frame inference
+    // identical with above code block inside the for loop
+    int inputSize = config.FULL_FRAME_SIZE;
+    forFullFrame = true;
+    std::unique_ptr<Classifier> classifier = std::make_unique<T>(
+        config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
+        config.USE_TINY, forFullFrame);
+    classifierMap[{inputSize, forFullFrame}] = classifier.get();
+    classifiers.push_back(std::move(classifier));
+  }
 
   workers[device] = std::make_unique<Worker>(
       this, device, classifierMap, mConfig.DRAW_INFERENCE_RESULT, env, app);

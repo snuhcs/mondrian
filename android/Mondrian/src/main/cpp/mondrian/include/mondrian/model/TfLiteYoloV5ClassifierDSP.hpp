@@ -40,8 +40,8 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
   int outputBias;
   float inputScale;
   float outputScale;
-  int8_t* input; // 1 x inputSize.height x inputSize.width x 3
-  int8_t* outputs; // 1 x outputSize x 85 (boxes, maxConf, confidences)
+  uint8_t* input; // 1 x inputSize.height x inputSize.width x 3
+  uint8_t* outputs; // 1 x outputSize x 85 (boxes, maxConf, confidences)
 };
 
 } // namespace md

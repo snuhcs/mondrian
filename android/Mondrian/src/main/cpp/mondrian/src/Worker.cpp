@@ -15,7 +15,8 @@ Worker::Worker(InferenceEngine* engine, Device device,
     env->GetJavaVM(&jvm);
     class_MondrianApp = reinterpret_cast<jclass>(env->NewGlobalRef(
             env->FindClass("hcs/offloading/mondrian/MondrianApp")));
-    MondrianApp_drawOutput = env->GetMethodID(class_MondrianApp, "drawOutput", "(JLjava/util/List;)V");
+    MondrianApp_drawOutput = env->GetMethodID(class_MondrianApp, "drawOutput",
+                                              "(JLjava/util/List;J)V");
     class_ArrayList = reinterpret_cast<jclass>(env->NewGlobalRef(
             env->FindClass("java/util/ArrayList")));
     ArrayList_init = env->GetMethodID(class_ArrayList, "<init>", "()V");
@@ -118,14 +119,14 @@ void Worker::drawInferenceResult(const cv::Mat& rgbMat,
   if (isFullFrame) {
     auto* jRgbMat = new cv::Mat();
     rgbMat.copyTo(*jRgbMat);
-    env->CallVoidMethod(app, MondrianApp_drawOutput, (long) jRgbMat, jBoxes);
+    env->CallVoidMethod(app, MondrianApp_drawOutput, (long) jRgbMat, jBoxes, (long) device);
   } else {
     assert(rgbMat.rows <= maxPackedCanvasSize && rgbMat.cols <= maxPackedCanvasSize);
     auto* jRgbMat = new cv::Mat(maxPackedCanvasSize, maxPackedCanvasSize,
                                 CV_8UC3, cv::Scalar(0, 0, 0));
     cv::Rect rect(0, 0, rgbMat.cols, rgbMat.rows);
     rgbMat.copyTo((*jRgbMat)(rect));
-    env->CallVoidMethod(app, MondrianApp_drawOutput, (long) jRgbMat, jBoxes);
+    env->CallVoidMethod(app, MondrianApp_drawOutput, (long) jRgbMat, jBoxes, (long) device);
   }
   jvm->DetachCurrentThread();
 }

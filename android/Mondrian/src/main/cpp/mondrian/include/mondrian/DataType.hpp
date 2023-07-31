@@ -73,7 +73,6 @@ struct Rect {
   Rect() {}
 
   Rect(float l, float t, float r, float b) : l(l), t(t), r(r), b(b) {
-    assert(l <= r && t <= b);
     w = r - l;
     h = b - t;
     maxWH = std::max(w, h);
@@ -85,6 +84,10 @@ struct Rect {
   std::pair<float, float> center() const {
     return {(r + l) / 2,
             (b + t) / 2};
+  }
+
+  bool isValid() const {
+    return l <= r && t <= b;
   }
 
   bool overlap(const Rect& other) const {

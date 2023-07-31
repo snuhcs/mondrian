@@ -19,18 +19,32 @@ namespace md {
 TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int inputSize,
                                                      float confidenceThreshold, float iouThreshold,
                                                      bool isTiny, bool forFullFrame)
-    : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
+    : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
                  confidenceThreshold, iouThreshold),
       delegate(nullptr, [](TfLiteDelegate* d) {}) {
-  // TODO : use forFullFrame
   std::stringstream ss;
-  ss << "/data/local/tmp/models/yolov5" << (isTiny ? "s-" : "x-") << inputSize << "-int8.tflite";
+  ss << "/data/local/tmp/models/";
+
+  if (dataset != "pretrained") {
+    ss << dataset << "-";
+    if (forFullFrame) {
+      ss << "full-";
+    } else {
+      ss << "pack-";
+    }
+  }
+
+  // Note: currently not using isTiny. It's just placeholder.
+  ss << "yolov5" << (forFullFrame ? "l" : (isTiny ? "s" : "m")) << "-";
+  ss << inputSize << "-int8.tflite";
+
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
   if (model == nullptr) {
     LOGE("YoloV5 model load failed");
   } else {
     LOGD("YoloV5 model loaded");
   }
+
 
   tflite::ops::builtin::BuiltinOpResolver resolver;
   if (tflite::InterpreterBuilder(*model, resolver)(&interpreter) != kTfLiteOk) {
@@ -84,12 +98,17 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int in
   outputBias = outputQuantization->zero_point->data[0];
   inputScale = inputQuantization->scale->data[0];
   outputScale = outputQuantization->scale->data[0];
+  assert(inputBias == 0);
+  assert(std::abs(1.0/inputScale - 255.0) < 1.0);
+  LOGD("XXX inputBias: %d, outputBias: %d, inputScale: %f, outputScale: %f",
+       inputBias, outputBias, inputScale, outputScale);
 
-  input = inputTensor->data.int8;
-  outputs = outputTensor->data.int8;
+  input = inputTensor->data.uint8;
+  outputs = outputTensor->data.uint8;
 }
 
 cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& rgbMat) {
+//  LOGD("XXX rgbMat type: %d", rgbMat.type()); // 16 CV_8UC3
   cv::Mat mat;
   const int& width = rgbMat.cols;
   const int& height = rgbMat.rows;
@@ -111,19 +130,12 @@ cv::Mat TfLiteYoloV5ClassifierDSP::preprocess(const cv::Mat& rgbMat) {
   cv::resize(rgbMat, mat, cv::Size(resizeWidth, resizeHeight));
   cv::copyMakeBorder(mat, mat, top, bottom, left, right,
                      cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
-  mat.convertTo(mat, CV_32FC3, 1.f / 255);
   return mat;
 }
 
 void TfLiteYoloV5ClassifierDSP::inference(const cv::Mat& mat) {
-  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_32FC3);
-  mat /= inputScale;
-  cv::Mat quantizedMat;
-  mat.convertTo(quantizedMat, CV_8SC3);
-  quantizedMat += inputBias;
-  assert(quantizedMat.cols == inputSize.width && quantizedMat.rows == inputSize.height &&
-         quantizedMat.type() == CV_8SC3);
-  std::memcpy((void*) input, (void*) quantizedMat.data, inputSize.area() * quantizedMat.elemSize());
+  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_8UC3);
+  std::memcpy((void*) input, (void*) mat.data, inputSize.area() * mat.elemSize());
   interpreter->Invoke();
 }
 
@@ -132,27 +144,41 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat
 
   std::vector<BoundingBox> detections;
   for (int i = 0; i < outputSize; i++) {
-    const int8_t* box = &outputs[i * 85];
-    const int8_t* classConfidences = &outputs[i * 85 + 5];
-    float maxConfidence = 0;
+    const uint8_t* box = &outputs[i * 85];
+    const uint8_t* classConfidences = &outputs[i * 85 + 5];
+    uint8_t maxConfidenceQuant = 0;
     int maxLabel = -1;
     for (int label = 0; label < numLabels; label++) {
-      float confidence = float(classConfidences[label] - outputBias) * outputScale;
-      if (maxConfidence < confidence) {
+      if (maxConfidenceQuant < classConfidences[label]) {
         maxLabel = label;
-        maxConfidence = confidence;
+        maxConfidenceQuant = classConfidences[label];
       }
     }
-    maxConfidence *= float(outputs[i * 85 + 4]) * outputScale;
+    auto maxConfidence = float(maxConfidenceQuant);
+    auto objConf = float(outputs[i * 85 + 4]);
+    maxConfidence -= float(outputBias);
+    objConf -= float(outputBias);
+    maxConfidence *= float(outputScale);
+    objConf *= float(outputScale);
+//    if (maxConfidence != 0 && objConf != 0) {
+//      LOGD("XXX maxConfidence: %f, objConf: %f, maxConfidence * objConf: %f", maxConfidence, objConf, maxConfidence * objConf);
+//    }
+
+    maxConfidence *= objConf;
     if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
-      detections.push_back(BoundingBox(
-          INVALID_ID,
-          reconstructBox(float(box[0] - outputBias) * outputScale,
-                         float(box[1] - outputBias) * outputScale,
-                         float(box[2] - outputBias) * outputScale,
-                         float(box[3] - outputBias) * outputScale,
-                         rgbMat.cols, rgbMat.rows),
-          maxConfidence, maxLabel, O_INVALID));
+//      LOGD("XXX box: %d %d %d %d => %f %f %f %f",
+//           box[0], box[1], box[2], box[3],
+//           float(box[0] - outputBias) * outputScale,
+//           float(box[1] - outputBias) * outputScale,
+//           float(box[2] - outputBias) * outputScale,
+//           float(box[3] - outputBias) * outputScale);
+      Rect rect = reconstructBox(float(box[0] - outputBias) * outputScale,
+                                 float(box[1] - outputBias) * outputScale,
+                                 float(box[2] - outputBias) * outputScale,
+                                 float(box[3] - outputBias) * outputScale,
+                                 rgbMat.cols, rgbMat.rows);
+//      LOGD("XXX Rect: %f %f %f %f", rect.l, rect.t, rect.r, rect.b);
+      detections.emplace_back(INVALID_ID, rect, maxConfidence, maxLabel, O_INVALID);
     }
   }
   return nms(detections, numLabels, iouThreshold);
@@ -172,7 +198,7 @@ Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float 
   float newT = std::max(0.0f, ((y - h / 2 - yPad) / gain));
   float newR = std::min(imageWidth, ((x + w / 2 - xPad) / gain));
   float newB = std::min(imageHeight, ((y + h / 2 - yPad) / gain));
-  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
+//  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
   return {newL, newT, newR, newB};
 }
 
