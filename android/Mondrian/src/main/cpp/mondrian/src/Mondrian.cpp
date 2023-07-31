@@ -49,9 +49,8 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   }
 
   // Prepare frame buffers
-  bool blocking = !config_.STREAM_MODE;
   for (int vid = 0; vid < numVideos; vid++) {
-    frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid, config_.BUFFER_SIZE, blocking);
+    frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid, config_.BUFFER_SIZE);
   }
 
   // Start preprocessing thread
