@@ -4,6 +4,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+#include <queue>
 
 #include "opencv2/core/mat.hpp"
 
@@ -13,22 +14,17 @@ class Frame;
 
 class FrameBuffer {
  public:
-  FrameBuffer(int vid, int capacity);
+  FrameBuffer(int vid);
 
   Frame* enqueue(const cv::Mat& yuvMat);
 
   void free(int tailIndex);
 
  private:
-  Frame* enqueue(int frameIndex, const cv::Mat& yuvMat);
-
   const int vid;
-  const int capacity;
 
-  std::vector<std::unique_ptr<Frame>> frames;
-
-  std::atomic<int> head;
-  int tail;
+  int frameCount;
+  std::queue<std::unique_ptr<Frame>> frames;
   std::mutex mtx;
 };
 

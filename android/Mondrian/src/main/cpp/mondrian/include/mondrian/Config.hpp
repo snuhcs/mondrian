@@ -85,7 +85,6 @@ struct MondrianConfig {
   int FULL_FRAME_INTERVAL;
   int FULL_FRAME_SIZE;
   Device FULL_DEVICE;
-  int BUFFER_SIZE;
   int LATENCY_SLO_MS;
   int ROI_SIZE; // Used for Emulated Batch or ROI-wise Inference
   ROIExtractorConfig roiExtractorConfig;

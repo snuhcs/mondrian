@@ -5,31 +5,23 @@
 
 namespace md {
 
-FrameBuffer::FrameBuffer(int vid, int capacity)
-    : vid(vid), capacity(capacity), head(0), tail(0) {
-  frames.reserve(capacity);
-  for (int i = 0; i < capacity; ++i) {
-    frames.emplace_back(nullptr);
-  }
-}
+FrameBuffer::FrameBuffer(int vid)
+    : vid(vid), frameCount(0) {}
 
 Frame* FrameBuffer::enqueue(const cv::Mat& yuvMat) {
-  assert(head - tail < capacity);
-  return enqueue(head++, yuvMat);
-}
-
-Frame* FrameBuffer::enqueue(int frameIndex, const cv::Mat& yuvMat) {
-  Frame* prevFrame = frameIndex != 0
-                     ? frames[(frameIndex - 1) % capacity].get()
-                     : nullptr;
+  std::lock_guard<std::mutex> lock(mtx);
+  int frameIndex = frameCount++;
+  Frame* prevFrame = frames.empty() ? nullptr : frames.back().get();
   auto currFrame = std::make_unique<Frame>(vid, frameIndex, yuvMat, prevFrame, NowMicros());
-  frames[frameIndex % capacity] = std::move(currFrame);
-  return frames[frameIndex % capacity].get();
+  frames.push(std::move(currFrame));
+  return frames.back().get();
 }
 
 void FrameBuffer::free(int tailIndex) {
   std::lock_guard<std::mutex> lock(mtx);
-  tail = std::max(tail, tailIndex);
+  while (!frames.empty() && frames.front()->frameIndex <= tailIndex) {
+    frames.pop();
+  }
 }
 
 } // namespace md
