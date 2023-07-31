@@ -97,7 +97,7 @@ void Mondrian::workSchedule() {
     bool fullFramePlan = currID % config_.FULL_FRAME_INTERVAL == 0;
 
     LOGD("========== Schedule %d Start at %.2f ms ==========",
-         currID, float(NowMicros() - startTime_) / 1000);
+         currID, (float) (NowMicros() - startTime_) / 1000);
     // Inference planning
     auto latencyTable = inferenceEngine_->latencyTable();
     time_us fullStartTime = fullFramePlan
@@ -109,8 +109,8 @@ void Mondrian::workSchedule() {
         {{config_.FULL_DEVICE, fullStartTime}});
     assert(!inferencePlan.empty());
     std::stringstream ss;
-    for (auto&[device, sizeIsFullLatency] : latencyTable) {
-      for (auto&[sizeIsFull, latency] : sizeIsFullLatency) {
+    for (auto& [device, sizeIsFullLatency] : latencyTable) {
+      for (auto& [sizeIsFull, latency] : sizeIsFullLatency) {
         ss << sizeIsFull.first << ": " << latency << " us, ";
       }
     }
@@ -122,7 +122,7 @@ void Mondrian::workSchedule() {
     auto packingResult = ROIExtractor_->prepareInference(inferencePlan, fullFramePlan, currID);
     packingResults_.put(packingResult);
     LOGD("========== Schedule %d End   at %.2f ms ==========",
-         currID, float(NowMicros() - startTime_) / 1000);
+         currID, (float) (NowMicros() - startTime_) / 1000);
 
     // Wait for scheduling interval
     time_us sleepTime = scheduleInterval_ - (NowMicros() - scheduleStart);
@@ -139,14 +139,14 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
        (NowMicros() - startTime_) / 1000, frame->frameIndex);
   frame->fullInferenceStartTime = times.first;
   frame->fullInferenceEndTime = times.second;
-  for (const BoundingBox& box: boxes) {
+  for (const BoundingBox& box : boxes) {
     auto& loc = box.loc;
     frame->boxes.push_back(std::make_unique<BoundingBox>(
         INVALID_ID, box.loc, box.confidence, box.label, O_FULL_FRAME));
   }
   patchReconstructor_->matchBoxesROIs(frame, true);
 
-  for (auto& box: frame->boxes) {
+  for (auto& box : frame->boxes) {
     assert(box->id != INVALID_ID);
   }
   frame->isBoxesReady = true;
@@ -174,14 +174,14 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
     auto [boxes, times, device] = inferenceEngine_->getResults(packedCanvases[i].getKey());
     const int inputSize = packedCanvases[i].packedCanvasSize;
     std::stringstream ss;
-    for (Frame* frame: packedCanvases[i].getPackedFrames()) {
+    for (Frame* frame : packedCanvases[i].getPackedFrames()) {
       ss << frame->frameIndex << ", ";
     }
     LOGD("Inference %d (%d, %s, PACK) at %lld ms | %s",
          currID, inputSize, str(device).c_str(),
          (NowMicros() - startTime_) / 1000, ss.str().c_str());
     assert(device == packedCanvases[i].device);
-    for (Frame* frame: packedCanvases[i].getPackedFrames()) {
+    for (Frame* frame : packedCanvases[i].getPackedFrames()) {
       if (frame->inferenceDevice == NO_DEVICE) {
         frame->inferenceFrameSize = inputSize;
         frame->inferenceDevice = device;
@@ -192,7 +192,7 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
     packedCanvases[i].packedMat.release();
     patchReconstructor_->assignBoxesToFrame(packedCanvases[i], boxes);
 
-    for (Frame* frame: packedCanvases[i].getPackedFrames()) {
+    for (Frame* frame : packedCanvases[i].getPackedFrames()) {
       if (frame->isReadyToMarry(i)) { // If all mergedROIs are packed and inferenced
         // Match boxes with ROIs (per frame)
         nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
@@ -207,7 +207,7 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
 
 void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
   Stream inferenceFrames;
-  for (auto& packedCanvas: packedCanvases) {
+  for (auto& packedCanvas : packedCanvases) {
     auto [boxes, times, device] = inferenceEngine_->getResults(packedCanvas.getKey());
     assert(packedCanvas.packedROIs.size() == 1);
     assert(device == packedCanvas.device);
@@ -220,27 +220,28 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
       mergedROI->frame()->packedInferenceEndTime = times.second;
     }
     inferenceFrames.insert(mergedROI->frame());
-    for (BoundingBox& b: boxes) {
-      float newL = std::max(0.0f, (b.loc.l - float(x)) / mergedROI->targetScale() + mergedROI->loc().l);
-      float newT = std::max(0.0f, (b.loc.t - float(y)) / mergedROI->targetScale() + mergedROI->loc().t);
-      float newR = std::max(0.0f, (b.loc.r - float(x)) / mergedROI->targetScale() + mergedROI->loc().l);
-      float newB = std::max(0.0f, (b.loc.b - float(y)) / mergedROI->targetScale() + mergedROI->loc().t);
+    const float mergedScale = mergedROI->targetScale();
+    for (BoundingBox& b : boxes) {
+      float newL = std::max(0.0f, (b.loc.l - float(x)) / mergedScale + mergedROI->loc().l);
+      float newT = std::max(0.0f, (b.loc.t - float(y)) / mergedScale + mergedROI->loc().t);
+      float newR = std::max(0.0f, (b.loc.r - float(x)) / mergedScale + mergedROI->loc().l);
+      float newB = std::max(0.0f, (b.loc.b - float(y)) / mergedScale + mergedROI->loc().t);
       assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
       mergedROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
           INVALID_ID, Rect(newL, newT, newR, newB), b.confidence, b.label, O_FULL_FRAME));
     }
   }
 
-  for (Frame* frame: inferenceFrames) {
+  for (Frame* frame : inferenceFrames) {
     nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
     patchReconstructor_->matchBoxesROIs(frame, false);
   }
 }
 
 void Mondrian::releaseFrames(const MultiStream& multiStream) {
-  for (const auto& [vid, stream]: multiStream) {
+  for (const auto& [vid, stream] : multiStream) {
     if (stream.empty()) continue;
-    for (Frame* frame: stream) {
+    for (Frame* frame : stream) {
       log(frame);
     }
     int lastFrameIndex = (*stream.rbegin())->frameIndex;
@@ -253,7 +254,7 @@ void Mondrian::log(const Frame* frame) {
     loggerFrame_->logTimeline(frame);
   }
   if (loggerROI_) {
-    for (auto& roi: frame->rois) {
+    for (auto& roi : frame->rois) {
       loggerROI_->logROI(roi.get());
     }
   }
@@ -332,7 +333,7 @@ void Mondrian::workPostprocess() {
     }
 
     // Enqueue packed canvases
-    for (const auto& packedCanvas: packedCanvases) {
+    for (const auto& packedCanvas : packedCanvases) {
       assert(packedCanvas.device != NO_DEVICE);
       inferenceEngine_->enqueue(
           packedCanvas.packedMat, packedCanvas.device, packedCanvas.packedCanvasSize,
@@ -355,9 +356,9 @@ void Mondrian::workPostprocess() {
     Interpolator::interpolate(selectedFrames, config_.INTERPOLATION_THRESHOLD);
 
     // Notify results of rest of the frames
-    for (auto& it: selectedFrames) {
-      for (Frame* frame: it.second) {
-        for (auto& roi: frame->rois) {
+    for (auto& it : selectedFrames) {
+      for (Frame* frame : it.second) {
+        for (auto& roi : frame->rois) {
           if (roi->box == nullptr) {
             continue;
           }
@@ -374,8 +375,8 @@ void Mondrian::workPostprocess() {
 
     // Update results for system output
     std::unique_lock<std::mutex> resultLock(logMtx_);
-    for (const auto& it: selectedFrames) {
-      for (Frame* frame: it.second) {
+    for (const auto& it : selectedFrames) {
+      for (Frame* frame : it.second) {
         if (frame != fullFrameTarget) {
           std::vector<BoundingBox> boxes;
           std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
@@ -399,8 +400,8 @@ void Mondrian::workLog() {
       return stop_ || std::any_of(results_.begin(), results_.end(),
                                   [](const auto& it) { return !it.second.empty(); });
     });
-    for (const auto& [vid, frameResults]: results_) {
-      for (const auto& [frameIndex, endTimeBoxes]: frameResults) {
+    for (const auto& [vid, frameResults] : results_) {
+      for (const auto& [frameIndex, endTimeBoxes] : frameResults) {
         const auto& [endTime, boxes] = endTimeBoxes;
         loggerBoxes_->logBoxes(vid, frameIndex, boxes);
       }

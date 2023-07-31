@@ -10,7 +10,7 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
   auto copiedFreeRectsVec = freeRectsVec;
   IntPairs packIndices;
   IntPairs packLocations;
-  for (const auto&[w, h]: boxWHs) {
+  for (const auto& [w, h] : boxWHs) {
     int pack_i = -1;
     int pack_j = -1;
     for (int _i = 0; _i < copiedFreeRectsVec.size(); _i++) {
@@ -51,8 +51,8 @@ void ROIPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
                       ExecutionType executionType, int roiSize) {
   assert(boxWH.size() == indices.size());
   for (int i = 0; i < boxWH.size(); i++) {
-    auto[w, h] = boxWH[i];
-    auto[pack_i, pack_j] = indices[i];
+    auto [w, h] = boxWH[i];
+    auto [pack_i, pack_j] = indices[i];
     if (executionType == EMULATED_BATCH) {
       packBox(freeRectsVec, roiSize, roiSize, pack_i, pack_j);
     } else {
@@ -82,7 +82,7 @@ void ROIPacker::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
   assert(pack_i < freeRectsVec.size() && pack_j < freeRectsVec[pack_i].size());
   IntRect freeRectToPack = freeRectsVec[pack_i][pack_j];
   freeRectsVec[pack_i].erase(freeRectsVec[pack_i].begin() + pack_j);
-  auto[rect0, rect1] = splitFreeRect(w, h, freeRectToPack);
+  auto [rect0, rect1] = splitFreeRect(w, h, freeRectToPack);
   if (rect0.area > 0) {
     freeRectsVec[pack_i].push_back(rect0);
   }

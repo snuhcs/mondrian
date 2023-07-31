@@ -32,8 +32,8 @@ OFFeatures::OFFeatures(const std::vector<Shift>& shifts,
     avgErr = 100;
     return;
   }
-  auto[validShifts, validErrs] = filterInvalid(shifts, statuses, errs);
-  auto[inlierShifts, inlierErrs] = filterOutlier(validShifts, validErrs);
+  auto [validShifts, validErrs] = filterInvalid(shifts, statuses, errs);
+  auto [inlierShifts, inlierErrs] = filterOutlier(validShifts, validErrs);
   assert(!inlierShifts.empty());
   shiftAvg = avgOf(inlierShifts);
   shiftStd = stdOf(inlierShifts);
@@ -63,7 +63,7 @@ OFFeatures::filterOutlier(const std::vector<Shift>& shifts,
   assert(!shifts.empty());
   std::vector<float> squareDistances;
   squareDistances.reserve(shifts.size());
-  for (const auto&[x, y]: shifts) {
+  for (const auto& [x, y] : shifts) {
     squareDistances.push_back(x * x + y * y);
   }
   std::sort(squareDistances.begin(), squareDistances.end());
@@ -72,7 +72,7 @@ OFFeatures::filterOutlier(const std::vector<Shift>& shifts,
   std::vector<Shift> inlierShifts;
   std::vector<float> inlierErrs;
   for (int i = 0; i < shifts.size(); i++) {
-    auto&[x, y] = shifts[i];
+    auto& [x, y] = shifts[i];
     if (x * x + y * y >= q1SquareDistance) {
       inlierShifts.emplace_back(x, y);
       inlierErrs.push_back(errs[i]);
@@ -86,7 +86,7 @@ Shift OFFeatures::avgOf(const std::vector<Shift>& shifts) {
     return {0, 0};
   }
   Shift sum = {0, 0};
-  for (const auto&[x, y]: shifts) {
+  for (const auto& [x, y] : shifts) {
     sum.first += x;
     sum.second += y;
   }
@@ -99,8 +99,8 @@ Shift OFFeatures::stdOf(const std::vector<Shift>& shifts) {
     return {0, 0};
   }
   Shift var = {0, 0};
-  auto[avgX, avgY] = avgOf(shifts);
-  for (const auto&[x, y]: shifts) {
+  auto [avgX, avgY] = avgOf(shifts);
+  for (const auto& [x, y] : shifts) {
     var.first += (x - avgX) * (x - avgX);
     var.second += (y - avgY) * (y - avgY);
   }
@@ -116,8 +116,8 @@ float OFFeatures::nccOf(const std::vector<Shift>& shifts) {
   float sum = 0;
   for (int i = 0; i < shifts.size(); i++) {
     for (int j = i + 1; j < shifts.size(); j++) {
-      auto&[Xi, Yi] = shifts[i];
-      auto&[Xj, Yj] = shifts[j];
+      auto& [Xi, Yi] = shifts[i];
+      auto& [Xj, Yj] = shifts[j];
       float sizeI = Xi * Xi + Yi * Yi;
       float sizeJ = Xj * Xj + Yj * Yj;
       if (sizeI == 0 || sizeJ == 0) {
@@ -134,7 +134,7 @@ float OFFeatures::avgOf(const std::vector<float>& errs) {
     return 0;
   }
   float sum = 0;
-  for (const float& e: errs) {
+  for (const float& e : errs) {
     sum += e;
   }
   return sum /= float(errs.size());

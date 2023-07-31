@@ -70,7 +70,8 @@ class ROIPrioritizer {
                                        ROIPrioritizerType type);
 
  private:
-  static std::vector<MergedROI*> minMaxPropagation(const MultiStream& packedFrames, int fullFrameVid);
+  static std::vector<MergedROI*> minMaxPropagation(const MultiStream& packedFrames,
+                                                   int fullFrameVid);
 
   static std::vector<MergedROI*> ofConfidence(const MultiStream& packedFrames, int fullFrameVid);
 };

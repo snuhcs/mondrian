@@ -51,7 +51,6 @@ add_library(
     mondrian/src/tree/MTA.cpp
     mondrian/src/tree/VIRAT.cpp
     mondrian/src/model/Classifier.cpp
-    mondrian/src/model/MnnYoloV4Classifier.cpp
     mondrian/src/model/TfLiteYoloV4Classifier.cpp
     mondrian/src/model/TfLiteYoloV5Classifier.cpp
     mondrian/src/model/TfLiteYoloV5ClassifierDSP.cpp
@@ -73,7 +72,4 @@ target_link_libraries(
     nnapi_delegate_no_nnapi_implementation
     nnapi_implementation
     nnapi_util
-    MNN
-    MNN_CL
-    MNN_Express
 )

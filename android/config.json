@@ -52,7 +52,6 @@
         "draw_inference_result": true,
         "dataset": "mta",
         "model": "YOLO_V5",
-        "runtime": "TFLITE",
         "use_tiny": false,
         "conf_threshold": 0.5,
         "iou_threshold": 0.5,

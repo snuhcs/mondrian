@@ -49,7 +49,7 @@ void Logger::logBoxes(int vid, int frameIndex, const std::vector<BoundingBox>& b
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
-  for (const auto& box: boxes) {
+  for (const auto& box : boxes) {
     logFile << vid << delim
             << frameIndex << delim
             << box.str(delim) << '\n';

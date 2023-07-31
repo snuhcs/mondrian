@@ -14,15 +14,15 @@ Worker::Worker(InferenceEngine* engine, Device device,
     maxPackedCanvasSize = (*classifierMap_.rbegin()).first.first;
     env->GetJavaVM(&jvm);
     class_MondrianApp = reinterpret_cast<jclass>(env->NewGlobalRef(
-            env->FindClass("hcs/offloading/mondrian/MondrianApp")));
+        env->FindClass("hcs/offloading/mondrian/MondrianApp")));
     MondrianApp_drawOutput = env->GetMethodID(class_MondrianApp, "drawOutput",
                                               "(JLjava/util/List;J)V");
     class_ArrayList = reinterpret_cast<jclass>(env->NewGlobalRef(
-            env->FindClass("java/util/ArrayList")));
+        env->FindClass("java/util/ArrayList")));
     ArrayList_init = env->GetMethodID(class_ArrayList, "<init>", "()V");
     ArrayList_add = env->GetMethodID(class_ArrayList, "add", "(ILjava/lang/Object;)V");
     class_BoundingBox = reinterpret_cast<jclass>(env->NewGlobalRef(
-            env->FindClass("hcs/offloading/mondrian/BoundingBox")));
+        env->FindClass("hcs/offloading/mondrian/BoundingBox")));
     BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIFI)V");
   }
 
@@ -45,7 +45,7 @@ void Worker::work() {
     }
     // Prepare input
     time_us start = NowMicros();
-    auto[rgbMat, size, isFullFrame, key] = std::move(inputs.front());
+    auto [rgbMat, size, isFullFrame, key] = std::move(inputs.front());
     inputs.pop();
     lock.unlock();
 
@@ -77,8 +77,8 @@ void Worker::enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, int
 }
 
 void Worker::profileLatency(int warmupRuns, int numRuns) {
-  for (auto& it: classifierMap_) {
-    auto&[size, isFullFrame] = it.first;
+  for (auto& it : classifierMap_) {
+    auto& [size, isFullFrame] = it.first;
     auto* classifier = it.second;
     for (int i = 0; i < warmupRuns; i++) {
       cv::Mat rgbMat(size, size, CV_8UC3);

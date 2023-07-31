@@ -16,7 +16,8 @@ class PatchReconstructor {
  public:
   PatchReconstructor(const PatchReconstructorConfig& config, ROIResizer* roiResizer);
 
-  void assignBoxesToFrame(PackedCanvas& packedCanvas, const std::vector<BoundingBox>& results) const;
+  void assignBoxesToFrame(PackedCanvas& packedCanvas,
+                          const std::vector<BoundingBox>& results) const;
 
   void matchBoxesROIs(Frame* frame, bool isFullFrame) const;
 

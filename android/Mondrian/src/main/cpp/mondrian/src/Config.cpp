@@ -69,17 +69,16 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   config.DRAW_INFERENCE_RESULT = parseBool(json, "draw_inference_result");
   config.DATASET = parseString(json, "dataset");
   config.MODEL = parseString(json, "model");
-  config.RUNTIME = parseString(json, "runtime");
   config.USE_TINY = parseBool(json, "use_tiny");
   config.CONF_THRESHOLD = parseFloat(json, "conf_threshold");
   config.IOU_THRESHOLD = parseFloat(json, "iou_threshold");
   config.PROFILE_WARMUPS = parseInt(json, "profile_warmups");
   config.PROFILE_RUNS = parseInt(json, "profile_runs");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
-  for (const auto& inputSizeJson: json["input_sizes"]) {
+  for (const auto& inputSizeJson : json["input_sizes"]) {
     config.INPUT_SIZES.insert(inputSizeJson.asInt());
   }
-  for (const auto& deviceJson: json["devices"]) {
+  for (const auto& deviceJson : json["devices"]) {
     config.DEVICES.insert(deviceOf(deviceJson.asString()));
   }
   return config;
@@ -232,7 +231,6 @@ void InferenceEngineConfig::print() const {
   ss << "DRAW_INFERENCE_RESULT: " << DRAW_INFERENCE_RESULT << std::endl;
   ss << "DATASET: " << DATASET << std::endl;
   ss << "MODEL: " << MODEL << std::endl;
-  ss << "RUNTIME: " << RUNTIME << std::endl;
   ss << "USE_TINY: " << USE_TINY << std::endl;
   ss << "CONF_THRESHOLD: " << CONF_THRESHOLD << std::endl;
   ss << "IOU_THRESHOLD: " << IOU_THRESHOLD << std::endl;
@@ -240,12 +238,12 @@ void InferenceEngineConfig::print() const {
   ss << "PROFILE_RUNS: " << PROFILE_RUNS << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
   ss << "INPUT_SIZES: ";
-  for (auto& inputSize: INPUT_SIZES) {
+  for (auto& inputSize : INPUT_SIZES) {
     ss << inputSize << " ";
   }
   ss << std::endl;
   ss << "DEVICES: ";
-  for (auto& device: DEVICES) {
+  for (auto& device : DEVICES) {
     ss << md::str(device) << " ";
   }
   ss << std::endl;

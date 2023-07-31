@@ -45,7 +45,6 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int in
     LOGD("YoloV5 model loaded");
   }
 
-
   tflite::ops::builtin::BuiltinOpResolver resolver;
   if (tflite::InterpreterBuilder(*model, resolver)(&interpreter) != kTfLiteOk) {
     LOGE("YoloV5 interpreter creation failed");
@@ -75,31 +74,31 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int in
   assert(inputTensorIndices.size() == 1 && outputTensorIndices.size() == 1);
 
   auto* inputTensorDims = interpreter->tensor(inputTensorIndices[0])->dims;
-  assert(inputTensorDims->size == 4 && inputTensorDims->data[0] == 1 &&
-         inputTensorDims->data[1] == inputSize && inputTensorDims->data[2] == inputSize &&
-         inputTensorDims->data[3] == 3);
+  assert(inputTensorDims->size == 4 && inputTensorDims->data[0] == 1
+             && inputTensorDims->data[1] == inputSize && inputTensorDims->data[2] == inputSize
+             && inputTensorDims->data[3] == 3);
   auto* outputTensorDims = interpreter->tensor(outputTensorIndices[0])->dims;
-  assert(outputTensorDims->size == 3 && outputTensorDims->data[0] == 1 &&
-         outputTensorDims->data[1] == outputSize && outputTensorDims->data[2] == 85);
+  assert(outputTensorDims->size == 3 && outputTensorDims->data[0] == 1
+             && outputTensorDims->data[1] == outputSize && outputTensorDims->data[2] == 85);
 
   TfLiteTensor* inputTensor = interpreter->tensor(inputTensorIndices[0]);
   TfLiteTensor* outputTensor = interpreter->tensor(outputTensorIndices[0]);
-  assert(inputTensor->quantization.type == kTfLiteAffineQuantization &&
-         outputTensor->quantization.type == kTfLiteAffineQuantization);
+  assert(inputTensor->quantization.type == kTfLiteAffineQuantization
+             && outputTensor->quantization.type == kTfLiteAffineQuantization);
   auto* inputQuantization = (TfLiteAffineQuantization*) inputTensor->quantization.params;
   auto* outputQuantization = (TfLiteAffineQuantization*) outputTensor->quantization.params;
-  assert(inputQuantization->scale->size == 1 &&
-         inputQuantization->zero_point->size == 1 &&
-         inputQuantization->quantized_dimension == 0);
-  assert(outputQuantization->scale->size == 1 &&
-         outputQuantization->zero_point->size == 1 &&
-         outputQuantization->quantized_dimension == 0);
+  assert(inputQuantization->scale->size == 1
+             && inputQuantization->zero_point->size == 1
+             && inputQuantization->quantized_dimension == 0);
+  assert(outputQuantization->scale->size == 1
+             && outputQuantization->zero_point->size == 1
+             && outputQuantization->quantized_dimension == 0);
   inputBias = inputQuantization->zero_point->data[0];
   outputBias = outputQuantization->zero_point->data[0];
   inputScale = inputQuantization->scale->data[0];
   outputScale = outputQuantization->scale->data[0];
   assert(inputBias == 0);
-  assert(std::abs(1.0/inputScale - 255.0) < 1.0);
+  assert(std::abs(1.0 / inputScale - 255.0) < 1.0);
   LOGD("XXX inputBias: %d, outputBias: %d, inputScale: %f, outputScale: %f",
        inputBias, outputBias, inputScale, outputScale);
 

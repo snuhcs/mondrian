@@ -59,21 +59,21 @@ TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(std::string dataset, int inputSiz
   assert(inputTensorIndices.size() == 1 && outputTensorIndices.size() == 2);
 
   auto* inputTensorDims = interpreter->tensor(inputTensorIndices[0])->dims;
-  assert(inputTensorDims->size == 4 && inputTensorDims->data[0] == 1 &&
-         inputTensorDims->data[1] == inputSize && inputTensorDims->data[2] == inputSize &&
-         inputTensorDims->data[3] == 3);
+  assert(inputTensorDims->size == 4 && inputTensorDims->data[0] == 1
+             && inputTensorDims->data[1] == inputSize && inputTensorDims->data[2] == inputSize
+             && inputTensorDims->data[3] == 3);
 
   bool isBoxesFirst = interpreter->tensor(outputTensorIndices[0])->bytes <
-                      interpreter->tensor(outputTensorIndices[1])->bytes;
+      interpreter->tensor(outputTensorIndices[1])->bytes;
   int boxesIndex = isBoxesFirst ? outputTensorIndices[0] : outputTensorIndices[1];
   int confidencesIndex = isBoxesFirst ? outputTensorIndices[1] : outputTensorIndices[0];
   auto* boxesTensorDims = interpreter->tensor(boxesIndex)->dims;
-  assert(boxesTensorDims->size == 3 && boxesTensorDims->data[0] == 1 &&
-         boxesTensorDims->data[1] == outputSize && boxesTensorDims->data[2] == 4);
+  assert(boxesTensorDims->size == 3 && boxesTensorDims->data[0] == 1
+             && boxesTensorDims->data[1] == outputSize && boxesTensorDims->data[2] == 4);
   auto* confidencesTensorDims = interpreter->tensor(confidencesIndex)->dims;
-  assert(confidencesTensorDims->size == 3 && confidencesTensorDims->data[0] == 1 &&
-         confidencesTensorDims->data[1] == outputSize &&
-         confidencesTensorDims->data[2] == numLabels);
+  assert(confidencesTensorDims->size == 3 && confidencesTensorDims->data[0] == 1
+             && confidencesTensorDims->data[1] == outputSize
+             && confidencesTensorDims->data[2] == numLabels);
 
   input = interpreter->typed_tensor<float>(inputTensorIndices[0]);
   boxes = interpreter->typed_tensor<float>(boxesIndex);

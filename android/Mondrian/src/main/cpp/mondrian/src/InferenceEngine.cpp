@@ -2,7 +2,6 @@
 
 #include "mondrian/Log.hpp"
 #include "mondrian/Worker.hpp"
-#include "mondrian/model/MnnYoloV4Classifier.hpp"
 #include "mondrian/model/TfLiteYoloV4Classifier.hpp"
 #include "mondrian/model/TfLiteYoloV5Classifier.hpp"
 #include "mondrian/model/TfLiteYoloV5ClassifierDSP.hpp"
@@ -14,27 +13,16 @@ namespace md {
 InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  JNIEnv* env, jobject app)
     : mConfig(config) {
-  for (Device device: config.DEVICES) {
-    if (device == GPU) {
-      if (config.MODEL == "YOLO_V4" && config.RUNTIME == "MNN") {
-        addClassifiers<MnnYoloV4Classifier>(device, config, env, app);
-      } else if (config.MODEL == "YOLO_V4" && config.RUNTIME == "TFLITE") {
-        addClassifiers<TfLiteYoloV4Classifier>(device, config, env, app);
-      } else if (config.MODEL == "YOLO_V5" && config.RUNTIME == "TFLITE") {
-        addClassifiers<TfLiteYoloV5Classifier>(device, config, env, app);
-      } else {
-        LOGE("Running %s model with %s runtime on GPU is not supported yet",
-             config.MODEL.c_str(), config.RUNTIME.c_str());
-      }
-    } else if (device == DSP) {
-      if (config.MODEL == "YOLO_V5" && config.RUNTIME == "TFLITE") {
-        addClassifiers<TfLiteYoloV5ClassifierDSP>(device, config, env, app);
-      } else {
-        LOGE("Running %s model with %s runtime on DSP is not supported yet",
-             config.MODEL.c_str(), config.RUNTIME.c_str());
-      }
+  for (Device device : config.DEVICES) {
+    if (config.MODEL == "YOLO_V4" && device == GPU) {
+      addClassifiers<TfLiteYoloV4Classifier>(device, config, env, app);
+    } else if (config.MODEL == "YOLO_V5" && device == GPU) {
+      addClassifiers<TfLiteYoloV5Classifier>(device, config, env, app);
+    } else if (config.MODEL == "YOLO_V5" && device == DSP) {
+      addClassifiers<TfLiteYoloV5ClassifierDSP>(device, config, env, app);
     } else {
-      LOGE("Device %d is not supported yet", device);
+      LOGE("Running %s model on %s is not supported yet",
+           config.MODEL.c_str(), str(device).c_str());
     }
   }
 }
@@ -46,7 +34,7 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
 
   // classifiers for packed canvas inference
   bool forFullFrame = false;
-  for (const auto& inputSize: config.INPUT_SIZES) {
+  for (const auto& inputSize : config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
         config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
         config.USE_TINY, forFullFrame);
@@ -71,7 +59,7 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
 }
 
 void InferenceEngine::profileLatency() const {
-  for (const auto&[device, worker]: workers) {
+  for (const auto& [device, worker] : workers) {
     workers.at(device)->profileLatency(mConfig.PROFILE_WARMUPS, mConfig.PROFILE_RUNS);
   }
 }
@@ -100,7 +88,7 @@ void InferenceEngine::enqueueResult(const int handle, const Result& result) {
 
 std::map<Device, std::map<std::pair<int, bool>, time_us>> InferenceEngine::latencyTable() const {
   std::map<Device, std::map<std::pair<int, bool>, time_us>> latencyTable;
-  for (const auto&[device, worker]: workers) {
+  for (const auto& [device, worker] : workers) {
     latencyTable[device] = worker->latencyMap();
   }
   return latencyTable;

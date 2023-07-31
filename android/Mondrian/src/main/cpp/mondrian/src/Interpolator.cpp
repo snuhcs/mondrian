@@ -5,9 +5,9 @@
 namespace md {
 
 void Interpolator::interpolate(MultiStream& frames, float threshold) {
-  for (const auto&[vid, aStreamFrames]: frames) {
+  for (const auto& [vid, aStreamFrames] : frames) {
     std::set<ID> roiIds = getROIIds(aStreamFrames);
-    for (auto id: roiIds) {
+    for (auto id : roiIds) {
       std::vector<ROI*> rois = getROIStream(aStreamFrames, id);
       std::vector<int> validIndices = findValidROIs(rois);
       if (validIndices.empty() ||
@@ -28,8 +28,8 @@ void Interpolator::interpolate(MultiStream& frames, float threshold) {
 
 std::set<ID> Interpolator::getROIIds(const Stream& frames) {
   std::set<ID> childIDs;
-  for (const Frame* frame: frames) {
-    for (const auto& roi: frame->rois) {
+  for (const Frame* frame : frames) {
+    for (const auto& roi : frame->rois) {
       childIDs.insert(roi->id);
     }
   }
@@ -38,8 +38,8 @@ std::set<ID> Interpolator::getROIIds(const Stream& frames) {
 
 std::vector<ROI*> Interpolator::getROIStream(const Stream& frames, ID roiId) {
   std::vector<ROI*> roiStream;
-  for (const Frame* frame: frames) {
-    for (const auto& roi: frame->rois) {
+  for (const Frame* frame : frames) {
+    for (const auto& roi : frame->rois) {
       if (roi->id == roiId) {
         roiStream.push_back(roi.get());
       }

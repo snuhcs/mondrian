@@ -57,7 +57,6 @@ struct InferenceEngineConfig {
   bool DRAW_INFERENCE_RESULT;
   std::string DATASET;
   std::string MODEL;
-  std::string RUNTIME;
   bool USE_TINY;
   float CONF_THRESHOLD;
   float IOU_THRESHOLD;

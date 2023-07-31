@@ -7,7 +7,7 @@ namespace md {
 double InferencePlanner::weigh(const std::vector<time_us>& layout,
                                std::map<time_us, double> profile) {
   double weight = 0;
-  for (auto l: layout) {
+  for (auto l : layout) {
     assert (profile.find(l) != profile.end());
     weight += double(l) * profile[l];
   }
@@ -21,7 +21,7 @@ std::vector<time_us> InferencePlanner::search(time_us total,
   time_us left = total;
 
   // greedy initialization
-  for (auto l: bars) {
+  for (auto l : bars) {
     time_us cnt = left / l;
     for (int i = 0; i < cnt; i++) {
       layout.push_back(l);
@@ -78,16 +78,16 @@ std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
   std::vector<InferenceInfo> inferencePlan;
 
   std::map<Device, std::map<int, time_us>> latencyTableWoFullFrame;
-  for (const auto&[device, size_forFullFrame_latency]: latencyTable) {
-    for (const auto&[size_forFullFrame, latency]: size_forFullFrame_latency) {
-      auto[size, forFullFrame] = size_forFullFrame;
+  for (const auto& [device, size_forFullFrame_latency] : latencyTable) {
+    for (const auto& [size_forFullFrame, latency] : size_forFullFrame_latency) {
+      auto [size, forFullFrame] = size_forFullFrame;
       if (!forFullFrame) {
         latencyTableWoFullFrame[device][size] = latency;
       }
     }
   }
 
-  for (const auto&[device, size_latency]: latencyTableWoFullFrame) {
+  for (const auto& [device, size_latency] : latencyTableWoFullFrame) {
     std::map<time_us, double> profile;
     std::vector<time_us> bars;
     std::map<time_us, int> latency_size;
@@ -96,7 +96,7 @@ std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
         [](const auto& it0, const auto& it1) {
           return it0.first < it1.first;
         })->first;
-    for (const auto&[size, latency]: size_latency) {
+    for (const auto& [size, latency] : size_latency) {
       if (roiWiseInference && size != min_size) {
         continue;
       }
@@ -111,13 +111,13 @@ std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
                         : 0L;
     std::vector<time_us> layout = search(interval - startTime, bars, profile);
     inferencePlan.reserve(layout.size());
-    for (auto& l: layout) {
+    for (auto& l : layout) {
       inferencePlan.push_back({device, latency_size[l], l, 0});
     }
   }
-  for (const auto& deviceLatency: latencyTableWoFullFrame) {
+  for (const auto& deviceLatency : latencyTableWoFullFrame) {
     std::vector<InferenceInfo*> devicePlan;
-    for (auto& info: inferencePlan) {
+    for (auto& info : inferencePlan) {
       if (info.device == deviceLatency.first) {
         devicePlan.push_back(&info);
       }
@@ -128,7 +128,7 @@ std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
                 return l->size > r->size;
               });
     time_us accumulatedLatency = 0;
-    for (auto* info: devicePlan) {
+    for (auto* info : devicePlan) {
       accumulatedLatency += info->latency;
       info->accumulatedLatency = accumulatedLatency;
     }
