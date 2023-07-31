@@ -16,7 +16,7 @@ namespace md {
 TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(std::string dataset, int inputSize,
                                                float confidenceThreshold, float iouThreshold,
                                                bool isTiny, bool forFullFrame)
-    : Classifier(NUM_LABELS, inputSize, (inputSize / 64) * (inputSize / 64) * 252,
+    : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
                  confidenceThreshold, iouThreshold) {
   std::stringstream ss;
   ss << "/data/local/tmp/models/";

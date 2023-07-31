@@ -173,23 +173,33 @@ void ROIExtractor::packGatheredMultiStream() {
       continue;
     }
     Frame* lastFrame = *frames.rbegin();
-    auto[indices, locations] = ROIPacker::pack(freeRectsVec_, lastFrame->boxesIfLast,
-                                               /*backward=*/false, executionType_, ROISize_);
-    bool fullyPacked = indices.size() == lastFrame->boxesIfLast.size();
-    int maxPackedCanvasIndex = -1;
-    for (auto& [packedCanvasIndex, freeRectIndex]: indices) {
-      maxPackedCanvasIndex = std::max(maxPackedCanvasIndex, packedCanvasIndex);
-    }
+    if (executionType_ == ROI_WISE_INFERENCE) {
+      for (auto& mergedROI: lastFrame->mergedROIs) {
+        auto [bw, bh] = mergedROI->borderedMatWH();
+        if (!freeRectsVec_.empty()) {
+          mergedROI->setPackInfo({0, 0}, freeRectsVec_.size() - 1, executionType_, ROISize_);
+          freeRectsVec_.erase(freeRectsVec_.end() - 1);
+        }
+      }
+    } else { // MONDRIAN, EMULATED_BATCH
+      auto[indices, locations] = ROIPacker::pack(freeRectsVec_, lastFrame->boxesIfLast,
+          /*backward=*/false, executionType_, ROISize_);
+      bool fullyPacked = indices.size() == lastFrame->boxesIfLast.size();
+      int maxPackedCanvasIndex = -1;
+      for (auto& [packedCanvasIndex, freeRectIndex]: indices) {
+        maxPackedCanvasIndex = std::max(maxPackedCanvasIndex, packedCanvasIndex);
+      }
 //    LOGD("XXX == Last Pack Frame %d: %lu / %lu Packed, Last Packed Frame=%d",
 //         lastFrame->frameIndex, indices.size(), lastFrame->boxesIfLast.size(), maxPackedCanvasIndex);
-    if (fullyPacked) {
-      ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
-    } else {
-      indices.resize(lastFrame->boxesIfLast.size());
-      locations.resize(lastFrame->boxesIfLast.size());
-      ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
+      if (fullyPacked) {
+        ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
+      } else {
+        indices.resize(lastFrame->boxesIfLast.size());
+        locations.resize(lastFrame->boxesIfLast.size());
+        ROIPacker::apply(freeRectsVec_, lastFrame->boxesIfLast, indices, executionType_, ROISize_);
+      }
+      prepareFrameLast(lastFrame, indices, locations);
     }
-    prepareFrameLast(lastFrame, indices, locations);
   }
   time_us packLastTime = NowMicros();
 
@@ -200,12 +210,19 @@ void ROIExtractor::packGatheredMultiStream() {
 
   // Pack MergedROIs
   for (MergedROI* mergedROI: orderedMergedROIs) {
-    auto[bw, bh] = mergedROI->borderedMatWH();
-    auto[indices, locations] = ROIPacker::pack(freeRectsVec_, {{bw, bh}}, /*backward=*/false,
-                                               executionType_, ROISize_);
-    if (!indices.empty()) {
-      ROIPacker::apply(freeRectsVec_, {{bw, bh}}, indices, executionType_, ROISize_);
-      mergedROI->setPackInfo(locations[0], indices[0].first, executionType_, ROISize_);
+    if (executionType_ == ROI_WISE_INFERENCE) {
+      if (!freeRectsVec_.empty()) {
+        mergedROI->setPackInfo({0, 0}, freeRectsVec_.size() - 1, executionType_, ROISize_);
+        freeRectsVec_.erase(freeRectsVec_.end() - 1);
+      }
+    } else {
+      auto[bw, bh] = mergedROI->borderedMatWH();
+      auto [indices, locations] = ROIPacker::pack(freeRectsVec_, {{bw, bh}}, /*backward=*/false,
+                                                  executionType_, ROISize_);
+      if (!indices.empty()) {
+        ROIPacker::apply(freeRectsVec_, {{bw, bh}}, indices, executionType_, ROISize_);
+        mergedROI->setPackInfo(locations[0], indices[0].first, executionType_, ROISize_);
+      }
     }
   }
   time_us packOthersTime = NowMicros();
@@ -567,8 +584,10 @@ IntPairs ROIExtractor::getBoxesIfLast(const Frame* frame) {
   IntPairs boxesIfLast;
   for (const auto& mergedROI: frame->mergedROIs) {
     // TODO: Make below two condition as single value(or function) of condition
-    bool noScaleForLast = executionType_ != MONDRIAN || config_.NO_DOWNSAMPLING_FOR_LAST_FRAME;
-    float scale = noScaleForLast ? 1.0f : mergedROI->targetScale();
+    float scale = mergedROI->targetScale();
+    if (executionType_ == MONDRIAN && config_.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
+      scale = 1.0f;
+    }
     auto[bw, bh] = mergedROI->borderedMatWH(scale);
     boxesIfLast.emplace_back(bw, bh);
   }
@@ -594,7 +613,7 @@ void ROIExtractor::prepareFrameLast(Frame* frame, const IntPairs& indices,
   frame->resetProbeROIs();
   int i = 0;
   for (const auto& mergedROI: frame->mergedROIs) {
-    if (executionType_ != MONDRIAN || config_.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
+    if (executionType_ == MONDRIAN && config_.NO_DOWNSAMPLING_FOR_LAST_FRAME) {
       mergedROI->setTargetScale(1.0f);
     }
     mergedROI->setPackInfo(locations[i], indices[i].first, executionType_, ROISize_);
@@ -619,24 +638,21 @@ void ROIExtractor::prepareFrameLast(Frame* frame, const IntPairs& indices,
 
 IntPairs ROIExtractor::getBoxesIfScaled(const Frame* frame) {
   // TODO: Synchronize simulation with add logics
-  IntPairs BoxesIfIntermediate;
+  IntPairs boxesIfIntermediate;
   for (const auto& mergedROI: frame->mergedROIs) {
-    BoxesIfIntermediate.push_back(mergedROI->borderedMatWH());
+    boxesIfIntermediate.push_back(mergedROI->borderedMatWH());
   }
-  return BoxesIfIntermediate;
+  return boxesIfIntermediate;
 }
 
 void ROIExtractor::prepareFrameScaled(Frame* frame,
                                       const IntPairs& indices, const IntPairs& locations) {
   assert(indices.size() == locations.size());
+  assert(frame->mergedROIs.size() == locations.size());
   frame->resetProbeROIs();
-  int i = 0;
-  for (const auto& mergedROI: frame->mergedROIs) {
-    auto[bw, bh] = mergedROI->borderedMatWH();
-    mergedROI->setPackInfo(locations[i], indices[i].first, executionType_, ROISize_);
-    i++;
+  for (int i = 0; i < frame->mergedROIs.size(); i++) {
+    frame->mergedROIs[i]->setPackInfo(locations[i], indices[i].first, executionType_, ROISize_);
   }
-  assert(i == locations.size());
 }
 
 void ROIExtractor::processPD(Frame* currFrame) {
