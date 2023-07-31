@@ -69,7 +69,6 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   config.DRAW_INFERENCE_RESULT = parseBool(json, "draw_inference_result");
   config.DATASET = parseString(json, "dataset");
   config.MODEL = parseString(json, "model");
-  config.RUNTIME = parseString(json, "runtime");
   config.USE_TINY = parseBool(json, "use_tiny");
   config.CONF_THRESHOLD = parseFloat(json, "conf_threshold");
   config.IOU_THRESHOLD = parseFloat(json, "iou_threshold");
@@ -232,7 +231,6 @@ void InferenceEngineConfig::print() const {
   ss << "DRAW_INFERENCE_RESULT: " << DRAW_INFERENCE_RESULT << std::endl;
   ss << "DATASET: " << DATASET << std::endl;
   ss << "MODEL: " << MODEL << std::endl;
-  ss << "RUNTIME: " << RUNTIME << std::endl;
   ss << "USE_TINY: " << USE_TINY << std::endl;
   ss << "CONF_THRESHOLD: " << CONF_THRESHOLD << std::endl;
   ss << "IOU_THRESHOLD: " << IOU_THRESHOLD << std::endl;

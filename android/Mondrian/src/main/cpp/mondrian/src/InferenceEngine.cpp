@@ -2,7 +2,6 @@
 
 #include "mondrian/Log.hpp"
 #include "mondrian/Worker.hpp"
-#include "mondrian/model/MnnYoloV4Classifier.hpp"
 #include "mondrian/model/TfLiteYoloV4Classifier.hpp"
 #include "mondrian/model/TfLiteYoloV5Classifier.hpp"
 #include "mondrian/model/TfLiteYoloV5ClassifierDSP.hpp"
@@ -16,22 +15,18 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
     : mConfig(config) {
   for (Device device: config.DEVICES) {
     if (device == GPU) {
-      if (config.MODEL == "YOLO_V4" && config.RUNTIME == "MNN") {
-        addClassifiers<MnnYoloV4Classifier>(device, config, env, app);
-      } else if (config.MODEL == "YOLO_V4" && config.RUNTIME == "TFLITE") {
+      if (config.MODEL == "YOLO_V4") {
         addClassifiers<TfLiteYoloV4Classifier>(device, config, env, app);
-      } else if (config.MODEL == "YOLO_V5" && config.RUNTIME == "TFLITE") {
+      } else if (config.MODEL == "YOLO_V5") {
         addClassifiers<TfLiteYoloV5Classifier>(device, config, env, app);
       } else {
-        LOGE("Running %s model with %s runtime on GPU is not supported yet",
-             config.MODEL.c_str(), config.RUNTIME.c_str());
+        LOGE("Running %s model on GPU is not supported yet", config.MODEL.c_str());
       }
     } else if (device == DSP) {
-      if (config.MODEL == "YOLO_V5" && config.RUNTIME == "TFLITE") {
+      if (config.MODEL == "YOLO_V5") {
         addClassifiers<TfLiteYoloV5ClassifierDSP>(device, config, env, app);
       } else {
-        LOGE("Running %s model with %s runtime on DSP is not supported yet",
-             config.MODEL.c_str(), config.RUNTIME.c_str());
+        LOGE("Running %s model on DSP is not supported yet", config.MODEL.c_str());
       }
     } else {
       LOGE("Device %d is not supported yet", device);
