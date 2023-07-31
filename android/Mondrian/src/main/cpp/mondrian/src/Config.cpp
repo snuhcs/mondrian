@@ -29,7 +29,6 @@ static std::string parseString(const Json::Value& json, const std::string& key) 
 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   ROIExtractorConfig config = {};
-  config.MAX_QUEUE_SIZE = parseInt(json, "max_queue_size");
   config.NUM_WORKERS = parseInt(json, "num_workers");
   config.EXTRACTION_RESIZE_WIDTH = parseFloat(json, "extraction_resize_width");
   config.EXTRACTION_RESIZE_HEIGHT = parseFloat(json, "extraction_resize_height");
@@ -107,7 +106,6 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
   config.FULL_DEVICE = deviceOf(parseString(json, "full_device"));
-  config.BUFFER_SIZE = parseInt(json, "buffer_size");
   config.LATENCY_SLO_MS = parseInt(json, "latency_slo_ms");
   config.ROI_SIZE = parseInt(json, "roi_size");
 
@@ -171,7 +169,6 @@ void MondrianConfig::print() const {
   ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
   ss << "FULL_DEVICE: " << md::str(FULL_DEVICE) << std::endl;
-  ss << "BUFFER_SIZE: " << BUFFER_SIZE << std::endl;
   ss << "LATENCY_SLO_MS: " << LATENCY_SLO_MS << std::endl;
   ss << "ROI_SIZE: " << ROI_SIZE << std::endl;
   LOGD("%s", ss.str().c_str());
@@ -185,7 +182,6 @@ void MondrianConfig::print() const {
 void ROIExtractorConfig::print() const {
   std::stringstream ss;
   ss << "========== ROIExtractorConfig ==========" << std::endl;
-  ss << "MAX_QUEUE_SIZE: " << MAX_QUEUE_SIZE << std::endl;
   ss << "NUM_WORKERS: " << NUM_WORKERS << std::endl;
   ss << "EXTRACTION_RESIZE_WIDTH: " << EXTRACTION_RESIZE_WIDTH << std::endl;
   ss << "EXTRACTION_RESIZE_HEIGHT: " << EXTRACTION_RESIZE_HEIGHT << std::endl;

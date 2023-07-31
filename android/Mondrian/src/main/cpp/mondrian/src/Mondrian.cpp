@@ -50,7 +50,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
 
   // Prepare frame buffers
   for (int vid = 0; vid < numVideos; vid++) {
-    frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid, config_.BUFFER_SIZE);
+    frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid);
   }
 
   // Start preprocessing thread

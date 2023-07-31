@@ -14,7 +14,6 @@ namespace md {
 constexpr int NUM_LABELS = 80;
 
 struct ROIExtractorConfig {
-  int MAX_QUEUE_SIZE;
   int NUM_WORKERS;
   float EXTRACTION_RESIZE_WIDTH;
   float EXTRACTION_RESIZE_HEIGHT;
@@ -85,7 +84,6 @@ struct MondrianConfig {
   int FULL_FRAME_INTERVAL;
   int FULL_FRAME_SIZE;
   Device FULL_DEVICE;
-  int BUFFER_SIZE;
   int LATENCY_SLO_MS;
   int ROI_SIZE; // Used for Emulated Batch or ROI-wise Inference
   ROIExtractorConfig roiExtractorConfig;

@@ -13,11 +13,9 @@
     "full_frame_interval": 4,
     "full_frame_size": 1024,
     "full_device": "GPU",
-    "buffer_size": 250,
     "latency_slo_ms": 2000,
     "roi_size": 80,
     "roi_extractor": {
-        "max_queue_size": 250,
         "num_workers": 2,
         "extraction_resize_width": 960,
         "extraction_resize_height": 540,
