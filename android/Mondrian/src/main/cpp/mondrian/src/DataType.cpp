@@ -127,8 +127,10 @@ T BlockingQueue<T>::take() {
   return v;
 }
 
-template class BlockingQueue<Frame*>;
+template
+class BlockingQueue<Frame*>;
 
-template class BlockingQueue<PackingResult>;
+template
+class BlockingQueue<PackingResult>;
 
 } // namespace md

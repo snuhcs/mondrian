@@ -15,24 +15,24 @@ const int ROIResizer::INVALID_LEVEL = -1;
 
 const std::map<std::string, Predictor> ROIResizer::CANDIDATE_PREDICTORS = {
     {"virat", VIRAT},
-    {"mta",   MTA},
+    {"mta", MTA},
 };
 
 const std::map<std::string, std::vector<float>> ROIResizer::AREA_LEVELS = {
-        {"virat", {
-                          333.913147627257,
-                          638.5106976744186,
-                          764.6907839189453,
-                          880.0315355329949,
-                          1e10
-                  }},
-        {"mta",   {
-                          368.62745098039215,
-                          459.33734939759046,
-                          558.7062937062936,
-                          848.4255998838352,
-                          1e10
-                  }}
+    {"virat", {
+        333.913147627257,
+        638.5106976744186,
+        764.6907839189453,
+        880.0315355329949,
+        1e10
+    }},
+    {"mta", {
+        368.62745098039215,
+        459.33734939759046,
+        558.7062937062936,
+        848.4255998838352,
+        1e10
+    }}
 };
 
 static const auto toVec = [](float staticScale) -> std::vector<float> {
@@ -43,13 +43,13 @@ ROIResizer::ROIResizer(const ROIResizerConfig& config)
     : config_(config),
       predictor_(CANDIDATE_PREDICTORS.at(config.DATASET)),
       targetAreas_(config.STATIC_AREA
-                    ? toVec(config.STATIC_TARGET_AREA)
-                    : AREA_LEVELS.at(config.DATASET)) {}
+                   ? toVec(config.STATIC_TARGET_AREA)
+                   : AREA_LEVELS.at(config.DATASET)) {}
 
 std::pair<float, int> ROIResizer::getTargetScale(const ID id,
                                                  const Features& features,
                                                  const float maxEdgeLength) {
-  auto[targetScale, targetLevel] = getTargetScale(id, features);
+  auto [targetScale, targetLevel] = getTargetScale(id, features);
   float originalArea = features.width * features.height;
   if (maxEdgeLength * targetScale > config_.MAX_OF_ROI_SIZE) {
     for (int level = int(targetAreas_.size()) - 1; level >= 0; level--) {
@@ -88,7 +88,7 @@ float ROIResizer::getTargetScale(const int scaleLevel, const float originalArea)
 
 bool ROIResizer::isCalibrated(const ID id, const int scaleLevel) const {
   return calibrationTable_.find(id) != calibrationTable_.end()
-         && calibrationTable_.at(id).first == scaleLevel;
+      && calibrationTable_.at(id).first == scaleLevel;
 }
 
 int ROIResizer::getMaxVotedLevel(const ID id, const Features& features) {
@@ -106,8 +106,8 @@ int ROIResizer::predictLevelWithFeatures(const Features& features) const {
     return STATIC_LEVEL;
   }
   assert(features.type == OF);
-  auto&[shiftAvgX, shiftAvgY] = features.ofFeatures.shiftAvg;
-  auto&[shiftStdX, shiftStdY] = features.ofFeatures.shiftStd;
+  auto& [shiftAvgX, shiftAvgY] = features.ofFeatures.shiftAvg;
+  auto& [shiftStdX, shiftStdY] = features.ofFeatures.shiftStd;
   float shiftAvg = shiftAvgX * shiftAvgX + shiftAvgY * shiftAvgY;
   float shiftStd = shiftStdX * shiftStdX + shiftStdY * shiftStdY;
   return predictor_(
@@ -125,7 +125,7 @@ void ROIResizer::updateTable(ROI* roi) {
   }
 
   std::map<float, MergedROI*> probingROIs;
-  for (MergedROI* probeROI: roi->roisForProbing) {
+  for (MergedROI* probeROI : roi->roisForProbing) {
     probingROIs[probeROI->targetScale()] = probeROI;
   }
 
@@ -134,7 +134,7 @@ void ROIResizer::updateTable(ROI* roi) {
   BoundingBox* largestProbeROIBox = probingROIs.rbegin()->second->probingBox();
   if (largestProbeROIBox != nullptr) {
     for (auto it = probingROIs.rbegin(); it != probingROIs.rend(); it++) {
-      auto[scale, probeROI] = *it;
+      auto [scale, probeROI] = *it;
       BoundingBox* probeROIBox = probeROI->probingBox();
       if (isUsable(probeROIBox, largestProbeROIBox)) {
         newScale = scale;
@@ -190,9 +190,9 @@ void ROIResizer::getProbingCandidates(ROI* roi) const {
 
 bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
   return box != nullptr && referenceBox != nullptr
-         && box->label == referenceBox->label
-         && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRESHOLD
-         && box->confidence > config_.PROBE_CONF_THRESHOLD;
+      && box->label == referenceBox->label
+      && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRESHOLD
+      && box->confidence > config_.PROBE_CONF_THRESHOLD;
 }
 
 float ROIResizer::calculateTargetScale(float targetArea, float originalArea) const {

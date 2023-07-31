@@ -75,10 +75,10 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   config.PROFILE_WARMUPS = parseInt(json, "profile_warmups");
   config.PROFILE_RUNS = parseInt(json, "profile_runs");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
-  for (const auto& inputSizeJson: json["input_sizes"]) {
+  for (const auto& inputSizeJson : json["input_sizes"]) {
     config.INPUT_SIZES.insert(inputSizeJson.asInt());
   }
-  for (const auto& deviceJson: json["devices"]) {
+  for (const auto& deviceJson : json["devices"]) {
     config.DEVICES.insert(deviceOf(deviceJson.asString()));
   }
   return config;
@@ -238,12 +238,12 @@ void InferenceEngineConfig::print() const {
   ss << "PROFILE_RUNS: " << PROFILE_RUNS << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
   ss << "INPUT_SIZES: ";
-  for (auto& inputSize: INPUT_SIZES) {
+  for (auto& inputSize : INPUT_SIZES) {
     ss << inputSize << " ";
   }
   ss << std::endl;
   ss << "DEVICES: ";
-  for (auto& device: DEVICES) {
+  for (auto& device : DEVICES) {
     ss << md::str(device) << " ";
   }
   ss << std::endl;

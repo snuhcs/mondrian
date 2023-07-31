@@ -13,7 +13,7 @@ namespace md {
 InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  JNIEnv* env, jobject app)
     : mConfig(config) {
-  for (Device device: config.DEVICES) {
+  for (Device device : config.DEVICES) {
     if (config.MODEL == "YOLO_V4" && device == GPU) {
       addClassifiers<TfLiteYoloV4Classifier>(device, config, env, app);
     } else if (config.MODEL == "YOLO_V5" && device == GPU) {
@@ -34,7 +34,7 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
 
   // classifiers for packed canvas inference
   bool forFullFrame = false;
-  for (const auto& inputSize: config.INPUT_SIZES) {
+  for (const auto& inputSize : config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
         config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
         config.USE_TINY, forFullFrame);
@@ -59,7 +59,7 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
 }
 
 void InferenceEngine::profileLatency() const {
-  for (const auto&[device, worker]: workers) {
+  for (const auto& [device, worker] : workers) {
     workers.at(device)->profileLatency(mConfig.PROFILE_WARMUPS, mConfig.PROFILE_RUNS);
   }
 }
@@ -88,7 +88,7 @@ void InferenceEngine::enqueueResult(const int handle, const Result& result) {
 
 std::map<Device, std::map<std::pair<int, bool>, time_us>> InferenceEngine::latencyTable() const {
   std::map<Device, std::map<std::pair<int, bool>, time_us>> latencyTable;
-  for (const auto&[device, worker]: workers) {
+  for (const auto& [device, worker] : workers) {
     latencyTable[device] = worker->latencyMap();
   }
   return latencyTable;

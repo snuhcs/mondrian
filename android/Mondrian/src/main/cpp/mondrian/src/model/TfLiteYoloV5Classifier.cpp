@@ -67,12 +67,12 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(std::string dataset, int inputSiz
   assert(inputTensorIndices.size() == 1 && outputTensorIndices.size() == 1);
 
   auto* inputTensorDims = interpreter->tensor(inputTensorIndices[0])->dims;
-  assert(inputTensorDims->size == 4 && inputTensorDims->data[0] == 1 &&
-         inputTensorDims->data[1] == inputSize && inputTensorDims->data[2] == inputSize &&
-         inputTensorDims->data[3] == 3);
+  assert(inputTensorDims->size == 4 && inputTensorDims->data[0] == 1
+             && inputTensorDims->data[1] == inputSize && inputTensorDims->data[2] == inputSize
+             && inputTensorDims->data[3] == 3);
   auto* outputTensorDims = interpreter->tensor(outputTensorIndices[0])->dims;
-  assert(outputTensorDims->size == 3 && outputTensorDims->data[0] == 1 &&
-         outputTensorDims->data[1] == outputSize && outputTensorDims->data[2] == 85);
+  assert(outputTensorDims->size == 3 && outputTensorDims->data[0] == 1
+             && outputTensorDims->data[1] == outputSize && outputTensorDims->data[2] == 85);
 
   input = interpreter->typed_tensor<float>(inputTensorIndices[0]);
   outputs = interpreter->typed_tensor<float>(outputTensorIndices[0]);

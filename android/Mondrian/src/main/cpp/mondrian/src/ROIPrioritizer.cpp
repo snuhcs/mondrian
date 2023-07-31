@@ -13,12 +13,9 @@ namespace md {
 std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& packedFrames, int fullFrameVid,
                                               ROIPrioritizerType type) {
   switch (type) {
-    case MIN_MAX_PROPAGATION:
-      return minMaxPropagation(packedFrames, fullFrameVid);
-    case OF_CONFIDENCE:
-      return ofConfidence(packedFrames, fullFrameVid);
-    default:
-      assert(false);
+    case MIN_MAX_PROPAGATION:return minMaxPropagation(packedFrames, fullFrameVid);
+    case OF_CONFIDENCE:return ofConfidence(packedFrames, fullFrameVid);
+    default:assert(false);
   }
 }
 
@@ -26,21 +23,21 @@ std::vector<MergedROI*> ROIPrioritizer::minMaxPropagation(const MultiStream& pac
                                                           int fullFrameVid) {
   // roiMap[vid, roiID][frameIndex] = roi
   std::map<std::pair<int, int>, std::map<int, ROI*>> roiMap;
-  for (const auto& [vid, frames]: packedFrames) {
-    for (Frame* frame: frames) {
+  for (const auto& [vid, frames] : packedFrames) {
+    for (Frame* frame : frames) {
       // Skip last frame for not full frame vid.
       // Last frame of full frame vid is already excluded.
       if (vid != fullFrameVid && frame == *frames.rbegin()) {
         continue;
       }
-      for (auto& roi: frame->rois) {
+      for (auto& roi : frame->rois) {
         roiMap[{vid, roi->id}][frame->frameIndex] = roi.get();
       }
     }
   }
 
   std::set<StartEndLength> startEndLengths;
-  for (const auto& [key, frameIndexMap]: roiMap) {
+  for (const auto& [key, frameIndexMap] : roiMap) {
     auto& [vid, roiID] = key;
     int start = (*frameIndexMap.begin()).first;
     int end = (*frameIndexMap.rbegin()).first + 1;
@@ -59,7 +56,7 @@ std::vector<MergedROI*> ROIPrioritizer::minMaxPropagation(const MultiStream& pac
                      mergedROI) == orderedMergedROIs.end());
     orderedMergedROIs.push_back(mergedROI);
 
-    for (auto& roi: mergedROI->rois()) {
+    for (auto& roi : mergedROI->rois()) {
       auto it = startEndLengths.begin();
       for (; it != startEndLengths.end(); it++) {
         if (it->vid_ == vid && it->roiID_ == roi->id && it->start_ <= fid && fid < it->end_)
@@ -85,9 +82,10 @@ std::vector<MergedROI*> ROIPrioritizer::ofConfidence(const MultiStream& packedFr
                                                      int fullFrameVid) {
   auto priorityOf = [](const MergedROI* mergedROI) -> float {
     float mergedROIPriority = 0.0f;
-    for (const auto& roi: mergedROI->rois()) {
-      mergedROIPriority += roi->features.ofFeatures.shiftNcc
-                           + roi->features.ofFeatures.avgErr;
+    for (const auto& roi : mergedROI->rois()) {
+      mergedROIPriority = mergedROIPriority
+          + roi->features.ofFeatures.shiftNcc
+          + roi->features.ofFeatures.avgErr;
     }
     return mergedROIPriority;
   };
@@ -95,14 +93,14 @@ std::vector<MergedROI*> ROIPrioritizer::ofConfidence(const MultiStream& packedFr
   priorityOf(nullptr); // To suppress unused warning.
 
   std::set<MergedROI*, MergedROIoFPriorityComparator> orderedMergedROIs;
-  for (const auto& [vid, frames]: packedFrames) {
-    for (Frame* frame: frames) {
+  for (const auto& [vid, frames] : packedFrames) {
+    for (Frame* frame : frames) {
       // Skip last frame for not full frame vid.
       // Last frame of full frame vid is already excluded.
       if (vid != fullFrameVid && frame == *frames.rbegin()) {
         continue;
       }
-      for (auto& roi: frame->rois) {
+      for (auto& roi : frame->rois) {
         orderedMergedROIs.insert(roi->mergedROI);
       }
     }
