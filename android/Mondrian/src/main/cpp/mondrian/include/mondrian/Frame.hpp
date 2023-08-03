@@ -45,8 +45,6 @@ class Frame {
   std::vector<std::unique_ptr<MergedROI>> mergedROIs;
 
   bool isLastFrame;
-  IntPairs boxesIfLast;
-  IntPairs boxesIfScaled;
 
   int inferenceFrameSize;
   Device inferenceDevice;
@@ -91,6 +89,20 @@ class Frame {
   void mergeMergedROIs(int maxSize);
 
   void sortMergedROIs();
+
+  void resetProbeROIs();
+
+  IntPairs boxesIfLast(
+      const ROIResizer* roiResizer,
+      const ExecutionType executionType,
+      const bool noDownsample) const;
+
+  void prepareFrameLast(
+      const IntPairs& indices,
+      const IntPairs& locations,
+      const ExecutionType executionType,
+      const int roiSize,
+      const bool noDownsample);
 
   bool isReadyToMarry(int packedFrameIndex) const;
 

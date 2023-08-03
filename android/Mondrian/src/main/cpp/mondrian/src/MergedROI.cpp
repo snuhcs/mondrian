@@ -131,8 +131,11 @@ cv::Mat MergedROI::borderedMat() const {
   return rgbMat;
 }
 
-void MergedROI::setPackInfo(IntPair xy, int relativePackedCanvasIndex,
-                            ExecutionType executionType, int roiSize) {
+void MergedROI::setPackInfo(
+    const IntPair xy,
+    const int relativePackedCanvasIndex,
+    const ExecutionType executionType,
+    const int roiSize) {
   if (executionType == EMULATED_BATCH || executionType == ROI_WISE_INFERENCE) {
     int bw = borderedLengthOf(loc_.w, targetScale_);
     int bh = borderedLengthOf(loc_.h, targetScale_);
@@ -140,10 +143,11 @@ void MergedROI::setPackInfo(IntPair xy, int relativePackedCanvasIndex,
       LOGE("ROISize %d < bw %d or bh %d", roiSize, bw, bh);
       assert(false);
     }
-    xy.first += (roiSize - bw) / 2;
-    xy.second += (roiSize - bh) / 2;
+    packedXY_ = {xy.first + (roiSize - bw) / 2,
+                 xy.second + (roiSize - bh) / 2};
+  } else {
+    packedXY_ = xy;
   }
-  packedXY_ = xy;
   relativePackedCanvasIndex_ = relativePackedCanvasIndex;
 }
 

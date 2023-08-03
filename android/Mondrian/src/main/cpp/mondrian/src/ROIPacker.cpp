@@ -1,23 +1,132 @@
 #include "mondrian/ROIPacker.hpp"
 
+#include <numeric>
 #include <sstream>
 
 #include "mondrian/PackedCanvas.hpp"
+#include "mondrian/ROIResizer.hpp"
+#include "mondrian/ROIPrioritizer.hpp"
 
 namespace md {
 
-ROIPacker::ROIPacker(const ROIPackerConfig& config) {
-
-}
+ROIPacker::ROIPacker(const ROIPackerConfig& config,
+                     ExecutionType executionType,
+                     int roiSize,
+                     ROIResizer* roiResizer)
+    : config_(config),
+      executionType_(executionType),
+      roiSize_(roiSize),
+      roiResizer_(roiResizer) {}
 
 std::vector<PackedCanvas> ROIPacker::packROIs(MultiStream& frames,
-                                              const std::vector<InferenceInfo>& inferencePlan) {
-  return {};
+                                              const std::vector<InferenceInfo>& inferencePlan,
+                                              const Frame* fullFrame) {
+  time_us startTime = NowMicros();
+
+  std::vector<std::vector<IntRect>> freeRectsVec;
+  for (const auto& info : inferencePlan) {
+    freeRectsVec.push_back({{0, 0, info.size, info.size}});
+  }
+
+  // Last frames
+  for (const auto& [vid, aStreamFrames] : frames) {
+    if (fullFrame != nullptr && vid == fullFrame->vid) {
+      continue;
+    }
+    Frame* lastFrame = *aStreamFrames.rbegin();
+    IntPairs boxesIfLast = lastFrame->boxesIfLast(
+        /*roiResizer=*/roiResizer_,
+        /*executionType=*/executionType_,
+        /*noDownsample=*/config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
+    if (executionType_ == ROI_WISE_INFERENCE) {
+      for (auto& mergedROI : lastFrame->mergedROIs) {
+        auto [bw, bh] = mergedROI->borderedMatWH();
+        if (!freeRectsVec.empty()) {
+          mergedROI->setPackInfo(
+              /*xy=*/{0, 0},
+              /*relativePackedCanvasIndex=*/(int) freeRectsVec.size() - 1,
+              /*executionType=*/executionType_,
+              /*roiSize=*/roiSize_);
+          freeRectsVec.erase(freeRectsVec.end() - 1);
+        }
+      }
+    } else { // MONDRIAN, EMULATED_BATCH
+      auto [indices, locations] = ROIPacker::pack(
+          /*freeRectsVec=*/freeRectsVec,
+          /*boxWHs=*/boxesIfLast,
+          /*backward=*/false);
+      bool fullyPacked = indices.size() == boxesIfLast.size();
+      int maxPackedCanvasIndex = -1;
+      for (auto& [packedCanvasIndex, freeRectIndex] : indices) {
+        maxPackedCanvasIndex = std::max(maxPackedCanvasIndex, packedCanvasIndex);
+      }
+      if (fullyPacked) {
+        ROIPacker::apply(freeRectsVec, boxesIfLast, indices);
+      } else {
+        indices.resize(boxesIfLast.size());
+        locations.resize(boxesIfLast.size());
+        ROIPacker::apply(freeRectsVec, boxesIfLast, indices);
+      }
+      lastFrame->prepareFrameLast(
+          /*indices=*/indices,
+          /*locations=*/locations,
+          /*executionType=*/executionType_,
+          /*roiSize=*/roiSize_,
+          /*noDownsample=*/config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
+    }
+  }
+  time_us packLastTime = NowMicros();
+
+  // Order MergedROIs
+  auto orderedMergedROIs = ROIPrioritizer::order(frames, fullFrame, config_.TYPE);
+  time_us orderTime = NowMicros();
+
+  // Pack MergedROIs
+  for (MergedROI* mergedROI : orderedMergedROIs) {
+    if (executionType_ == ROI_WISE_INFERENCE) {
+      if (!freeRectsVec.empty()) {
+        mergedROI->setPackInfo(
+            /*xy=*/{0, 0},
+            /*relativePackedCanvasIndex=*/(int) freeRectsVec.size() - 1,
+            /*executionType=*/executionType_,
+            /*roiSize=*/roiSize_);
+        freeRectsVec.erase(freeRectsVec.end() - 1);
+      }
+    } else {
+      auto [bw, bh] = mergedROI->borderedMatWH();
+      auto [indices, locations] = ROIPacker::pack(
+          /*freeRectsVec=*/freeRectsVec,
+          /*boxWHs=*/{{bw, bh}},
+          /*backward=*/false);
+      if (!indices.empty()) {
+        ROIPacker::apply(freeRectsVec, {{bw, bh}}, indices);
+        mergedROI->setPackInfo(
+            /*xy=*/locations[0],
+            /*relativePackedCanvasIndex=*/indices[0].first,
+            /*executionType=*/executionType_,
+            /*roiSize=*/roiSize_);
+      }
+    }
+  }
+  time_us packOthersTime = NowMicros();
+
+  LOGD("Packing %d Frames with %lu ROIs | "
+       "total: %lld, packLastTime: %lld, orderTime: %lld, packOthersTime: %lld",
+       std::accumulate(frames.begin(), frames.end(), 0,
+                       [](int sum, const auto& kv) {
+                         return sum + kv.second.size();
+                       }),
+       orderedMergedROIs.size(),
+       packOthersTime - startTime,
+       packLastTime - startTime,
+       orderTime - packLastTime,
+       packOthersTime - orderTime);
 }
 
 std::pair<IntPairs, IntPairs> ROIPacker::pack(
     const std::vector<std::vector<IntRect>>& freeRectsVec,
-    const IntPairs& boxWHs, bool backward, ExecutionType executionType, int roiSize) {
+    const IntPairs& boxWHs,
+    bool backward) const {
   auto copiedFreeRectsVec = freeRectsVec;
   IntPairs packIndices;
   IntPairs packLocations;
@@ -28,7 +137,7 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
       int i = backward
               ? int(copiedFreeRectsVec.size()) - 1 - _i
               : _i;
-      if (executionType == EMULATED_BATCH) {
+      if (executionType_ == EMULATED_BATCH) {
         pack_j = !copiedFreeRectsVec[i].empty() ? 0 : -1;
       } else {
         pack_j = getBestFitFreeRectIndex(copiedFreeRectsVec[i], w, h);
@@ -46,8 +155,8 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
     const IntRect& rect = copiedFreeRectsVec[pack_i][pack_j];
     packIndices.emplace_back(pack_i, pack_j);
     packLocations.emplace_back(rect.l, rect.t);
-    if (executionType == EMULATED_BATCH) {
-      packBox(copiedFreeRectsVec, roiSize, roiSize, pack_i, pack_j);
+    if (executionType_ == EMULATED_BATCH) {
+      packBox(copiedFreeRectsVec, roiSize_, roiSize_, pack_i, pack_j);
     } else {
       packBox(copiedFreeRectsVec, w, h, pack_i, pack_j);
     }
@@ -57,15 +166,16 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
   return {packIndices, packLocations};
 }
 
-void ROIPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                      const IntPairs& boxWH, const IntPairs& indices,
-                      ExecutionType executionType, int roiSize) {
+void ROIPacker::apply(
+    std::vector<std::vector<IntRect>>& freeRectsVec,
+    const IntPairs& boxWH,
+    const IntPairs& indices) const {
   assert(boxWH.size() == indices.size());
   for (int i = 0; i < boxWH.size(); i++) {
     auto [w, h] = boxWH[i];
     auto [pack_i, pack_j] = indices[i];
-    if (executionType == EMULATED_BATCH) {
-      packBox(freeRectsVec, roiSize, roiSize, pack_i, pack_j);
+    if (executionType_ == EMULATED_BATCH) {
+      packBox(freeRectsVec, roiSize_, roiSize_, pack_i, pack_j);
     } else {
       packBox(freeRectsVec, w, h, pack_i, pack_j);
     }

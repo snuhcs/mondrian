@@ -33,10 +33,11 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
       packed_(false),
       fullFrame_(nullptr),
       ROIResizer_(new ROIResizer(config.roiResizerConfig)),
-      ROIPacker_(new ROIPacker(config.roiPackerConfig)),
-      inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)),
-      patchReconstructor_(new PatchReconstructor(config.patchReconstructorConfig,
-                                                 ROIResizer_.get())) {
+      inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)) {
+  ROIPacker_ = std::make_unique<ROIPacker>(
+      config.roiPackerConfig, config.EXECUTION_TYPE, config.ROI_SIZE, ROIResizer_.get());
+  patchReconstructor_ = std::make_unique<PatchReconstructor>(
+      config.patchReconstructorConfig, ROIResizer_.get());
   config_.print();
   config_.test();
 
@@ -169,19 +170,15 @@ void Mondrian::workSchedule() {
         /*startTimes=*/{{config_.FULL_DEVICE, fullStartTime}});
 
     Frame* fullFrame = nullptr;
-    int fullVid = (scheduleID_ / config_.FULL_FRAME_INTERVAL) % numVideos_;
     if (isFullInterval) {
+      int fullVid = (scheduleID_ / config_.FULL_FRAME_INTERVAL) % numVideos_;
       if (!frames.at(fullVid).empty()) {
         fullFrame = *frames.at(fullVid).rbegin();
       }
     }
-    if (fullFrame != nullptr) {
-      frames.at(fullVid).erase(fullFrame);
-    }
-    std::vector<PackedCanvas> packedCanvases = ROIPacker_->packROIs(frames, inferencePlan);
-    if (fullFrame != nullptr) {
-      frames.at(fullVid).insert(fullFrame);
-    }
+    std::vector<PackedCanvas> packedCanvases = ROIPacker_->packROIs(frames,
+                                                                    inferencePlan,
+                                                                    fullFrame);
 
     std::unique_lock<std::mutex> packLock(packMtx_);
     packed_ = true;

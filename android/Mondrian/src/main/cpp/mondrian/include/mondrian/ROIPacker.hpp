@@ -10,6 +10,7 @@
 namespace md {
 
 class PackedCanvas;
+class ROIResizer;
 
 struct IntRect {
   int l;
@@ -32,19 +33,38 @@ struct IntRect {
 
 class ROIPacker {
  public:
-  ROIPacker(const ROIPackerConfig& config);
+  ROIPacker(const ROIPackerConfig& config,
+            ExecutionType executionType,
+            int roiSize,
+            ROIResizer* roiResizer);
 
   std::vector<PackedCanvas> packROIs(
-      MultiStream& frames, const std::vector<InferenceInfo>& inferencePlan);
+      MultiStream& frames,
+      const std::vector<InferenceInfo>& inferencePlan,
+      const Frame* fullFrame);
 
  private:
-  static std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
-                                            const IntPairs& boxWHs, bool backward,
-                                            ExecutionType executionType, int roiSize);
+  void prepareFrameLast(Frame* frame,
+                        const IntPairs& indices,
+                        const IntPairs& locations);
 
-  static void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                    const IntPairs& boxWH, const IntPairs& indices,
-                    ExecutionType executionType, int roiSize);
+  IntPairs getBoxesIfLast(const Frame* frame);
+
+  void prepareFrameScaled(Frame* frame,
+                          const IntPairs& indices,
+                          const IntPairs& locations);
+
+  static IntPairs getBoxesIfScaled(const Frame* frame);
+
+  std::pair<IntPairs, IntPairs> pack(
+      const std::vector<std::vector<IntRect>>& freeRectsVec,
+      const IntPairs& boxWHs,
+      bool backward) const;
+
+  void apply(
+      std::vector<std::vector<IntRect>>& freeRectsVec,
+      const IntPairs& boxWH,
+      const IntPairs& indices) const;
 
   static int getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, int w, int h);
 
@@ -54,6 +74,11 @@ class ROIPacker {
   static bool canFit(int w, int h, const IntRect& freeRect);
 
   static std::pair<IntRect, IntRect> splitFreeRect(int w, int h, const IntRect& freeRect);
+
+  ROIPackerConfig config_;
+  ExecutionType executionType_;
+  int roiSize_;
+  ROIResizer* roiResizer_;
 };
 
 } // namespace md

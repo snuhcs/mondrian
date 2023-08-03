@@ -124,8 +124,11 @@ class MergedROI {
 
   cv::Mat borderedMat() const;
 
-  void setPackInfo(IntPair xy, int relativePackedCanvasIndex,
-                   ExecutionType executionType, int roiSize);
+  void setPackInfo(
+      const IntPair xy,
+      const int relativePackedCanvasIndex,
+      const ExecutionType executionType,
+      const int roiSize);
 
  private:
   static Frame* frameOf(const std::vector<ROI*>& rois);
