@@ -64,8 +64,7 @@ void Worker::work() {
     // Update latency
     time_us origLatency = latencyMap_[{size, isFullFrame}];
     time_us newLatency = end - start;
-    time_us estimatedLatency = (3 * newLatency + 7 * origLatency) / 10;
-    latencyMap_[{size, isFullFrame}] = estimatedLatency;
+    latencyMap_[{size, isFullFrame}] = (3 * newLatency + 7 * origLatency) / 10;
   }
 }
 

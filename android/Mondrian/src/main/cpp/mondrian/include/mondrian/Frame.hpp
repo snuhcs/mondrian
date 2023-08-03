@@ -75,6 +75,8 @@ class Frame {
   Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
         const Frame* prevFrame, const time_us& enqueueTime);
 
+  void prepareResizedGrayMat(const cv::Size& targetSize);
+
   void prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize);
 
   void eatPDROIs(float overlap_thres);

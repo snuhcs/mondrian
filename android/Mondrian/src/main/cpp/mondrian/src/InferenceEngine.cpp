@@ -64,7 +64,10 @@ void InferenceEngine::profileLatency() const {
   }
 }
 
-void InferenceEngine::enqueue(const cv::Mat& rgbMat, Device device, int inputSize, bool isFullFrame,
+void InferenceEngine::enqueue(const cv::Mat& rgbMat,
+                              Device device,
+                              int inputSize,
+                              bool isFullFrame,
                               int key) {
   workers[device]->enqueue(rgbMat, inputSize, isFullFrame, key);
 }

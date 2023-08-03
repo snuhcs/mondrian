@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 
+#include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
 
 namespace md {
@@ -29,6 +30,8 @@ struct IntRect {
 
 class ROIPacker {
  public:
+  ROIPacker(const ROIPackerConfig& config);
+
   static std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
                                             const IntPairs& boxWHs, bool backward,
                                             ExecutionType executionType, int roiSize);

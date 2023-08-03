@@ -21,16 +21,20 @@
 namespace md {
 
 Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app)
-    : config_(config), stop_(false), numFirstFrameReadyVideos_(0), numVideos_(numVideos),
-      scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2), numIntervals_(0),
-      ROIResizer_(new ROIResizer(config.roiResizerConfig)), startTime_(NowMicros()),
+    : config_(config),
+      startTime_(NowMicros()),
+      numFirstFrameReadyVideos_(0),
+      numVideos_(numVideos),
+      scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2),
+      scheduleID_(0),
+      stop_(false),
+      ROIResizer_(new ROIResizer(config.roiResizerConfig)),
+      ROIPacker_(new ROIPacker(config.roiPackerConfig)),
       inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)),
       patchReconstructor_(new PatchReconstructor(config.patchReconstructorConfig,
                                                  ROIResizer_.get())) {
   config_.print();
   config_.test();
-  ROI::PADDING = config.roiExtractorConfig.OF_ROI_PADDING;
-  MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
 
   // Create loggers
   if (config.LOG_BOXES) {
@@ -51,58 +55,115 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
     frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid);
   }
 
-  // Start preprocessing thread
-  preprocessThread_ = std::thread([this]() { workPreprocess(); });
-
-  // Start postprocessing thread
-  postprocessThread_ = std::thread([this]() { workPostprocess(); });
-
   // Start logging thread
   logThread_ = std::thread([this]() { workLog(); });
 
   // If frame-wise inference, skip ROI extraction and scheduling
   if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) return;
 
-  // Prepare ROI extractor and start scheduling
+  // Latency profiling
   inferenceEngine_->profileLatency();
-  auto latencyTable = inferenceEngine_->latencyTable();
-  auto inferencePlan = InferencePlanner::getInferencePlan(
-      latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);
+
+  // Start ROI extraction threads
   ROIExtractor_ = std::make_unique<ROIExtractor>(config_.roiExtractorConfig, ROIResizer_.get());
+
+  // Start postprocessing thread
+  postprocessThread_ = std::thread([this]() { workPostprocess(); });
+
+  // Start scheduling thread
   scheduleThread_ = std::thread([this]() { workSchedule(); });
 }
 
 Mondrian::~Mondrian() {
   stop_ = true;
   resultsCV_.notify_all();
-  preprocessThread_.join();
   scheduleThread_.join();
   postprocessThread_.join();
   logThread_.join();
 }
 
+void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
+  assert(!yuvMat.empty());
+  Frame* frame = frameBuffers_.at(vid)->enqueue(yuvMat);
+
+  // Wait for multiple videos synced start
+  if (numVideos_ > 1 && frame->frameIndex == 1) {
+    std::unique_lock<std::mutex> startLock(startMtx_);
+    startCV_.wait(startLock, [this]() {
+      assert(numFirstFrameReadyVideos_ <= numVideos_);
+      return numFirstFrameReadyVideos_ == numVideos_;
+    });
+  }
+
+  if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
+    enqueueFrameWise(frame);
+  } else {
+    enqueue(frame);
+  }
+
+  // Notify when a video is ready
+  if (frame->frameIndex == 0) {
+    std::lock_guard<std::mutex> startLock(startMtx_);
+    numFirstFrameReadyVideos_++;
+    startCV_.notify_all();
+  }
+}
+
+void Mondrian::enqueueFrameWise(Frame* frame) {
+  cv::cvtColor(frame->yuvMat, frame->rgbMat, cv::COLOR_YUV2RGB_NV21);
+  inferenceEngine_->enqueue(
+      /*rgbMat=*/frame->rgbMat,
+      /*device=*/config_.FULL_DEVICE,
+      /*inputSize=*/config_.FULL_FRAME_SIZE,
+      /*isFullFrame=*/true,
+      /*key=*/frame->getKey());
+  handleFullFrameResults(frame);
+  std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
+  frameBuffers_.at(frame->vid)->free(frame->frameIndex);
+}
+
+void Mondrian::enqueue(Frame* frame) {
+  // Handle the first frame
+  if (frame->frameIndex == 0) {
+    frame->prepareResizedGrayMat(config_.roiExtractorConfig.EXTRACTION_SIZE);
+    cv::cvtColor(frame->yuvMat, frame->rgbMat, cv::COLOR_YUV2RGB_NV21);
+    inferenceEngine_->enqueue(
+        /*rgbMat=*/frame->rgbMat,
+        /*device=*/config_.FULL_DEVICE,
+        /*inputSize=*/config_.FULL_FRAME_SIZE,
+        /*isFullFrame=*/true,
+        /*key=*/frame->getKey());
+    handleFullFrameResults(frame);
+    return;
+  }
+
+  ROIExtractor_->enqueue(frame);
+}
+
 void Mondrian::workSchedule() {
   std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval_));
+
+  inferenceBudget_ = scheduleInterval_;
   while (!stop_) {
     time_us scheduleStart = NowMicros();
-    int currID = numIntervals_++;
-    bool fullFramePlan = currID % config_.FULL_FRAME_INTERVAL == 0;
 
-    LOGD("========== Schedule %d Start at %.2f ms ==========",
-         currID, (float) (NowMicros() - startTime_) / 1000);
+    LOGD("========== Schedule %d Start at %lld ms ==========",
+         scheduleID_, (NowMicros() - startTime_) / 1000);
 
-    Stream frames = ROIExtractor_->collectFrames(currID);
+    Stream frames = ROIExtractor_->collectFrames(scheduleID_);
 
     // Inference planning
     auto latencyTable = inferenceEngine_->latencyTable();
-    time_us fullStartTime = fullFramePlan
+    time_us fullStartTime = scheduleID_ % config_.FULL_FRAME_INTERVAL == 0
                             ? latencyTable[config_.FULL_DEVICE][{config_.FULL_FRAME_SIZE, true}]
                             : 0L;
-    time_us budget = scheduleInterval_ - 500000;
     std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
-        latencyTable, budget, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE,
-        {{config_.FULL_DEVICE, fullStartTime}});
+        /*latencyTable=*/latencyTable,
+        /*interval=*/inferenceBudget_,
+        /*roiWiseInference=*/config_.EXECUTION_TYPE == ROI_WISE_INFERENCE,
+        /*startTimes=*/{{config_.FULL_DEVICE, fullStartTime}});
     assert(!inferencePlan.empty());
+
     std::stringstream ss;
     for (auto& [device, sizeIsFullLatency] : latencyTable) {
       for (auto& [sizeIsFull, latency] : sizeIsFullLatency) {
@@ -110,7 +171,7 @@ void Mondrian::workSchedule() {
       }
     }
     LOGD("Schedule %d Plan at %lld ms: %lld us budget, %s | %s",
-         currID, (NowMicros() - startTime_) / 1000,
+         scheduleID_, (NowMicros() - startTime_) / 1000,
          budget, str(inferencePlan).c_str(), ss.str().c_str());
 
     // Getting PackedFrames
@@ -123,14 +184,17 @@ void Mondrian::workSchedule() {
     if (sleepTime > 0) {
       std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
     }
+    scheduleID_++;
   }
 }
 
-void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
+void Mondrian::handleFullFrameResults(Frame* frame) {
   auto [boxes, times, device] = inferenceEngine_->getResults(frame->getKey());
-  LOGD("Inference %d (%d, %s, FULL) at %lld ms | %d",
-       currID, config_.FULL_FRAME_SIZE, str(device).c_str(),
-       (NowMicros() - startTime_) / 1000, frame->frameIndex);
+  LOGD("Inference fid=%d (%d, %s, FULL) at %lld ms",
+       frame->frameIndex, config_.FULL_FRAME_SIZE, str(device).c_str(),
+       (NowMicros() - startTime_) / 1000);
+  frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
+  frame->inferenceDevice = config_.FULL_DEVICE;
   frame->fullInferenceStartTime = times.first;
   frame->fullInferenceEndTime = times.second;
   for (const BoundingBox& box : boxes) {
@@ -250,60 +314,6 @@ void Mondrian::log(const Frame* frame) {
   if (loggerROI_) {
     for (auto& roi : frame->rois) {
       loggerROI_->logROI(roi.get());
-    }
-  }
-}
-
-void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
-  assert(!yuvMat.empty());
-
-  Frame* frame = frameBuffers_.at(vid)->enqueue(yuvMat);
-  if (numVideos_ > 1 && frame->frameIndex == 1) {
-    std::unique_lock<std::mutex> startLock(startMtx_);
-    startCV_.wait(startLock, [this]() {
-      assert(numFirstFrameReadyVideos_ <= numVideos_);
-      return numFirstFrameReadyVideos_ == numVideos_;
-    });
-  }
-  preprocessQueue_.put(frame);
-}
-
-void Mondrian::workPreprocess() {
-  int id = 0;
-  while (!stop_) {
-    int currID = id++;
-    Frame* frame = preprocessQueue_.take();
-
-    frame->prepareRgbMatAndResizedGrayMat(config_.roiExtractorConfig.EXTRACTION_SIZE);
-
-    if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
-      inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
-                                frame->getKey());
-      frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
-      frame->inferenceDevice = config_.FULL_DEVICE;
-      handleFullFrameResults(frame, currID);
-      std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
-      log(frame);
-      frameBuffers_.at(frame->vid)->free(frame->frameIndex);
-      continue;
-    }
-
-    if (frame->frameIndex == 0) {
-      frame->useInferenceResultForOF = true;
-      inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
-                                frame->getKey());
-      frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
-      frame->inferenceDevice = config_.FULL_DEVICE;
-      LOGD("inferenceEngine_->enqueue %d sized fullFrame to %s | %d",
-           config_.FULL_FRAME_SIZE, str(config_.FULL_DEVICE).c_str(), frame->frameIndex);
-      handleFullFrameResults(frame, currID);
-      {
-        std::lock_guard<std::mutex> startLock(startMtx_);
-        numFirstFrameReadyVideos_++;
-      }
-      startCV_.notify_all();
-    } else {
-      ROIExtractor_->enqueue(frame);
     }
   }
 }

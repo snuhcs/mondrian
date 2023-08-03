@@ -73,7 +73,8 @@ std::vector<time_us> InferencePlanner::search(time_us total,
 
 std::vector<InferenceInfo> InferencePlanner::getInferencePlan(
     const std::map<Device, std::map<std::pair<int, bool>, time_us>>& latencyTable,
-    time_us interval, bool roiWiseInference,
+    const time_us interval,
+    const bool roiWiseInference,
     const std::map<Device, time_us>& startTimes) {
   std::vector<InferenceInfo> inferencePlan;
 

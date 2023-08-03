@@ -29,8 +29,7 @@
     "pd_eat_overlap_thres": 0.5,
     "pd_filter_overlap_thres": 0.5,
     "merge": true,
-    "max_merge_size": 640,
-    "roi_border": 2
+    "max_merge_size": 640
   },
   "roi_resizer": {
     "static_area": false,

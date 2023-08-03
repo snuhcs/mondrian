@@ -51,7 +51,6 @@ ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   config.PD_FILTER_OVERLAP_THRES = parseFloat(json, "pd_filter_overlap_thres");
   config.MERGE = parseBool(json, "merge");
   config.MAX_MERGE_SIZE = parseInt(json, "max_merge_size");
-  config.ROI_BORDER = parseInt(json, "roi_border");
   return config;
 }
 
@@ -212,7 +211,6 @@ void ROIExtractorConfig::print() const {
   ss << "PD_FILTER_OVERLAP_THRES: " << PD_FILTER_OVERLAP_THRES << std::endl;
   ss << "MERGE: " << MERGE << std::endl;
   ss << "MAX_MERGE_SIZE: " << MAX_MERGE_SIZE << std::endl;
-  ss << "ROI_BORDER: " << ROI_BORDER << std::endl;
   LOGD("%s", ss.str().c_str());
 }
 

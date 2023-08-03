@@ -19,6 +19,11 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
       isBoxesReady(false), isROIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
       isLastFrame(false), inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
 
+void Frame::prepareResizedGrayMat(const cv::Size& targetSize) {
+  cv::cvtColor(yuvMat, resizedGrayMat, cv::COLOR_YUV2GRAY_NV12, 1);
+  cv::resize(resizedGrayMat, resizedGrayMat, targetSize, 0, 0, CV_INTER_LINEAR);
+}
+
 void Frame::prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize) {
   cv::cvtColor(yuvMat, rgbMat, cv::COLOR_YUV2RGB_NV12, 3);
   width_ = rgbMat.cols;

@@ -4,6 +4,10 @@
 
 namespace md {
 
+ROIPacker::ROIPacker(const ROIPackerConfig& config) {
+
+}
+
 std::pair<IntPairs, IntPairs> ROIPacker::pack(
     const std::vector<std::vector<IntRect>>& freeRectsVec,
     const IntPairs& boxWHs, bool backward, ExecutionType executionType, int roiSize) {

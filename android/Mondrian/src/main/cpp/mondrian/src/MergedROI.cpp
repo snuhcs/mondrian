@@ -4,7 +4,7 @@
 
 namespace md {
 
-int MergedROI::BORDER = -1e5;
+int MergedROI::BORDER = 2;
 const cv::Scalar MergedROI::BORDER_COLOR(255, 255, 255);
 const IntPair MergedROI::INVALID_XY{-1, -1};
 

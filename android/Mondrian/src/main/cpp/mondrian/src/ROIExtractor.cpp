@@ -160,6 +160,8 @@ void ROIExtractor::work(int extractorId) {
 
 void ROIExtractor::processPD(Frame* currFrame) const {
   assert(currFrame->rois.empty());
+  currFrame->prepareResizedGrayMat(config_.EXTRACTION_SIZE);
+
   currFrame->pixelDiffROIProcessStartTime = NowMicros();
   float wRatio = (float) currFrame->resizedGrayMat.cols / (float) currFrame->width();
   float hRatio = (float) currFrame->resizedGrayMat.rows / (float) currFrame->height();
@@ -197,7 +199,8 @@ void ROIExtractor::processPD(Frame* currFrame) const {
           /*origin=*/O_PD,
           /*label=*/-1,
           /*ofFeatures=*/OFFeatures(),
-          /*confidence=*/ROI::INVALID_CONF));
+          /*confidence=*/ROI::INVALID_CONF,
+          /*padding=*/0));
     }
   }
   currFrame->pixelDiffROIProcessEndTime = NowMicros();
@@ -282,7 +285,8 @@ void ROIExtractor::processOF(Frame* currFrame) {
         /*origin=*/box.origin,
         /*label=*/box.label,
         /*ofFeatures=*/ofFeatures,
-        /*confidence=*/box.confidence));
+        /*confidence=*/box.confidence,
+        /*padding=*/config_.OF_ROI_PADDING));
   }
   currFrame->opticalFlowROIProcessEndTime = NowMicros();
 

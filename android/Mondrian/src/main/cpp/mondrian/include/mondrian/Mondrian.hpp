@@ -30,15 +30,17 @@ class Mondrian {
   void enqueue(const int vid, const cv::Mat& yuvMat);
 
  private:
-  void workSchedule();
+  void enqueue(Frame* frame);
 
-  void workPreprocess();
+  void enqueueFrameWise(Frame* frame);
+
+  void workSchedule();
 
   void workPostprocess();
 
   void workLog();
 
-  void handleFullFrameResults(Frame* frame, int currID);
+  void handleFullFrameResults(Frame* frame);
 
   void handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanvases, int currID);
 
@@ -58,6 +60,7 @@ class Mondrian {
   // Components
   std::unique_ptr<ROIExtractor> ROIExtractor_;
   std::unique_ptr<ROIResizer> ROIResizer_;
+  std::unique_ptr<ROIPacker> ROIPacker_;
   std::unique_ptr<InferenceEngine> inferenceEngine_;
   std::unique_ptr<PatchReconstructor> patchReconstructor_;
 
@@ -70,16 +73,14 @@ class Mondrian {
   // Thread: Scheduling
   std::thread scheduleThread_;
   const time_us scheduleInterval_;
-  int numIntervals_;
+  time_us inferenceBudget_;
+  int scheduleID_;
   bool stop_;
-
-  // Thread: Preprocessing
-  std::thread preprocessThread_;
-  BlockingQueue<Frame*> preprocessQueue_;
 
   // Thread: Postprocessing
   std::thread postprocessThread_;
-  BlockingQueue<PackingResult> packingResults_;
+  Frame* fullFrame_;
+  std::vector<PackedCanvas> packedCanvases_;
 
   // Thread : Logging
   std::thread logThread_;

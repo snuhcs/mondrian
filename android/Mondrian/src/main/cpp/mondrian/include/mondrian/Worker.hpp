@@ -3,6 +3,7 @@
 
 #include <jni.h>
 
+#include <map>
 #include <queue>
 #include <thread>
 
