@@ -1,71 +1,73 @@
 {
-    "video_configs": [
-        {
-            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
-            "fps": 30
-        }
-    ],
-    "execution_type": "mondrian",
-    "log_boxes": true,
-    "log_roi": true,
-    "log_frame": true,
-    "interpolation_threshold": 0,
-    "full_frame_interval": 4,
-    "full_frame_size": 1024,
-    "full_device": "GPU",
-    "latency_slo_ms": 2000,
-    "roi_size": 80,
-    "roi_extractor": {
-        "num_workers": 2,
-        "extraction_resize_width": 960,
-        "extraction_resize_height": 540,
-        "max_pd_roi_size": 206,
-        "min_pd_roi_size": 5,
-        "eat_pd": true,
-        "roi_padding": 20,
-        "roi_border": 2,
-        "of_conf_threshold": 0.0,
-        "pd_filter_threshold": 0.5,
-        "pd_interval": 5,
-        "merge": true,
-        "no_downsampling_for_last_frame": true,
-        "roi_prioritizer_type": "min_max_propagation"
-    },
-    "roi_resizer": {
-        "dataset": "mta",
-        "voting_window": 5,
-        "scale_shift": 0.0,
-        "area_shift": 0,
-        "static_area": false,
-        "static_target_area": 0.0,
-        "max_of_roi_size": 206.0,
-        "probe_step_size": 0.1,
-        "num_probe_steps": 5,
-        "probe_conf_threshold": 0.0,
-        "probe_iou_threshold": 0.5
-    },
-    "inference_engine": {
-        "draw_inference_result": true,
-        "dataset": "mta",
-        "model": "YOLO_V5",
-        "use_tiny": false,
-        "conf_threshold": 0.5,
-        "iou_threshold": 0.5,
-        "profile_warmups": 3,
-        "profile_runs": 3,
-        "full_frame_size": 1024,
-        "input_sizes": [
-            640,
-            1280
-        ],
-        "devices": [
-            "GPU",
-            "DSP"
-        ]
-    },
-    "patch_reconstructor": {
-        "frame_boxes_iou_threshold": 0.5,
-        "box_filter_overlap_threshold": 0.8,
-        "id_mapping_iou_threshold": 0.1
+  "video_configs": [
+    {
+      "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
+      "fps": 30
     }
+  ],
+  "execution_type": "mondrian",
+  "log_boxes": true,
+  "log_roi": true,
+  "log_frame": true,
+  "interpolation_thres": 0,
+  "full_frame_interval": 4,
+  "full_frame_size": 1024,
+  "full_device": "GPU",
+  "latency_slo_ms": 2000,
+  "roi_size": 80,
+  "roi_extractor": {
+    "num_workers": 2,
+    "extraction_size": [
+      960,
+      540
+    ],
+    "pd_interval": 5,
+    "min_pd_roi_size": 5.0,
+    "max_pd_roi_size": 206.0,
+    "of_conf_thres": 0.0,
+    "of_roi_padding": 20.0,
+    "of_eat_pd_iou_thres": 0.5,
+    "merge": true,
+    "roi_border": 2
+  },
+  "roi_resizer": {
+    "static_area": false,
+    "static_target_area": 0.0,
+    "dataset": "mta",
+    "voting_window_size": 5,
+    "area_shift": 0.0,
+    "scale_shift": 0.0,
+    "num_probe_steps": 5,
+    "probe_step_size": 0.1,
+    "probe_conf_thres": 0.0,
+    "probe_iou_thres": 0.5
+  },
+  "roi_packer": {
+    "no_downsampling_for_last_frame": true,
+    "type": "min_max_propagation"
+  },
+  "inference_engine": {
+    "full_frame_size": 1024,
+    "input_sizes": [
+      640,
+      1280
+    ],
+    "devices": [
+      "GPU",
+      "DSP"
+    ],
+    "draw_inference_result": true,
+    "dataset": "mta",
+    "model": "YOLO_V5",
+    "use_tiny": false,
+    "conf_thres": 0.5,
+    "iou_thres": 0.5,
+    "profile_warmups": 3,
+    "profile_runs": 3
+  },
+  "patch_reconstructor": {
+    "frame_boxes_iou_thres": 0.5,
+    "box_filter_overlap_thres": 0.8,
+    "id_mapping_iou_thres": 0.1
+  }
 }

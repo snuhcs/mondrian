@@ -67,7 +67,7 @@ struct MergedROIoFPriorityComparator {
 class ROIPrioritizer {
  public:
   static std::vector<MergedROI*> order(const MultiStream& packedFrames, int fullFrameVid,
-                                       ROIPrioritizerType type);
+                                       ROIPackerType type);
 
  private:
   static std::vector<MergedROI*> minMaxPropagation(const MultiStream& packedFrames,

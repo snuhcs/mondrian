@@ -95,7 +95,7 @@ int ROIResizer::getMaxVotedLevel(const ID id, const Features& features) {
   auto record = prevPredictionBuffer_.find(id);
   if (record == prevPredictionBuffer_.end()) {
     prevPredictionBuffer_[id] = CircularBuffer(int(targetAreas_.size()),
-                                               config_.VOTING_WINDOW);
+                                               config_.VOTING_WINDOW_SIZE);
   }
   prevPredictionBuffer_[id].push(predictLevelWithFeatures(features));
   return prevPredictionBuffer_[id].maxVote();
@@ -191,8 +191,8 @@ void ROIResizer::getProbingCandidates(ROI* roi) const {
 bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
   return box != nullptr && referenceBox != nullptr
       && box->label == referenceBox->label
-      && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRESHOLD
-      && box->confidence > config_.PROBE_CONF_THRESHOLD;
+      && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRES
+      && box->confidence > config_.PROBE_CONF_THRES;
 }
 
 float ROIResizer::calculateTargetScale(float targetArea, float originalArea) const {

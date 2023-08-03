@@ -354,7 +354,7 @@ void Mondrian::workPostprocess() {
     }
 
     // Interpolate results
-    Interpolator::interpolate(selectedFrames, config_.INTERPOLATION_THRESHOLD);
+    Interpolator::interpolate(selectedFrames, config_.INTERPOLATION_THRES);
 
     // Notify results of rest of the frames
     for (auto& it : selectedFrames) {

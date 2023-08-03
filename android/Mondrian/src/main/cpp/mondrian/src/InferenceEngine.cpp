@@ -36,7 +36,7 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
   bool forFullFrame = false;
   for (const auto& inputSize : config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-        config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
+        config.DATASET, inputSize, config.CONF_THRES, config.IOU_THRES,
         config.USE_TINY, forFullFrame);
     classifierMap[{inputSize, forFullFrame}] = classifier.get();
     classifiers.push_back(std::move(classifier));
@@ -48,7 +48,7 @@ void InferenceEngine::addClassifiers(Device device, const InferenceEngineConfig&
     int inputSize = config.FULL_FRAME_SIZE;
     forFullFrame = true;
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-        config.DATASET, inputSize, config.CONF_THRESHOLD, config.IOU_THRESHOLD,
+        config.DATASET, inputSize, config.CONF_THRES, config.IOU_THRES,
         config.USE_TINY, forFullFrame);
     classifierMap[{inputSize, forFullFrame}] = classifier.get();
     classifiers.push_back(std::move(classifier));
