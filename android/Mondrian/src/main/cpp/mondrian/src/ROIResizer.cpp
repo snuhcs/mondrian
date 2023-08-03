@@ -15,7 +15,7 @@ const int ROIResizer::INVALID_LEVEL = -1;
 
 const std::map<std::string, Predictor> ROIResizer::CANDIDATE_PREDICTORS = {
     {"virat", VIRAT},
-    {"mtx_", MTA},
+    {"mta", MTA},
 };
 
 const std::map<std::string, std::vector<float>> ROIResizer::AREA_LEVELS = {
@@ -26,7 +26,7 @@ const std::map<std::string, std::vector<float>> ROIResizer::AREA_LEVELS = {
         880.0315355329949,
         1e10
     }},
-    {"mtx_", {
+    {"mta", {
         368.62745098039215,
         459.33734939759046,
         558.7062937062936,
@@ -45,27 +45,6 @@ ROIResizer::ROIResizer(const ROIResizerConfig& config)
       targetAreas_(config.STATIC_AREA
                    ? toVec(config.STATIC_TARGET_AREA)
                    : AREA_LEVELS.at(config.DATASET)) {}
-
-std::pair<float, int> ROIResizer::getTargetScale(const ID id,
-                                                 const Features& features,
-                                                 const float maxEdgeLength) {
-  auto [targetScale, targetLevel] = getTargetScale(id, features);
-  float originalArea = features.width * features.height;
-  if (maxEdgeLength * targetScale > config_.MAX_OF_ROI_SIZE) {
-    for (int level = int(targetAreas_.size()) - 1; level >= 0; level--) {
-      float scale = getTargetScale(level, originalArea);
-      if (maxEdgeLength * scale <= config_.MAX_OF_ROI_SIZE) {
-        targetScale = scale;
-        break;
-      }
-    }
-    while (maxEdgeLength * targetScale > config_.MAX_OF_ROI_SIZE) {
-      targetScale -= config_.PROBE_STEP_SIZE;
-    }
-    assert(targetScale > 0.0f);
-  }
-  return {targetScale, targetLevel};
-}
 
 std::pair<float, int> ROIResizer::getTargetScale(const ID id,
                                                  const Features& features) {

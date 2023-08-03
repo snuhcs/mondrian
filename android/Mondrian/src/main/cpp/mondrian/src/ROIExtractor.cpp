@@ -31,31 +31,35 @@ void ROIExtractor::enqueue(Frame* frame) {
   PDWaiting_.insert(frame);
   cv_.notify_one();
   LOGD("ROIExtractor::enqueue(fid=%d) "
-       "// PDWaiting=%lu OFWaiting=%lu OFProcessed=%lu | OFWaiting.front()=%d",
+       "// PDWaiting=%lu OFWaiting=%lu OFProcessed=%d | OFWaiting.front()=%d",
        frame->frameIndex,
        PDWaiting_.size(),
        OFWaiting_.size(),
-       OFProcessed_.size(),
+       std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
+                       [](int sum, const auto& kv) { return sum + kv.second.size(); }),
        OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
 }
 
-Stream ROIExtractor::collectFrames(int scheduleID) {
+MultiStream ROIExtractor::collectFrames(int scheduleID) {
   std::lock_guard<std::mutex> lock(mtx_);
   for (Frame* frame : OFProcessing_) {
     frame->reprocessOF = true;
     frame->useInferenceResultForOF = true;
   }
-  for (Frame* frame : OFProcessed_) {
-    frame->useInferenceResultForOF = true;
+  for (auto& [vid, frames] : OFProcessed_) {
+    for (auto& frame : frames) {
+      frame->useInferenceResultForOF = true;
+    }
   }
-  Stream collectedFrames = std::move(OFProcessed_);
+  MultiStream collectedFrames = std::move(OFProcessed_);
   cv_.notify_all();
   LOGD("ROIExtractor::collectFrames(scheduleID=%d) "
-       "// PDWaiting=%lu OFWaiting=%lu OFProcessed=%lu collectedFrames=%lu | OFWaiting.front()=%d",
+       "// PDWaiting=%lu OFWaiting=%lu OFProcessed=%d collectedFrames=%lu | OFWaiting.front()=%d",
        scheduleID,
        PDWaiting_.size(),
        OFWaiting_.size(),
-       OFProcessed_.size(),
+       std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
+                       [](int sum, const auto& kv) { return sum + kv.second.size(); }),
        collectedFrames.size(),
        OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
   return collectedFrames;
@@ -140,7 +144,7 @@ void ROIExtractor::work(int extractorId) {
       if (!frame->reprocessOF) {
         // Common case
         frame->isROIsReady = true;
-        OFProcessed_.insert(frame);
+        OFProcessed_.at(frame->vid).insert(frame);
       } else {
         // When scheduling is triggered while OF processing
         frame->resetOFROIExtraction();

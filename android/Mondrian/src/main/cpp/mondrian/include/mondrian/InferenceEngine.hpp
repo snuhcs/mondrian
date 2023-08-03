@@ -13,6 +13,7 @@
 namespace md {
 
 using Result = std::tuple<std::vector<BoundingBox>, std::pair<time_us, time_us>, Device>;
+using LatencyTable = std::map<Device, std::map<std::pair<int, bool>, time_us>>;
 
 class InferenceEngine {
   friend Worker;
@@ -30,7 +31,7 @@ class InferenceEngine {
 
   Result getResults(int key);
 
-  std::map<Device, std::map<std::pair<int, bool>, time_us>> latencyTable() const;
+  LatencyTable latencyTable() const;
 
  private:
   void enqueueResult(const int handle, const Result& result);
@@ -48,6 +49,8 @@ class InferenceEngine {
   std::condition_variable resultCv;
   std::map<int, Result> results;
 };
+
+std::string str(const LatencyTable& latencyTable);
 
 } // namespace md
 

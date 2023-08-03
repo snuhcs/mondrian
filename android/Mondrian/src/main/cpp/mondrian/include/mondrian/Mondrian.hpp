@@ -10,7 +10,6 @@
 #include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
 #include "mondrian/Frame.hpp"
-#include "mondrian/ROIExtractor.hpp"
 
 namespace md {
 
@@ -18,6 +17,8 @@ class FrameBuffer;
 class InferenceEngine;
 class Logger;
 class PackedCanvas;
+class ROIExtractor;
+class ROIPacker;
 class ROIResizer;
 class PatchReconstructor;
 
@@ -79,6 +80,11 @@ class Mondrian {
 
   // Thread: Postprocessing
   std::thread postprocessThread_;
+  std::mutex packMtx_;
+  std::condition_variable packCV_;
+  bool packed_;
+  int packScheduleID_;
+  MultiStream frames_;
   Frame* fullFrame_;
   std::vector<PackedCanvas> packedCanvases_;
 

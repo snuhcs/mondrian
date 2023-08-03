@@ -5,9 +5,11 @@
 #include <vector>
 
 #include "mondrian/Config.hpp"
-#include "mondrian/DataType.hpp"
+#include "mondrian/Frame.hpp"
 
 namespace md {
+
+class PackedCanvas;
 
 struct IntRect {
   int l;
@@ -32,6 +34,10 @@ class ROIPacker {
  public:
   ROIPacker(const ROIPackerConfig& config);
 
+  std::vector<PackedCanvas> packROIs(
+      MultiStream& frames, const std::vector<InferenceInfo>& inferencePlan);
+
+ private:
   static std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
                                             const IntPairs& boxWHs, bool backward,
                                             ExecutionType executionType, int roiSize);
@@ -40,7 +46,6 @@ class ROIPacker {
                     const IntPairs& boxWH, const IntPairs& indices,
                     ExecutionType executionType, int roiSize);
 
- private:
   static int getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, int w, int h);
 
   static void packBox(std::vector<std::vector<IntRect>>& freeRectsVec,

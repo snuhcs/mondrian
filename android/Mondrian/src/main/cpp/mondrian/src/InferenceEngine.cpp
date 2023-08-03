@@ -89,12 +89,22 @@ void InferenceEngine::enqueueResult(const int handle, const Result& result) {
   resultCv.notify_all();
 }
 
-std::map<Device, std::map<std::pair<int, bool>, time_us>> InferenceEngine::latencyTable() const {
+LatencyTable InferenceEngine::latencyTable() const {
   std::map<Device, std::map<std::pair<int, bool>, time_us>> latencyTable;
   for (const auto& [device, worker] : workers) {
     latencyTable[device] = worker->latencyMap();
   }
   return latencyTable;
+}
+
+std::string str(const LatencyTable& latencyTable) {
+  std::stringstream ss;
+  for (auto& [device, sizeIsFullLatency] : latencyTable) {
+    for (auto& [sizeIsFull, latency] : sizeIsFullLatency) {
+      ss << sizeIsFull.first << ": " << latency << " us, ";
+    }
+  }
+  return ss.str();
 }
 
 } // namespace md

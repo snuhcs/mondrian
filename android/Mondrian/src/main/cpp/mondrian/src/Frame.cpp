@@ -105,8 +105,7 @@ void Frame::assignPDROIIDs() {
 void Frame::resizeROIs(ROIResizer* roiResizer) {
   for (auto& roi : rois) {
     if (roi->type == OF) {
-      auto [scale, level] = roiResizer->getTargetScale(roi->id, roi->features,
-                                                       roi->maxEdgeLength);
+      auto [scale, level] = roiResizer->getTargetScale(roi->id, roi->features);
       assert(0.0f < scale && scale <= 1.0f);
       roi->scaleTo(scale, level);
     } else {

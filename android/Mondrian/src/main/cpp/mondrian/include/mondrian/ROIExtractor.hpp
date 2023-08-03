@@ -23,7 +23,7 @@ class ROIExtractor {
 
   void enqueue(Frame* frame);
 
-  Stream collectFrames(int scheduleID);
+  MultiStream collectFrames(int scheduleID);
 
   std::condition_variable& cv() {
     return cv_;
@@ -49,7 +49,7 @@ class ROIExtractor {
   Stream PDProcessing_;
   Stream OFWaiting_;
   Stream OFProcessing_;
-  Stream OFProcessed_;
+  MultiStream OFProcessed_;
 };
 
 } // namespace md

@@ -2,10 +2,17 @@
 
 #include <sstream>
 
+#include "mondrian/PackedCanvas.hpp"
+
 namespace md {
 
 ROIPacker::ROIPacker(const ROIPackerConfig& config) {
 
+}
+
+std::vector<PackedCanvas> ROIPacker::packROIs(MultiStream& frames,
+                                              const std::vector<InferenceInfo>& inferencePlan) {
+  return {};
 }
 
 std::pair<IntPairs, IntPairs> ROIPacker::pack(
