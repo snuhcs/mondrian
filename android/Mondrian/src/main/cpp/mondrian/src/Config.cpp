@@ -49,6 +49,7 @@ ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   config.OF_ROI_PADDING = parseFloat(json, "of_roi_padding");
   config.OF_EAT_PD_IOU_THRES = parseFloat(json, "of_eat_pd_iou_thres");
   config.MERGE = parseBool(json, "merge");
+  config.MAX_MERGE_SIZE = parseFloat(json, "max_merge_size");
   config.ROI_BORDER = parseInt(json, "roi_border");
   return config;
 }
@@ -208,6 +209,7 @@ void ROIExtractorConfig::print() const {
   ss << "OF_ROI_PADDING: " << OF_ROI_PADDING << std::endl;
   ss << "OF_EAT_PD_IOU_THRES: " << OF_EAT_PD_IOU_THRES << std::endl;
   ss << "MERGE: " << MERGE << std::endl;
+  ss << "MAX_MERGE_SIZE: " << MAX_MERGE_SIZE << std::endl;
   ss << "ROI_BORDER: " << ROI_BORDER << std::endl;
   LOGD("%s", ss.str().c_str());
 }

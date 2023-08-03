@@ -5,32 +5,18 @@
 #include <set>
 #include <utility>
 
-#include "opencv2/video/tracking.hpp"
-
 #include "mondrian/Log.hpp"
-#include "mondrian/PackedCanvas.hpp"
-#include "mondrian/ROIPrioritizer.hpp"
+#include "mondrian/Utils.hpp"
 
 namespace md {
 
 const cv::TermCriteria ROIExtractor::CRITERIA = cv::TermCriteria(
-    cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 10, 0.03);
+    /*type=*/cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
+    /*maxCount=*/10,
+    /*epsilon=*/0.03);
 
-ROIExtractor::ROIExtractor(
-    const ROIExtractorConfig& config,
-    int maxMergeSize,
-    ROIResizer* roiResizer,
-    ExecutionType executionType,
-    int roiSize)
-    : config_(config),
-      maxMergeSize_(maxMergeSize),
-      ROIResizer_(roiResizer),
-      executionType_(executionType),
-      ROISize_(roiSize),
-      targetSize_(cv::Size(int(config.EXTRACTION_RESIZE_WIDTH),
-                           int(config.EXTRACTION_RESIZE_HEIGHT))),
-      stop_(false) {
-  assert(executionType_ == MONDRIAN || ROISize_ == maxMergeSize_);
+ROIExtractor::ROIExtractor(const ROIExtractorConfig& config, ROIResizer* roiResizer)
+    : config_(config), ROIResizer_(roiResizer), stop_(false) {
   threads_.reserve(config.NUM_WORKERS);
   for (int extractorId = 0; extractorId < config.NUM_WORKERS; extractorId++) {
     threads_.emplace_back([this, extractorId]() { work(extractorId); });
@@ -115,7 +101,7 @@ void ROIExtractor::work(int extractorId) {
     Frame* frame = nullptr;
 
     std::unique_lock<std::mutex> lock(mtx_);
-    cv_.wait(lock, [this, &pd, &frame, &getPDJob, &getOFJob]() {
+    cv_.wait(lock, [this, &pd, &frame, &getPDJob, &getOFJob]() -> bool {
       if (stop_) {
         return true;
       }
@@ -186,11 +172,102 @@ void ROIExtractor::work(int extractorId) {
 }
 
 void ROIExtractor::processPD(Frame* currFrame) {
+  assert(currFrame->rois.empty());
   currFrame->pixelDiffROIProcessStartTime = NowMicros();
+  const Frame* prevFrame = currFrame;
+  for (int i = 0; i < config_.PD_INTERVAL; i++) {
+    if (prevFrame->frameIndex == 0) break;
+    prevFrame = prevFrame->prevFrame;
+  }
+  assert(prevFrame != nullptr && prevFrame != currFrame);
+  std::vector<Rect> resizedPDRects = extractPD(prevFrame->resizedGrayMat, currFrame->resizedGrayMat);
+  std::vector<Rect> pdRects;
+  std::transform(
+      resizedPDRects.begin(), resizedPDRects.end(), std::back_inserter(pdRects),
+      [currFrame](Rect& resizedPDRect) -> Rect {
+        float wRatio = (float) currFrame->resizedGrayMat.cols / (float) currFrame->width();
+        float hRatio = (float) currFrame->resizedGrayMat.rows / (float) currFrame->height();
+        return {resizedPDRect.l / wRatio, resizedPDRect.t / hRatio,
+                resizedPDRect.r / wRatio, resizedPDRect.b / hRatio};
+      });
+  std::for_each(pdRects.begin(), pdRects.end(),
+                [currFrame](Rect& pdRect){
+    float widthRatio = float(currFrame->resizedGrayMat.cols) / float(currFrame->width());
+    float heightRatio = float(currFrame->resizedGrayMat.rows) / float(currFrame->height());
+    pdRect.x *= widthRatio;
+    pdRect.y *= heightRatio;
+    pdRect.width *= widthRatio;
+    pdRect.height *= heightRatio;
+  });
   getPixelDiffROIs(currFrame, targetSize_,
                    config_.MAX_PD_ROI_SIZE, config_.MIN_PD_ROI_SIZE,
                    currFrame->rois);
   currFrame->pixelDiffROIProcessEndTime = NowMicros();
+}
+
+void ROIExtractor::getPixelDiffROIs(Frame* currFrame, const cv::Size& targetSize,
+                                    const float maxPDROISize, const float minPDROISize,
+                                    std::vector<std::unique_ptr<ROI>>& outChildROIs) const {
+
+  // Find {PD_INTERVAL}th previous frame. If not available, use farthest frame.
+
+
+  float widthRatio = float(targetSize.width) / float(prevFrame->width());
+  float heightRatio = float(targetSize.height) / float(prevFrame->height());
+//  LOGD("XXX %d %d => %d %d | %f %f",
+//       prevFrame->width(), prevFrame->height(),
+//       targetSize.width, targetSize.height,
+//       widthRatio, heightRatio);
+
+  const cv::Mat& prevImage = prevFrame->resizedGrayMat;
+  const cv::Mat& currImage = currFrame->resizedGrayMat;
+
+  cv::Mat mat = calculateDiffAndThreshold(prevImage, currImage);
+  cannyEdgeDetection(mat);
+
+  std::vector<std::vector<cv::Point>> contours;
+  cv::Mat hierarchy;
+
+  cv::findContours(mat, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+  // replaces get boxes from contours.
+  std::vector<Rect> boxes;
+  for (const std::vector<cv::Point>& contour : contours) {
+    double approxDistance = cv::arcLength(contour, true) * 0.02;
+    std::vector<cv::Point> approxCurve;
+    cv::approxPolyDP(contour, approxCurve, approxDistance, true);
+    cv::Rect2f box = cv::boundingRect(approxCurve);
+    assert(box.width > 0 && box.height > 0);
+    if (minPDROISize <= std::min(box.width, box.height)
+        && std::max(box.width, box.height) <= maxPDROISize) {
+      Rect _box(box.x / widthRatio,
+                box.y / heightRatio,
+                (box.x + box.width) / widthRatio,
+                (box.y + box.height) / heightRatio);
+//      LOGD("XXX: %f %f %f %f | %f %f | %f %f %f %f",
+//           box.x, box.y, box.x + box.width, box.y + box.height,
+//           widthRatio, heightRatio,
+//           _box.l, _box.t, _box.r, _box.b);
+      assert(0 <= _box.l && 0 <= _box.t
+                 && _box.r <= prevFrame->width() && _box.b <= prevFrame->height());
+      boxes.push_back(_box);
+    }
+  }
+
+  for (const Rect& box : boxes) {
+    if (std::min(box.w, box.h) >= 1.0f) {
+      outChildROIs.emplace_back(new ROI(
+          nullptr,
+          INVALID_ID,
+          currFrame,
+          box,
+          PD,
+          O_PD,
+          -1,
+          OFFeatures(),
+          ROI::INVALID_CONF));
+    }
+  }
 }
 
 void ROIExtractor::processOF(Frame* currFrame) {
@@ -333,78 +410,6 @@ std::vector<OFFeatures> ROIExtractor::opticalFlowTracking(
     ofFeatures.emplace_back(_shifts, _statuses, _errs);
   }
   return ofFeatures;
-}
-
-void ROIExtractor::getPixelDiffROIs(Frame* currFrame, const cv::Size& targetSize,
-                                    const float maxPDROISize, const float minPDROISize,
-                                    std::vector<std::unique_ptr<ROI>>& outChildROIs) const {
-
-  // Find {PD_INTERVAL}th previous frame. If not available, use farthest frame.
-  const Frame* prevFrame = currFrame;
-  for (int i = 0; i < config_.PD_INTERVAL; i++) {
-    assert(prevFrame != nullptr);
-    if (prevFrame->prevFrame == nullptr) {
-      break;
-    }
-    prevFrame = prevFrame->prevFrame;
-  }
-
-  float widthRatio = float(targetSize.width) / float(prevFrame->width());
-  float heightRatio = float(targetSize.height) / float(prevFrame->height());
-//  LOGD("XXX %d %d => %d %d | %f %f",
-//       prevFrame->width(), prevFrame->height(),
-//       targetSize.width, targetSize.height,
-//       widthRatio, heightRatio);
-
-  const cv::Mat& prevImage = prevFrame->resizedGrayMat;
-  const cv::Mat& currImage = currFrame->resizedGrayMat;
-
-  cv::Mat mat = calculateDiffAndThreshold(prevImage, currImage);
-  cannyEdgeDetection(mat);
-
-  std::vector<std::vector<cv::Point>> contours;
-  cv::Mat hierarchy;
-
-  cv::findContours(mat, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-  // replaces get boxes from contours.
-  std::vector<Rect> boxes;
-  for (const std::vector<cv::Point>& contour : contours) {
-    double approxDistance = cv::arcLength(contour, true) * 0.02;
-    std::vector<cv::Point> approxCurve;
-    cv::approxPolyDP(contour, approxCurve, approxDistance, true);
-    cv::Rect2f box = cv::boundingRect(approxCurve);
-    assert(box.width > 0 && box.height > 0);
-    if (minPDROISize <= std::min(box.width, box.height)
-        && std::max(box.width, box.height) <= maxPDROISize) {
-      Rect _box(box.x / widthRatio,
-                box.y / heightRatio,
-                (box.x + box.width) / widthRatio,
-                (box.y + box.height) / heightRatio);
-//      LOGD("XXX: %f %f %f %f | %f %f | %f %f %f %f",
-//           box.x, box.y, box.x + box.width, box.y + box.height,
-//           widthRatio, heightRatio,
-//           _box.l, _box.t, _box.r, _box.b);
-      assert(0 <= _box.l && 0 <= _box.t
-                 && _box.r <= prevFrame->width() && _box.b <= prevFrame->height());
-      boxes.push_back(_box);
-    }
-  }
-
-  for (const Rect& box : boxes) {
-    if (std::min(box.w, box.h) >= 1.0f) {
-      outChildROIs.emplace_back(new ROI(
-          nullptr,
-          INVALID_ID,
-          currFrame,
-          box,
-          PD,
-          O_PD,
-          -1,
-          OFFeatures(),
-          ROI::INVALID_CONF));
-    }
-  }
 }
 
 cv::Mat ROIExtractor::calculateDiffAndThreshold(

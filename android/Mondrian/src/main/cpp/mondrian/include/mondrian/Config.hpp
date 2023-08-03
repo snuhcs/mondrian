@@ -24,6 +24,7 @@ struct ROIExtractorConfig {
   float OF_ROI_PADDING;
   float OF_EAT_PD_IOU_THRES;
   bool MERGE;
+  float MAX_MERGE_SIZE;
   int ROI_BORDER;
 
   void print() const;

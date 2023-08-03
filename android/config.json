@@ -28,6 +28,7 @@
     "of_roi_padding": 20.0,
     "of_eat_pd_iou_thres": 0.5,
     "merge": true,
+    "max_merge_size": 640,
     "roi_border": 2
   },
   "roi_resizer": {
