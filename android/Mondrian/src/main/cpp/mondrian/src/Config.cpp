@@ -117,7 +117,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
 }
 
 void MondrianConfig::test() const {
-  std::set<std::string> datasets = {"pretrained", "virat", "mta"};
+  std::set<std::string> datasets = {"pretrained", "virat", "mtx_"};
 
   // Common
   if (EXECUTION_TYPE == FRAME_WISE_INFERENCE) {

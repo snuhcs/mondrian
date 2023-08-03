@@ -3,9 +3,61 @@
 #include <map>
 #include <set>
 
-#include "mondrian/DataType.hpp"
+#include "opencv2/video/tracking.hpp"
 
 namespace md {
+
+std::vector<Rect> extractPD(const cv::Mat& prevGrayMat, const cv::Mat& nextGrayMat) {
+  assert(prevGrayMat.size() == nextGrayMat.size());
+  cv::Mat mat;
+  cv::absdiff(prevGrayMat, nextGrayMat, mat);
+  cv::dilate(mat, mat,
+      /*kernel=*/cv::getStructuringElement(cv::MORPH_RECT, cv::Size(4, 4)),
+      /*anchor=*/cv::Point(-1, -1),
+      /*iterations==*/2);
+  cv::threshold(mat, mat,
+      /*thresh=*/35,
+      /*maxval=*/255,
+      /*type=*/cv::THRESH_BINARY);
+  cv::Canny(mat, mat,
+      /*threshold1==*/120,
+      /*threshold2==*/255,
+      /*apertureSize=*/3,
+      /*L2gradient=*/false);
+  cv::dilate(mat, mat,
+      /*kernel=*/cv::getStructuringElement(cv::MORPH_RECT, cv::Size(4, 4)),
+      /*anchor=*/cv::Point(-1, -1),
+      /*iterations==*/2);
+
+  std::vector<std::vector<cv::Point>> contours;
+  cv::Mat hierarchy;
+  cv::findContours(mat, contours, hierarchy,
+      /*mode=*/cv::RETR_EXTERNAL,
+      /*method=*/cv::CHAIN_APPROX_SIMPLE);
+
+  std::vector<Rect> boxes;
+  for (const std::vector<cv::Point>& contour : contours) {
+    std::vector<cv::Point> approxCurve;
+    cv::approxPolyDP(contour, approxCurve,
+        /*epsilon=*/cv::arcLength(contour, true) * 0.02,
+        /*closed=*/true);
+    cv::Rect2f box = cv::boundingRect(approxCurve);
+    assert(box.width > 0 && box.height > 0);
+    boxes.emplace_back(
+        box.x,
+        box.y,
+        box.x + box.width,
+        box.y + box.height);
+  }
+
+  for (const auto& box : boxes) {
+    assert(0 <= box.l
+               && 0 <= box.t
+               && box.r <= prevGrayMat.cols
+               && box.b <= prevGrayMat.rows);
+  }
+  return boxes;
+}
 
 std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
                              const int numLabels, const float iouThreshold) {
@@ -81,96 +133,5 @@ void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
     }
   }
 }
-
-std::set<int> range(int startIndex, int endIndex) {
-  std::set<int> range;
-  for (int i = startIndex; i < endIndex; i++) {
-    range.insert(i);
-  }
-  return range;
-}
-
-const char* COCO_LABELS[] = {
-    "person",
-    "bicycle",
-    "car",
-    "motorbike",
-    "aeroplane",
-    "bus",
-    "train",
-    "truck",
-    "boat",
-    "traffic light",
-    "fire hydrant",
-    "stop sign",
-    "parking meter",
-    "bench",
-    "bird",
-    "cat",
-    "dog",
-    "horse",
-    "sheep",
-    "cow",
-    "elephant",
-    "bear",
-    "zebra",
-    "giraffe",
-    "backpack",
-    "umbrella",
-    "handbag",
-    "tie",
-    "suitcase",
-    "frisbee",
-    "skis",
-    "snowboard",
-    "sports ball",
-    "kite",
-    "baseball bat",
-    "baseball glove",
-    "skateboard",
-    "surfboard",
-    "tennis racket",
-    "bottle",
-    "wine glass",
-    "cup",
-    "fork",
-    "knife",
-    "spoon",
-    "bowl",
-    "banana",
-    "apple",
-    "sandwich",
-    "orange",
-    "broccoli",
-    "carrot",
-    "hot dog",
-    "pizza",
-    "donut",
-    "cake",
-    "chair",
-    "sofa",
-    "potted plant",
-    "bed",
-    "dining table",
-    "toilet",
-    "tvmonitor",
-    "laptop",
-    "mouse",
-    "remote",
-    "keyboard",
-    "cell phone",
-    "microwave",
-    "oven",
-    "toaster",
-    "sink",
-    "refrigerator",
-    "book",
-    "clock",
-    "vase",
-    "scissors",
-    "teddy bear",
-    "hair drier",
-    "toothbrush"
-};
 
 } // namespace md

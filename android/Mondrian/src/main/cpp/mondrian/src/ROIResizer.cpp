@@ -15,7 +15,7 @@ const int ROIResizer::INVALID_LEVEL = -1;
 
 const std::map<std::string, Predictor> ROIResizer::CANDIDATE_PREDICTORS = {
     {"virat", VIRAT},
-    {"mta", MTA},
+    {"mtx_", MTA},
 };
 
 const std::map<std::string, std::vector<float>> ROIResizer::AREA_LEVELS = {
@@ -26,7 +26,7 @@ const std::map<std::string, std::vector<float>> ROIResizer::AREA_LEVELS = {
         880.0315355329949,
         1e10
     }},
-    {"mta", {
+    {"mtx_", {
         368.62745098039215,
         459.33734939759046,
         558.7062937062936,

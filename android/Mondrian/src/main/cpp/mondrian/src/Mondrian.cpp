@@ -97,6 +97,9 @@ void Mondrian::workSchedule() {
 
     LOGD("========== Schedule %d Start at %.2f ms ==========",
          currID, (float) (NowMicros() - startTime_) / 1000);
+
+    Stream frames = ROIExtractor_->collectFrames(currID);
+
     // Inference planning
     auto latencyTable = inferenceEngine_->latencyTable();
     time_us fullStartTime = fullFramePlan
@@ -118,7 +121,6 @@ void Mondrian::workSchedule() {
          budget, str(inferencePlan).c_str(), ss.str().c_str());
 
     // Getting PackedFrames
-    auto packingResult = ROIExtractor_->prepareInference(inferencePlan, fullFramePlan, currID);
     packingResults_.put(packingResult);
     LOGD("========== Schedule %d End   at %.2f ms ==========",
          currID, (float) (NowMicros() - startTime_) / 1000);
@@ -151,7 +153,7 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   frame->isBoxesReady = true;
   frame->endTime = NowMicros();
   if (ROIExtractor_ != nullptr) {
-    ROIExtractor_->notify();
+    ROIExtractor_->cv().notify_all();
   }
 
   log(frame);
@@ -200,7 +202,7 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
       }
     }
     // Notify results of processed frames
-    ROIExtractor_->notify();
+    ROIExtractor_->cv().notify_all();
   }
 }
 
@@ -370,7 +372,7 @@ void Mondrian::workPostprocess() {
         frame->endTime = NowMicros();
       }
     }
-    ROIExtractor_->notify();
+    ROIExtractor_->cv().notify_all();
 
     // Update results for system output
     std::unique_lock<std::mutex> resultLock(logMtx_);

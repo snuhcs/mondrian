@@ -41,7 +41,7 @@ class Frame {
   std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
   std::vector<std::unique_ptr<MergedROI>> probingROIs;
 
-  bool extractOFAgain;
+  bool reprocessOF;
   std::vector<std::unique_ptr<ROI>> rois;
   std::vector<std::unique_ptr<MergedROI>> mergedROIs;
 

@@ -15,7 +15,7 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
              const Frame* prevFrame, const time_us& enqueueTime)
     : vid(vid), frameIndex(frameIndex), scheduleID(-1), yuvMat(yuvMat),
       width_(0), height_(0), prevFrame(prevFrame),
-      useInferenceResultForOF(false), extractOFAgain(false), enqueueTime(enqueueTime),
+      useInferenceResultForOF(false), reprocessOF(false), enqueueTime(enqueueTime),
       isBoxesReady(false), isROIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
       isLastFrame(false), inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
 
@@ -240,7 +240,7 @@ void Frame::resetOFROIExtraction() {
     roi->mergedROI = nullptr;
   });
   useInferenceResultForOF = false;
-  extractOFAgain = false;
+  reprocessOF = false;
   isROIsReady = false;
 }
 
