@@ -67,6 +67,7 @@ struct Rect {
   float b;
   float w;
   float h;
+  float minWH;
   float maxWH;
   float area;
 
@@ -75,6 +76,7 @@ struct Rect {
   Rect(float l, float t, float r, float b) : l(l), t(t), r(r), b(b) {
     w = r - l;
     h = b - t;
+    minWH = std::min(w, h);
     maxWH = std::max(w, h);
     area = w * h;
   };
