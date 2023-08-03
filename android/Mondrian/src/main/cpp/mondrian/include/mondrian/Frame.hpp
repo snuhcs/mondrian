@@ -77,17 +77,19 @@ class Frame {
 
   void prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize);
 
-  void filterPDROIs(float threshold, bool eatPD);
+  void eatPDROIs(float overlap_thres);
 
-  void resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize);
+  void filterPDROIs(float overlap_thres);
+
+  void assignPDROIIDs();
+
+  void resizeROIs(ROIResizer* roiResizer);
 
   void resetMergedROIs();
 
   void mergeMergedROIs(int maxSize);
 
   void sortMergedROIs();
-
-  void resetProbeROIs();
 
   bool isReadyToMarry(int packedFrameIndex) const;
 

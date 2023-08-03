@@ -22,8 +22,6 @@ namespace md {
 
 Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app)
     : config_(config), stop_(false), numFirstFrameReadyVideos_(0), numVideos_(numVideos),
-      preprocessTargetSize_(int(config_.roiExtractorConfig.EXTRACTION_RESIZE_WIDTH),
-                            int(config_.roiExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
       scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2), numIntervals_(0),
       ROIResizer_(new ROIResizer(config.roiResizerConfig)), startTime_(NowMicros()),
       inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)),
@@ -31,7 +29,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
                                                  ROIResizer_.get())) {
   config_.print();
   config_.test();
-  ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
+  ROI::PADDING = config.roiExtractorConfig.OF_ROI_PADDING;
   MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
 
   // Create loggers
@@ -67,15 +65,10 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
 
   // Prepare ROI extractor and start scheduling
   inferenceEngine_->profileLatency();
-  int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
-                     ? *config_.inferenceEngineConfig.INPUT_SIZES.begin()
-                     : config.ROI_SIZE;
   auto latencyTable = inferenceEngine_->latencyTable();
   auto inferencePlan = InferencePlanner::getInferencePlan(
       latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);
-  ROIExtractor_ = std::make_unique<ROIExtractor>(
-      config_.roiExtractorConfig, maxMergeSize, ROIResizer_.get(),
-      config.EXECUTION_TYPE, config.ROI_SIZE, inferencePlan, numVideos);
+  ROIExtractor_ = std::make_unique<ROIExtractor>(config_.roiExtractorConfig, ROIResizer_.get());
   scheduleThread_ = std::thread([this]() { workSchedule(); });
 }
 
@@ -281,7 +274,7 @@ void Mondrian::workPreprocess() {
     int currID = id++;
     Frame* frame = preprocessQueue_.take();
 
-    frame->prepareRgbMatAndResizedGrayMat(preprocessTargetSize_);
+    frame->prepareRgbMatAndResizedGrayMat(config_.roiExtractorConfig.EXTRACTION_SIZE);
 
     if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
       inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,

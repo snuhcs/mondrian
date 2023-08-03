@@ -22,9 +22,10 @@ struct ROIExtractorConfig {
   float MAX_PD_ROI_SIZE;
   float OF_CONF_THRES;
   float OF_ROI_PADDING;
-  float OF_EAT_PD_IOU_THRES;
+  float PD_EAT_OVERLAP_THRES;
+  float PD_FILTER_OVERLAP_THRES;
   bool MERGE;
-  float MAX_MERGE_SIZE;
+  int MAX_MERGE_SIZE;
   int ROI_BORDER;
 
   void print() const;

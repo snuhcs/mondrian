@@ -10,8 +10,7 @@
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
-#include "mondrian/PackedCanvas.hpp"
-#include "mondrian/ROIPacker.hpp"
+#include "mondrian/Frame.hpp"
 #include "mondrian/ROIResizer.hpp"
 
 namespace md {
@@ -24,9 +23,11 @@ class ROIExtractor {
 
   void enqueue(Frame* frame);
 
-  std::condition_variable& cv();
-
   Stream collectFrames(int scheduleID);
+
+  std::condition_variable& cv() {
+    return cv_;
+  }
 
  private:
   void work(int extractorId);
@@ -34,17 +35,6 @@ class ROIExtractor {
   void processPD(Frame* currFrame) const;
 
   void processOF(Frame* currFrame);
-
-  static void getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,
-                                 const std::vector<BoundingBox>& boundingBoxes,
-                                 const cv::Size& targetSize,
-                                 std::vector<std::unique_ptr<ROI>>& outChildROIs);
-
-  static std::vector<OFFeatures> opticalFlowTracking(
-      const Frame* prevFrame, const Frame* currFrame, const std::vector<Rect>& boundingBoxes,
-      const cv::Size& targetSize);
-
-  static const cv::TermCriteria CRITERIA;
 
   bool stop_;
   std::vector<std::thread> threads_;

@@ -137,9 +137,18 @@ struct BoundingBox {
   Origin origin;
   ID choiceOfBox;
 
-  BoundingBox(ID id, const Rect location, const float confidence, int label, Origin origin)
-      : id(id), loc(location), confidence(confidence), label(label), origin(origin),
-        srcROI(nullptr), choiceOfBox(INVALID_ID) {}
+  BoundingBox(ID id,
+              const Rect location,
+              const float confidence,
+              int label,
+              Origin origin)
+      : id(id),
+        loc(location),
+        confidence(confidence),
+        label(label),
+        origin(origin),
+        srcROI(nullptr),
+        choiceOfBox(INVALID_ID) {}
 
   static std::string header(char delim) {
     std::stringstream ss;
