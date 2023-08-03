@@ -8,11 +8,13 @@
 namespace md {
 
 static int parseInt(const Json::Value& json, const std::string& key) {
+  LOGD("parseInt key: %s", key.c_str());
   assert(!json[key].isNull());
   return json[key].asInt();
 }
 
 static std::vector<int> parseInts(const Json::Value& json, const std::string& key, const int size) {
+  LOGD("parseInts key: %s", key.c_str());
   assert(!json[key].isNull());
   assert(json[key].isArray() && json[key].size() == size);
   std::vector<int> values;
@@ -23,16 +25,19 @@ static std::vector<int> parseInts(const Json::Value& json, const std::string& ke
 }
 
 static float parseFloat(const Json::Value& json, const std::string& key) {
+  LOGD("parseFloat key: %s", key.c_str());
   assert(!json[key].isNull());
   return json[key].asFloat();
 }
 
 static bool parseBool(const Json::Value& json, const std::string& key) {
+  LOGD("parseBool key: %s", key.c_str());
   assert(!json[key].isNull());
   return json[key].asBool();
 }
 
 static std::string parseString(const Json::Value& json, const std::string& key) {
+  LOGD("parseString key: %s", key.c_str());
   assert(!json[key].isNull());
   return json[key].asString();
 }
@@ -47,7 +52,7 @@ ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   config.MAX_PD_ROI_SIZE = parseFloat(json, "max_pd_roi_size");
   config.OF_CONF_THRES = parseFloat(json, "of_conf_thres");
   config.OF_ROI_PADDING = parseFloat(json, "of_roi_padding");
-  config.PD_EAT_OVERLAP_THRES = parseFloat(json, "pd_eat_iou_thres");
+  config.PD_EAT_OVERLAP_THRES = parseFloat(json, "pd_eat_overlap_thres");
   config.PD_FILTER_OVERLAP_THRES = parseFloat(json, "pd_filter_overlap_thres");
   config.MERGE = parseBool(json, "merge");
   config.MAX_MERGE_SIZE = parseInt(json, "max_merge_size");

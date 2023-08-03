@@ -31,9 +31,6 @@ public class MondrianApp implements VideoLoader.Callback {
         System.loadLibrary("opencv_video");
         System.loadLibrary("opencv_imgcodecs");
         System.loadLibrary("opencv_imgproc");
-        System.loadLibrary("MNN");
-        System.loadLibrary("MNN_CL");
-        System.loadLibrary("MNN_Express");
     }
 
     private static class VideoConfig {

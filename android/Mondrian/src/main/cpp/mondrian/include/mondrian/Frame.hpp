@@ -74,8 +74,6 @@ class Frame {
 
   void prepareResizedGrayMat(const cv::Size& targetSize);
 
-  void prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize);
-
   void eatPDROIs(float overlap_thres);
 
   void filterPDROIs(float overlap_thres);

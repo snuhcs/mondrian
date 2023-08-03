@@ -176,9 +176,8 @@ void Mondrian::workSchedule() {
         fullFrame = *frames.at(fullVid).rbegin();
       }
     }
-    std::vector<PackedCanvas> packedCanvases = ROIPacker_->packROIs(frames,
-                                                                    inferencePlan,
-                                                                    fullFrame);
+    std::vector<PackedCanvas> packedCanvases = ROIPacker_->packROIs(
+        frames, inferencePlan, fullFrame);
 
     std::unique_lock<std::mutex> packLock(packMtx_);
     packed_ = true;
