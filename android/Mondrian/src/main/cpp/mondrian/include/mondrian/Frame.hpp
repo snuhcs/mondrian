@@ -130,9 +130,9 @@ struct FrameComp {
 using Stream = std::set<Frame*, FrameComp>;
 using MultiStream = std::map<int, Stream>;
 
-std::string str(const Stream& frames);
+std::string str(const Stream& stream);
 
-std::string str(const MultiStream& frames);
+std::string str(const MultiStream& streams);
 
 } // namespace md
 

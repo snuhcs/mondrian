@@ -304,30 +304,28 @@ void Frame::resetOFROIExtraction() {
   isROIsReady = false;
 }
 
-std::string str(const MultiStream& frames) {
+std::string str(const MultiStream& streams) {
   std::stringstream ss;
-  for (auto it = frames.begin(); it != frames.end(); it++) {
-    ss << "video " << it->first << ": ";
-    if (it->second.empty()) {
+  for (const auto& [vid, stream] : streams) {
+    ss << "vid" << vid << "=";
+    if (stream.empty()) {
       ss << "EMPTY";
     } else {
-      Frame* firstFrame = *(it->second.begin());
-      Frame* lastFrame = *(it->second.rbegin());
-      ss << firstFrame->frameIndex << " ~ " << lastFrame->frameIndex;
+      Frame* firstFrame = *stream.begin();
+      Frame* lastFrame = *stream.rbegin();
+      ss << "[" << firstFrame->frameIndex << ", " << lastFrame->frameIndex << "]";
     }
-    if (it != std::prev(frames.end())) {
-      ss << ", ";
-    }
+    ss << " ";
   }
   return ss.str();
 }
 
-std::string str(const Stream& frames) {
-  MultiStream multiStream;
-  for (const auto& frame : frames) {
-    multiStream[frame->vid].insert(frame);
+std::string str(const Stream& stream) {
+  MultiStream streams;
+  for (const auto& frame : stream) {
+    streams[frame->vid].insert(frame);
   }
-  return str(multiStream);
+  return str(streams);
 }
 
 } // namespace md
