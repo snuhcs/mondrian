@@ -22,7 +22,10 @@ class InferenceEngine {
 
   void profileLatency() const;
 
-  void enqueue(const cv::Mat& rgbMat, Device device, int inputSize, bool isFullFrame,
+  void enqueue(const cv::Mat& rgbMat,
+               Device device,
+               int inputSize,
+               bool isFullFrame,
                int key);
 
   Result getResults(int key);
@@ -33,17 +36,19 @@ class InferenceEngine {
   void enqueueResult(const int handle, const Result& result);
 
   template<typename T>
-  void addClassifiers(Device device, const InferenceEngineConfig& config,
-                      JNIEnv* env, jobject app);
+  void addClassifiers(Device device,
+                      const InferenceEngineConfig& config,
+                      JNIEnv* env,
+                      jobject app);
 
-  const InferenceEngineConfig mConfig;
+  const InferenceEngineConfig config_;
 
-  std::map<Device, std::unique_ptr<Worker>> workers;
-  std::vector<std::unique_ptr<Classifier>> classifiers;
+  std::map<Device, std::unique_ptr<Worker>> workers_;
+  std::vector<std::unique_ptr<Classifier>> classifiers_;
 
-  std::mutex resultMtx;
-  std::condition_variable resultCv;
-  std::map<int, Result> results;
+  std::mutex resultMtx_;
+  std::condition_variable resultCv_;
+  std::map<int, Result> results_;
 };
 
 } // namespace md
