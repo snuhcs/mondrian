@@ -36,13 +36,13 @@ struct PackingResult {
 
 class ROIPacker {
  public:
-  static PackingResult packCanvases(MultiStream streams,
-                                    std::vector<InferenceInfo> inferencePlan,
-                                    const int fullFrameVid,
-                                    const ExecutionType executionType,
-                                    const int roiSize,
-                                    const ROIPrioritizerType roiPrioritizerType,
-                                    const bool noDownsamplingForLast);
+  static std::vector<PackedCanvas> packCanvases(MultiStream streams,
+                                                std::vector<InferenceInfo> inferencePlan,
+                                                const Frame* fullFrameTarget,
+                                                const ExecutionType executionType,
+                                                const int roiSize,
+                                                const ROIPrioritizerType roiPrioritizerType,
+                                                const bool noDownsamplingForLast);
 
  private:
   static std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,

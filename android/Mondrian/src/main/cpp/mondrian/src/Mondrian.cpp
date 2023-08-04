@@ -124,15 +124,22 @@ void Mondrian::workSchedule() {
     // Getting PackedFrames
     MultiStream streams = ROIExtractor_->collectFrames(currID);
 
-    std::unique_lock<std::mutex> packingResultsLock(packingResultsMtx_);
-    packingResults_.push(ROIPacker::packCanvases(
-        /*streams=*/std::move(streams),
-        /*inferencePlan=*/std::move(inferencePlan),
-        /*fullFrameVid=*/fullFrameVid,
+    Frame* fullFrameTarget = nullptr;
+    if (streams.find(fullFrameVid) != streams.end()) {
+      fullFrameTarget = *streams.at(fullFrameVid).rbegin();
+    }
+
+    std::vector<PackedCanvas> packedCanvases = ROIPacker::packCanvases(
+        /*streams=*/streams,
+        /*inferencePlan=*/inferencePlan,
+        /*fullFrameTarget=*/fullFrameTarget,
         /*executionType=*/config_.EXECUTION_TYPE,
         /*roiSize=*/config_.ROI_SIZE,
         /*roiPrioritizerType=*/config_.roiExtractorConfig.ROI_PRIORITIZER_TYPE,
-        /*noDownsamplingForLast=*/config_.roiExtractorConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME));
+        /*noDownsamplingForLast=*/config_.roiExtractorConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME);
+
+    std::unique_lock<std::mutex> packingResultsLock(packingResultsMtx_);
+    packingResults_.push({streams, fullFrameTarget, packedCanvases});
     packingResultsLock.unlock();
     packingResultsCV_.notify_one();
 

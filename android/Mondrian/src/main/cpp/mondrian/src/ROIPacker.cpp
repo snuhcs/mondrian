@@ -8,35 +8,25 @@
 
 namespace md {
 
-PackingResult ROIPacker::packCanvases(MultiStream streams,
-                                      std::vector<InferenceInfo> inferencePlan,
-                                      const int fullFrameVid,
-                                      const ExecutionType executionType,
-                                      const int roiSize,
-                                      const ROIPrioritizerType roiPrioritizerType,
-                                      const bool noDownsamplingForLast) {
+std::vector<PackedCanvas> ROIPacker::packCanvases(MultiStream streams,
+                                                  std::vector<InferenceInfo> inferencePlan,
+                                                  const Frame* fullFrameTarget,
+                                                  const ExecutionType executionType,
+                                                  const int roiSize,
+                                                  const ROIPrioritizerType roiPrioritizerType,
+                                                  const bool noDownsamplingForLast) {
   time_us startTime = NowMicros();
   std::vector<std::vector<IntRect>> freeRectsVec;
   for (const auto& info : inferencePlan) {
     freeRectsVec.push_back({IntRect(0, 0, info.size, info.size)});
   }
 
-  // Full frame
-  Frame* fullFrameTarget = nullptr;
-  if (streams.find(fullFrameVid) != streams.end()) {
-    fullFrameTarget = *streams.at(fullFrameVid).rbegin();
-    LOGD("XXX == Last Full Frame %d", fullFrameTarget->frameIndex);
-  }
-
   // Last frames
   for (const auto& [vid, stream] : streams) {
-    if (vid == fullFrameVid) {
-      continue;
-    }
     Frame* lastFrame = *stream.rbegin();
+    if (lastFrame == fullFrameTarget) continue;
     if (executionType == ROI_WISE_INFERENCE) {
       for (auto& mergedROI : lastFrame->mergedROIs) {
-        auto [bw, bh] = mergedROI->borderedMatWH();
         if (!freeRectsVec.empty()) {
           mergedROI->setPackInfo({0, 0},
                                  (int) freeRectsVec.size() - 1,
@@ -155,7 +145,7 @@ PackingResult ROIPacker::packCanvases(MultiStream streams,
       packedCanvases.emplace_back(mergedROIs, info.size, info.device);
     }
   }
-  return {streams, fullFrameTarget, packedCanvases};
+  return packedCanvases;
 }
 
 std::pair<IntPairs, IntPairs> ROIPacker::pack(
