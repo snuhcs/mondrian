@@ -25,7 +25,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
     : config_(config), stop_(false), numFirstFrameReadyVideos_(0), numVideos_(numVideos),
       preprocessTargetSize_(int(config_.roiExtractorConfig.EXTRACTION_RESIZE_WIDTH),
                             int(config_.roiExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
-      scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2), numIntervals_(0),
+      scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2), packingTime_(0), numIntervals_(0),
       ROIResizer_(new ROIResizer(config.roiResizerConfig)), startTime_(NowMicros()),
       inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)),
       patchReconstructor_(new PatchReconstructor(config.patchReconstructorConfig,
@@ -101,25 +101,6 @@ void Mondrian::workSchedule() {
 
     LOGD("========== Schedule %d Start at %.2f ms ==========",
          currID, (float) (NowMicros() - startTime_) / 1000);
-    // Inference planning
-    auto latencyTable = inferenceEngine_->latencyTable();
-    time_us fullStartTime = fullFramePlan
-                            ? latencyTable[config_.FULL_DEVICE][{config_.FULL_FRAME_SIZE, true}]
-                            : 0L;
-    time_us budget = scheduleInterval_ - 500000;
-    std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
-        latencyTable, budget, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE,
-        {{config_.FULL_DEVICE, fullStartTime}});
-    assert(!inferencePlan.empty());
-    std::stringstream ss;
-    for (auto& [device, sizeIsFullLatency] : latencyTable) {
-      for (auto& [sizeIsFull, latency] : sizeIsFullLatency) {
-        ss << sizeIsFull.first << ": " << latency << " us, ";
-      }
-    }
-    LOGD("Schedule %d Plan at %lld ms: %lld us budget, %s | %s",
-         currID, (NowMicros() - startTime_) / 1000,
-         budget, str(inferencePlan).c_str(), ss.str().c_str());
 
     // Getting PackedFrames
     MultiStream streams = ROIExtractor_->collectFrames(currID);
@@ -129,6 +110,31 @@ void Mondrian::workSchedule() {
       fullFrameTarget = *streams.at(fullFrameVid).rbegin();
     }
 
+    // Inference planning
+    auto latencyTable = inferenceEngine_->latencyTable();
+    std::map<Device, time_us> remainingTimes = inferenceEngine_->remainingTimes();
+    if (fullFrameTarget != nullptr) {
+      remainingTimes[config_.FULL_DEVICE] +=
+          latencyTable[config_.FULL_DEVICE][{config_.FULL_FRAME_SIZE, true}];
+    }
+    for (auto& [device, remainingTime] : remainingTimes) {
+      remainingTimes[device] = std::max(remainingTime - packingTime_, 0LL);
+    }
+    std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
+        latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE,
+        remainingTimes);
+    assert(!inferencePlan.empty());
+    std::stringstream ss;
+    for (auto& [device, sizeIsFullLatency] : latencyTable) {
+      for (auto& [sizeIsFull, latency] : sizeIsFullLatency) {
+        ss << sizeIsFull.first << ": " << latency << " us, ";
+      }
+    }
+    LOGD("Schedule %d Plan at %lld ms: %lld us budget, %s | %s",
+         currID, (NowMicros() - startTime_) / 1000,
+         scheduleInterval_, str(inferencePlan).c_str(), ss.str().c_str());
+
+    time_us packingStart = NowMicros();
     std::vector<PackedCanvas> packedCanvases = ROIPacker::packCanvases(
         /*streams=*/streams,
         /*inferencePlan=*/inferencePlan,
@@ -142,6 +148,9 @@ void Mondrian::workSchedule() {
     packingResults_.push({streams, fullFrameTarget, packedCanvases});
     packingResultsLock.unlock();
     packingResultsCV_.notify_one();
+
+    time_us packingEnd = NowMicros();
+    packingTime_ = (7 * (packingEnd - packingStart) + 3 * packingTime_) / 10;
 
     LOGD("========== Schedule %d End   at %.2f ms ==========",
          currID, (float) (NowMicros() - startTime_) / 1000);
