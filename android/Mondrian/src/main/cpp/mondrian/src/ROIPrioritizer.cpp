@@ -10,24 +10,22 @@
 
 namespace md {
 
-std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& packedFrames, int fullFrameVid,
-                                              ROIPrioritizerType type) {
+std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& streams,
+                                              const ROIPrioritizerType type) {
   switch (type) {
-    case MIN_MAX_PROPAGATION:return minMaxPropagation(packedFrames, fullFrameVid);
-    case OF_CONFIDENCE:return ofConfidence(packedFrames, fullFrameVid);
+    case MIN_MAX_PROPAGATION:return minMaxPropagation(streams);
+    case OF_CONFIDENCE:return ofConfidence(streams);
     default:assert(false);
   }
 }
 
-std::vector<MergedROI*> ROIPrioritizer::minMaxPropagation(const MultiStream& packedFrames,
-                                                          int fullFrameVid) {
+std::vector<MergedROI*> ROIPrioritizer::minMaxPropagation(const MultiStream& streams) {
   // roiMap[vid, roiID][frameIndex] = roi
   std::map<std::pair<int, int>, std::map<int, ROI*>> roiMap;
-  for (const auto& [vid, frames] : packedFrames) {
-    for (Frame* frame : frames) {
-      // Skip last frame for not full frame vid.
-      // Last frame of full frame vid is already excluded.
-      if (vid != fullFrameVid && frame == *frames.rbegin()) {
+  for (const auto& [vid, stream] : streams) {
+    for (Frame* frame : stream) {
+      // Skip last frame
+      if (frame == *stream.rbegin()) {
         continue;
       }
       for (auto& roi : frame->rois) {
@@ -78,8 +76,7 @@ std::vector<MergedROI*> ROIPrioritizer::minMaxPropagation(const MultiStream& pac
   return orderedMergedROIs;
 }
 
-std::vector<MergedROI*> ROIPrioritizer::ofConfidence(const MultiStream& packedFrames,
-                                                     int fullFrameVid) {
+std::vector<MergedROI*> ROIPrioritizer::ofConfidence(const MultiStream& streams) {
   auto priorityOf = [](const MergedROI* mergedROI) -> float {
     float mergedROIPriority = 0.0f;
     for (const auto& roi : mergedROI->rois()) {
@@ -93,11 +90,10 @@ std::vector<MergedROI*> ROIPrioritizer::ofConfidence(const MultiStream& packedFr
   priorityOf(nullptr); // To suppress unused warning.
 
   std::set<MergedROI*, MergedROIoFPriorityComparator> orderedMergedROIs;
-  for (const auto& [vid, frames] : packedFrames) {
-    for (Frame* frame : frames) {
-      // Skip last frame for not full frame vid.
-      // Last frame of full frame vid is already excluded.
-      if (vid != fullFrameVid && frame == *frames.rbegin()) {
+  for (const auto& [vid, stream] : streams) {
+    for (Frame* frame : stream) {
+      // Skip last frame
+      if (frame == *stream.rbegin()) {
         continue;
       }
       for (auto& roi : frame->rois) {

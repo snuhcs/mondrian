@@ -4,13 +4,14 @@
 #include <jni.h>
 
 #include <thread>
+#include <queue>
 
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
 #include "mondrian/Frame.hpp"
-#include "mondrian/ROIExtractor.hpp"
+#include "mondrian/ROIPacker.hpp"
 
 namespace md {
 
@@ -18,6 +19,7 @@ class FrameBuffer;
 class InferenceEngine;
 class Logger;
 class PackedCanvas;
+class ROIExtractor;
 class ROIResizer;
 class PatchReconstructor;
 
@@ -70,17 +72,22 @@ class Mondrian {
   // Thread: Scheduling
   std::thread scheduleThread_;
   const time_us scheduleInterval_;
+  time_us packingTime_;
   int numIntervals_;
   bool stop_;
 
   // Thread: Preprocessing
   std::thread preprocessThread_;
   const cv::Size preprocessTargetSize_;
-  BlockingQueue<Frame*> preprocessQueue_;
+  std::mutex preprocessMtx_;
+  std::condition_variable preprocessCV_;
+  std::queue<Frame*> preprocessQueue_;
 
   // Thread: Postprocessing
   std::thread postprocessThread_;
-  BlockingQueue<PackingResult> packingResults_;
+  std::mutex packingResultsMtx_;
+  std::condition_variable packingResultsCV_;
+  std::queue<PackingResult> packingResults_;
 
   // Thread : Logging
   std::thread logThread_;

@@ -11,6 +11,7 @@ namespace md {
 
 class PackedCanvas {
  public:
+  static const int PACKED_CANVAS_VID;
   std::set<MergedROI*> packedROIs;
   const Device device;
   const int packedCanvasSize;
@@ -22,8 +23,8 @@ class PackedCanvas {
 
   Stream getPackedFrames() const;
 
-  int getKey() const {
-    return absolutePackedCanvasIndex;
+  Key getKey() const {
+    return {PACKED_CANVAS_VID, absolutePackedCanvasIndex};
   }
 
  private:

@@ -99,7 +99,7 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int in
   outputScale = outputQuantization->scale->data[0];
   assert(inputBias == 0);
   assert(std::abs(1.0 / inputScale - 255.0) < 1.0);
-  LOGD("XXX inputBias: %d, outputBias: %d, inputScale: %f, outputScale: %f",
+  LOGD("[TfLiteYoloV5ClassifierDSP] inputBias: %d, outputBias: %d, inputScale: %f, outputScale: %f",
        inputBias, outputBias, inputScale, outputScale);
 
   input = inputTensor->data.uint8;

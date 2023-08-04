@@ -5,6 +5,7 @@
 #include "mondrian/Frame.hpp"
 #include "mondrian/ROIExtractor.hpp"
 #include "mondrian/Log.hpp"
+#include "mondrian/Mondrian.hpp"
 
 namespace md {
 
@@ -101,36 +102,5 @@ std::string str(const std::vector<InferenceInfo>& inferencePlan) {
   }
   return ss.str();
 }
-
-template<typename T>
-BlockingQueue<T>::BlockingQueue(int maxElem) : maxElem_(maxElem) {
-  assert(maxElem > 0);
-}
-
-template<typename T>
-void BlockingQueue<T>::put(const T& v) {
-  std::unique_lock<std::mutex> lock(mtx_);
-  cv_.wait(lock, [this] { return queue_.size() < maxElem_; });
-  queue_.push(v);
-  lock.unlock();
-  cv_.notify_one();
-}
-
-template<typename T>
-T BlockingQueue<T>::take() {
-  std::unique_lock<std::mutex> lock(mtx_);
-  cv_.wait(lock, [this] { return !queue_.empty(); });
-  T v = queue_.front();
-  queue_.pop();
-  lock.unlock();
-  cv_.notify_one();
-  return v;
-}
-
-template
-class BlockingQueue<Frame*>;
-
-template
-class BlockingQueue<PackingResult>;
 
 } // namespace md

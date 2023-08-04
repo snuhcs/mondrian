@@ -13,12 +13,6 @@ Classifier::Classifier(const int numLabels, const int inputSize, const int outpu
       confidenceThreshold(confidenceThreshold), iouThreshold(iouThreshold) {}
 
 std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& rgbMat) {
-  // Latency Breakdown on Galaxy S22
-  // Input Size  640   1024   1280
-  // Preprocess  750us 1500us 2300us
-  // Inference   130ms 480ms  470ms
-  // Postprocess 14ms  38ms   60ms
-  // NMS         10us  12us   13us
   time_us start = NowMicros();
   cv::Mat inputTensor = preprocess(rgbMat);
   time_us preprocessTime = NowMicros();
@@ -29,8 +23,8 @@ std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& rgbMat) {
   std::vector<BoundingBox> boxesNms = nms(boxesAll, numLabels, iouThreshold);
   time_us nmsTime = NowMicros();
 
-  LOGD("Latency with %dx%d input on %s: "
-       "total %lld, preprocess %lld, inference %lld, postprocess %lld, nms %lld",
+  LOGD("[InferenceEngine] Latency with %dx%d input on %s "
+       "// total=%lld preprocess=%lld inference=%lld postprocess=%lld nms=%lld",
        inputSize.width, inputSize.height, str(device()).c_str(),
        nmsTime - start,
        preprocessTime - start,

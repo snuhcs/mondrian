@@ -6,44 +6,54 @@
 #include <map>
 #include <queue>
 
+#include "opencv2/core/mat.hpp"
+
 #include "mondrian/Config.hpp"
 #include "mondrian/Worker.hpp"
-#include "mondrian/model/Classifier.hpp"
 
 namespace md {
 
-using Result = std::tuple<std::vector<BoundingBox>, std::pair<time_us, time_us>, Device>;
+class Classifier;
+
+std::string str(const LatencyTable& latencyTable);
+
+std::string str(const std::map<Device, time_us>& remainingTimes);
 
 class InferenceEngine {
-  friend Worker;
-
  public:
   InferenceEngine(const InferenceEngineConfig& config, JNIEnv* env, jobject app);
 
   void profileLatency() const;
 
-  void enqueue(const cv::Mat& rgbMat, Device device, int inputSize, bool isFullFrame,
-               int key);
+  void enqueue(const cv::Mat& rgbMat,
+               const Device device,
+               const int inputSize,
+               const bool isFullFrame,
+               const Key key);
 
-  Result getResults(int key);
+  void enqueueResult(const Key key, const Result& result);
 
-  std::map<Device, std::map<std::pair<int, bool>, time_us>> latencyTable() const;
+  Result getResults(Key key);
+
+  LatencyTable latencyTable() const;
+
+  std::map<Device, time_us> remainingTimes() const;
 
  private:
-  void enqueueResult(const int handle, const Result& result);
-
   template<typename T>
-  void addClassifiers(Device device, const InferenceEngineConfig& config,
-                      JNIEnv* env, jobject app);
+  void addClassifiers(Device device,
+                      const InferenceEngineConfig& config,
+                      JNIEnv* env,
+                      jobject app);
 
-  const InferenceEngineConfig mConfig;
+  const InferenceEngineConfig config_;
 
-  std::map<Device, std::unique_ptr<Worker>> workers;
-  std::vector<std::unique_ptr<Classifier>> classifiers;
+  std::map<Device, std::unique_ptr<Worker>> workers_;
+  std::vector<std::unique_ptr<Classifier>> classifiers_;
 
-  std::mutex resultMtx;
-  std::condition_variable resultCv;
-  std::map<int, Result> results;
+  std::mutex resultMtx_;
+  std::condition_variable resultCv_;
+  std::map<Key, Result> results_;
 };
 
 } // namespace md

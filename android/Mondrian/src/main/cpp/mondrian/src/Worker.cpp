@@ -5,48 +5,55 @@
 
 namespace md {
 
-Worker::Worker(InferenceEngine* engine, Device device,
+Worker::Worker(InferenceEngine* engine,
+               Device device,
                std::map<std::pair<int, bool>, Classifier*> classifierMap,
-               bool draw, JNIEnv* env, jobject app)
-    : engine(engine), device(device), classifierMap_(std::move(classifierMap)), isClosed(false),
-      env(env), app(reinterpret_cast<jobject>(env->NewGlobalRef(app))), draw(draw) {
+               bool draw,
+               JNIEnv* env,
+               jobject app)
+    : engine_(engine),
+      device_(device),
+      classifierMap_(std::move(classifierMap)),
+      estimatedEndTime_(NowMicros()),
+      stop_(false),
+      env_(env),
+      app_(reinterpret_cast<jobject>(env->NewGlobalRef(app))),
+      draw_(draw) {
   if (draw) {
-    maxPackedCanvasSize = (*classifierMap_.rbegin()).first.first;
-    env->GetJavaVM(&jvm);
-    class_MondrianApp = reinterpret_cast<jclass>(env->NewGlobalRef(
-        env->FindClass("hcs/offloading/mondrian/MondrianApp")));
-    MondrianApp_drawOutput = env->GetMethodID(class_MondrianApp, "drawOutput",
-                                              "(JLjava/util/List;J)V");
-    class_ArrayList = reinterpret_cast<jclass>(env->NewGlobalRef(
-        env->FindClass("java/util/ArrayList")));
-    ArrayList_init = env->GetMethodID(class_ArrayList, "<init>", "()V");
-    ArrayList_add = env->GetMethodID(class_ArrayList, "add", "(ILjava/lang/Object;)V");
-    class_BoundingBox = reinterpret_cast<jclass>(env->NewGlobalRef(
-        env->FindClass("hcs/offloading/mondrian/BoundingBox")));
-    BoundingBox_init = env->GetMethodID(class_BoundingBox, "<init>", "(IIIIFI)V");
+    maxPackedCanvasSize_ = (*classifierMap_.rbegin()).first.first;
+    env_->GetJavaVM(&jvm_);
+    class_MondrianApp_ = reinterpret_cast<jclass>(env_->NewGlobalRef(env_->FindClass(
+        "hcs/offloading/mondrian/MondrianApp")));
+    MondrianApp_drawOutput_ = env_->GetMethodID(
+        class_MondrianApp_, "drawOutput", "(JLjava/util/List;J)V");
+    class_ArrayList_ = reinterpret_cast<jclass>(
+        env_->NewGlobalRef(env_->FindClass("java/util/ArrayList")));
+    ArrayList_init_ = env_->GetMethodID(class_ArrayList_, "<init>", "()V");
+    ArrayList_add_ = env_->GetMethodID(class_ArrayList_, "add", "(ILjava/lang/Object;)V");
+    class_BoundingBox_ = reinterpret_cast<jclass>(
+        env_->NewGlobalRef(env_->FindClass("hcs/offloading/mondrian/BoundingBox")));
+    BoundingBox_init_ = env_->GetMethodID(class_BoundingBox_, "<init>", "(IIIIFI)V");
   }
 
-  thread = std::thread([this]() { work(); });
+  thread_ = std::thread([this]() { work(); });
 }
 
 Worker::~Worker() {
-  isClosed.store(true);
-  cv.notify_all();
-  thread.join();
+  stop_ = true;
+  cv_.notify_all();
+  thread_.join();
 }
 
 void Worker::work() {
-  while (!isClosed.load()) {
-    std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [this]() { return isClosed.load() || !inputs.empty(); });
-    if (isClosed.load()) {
-      lock.unlock();
-      break;
-    }
+  while (!stop_) {
+    std::unique_lock<std::mutex> lock(mtx_);
+    cv_.wait(lock, [this]() { return stop_ || !inputs_.empty(); });
+    if (stop_) break;
+
     // Prepare input
     time_us start = NowMicros();
-    auto [rgbMat, size, isFullFrame, key] = std::move(inputs.front());
-    inputs.pop();
+    auto [rgbMat, size, isFullFrame, key] = std::move(inputs_.front());
+    inputs_.pop_front();
     lock.unlock();
 
     // Inference
@@ -55,25 +62,51 @@ void Worker::work() {
     time_us inferenceEnd = NowMicros();
 
     // Enqueue & draw result
-    engine->enqueueResult(key, {boxes, {inferenceStart, inferenceEnd}, device});
-    if (draw) {
+    engine_->enqueueResult(key, {boxes, {inferenceStart, inferenceEnd}, device_});
+    if (draw_) {
       drawInferenceResult(rgbMat, boxes, isFullFrame);
     }
     time_us end = NowMicros();
 
-    // Update latency
-    time_us origLatency = latencyMap_[{size, isFullFrame}];
-    time_us newLatency = end - start;
-    time_us estimatedLatency = (3 * newLatency + 7 * origLatency) / 10;
-    latencyMap_[{size, isFullFrame}] = estimatedLatency;
+    updateLatency(size, isFullFrame, end - start);
+    updateRemainingTime();
   }
 }
 
-void Worker::enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, int key) {
-  std::unique_lock<std::mutex> lock(mtx);
-  inputs.push({rgbMat, inputSize, isFullFrame, key});
+void Worker::updateLatency(int size, bool isFullFrame, md::time_us newLatency) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  latencyMap_[{size, isFullFrame}] = (
+      3 * newLatency + 7 * latencyMap_[{size, isFullFrame}]
+  ) / 10;
+}
+
+void Worker::updateRemainingTime() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  estimatedEndTime_ = NowMicros();
+  for (const auto& input : inputs_) {
+    estimatedEndTime_ += latencyMap_[{std::get<1>(input), std::get<2>(input)}];
+  }
+}
+
+void Worker::enqueue(const cv::Mat& rgbMat,
+                     const int inputSize,
+                     const bool isFullFrame,
+                     const Key key) {
+  std::unique_lock<std::mutex> lock(mtx_);
+  inputs_.emplace_back(rgbMat, inputSize, isFullFrame, key);
+  estimatedEndTime_ += latencyMap_[{inputSize, isFullFrame}];
   lock.unlock();
-  cv.notify_one();
+  cv_.notify_one();
+}
+
+std::map<std::pair<int, bool>, time_us> Worker::latencyMap() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  return latencyMap_;
+}
+
+time_us Worker::remainingTime() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  return estimatedEndTime_ - NowMicros();
 }
 
 void Worker::profileLatency(int warmupRuns, int numRuns) {
@@ -94,41 +127,41 @@ void Worker::profileLatency(int warmupRuns, int numRuns) {
     }
     time_us avg = total / numRuns;
     latencyMap_[{size, isFullFrame}] = avg;
-    LOGV("Profiling latency (%dx%d, %s) : %lld",
-         size, size, isFullFrame ? "Full" : "Pack", avg);
   }
 }
 
 void Worker::drawInferenceResult(const cv::Mat& rgbMat,
                                  const std::vector<BoundingBox>& boxes,
-                                 bool isFullFrame) {
-  if (jvm->AttachCurrentThread(&env, nullptr) != 0) {
+                                 const bool isFullFrame) {
+  if (jvm_->AttachCurrentThread(&env_, nullptr) != 0) {
     return;
   }
-  jobject jBoxes = env->NewObject(class_ArrayList, ArrayList_init);
+  jobject jBoxes = env_->NewObject(class_ArrayList_, ArrayList_init_);
   for (int i = 0; i < boxes.size(); i++) {
     const md::BoundingBox& b = boxes.at(i);
-    jobject box = env->NewObject(class_BoundingBox, BoundingBox_init,
-                                 int(std::round(b.loc.l)),
-                                 int(std::round(b.loc.t)),
-                                 int(std::round(b.loc.r)),
-                                 int(std::round(b.loc.b)),
-                                 b.confidence, b.label);
-    env->CallVoidMethod(jBoxes, ArrayList_add, i, box);
+    jobject box = env_->NewObject(
+        class_BoundingBox_, BoundingBox_init_,
+        int(std::round(b.loc.l)),
+        int(std::round(b.loc.t)),
+        int(std::round(b.loc.r)),
+        int(std::round(b.loc.b)),
+        b.confidence,
+        b.label);
+    env_->CallVoidMethod(jBoxes, ArrayList_add_, i, box);
   }
   if (isFullFrame) {
     auto* jRgbMat = new cv::Mat();
     rgbMat.copyTo(*jRgbMat);
-    env->CallVoidMethod(app, MondrianApp_drawOutput, (long) jRgbMat, jBoxes, (long) device);
+    env_->CallVoidMethod(app_, MondrianApp_drawOutput_, (long) jRgbMat, jBoxes, (long) device_);
   } else {
-    assert(rgbMat.rows <= maxPackedCanvasSize && rgbMat.cols <= maxPackedCanvasSize);
-    auto* jRgbMat = new cv::Mat(maxPackedCanvasSize, maxPackedCanvasSize,
+    assert(rgbMat.rows <= maxPackedCanvasSize_ && rgbMat.cols <= maxPackedCanvasSize_);
+    auto* jRgbMat = new cv::Mat(maxPackedCanvasSize_, maxPackedCanvasSize_,
                                 CV_8UC3, cv::Scalar(0, 0, 0));
     cv::Rect rect(0, 0, rgbMat.cols, rgbMat.rows);
     rgbMat.copyTo((*jRgbMat)(rect));
-    env->CallVoidMethod(app, MondrianApp_drawOutput, (long) jRgbMat, jBoxes, (long) device);
+    env_->CallVoidMethod(app_, MondrianApp_drawOutput_, (long) jRgbMat, jBoxes, (long) device_);
   }
-  jvm->DetachCurrentThread();
+  jvm_->DetachCurrentThread();
 }
 
 } // namespace md

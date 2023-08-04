@@ -6,8 +6,8 @@
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/DataType.hpp"
+#include "mondrian/InferenceEngine.hpp"
 #include "mondrian/MergedROI.hpp"
-#include "mondrian/ROIPacker.hpp"
 #include "mondrian/ROI.hpp"
 
 namespace md {
@@ -47,7 +47,6 @@ class Frame {
 
   bool isLastFrame;
   IntPairs boxesIfLast;
-  IntPairs boxesIfScaled;
 
   int inferenceFrameSize;
   Device inferenceDevice;
@@ -89,6 +88,16 @@ class Frame {
 
   void resetProbeROIs();
 
+  void setBoxesIfLast(ROIResizer* roiResizer,
+                      ExecutionType executionType,
+                      bool noDownsampling);
+
+  void prepareFrameLast(const IntPairs& indices,
+                        const IntPairs& locations,
+                        ExecutionType executionType,
+                        int roiSize,
+                        bool noDownsampling);
+
   bool isReadyToMarry(int packedFrameIndex) const;
 
   bool readyForOFExtraction() const;
@@ -105,8 +114,8 @@ class Frame {
     return height_;
   }
 
-  int getKey() const {
-    return frameIndex + FULL_KEY_OFFSET;
+  Key getKey() const {
+    return {vid, frameIndex};
   }
 };
 
@@ -122,9 +131,9 @@ struct FrameComp {
 using Stream = std::set<Frame*, FrameComp>;
 using MultiStream = std::map<int, Stream>;
 
-std::string str(const Stream& frames);
+std::string str(const Stream& stream);
 
-std::string str(const MultiStream& frames);
+std::string str(const MultiStream& streams);
 
 } // namespace md
 
