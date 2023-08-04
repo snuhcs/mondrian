@@ -16,7 +16,7 @@ Worker::Worker(InferenceEngine* engine,
       classifierMap_(std::move(classifierMap)),
       stop_(false),
       env_(env),
-      app_(reinterpret_cast<jobject>(env_->NewGlobalRef(app))),
+      app_(reinterpret_cast<jobject>(env->NewGlobalRef(app))),
       draw_(draw) {
   if (draw) {
     maxPackedCanvasSize_ = (*classifierMap_.rbegin()).first.first;
@@ -100,8 +100,6 @@ void Worker::profileLatency(int warmupRuns, int numRuns) {
     }
     time_us avg = total / numRuns;
     latencyMap_[{size, isFullFrame}] = avg;
-    LOGV("Profiling latency (%dx%d, %s) : %lld",
-         size, size, isFullFrame ? "Full" : "Pack", avg);
   }
 }
 
