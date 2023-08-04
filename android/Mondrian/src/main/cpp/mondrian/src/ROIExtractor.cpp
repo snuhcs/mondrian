@@ -227,9 +227,14 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
                        }));
   }
 
-  OFProcessed_[currFrame->vid].insert(currFrame);
+  std::lock_guard<std::mutex> queueLock(queueMtx_);
   OFProcessing_.erase(currFrame);
-  currFrame->isROIsReady = true;
+  if (currFrame->extractOFAgain) {
+    OFWaiting_.insert(currFrame);
+  } else {
+    OFProcessed_[currFrame->vid].insert(currFrame);
+    currFrame->isROIsReady = true;
+  }
 }
 
 void ROIExtractor::processPD(Frame* currFrame) {
