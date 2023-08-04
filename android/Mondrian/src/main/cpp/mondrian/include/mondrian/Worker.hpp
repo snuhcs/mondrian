@@ -35,31 +35,31 @@ class Worker {
                            const std::vector<BoundingBox>& boxes,
                            bool isFullFrame);
 
-  const Device device;
-  const bool draw;
+  const Device device_;
+  const bool draw_;
 
-  std::mutex mtx;
-  std::condition_variable cv;
-  std::queue<std::tuple<const cv::Mat, int, bool, int>> inputs;
+  std::mutex mtx_;
+  std::condition_variable cv_;
+  std::queue<std::tuple<const cv::Mat, int, bool, int>> inputs_;
 
-  InferenceEngine* engine;
+  InferenceEngine* engine_;
   std::map<std::pair<int, bool>, Classifier*> classifierMap_;
   std::map<std::pair<int, bool>, time_us> latencyMap_;
 
-  std::atomic_bool isClosed;
-  std::thread thread;
+  bool stop_;
+  std::thread thread_;
 
-  int maxPackedCanvasSize;
-  JavaVM* jvm;
-  JNIEnv* env;
-  jobject app;
-  jclass class_MondrianApp;
-  jmethodID MondrianApp_drawOutput;
-  jclass class_ArrayList;
-  jmethodID ArrayList_init;
-  jmethodID ArrayList_add;
-  jclass class_BoundingBox;
-  jmethodID BoundingBox_init;
+  int maxPackedCanvasSize_;
+  JavaVM* jvm_;
+  JNIEnv* env_;
+  jobject app_;
+  jclass class_MondrianApp_;
+  jmethodID MondrianApp_drawOutput_;
+  jclass class_ArrayList_;
+  jmethodID ArrayList_init_;
+  jmethodID ArrayList_add_;
+  jclass class_BoundingBox_;
+  jmethodID BoundingBox_init_;
 };
 
 } // namespace md
