@@ -8,8 +8,6 @@
 #include "opencv2/video/tracking.hpp"
 
 #include "mondrian/Log.hpp"
-#include "mondrian/PackedCanvas.hpp"
-#include "mondrian/ROIPrioritizer.hpp"
 
 namespace md {
 

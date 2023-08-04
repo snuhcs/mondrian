@@ -10,8 +10,7 @@
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
-#include "mondrian/PackedCanvas.hpp"
-#include "mondrian/ROIPacker.hpp"
+#include "mondrian/Frame.hpp"
 #include "mondrian/ROIResizer.hpp"
 
 namespace md {

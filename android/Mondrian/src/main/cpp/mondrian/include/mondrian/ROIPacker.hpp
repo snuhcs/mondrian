@@ -5,10 +5,9 @@
 #include <vector>
 
 #include "mondrian/Frame.hpp"
+#include "mondrian/PackedCanvas.hpp"
 
 namespace md {
-
-class PackedCanvas;
 
 struct IntRect {
   int l;
