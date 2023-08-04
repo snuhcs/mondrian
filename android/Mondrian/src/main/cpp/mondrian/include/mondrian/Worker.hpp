@@ -3,7 +3,7 @@
 
 #include <jni.h>
 
-#include <queue>
+#include <list>
 #include <thread>
 
 #include "mondrian/model/Classifier.hpp"
@@ -11,6 +11,8 @@
 namespace md {
 
 class InferenceEngine;
+
+using Key = int;
 
 class Worker {
  public:
@@ -20,16 +22,20 @@ class Worker {
 
   ~Worker();
 
-  void enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, int key);
+  void enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, Key key);
 
-  std::map<std::pair<int, bool>, time_us> latencyMap() const {
-    return latencyMap_;
-  }
+  std::map<std::pair<int, bool>, time_us> latencyMap();
+
+  time_us remainingTime();
 
   void profileLatency(int warmupRuns, int numRuns);
 
  private:
   void work();
+
+  void updateLatency(int size, bool isFullFrame, time_us newLatency);
+
+  void updateRemainingTime();
 
   void drawInferenceResult(const cv::Mat& rgbMat,
                            const std::vector<BoundingBox>& boxes,
@@ -40,11 +46,12 @@ class Worker {
 
   std::mutex mtx_;
   std::condition_variable cv_;
-  std::queue<std::tuple<const cv::Mat, int, bool, int>> inputs_;
+  std::list<std::tuple<const cv::Mat, int, bool, Key>> inputs_;
 
   InferenceEngine* engine_;
   std::map<std::pair<int, bool>, Classifier*> classifierMap_;
   std::map<std::pair<int, bool>, time_us> latencyMap_;
+  time_us estimatedEndTime_;
 
   bool stop_;
   std::thread thread_;

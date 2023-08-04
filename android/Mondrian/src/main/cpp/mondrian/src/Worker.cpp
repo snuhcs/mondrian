@@ -14,6 +14,7 @@ Worker::Worker(InferenceEngine* engine,
     : engine_(engine),
       device_(device),
       classifierMap_(std::move(classifierMap)),
+      estimatedEndTime_(NowMicros()),
       stop_(false),
       env_(env),
       app_(reinterpret_cast<jobject>(env->NewGlobalRef(app))),
@@ -52,7 +53,7 @@ void Worker::work() {
     // Prepare input
     time_us start = NowMicros();
     auto [rgbMat, size, isFullFrame, key] = std::move(inputs_.front());
-    inputs_.pop();
+    inputs_.pop_front();
     lock.unlock();
 
     // Inference
@@ -67,19 +68,45 @@ void Worker::work() {
     }
     time_us end = NowMicros();
 
-    // Update latency
-    time_us origLatency = latencyMap_[{size, isFullFrame}];
-    time_us newLatency = end - start;
-    time_us estimatedLatency = (3 * newLatency + 7 * origLatency) / 10;
-    latencyMap_[{size, isFullFrame}] = estimatedLatency;
+    updateLatency(size, isFullFrame, end - start);
+    updateRemainingTime();
   }
 }
 
-void Worker::enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, int key) {
+void Worker::updateLatency(int size, bool isFullFrame, md::time_us newLatency) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  latencyMap_[{size, isFullFrame}] = (
+      3 * newLatency + 7 * latencyMap_[{size, isFullFrame}]
+  ) / 10;
+}
+
+void Worker::updateRemainingTime() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  estimatedEndTime_ = NowMicros();
+  for (const auto& input : inputs_) {
+    estimatedEndTime_ += latencyMap_[{std::get<1>(input), std::get<2>(input)}];
+  }
+}
+
+void Worker::enqueue(const cv::Mat& rgbMat,
+                     const int inputSize,
+                     const bool isFullFrame,
+                     const Key key) {
   std::unique_lock<std::mutex> lock(mtx_);
-  inputs_.push({rgbMat, inputSize, isFullFrame, key});
+  inputs_.emplace_back(rgbMat, inputSize, isFullFrame, key);
+  estimatedEndTime_ += latencyMap_[{inputSize, isFullFrame}];
   lock.unlock();
   cv_.notify_one();
+}
+
+std::map<std::pair<int, bool>, time_us> Worker::latencyMap() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  return latencyMap_;
+}
+
+time_us Worker::remainingTime() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  return estimatedEndTime_ - NowMicros();
 }
 
 void Worker::profileLatency(int warmupRuns, int numRuns) {
