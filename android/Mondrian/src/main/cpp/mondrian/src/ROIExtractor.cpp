@@ -47,8 +47,8 @@ void ROIExtractor::enqueue(Frame* frame) {
   std::lock_guard<std::mutex> queueLock(queueMtx_);
   PDWaiting_.insert(frame);
   queueCV_.notify_all();
-  LOGD("ROIExtractor::enqueue "
-       "//OFWaiting=%lu OFProcessing=%lu OFProcessed=%d | OFWaiting.front()=%d",
+  LOGD("[ROIExtractor] enqueue "
+       "// OFWaiting=%lu OFProcessing=%lu OFProcessed=%d | OFWaiting.front()=%d",
        OFWaiting_.size(), OFProcessing_.size(),
        std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
                        [](int sum, const auto& pair) { return sum + pair.second.size(); }),
@@ -80,12 +80,11 @@ MultiStream ROIExtractor::collectFrames(int currID) {
   OFProcessed_.clear();
   queueCV_.notify_all();
 
-  LOGD("ROIExtractor::collectFrames "
-       "// OFWaiting=%lu OFProcessing=%lu OFProcessed=%d | OFWaiting.front()=%d",
+  LOGD("[Schedule %d] Collect Frames "
+       "// OFWaiting=%lu OFProcessing=%lu OFWaiting.front()=%d",
+       currID,
        OFWaiting_.size(),
        OFProcessing_.size(),
-       std::accumulate(streams.begin(), streams.end(), 0,
-                       [](int sum, const auto& pair) { return sum + pair.second.size(); }),
        OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
   return streams;
 }
@@ -135,9 +134,7 @@ void ROIExtractor::work(int extractorId) {
 
     std::unique_lock<std::mutex> queueLock(queueMtx_);
     queueCV_.wait(queueLock, [this, &isOF, &frame, &getPDJob, &getOFJob]() {
-      if (stop_) {
-        return true;
-      }
+      if (stop_) return true;
       frame = getOFJob();
       if (frame != nullptr) {
         isOF = true;
@@ -153,7 +150,6 @@ void ROIExtractor::work(int extractorId) {
     time_us start = NowMicros();
 
     if (stop_) {
-      queueLock.unlock();
       queueCV_.notify_all();
       return;
     }
@@ -186,12 +182,12 @@ void ROIExtractor::work(int extractorId) {
     }
     time_us end = NowMicros();
     if (!isOF) {
-      LOGD("PD took %5lld us for video %d frame %d | %lu PD ROIs",
+      LOGD("[ROIExtractor] PDTime=%lld // vid=%d fid=%d #PDROIs=%lu",
            end - start, frame->vid, frame->frameIndex,
            std::count_if(frame->rois.begin(), frame->rois.end(),
                          [](auto& roi) { return roi->type == PD; }));
     } else {
-      LOGD("OF took %5lld us for video %d frame %d | %lu OF ROIs | resize=%lld, merge=%lld",
+      LOGD("[ROIExtractor] OFTime=%lld // vid=%d fid=%d #OFROIs=%lu resizeTime=%lld mergeTime=%lld",
            end - start, frame->vid, frame->frameIndex,
            std::count_if(frame->rois.begin(), frame->rois.end(),
                          [](auto& roi) { return roi->type == OF; }),
