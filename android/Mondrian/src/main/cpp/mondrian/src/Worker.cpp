@@ -132,7 +132,7 @@ void Worker::profileLatency(int warmupRuns, int numRuns) {
 
 void Worker::drawInferenceResult(const cv::Mat& rgbMat,
                                  const std::vector<BoundingBox>& boxes,
-                                 bool isFullFrame) {
+                                 const bool isFullFrame) {
   if (jvm_->AttachCurrentThread(&env_, nullptr) != 0) {
     return;
   }

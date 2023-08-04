@@ -26,10 +26,10 @@ class InferenceEngine {
   void profileLatency() const;
 
   void enqueue(const cv::Mat& rgbMat,
-               Device device,
-               int inputSize,
-               bool isFullFrame,
-               Key key);
+               const Device device,
+               const int inputSize,
+               const bool isFullFrame,
+               const Key key);
 
   void enqueueResult(const Key key, const Result& result);
 

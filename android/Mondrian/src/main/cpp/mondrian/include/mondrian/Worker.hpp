@@ -18,13 +18,19 @@ using LatencyTable = std::map<Device, std::map<std::pair<int, bool>, time_us>>;
 
 class Worker {
  public:
-  Worker(InferenceEngine* engine, Device device,
+  Worker(InferenceEngine* engine,
+         Device device,
          std::map<std::pair<int, bool>, Classifier*> classifierMap,
-         bool draw, JNIEnv* env, jobject app);
+         bool draw,
+         JNIEnv* env,
+         jobject app);
 
   ~Worker();
 
-  void enqueue(const cv::Mat& rgbMat, int inputSize, bool isFullFrame, Key key);
+  void enqueue(const cv::Mat& rgbMat,
+               const int inputSize,
+               const bool isFullFrame,
+               const Key key);
 
   std::map<std::pair<int, bool>, time_us> latencyMap();
 
@@ -41,7 +47,7 @@ class Worker {
 
   void drawInferenceResult(const cv::Mat& rgbMat,
                            const std::vector<BoundingBox>& boxes,
-                           bool isFullFrame);
+                           const bool isFullFrame);
 
   const Device device_;
   const bool draw_;

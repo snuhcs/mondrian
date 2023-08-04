@@ -35,7 +35,7 @@ void InferenceEngine::addClassifiers(Device device,
                                      jobject app) {
   std::map<std::pair<int, bool>, Classifier*> classifierMap;
 
-  // classifiers_ for packed canvas inference
+  // classifiers for packed canvas inference
   bool forFullFrame = false;
   for (const auto& inputSize : config.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
@@ -72,10 +72,10 @@ void InferenceEngine::profileLatency() const {
 }
 
 void InferenceEngine::enqueue(const cv::Mat& rgbMat,
-                              Device device,
-                              int inputSize,
-                              bool isFullFrame,
-                              Key key) {
+                              const Device device,
+                              const int inputSize,
+                              const bool isFullFrame,
+                              const Key key) {
   workers_[device]->enqueue(rgbMat, inputSize, isFullFrame, key);
 }
 

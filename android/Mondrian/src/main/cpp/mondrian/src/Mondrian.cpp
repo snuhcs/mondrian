@@ -94,24 +94,27 @@ void Mondrian::workSchedule() {
   while (!stop_) {
     time_us scheduleStart = NowMicros();
     int currID = numIntervals_++;
-    bool fullFramePlan = currID % config_.FULL_FRAME_INTERVAL == 0;
-    int fullFrameVid = fullFramePlan
-        ? (currID / config_.FULL_FRAME_INTERVAL) % numVideos_
-        : -1;
-
-    LOGD("========== Schedule %d Start at %.2f ms ==========",
-         currID, (float) (NowMicros() - startTime_) / 1000);
+    LOGD("[Schedule %d] ========== Start at %lld ==========", currID, NowMicros() - startTime_);
 
     // Getting PackedFrames
     MultiStream streams = ROIExtractor_->collectFrames(currID);
+    LOGD("[Schedule %d] Collect Frames // %s", currID, str(streams).c_str());
 
+    // Prepare Full frame
     Frame* fullFrameTarget = nullptr;
+    int fullFrameVid = currID % config_.FULL_FRAME_INTERVAL == 0
+                       ? (currID / config_.FULL_FRAME_INTERVAL) % numVideos_
+                       : -1;
     if (streams.find(fullFrameVid) != streams.end()) {
       fullFrameTarget = *streams.at(fullFrameVid).rbegin();
+      LOGD("[Schedule %d] Full Frame vid=%d fid=%d", currID,
+           fullFrameTarget->vid, fullFrameTarget->frameIndex);
+    } else {
+      LOGD("[Schedule %d] NO Full Frame", currID);
     }
 
     // Inference planning
-    auto latencyTable = inferenceEngine_->latencyTable();
+    LatencyTable latencyTable = inferenceEngine_->latencyTable();
     std::map<Device, time_us> remainingTimes = inferenceEngine_->remainingTimes();
     if (fullFrameTarget != nullptr) {
       remainingTimes[config_.FULL_DEVICE] +=
@@ -121,21 +124,18 @@ void Mondrian::workSchedule() {
       remainingTimes[device] = std::max(remainingTime - packingTime_, 0LL);
     }
     std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
-        latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE,
-        remainingTimes);
+        /*latencyTable=*/latencyTable,
+        /*interval=*/scheduleInterval_,
+        /*roiWiseInference=*/config_.EXECUTION_TYPE == ROI_WISE_INFERENCE,
+        /*startTimes=*/remainingTimes);
     assert(!inferencePlan.empty());
-    std::stringstream ss;
-    for (auto& [device, sizeIsFullLatency] : latencyTable) {
-      for (auto& [sizeIsFull, latency] : sizeIsFullLatency) {
-        ss << sizeIsFull.first << ": " << latency << " us, ";
-      }
-    }
-    LOGD("Schedule %d Plan at %lld ms: %lld us budget, %s | %s",
-         currID, (NowMicros() - startTime_) / 1000,
-         scheduleInterval_, str(inferencePlan).c_str(), ss.str().c_str());
+    LOGD("[Schedule %d] LatencyTable %s | RemainingTimes %s | InferencePlan %s", currID,
+         str(latencyTable).c_str(), str(remainingTimes).c_str(), str(inferencePlan).c_str());
 
+    // Prepare Packed Canvases
     time_us packingStart = NowMicros();
     std::vector<PackedCanvas> packedCanvases = ROIPacker::packCanvases(
+        /*currID=*/currID,
         /*streams=*/streams,
         /*inferencePlan=*/inferencePlan,
         /*fullFrameTarget=*/fullFrameTarget,
@@ -152,8 +152,7 @@ void Mondrian::workSchedule() {
     time_us packingEnd = NowMicros();
     packingTime_ = (7 * (packingEnd - packingStart) + 3 * packingTime_) / 10;
 
-    LOGD("========== Schedule %d End   at %.2f ms ==========",
-         currID, (float) (NowMicros() - startTime_) / 1000);
+    LOGD("[Schedule %d] ========== End   at %lld ==========", currID, NowMicros() - startTime_);
 
     // Wait for scheduling interval
     time_us sleepTime = scheduleInterval_ - (NowMicros() - scheduleStart);
@@ -165,9 +164,8 @@ void Mondrian::workSchedule() {
 
 void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   auto [boxes, times, device] = inferenceEngine_->getResults(frame->getKey());
-  LOGD("Inference %d (%d, %s, FULL) at %lld ms | %d",
-       currID, config_.FULL_FRAME_SIZE, str(device).c_str(),
-       (NowMicros() - startTime_) / 1000, frame->frameIndex);
+  LOGD("[Schedule %d] FULL Inference at %lld // vid=%d fid=%d",
+       currID, NowMicros() - startTime_, frame->vid, frame->frameIndex);
   frame->fullInferenceStartTime = times.first;
   frame->fullInferenceEndTime = times.second;
   for (const BoundingBox& box : boxes) {
@@ -204,13 +202,9 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
   for (int i = 0; i < packedCanvases.size(); i++) {
     auto [boxes, times, device] = inferenceEngine_->getResults(packedCanvases[i].getKey());
     const int inputSize = packedCanvases[i].packedCanvasSize;
-    std::stringstream ss;
-    for (Frame* frame : packedCanvases[i].getPackedFrames()) {
-      ss << frame->frameIndex << ", ";
-    }
-    LOGD("Inference %d (%d, %s, PACK) at %lld ms | %s",
-         currID, inputSize, str(device).c_str(),
-         (NowMicros() - startTime_) / 1000, ss.str().c_str());
+    LOGD("[Schedule %d] Pack Inference on %s at %lld // %s",
+         currID, str(device).c_str(), NowMicros() - startTime_,
+         str(packedCanvases[i].getPackedFrames()).c_str());
     assert(device == packedCanvases[i].device);
     for (Frame* frame : packedCanvases[i].getPackedFrames()) {
       if (frame->inferenceDevice == NO_DEVICE) {
@@ -321,8 +315,12 @@ void Mondrian::workPreprocess() {
     frame->prepareRgbMatAndResizedGrayMat(preprocessTargetSize_);
 
     if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
-      inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
-                                frame->getKey());
+      inferenceEngine_->enqueue(
+          frame->rgbMat,
+          config_.FULL_DEVICE,
+          config_.FULL_FRAME_SIZE,
+          true,
+          frame->getKey());
       frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
       frame->inferenceDevice = config_.FULL_DEVICE;
       handleFullFrameResults(frame, currID);
@@ -334,17 +332,19 @@ void Mondrian::workPreprocess() {
 
     if (frame->frameIndex == 0) {
       frame->useInferenceResultForOF = true;
-      inferenceEngine_->enqueue(frame->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE, true,
-                                frame->getKey());
+      inferenceEngine_->enqueue(
+          frame->rgbMat,
+          config_.FULL_DEVICE,
+          config_.FULL_FRAME_SIZE,
+          true,
+          frame->getKey());
       frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
       frame->inferenceDevice = config_.FULL_DEVICE;
-      LOGD("inferenceEngine_->enqueue %d sized fullFrame to %s | %d",
-           config_.FULL_FRAME_SIZE, str(config_.FULL_DEVICE).c_str(), frame->frameIndex);
       handleFullFrameResults(frame, currID);
-      {
-        std::lock_guard<std::mutex> startLock(startMtx_);
-        numFirstFrameReadyVideos_++;
-      }
+
+      std::unique_lock<std::mutex> startLock(startMtx_);
+      numFirstFrameReadyVideos_++;
+      startLock.unlock();
       startCV_.notify_all();
     } else {
       ROIExtractor_->enqueue(frame);
@@ -364,15 +364,17 @@ void Mondrian::workPostprocess() {
     packingResults_.pop();
     packingResultsLock.unlock();
 
-    auto& packedCanvases = packingResult.packedCanvases;
-    auto& fullFrameTarget = packingResult.fullFrameTarget;
     auto& streams = packingResult.streams;
+    auto& fullFrameTarget = packingResult.fullFrameTarget;
+    auto& packedCanvases = packingResult.packedCanvases;
 
     // Enqueue full frame
     if (fullFrameTarget != nullptr) {
       inferenceEngine_->enqueue(
-          fullFrameTarget->rgbMat, config_.FULL_DEVICE, config_.FULL_FRAME_SIZE,
-          /*isFullFrame=*/true, fullFrameTarget->getKey());
+          fullFrameTarget->rgbMat,
+          config_.FULL_DEVICE,
+          config_.FULL_FRAME_SIZE,
+          true, fullFrameTarget->getKey());
       fullFrameTarget->inferenceFrameSize = config_.FULL_FRAME_SIZE;
       fullFrameTarget->inferenceDevice = config_.FULL_DEVICE;
     }
@@ -381,8 +383,11 @@ void Mondrian::workPostprocess() {
     for (const auto& packedCanvas : packedCanvases) {
       assert(packedCanvas.device != NO_DEVICE);
       inferenceEngine_->enqueue(
-          packedCanvas.packedMat, packedCanvas.device, packedCanvas.packedCanvasSize,
-          /*isFullFrame=*/false, packedCanvas.getKey());
+          packedCanvas.packedMat,
+          packedCanvas.device,
+          packedCanvas.packedCanvasSize,
+          false,
+          packedCanvas.getKey());
     }
 
     // Handle full frame inference results
@@ -401,8 +406,8 @@ void Mondrian::workPostprocess() {
     Interpolator::interpolate(streams, config_.INTERPOLATION_THRESHOLD);
 
     // Notify results of rest of the frames
-    for (auto& it : streams) {
-      for (Frame* frame : it.second) {
+    for (const auto& [vid, stream] : streams) {
+      for (Frame* frame : stream) {
         if (frame == fullFrameTarget) continue;
         for (auto& roi : frame->rois) {
           if (roi->box == nullptr) {
@@ -451,7 +456,7 @@ void Mondrian::workLog() {
         const auto& [endTime, boxes] = endTimeBoxes;
         loggerBoxes_->logBoxes(vid, frameIndex, boxes);
       }
-      LOGD("Boxes from video %d frame %d ~ %d logged",
+      LOGD("[Logger] vid=%d %d ~ %d frames logged",
            vid, frameResults.begin()->first, frameResults.rbegin()->first);
     }
     results_.clear();

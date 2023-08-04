@@ -36,8 +36,9 @@ struct PackingResult {
 
 class ROIPacker {
  public:
-  static std::vector<PackedCanvas> packCanvases(MultiStream streams,
-                                                std::vector<InferenceInfo> inferencePlan,
+  static std::vector<PackedCanvas> packCanvases(const int currID,
+                                                const MultiStream& streams,
+                                                const std::vector<InferenceInfo>& inferencePlan,
                                                 const Frame* fullFrameTarget,
                                                 const ExecutionType executionType,
                                                 const int roiSize,
