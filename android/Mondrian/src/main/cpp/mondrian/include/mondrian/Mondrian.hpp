@@ -10,6 +10,7 @@
 #include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
 #include "mondrian/Frame.hpp"
+#include "mondrian/ROIPacker.hpp"
 
 namespace md {
 
@@ -20,12 +21,6 @@ class PackedCanvas;
 class ROIExtractor;
 class ROIResizer;
 class PatchReconstructor;
-
-struct PackingResult {
-  MultiStream streams;
-  Frame* fullFrameTarget;
-  std::vector<PackedCanvas> packedCanvases;
-};
 
 class Mondrian {
  public:

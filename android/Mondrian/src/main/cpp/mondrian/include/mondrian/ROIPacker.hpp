@@ -4,9 +4,11 @@
 #include <sstream>
 #include <vector>
 
-#include "mondrian/DataType.hpp"
+#include "mondrian/Frame.hpp"
 
 namespace md {
+
+class PackedCanvas;
 
 struct IntRect {
   int l;
@@ -27,17 +29,35 @@ struct IntRect {
   }
 };
 
+struct PackingResult {
+  MultiStream streams;
+  Frame* fullFrameTarget;
+  std::vector<PackedCanvas> packedCanvases;
+};
+
 class ROIPacker {
  public:
-  static std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
-                                            const IntPairs& boxWHs, bool backward,
-                                            ExecutionType executionType, int roiSize);
-
-  static void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                    const IntPairs& boxWH, const IntPairs& indices,
-                    ExecutionType executionType, int roiSize);
+  static PackingResult packCanvases(MultiStream streams,
+                                    std::vector<InferenceInfo> inferencePlan,
+                                    const int fullFrameVid,
+                                    const ExecutionType executionType,
+                                    const int roiSize,
+                                    const ROIPrioritizerType roiPrioritizerType,
+                                    const bool noDownsamplingForLast);
 
  private:
+  static std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
+                                            const IntPairs& boxWHs,
+                                            bool backward,
+                                            ExecutionType executionType,
+                                            int roiSize);
+
+  static void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
+                    const IntPairs& boxWH,
+                    const IntPairs& indices,
+                    ExecutionType executionType,
+                    int roiSize);
+
   static int getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, int w, int h);
 
   static void packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
