@@ -350,7 +350,7 @@ void Mondrian::workPostprocess() {
 
     auto& packedCanvases = packingResult.packedCanvases;
     auto& fullFrameTarget = packingResult.fullFrameTarget;
-    auto& selectedFrames = packingResult.streams;
+    auto& streams = packingResult.streams;
 
     // Enqueue full frame
     if (fullFrameTarget != nullptr) {
@@ -382,10 +382,10 @@ void Mondrian::workPostprocess() {
     }
 
     // Interpolate results
-    Interpolator::interpolate(selectedFrames, config_.INTERPOLATION_THRESHOLD);
+    Interpolator::interpolate(streams, config_.INTERPOLATION_THRESHOLD);
 
     // Notify results of rest of the frames
-    for (auto& it : selectedFrames) {
+    for (auto& it : streams) {
       for (Frame* frame : it.second) {
         if (frame == fullFrameTarget) continue;
         for (auto& roi : frame->rois) {
@@ -405,7 +405,7 @@ void Mondrian::workPostprocess() {
 
     // Update results for system output
     std::unique_lock<std::mutex> resultLock(logMtx_);
-    for (const auto& it : selectedFrames) {
+    for (const auto& it : streams) {
       for (Frame* frame : it.second) {
         if (frame != fullFrameTarget) {
           std::vector<BoundingBox> boxes;
@@ -419,7 +419,7 @@ void Mondrian::workPostprocess() {
     resultsCV_.notify_all();
 
     // Release used frames
-    releaseFrames(selectedFrames);
+    releaseFrames(streams);
   }
 }
 
