@@ -118,7 +118,7 @@ class ROIExtractor {
   Stream PDProcessing_;
   Stream OFWaiting_;
   Stream OFProcessing_;
-  MultiStream packedFrames_;
+  MultiStream OFProcessed_;
   std::vector<std::vector<IntRect>> freeRectsVec_;
   bool fullyPacked_; // Only for back to back mode
 

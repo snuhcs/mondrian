@@ -84,7 +84,7 @@ PackingResult ROIExtractor::prepareInference(std::vector<InferenceInfo>& nextInf
   queueCV_.wait(queueLock, [this]() { return OFProcessing_.empty(); });
   LOGD("Getting ROIs: %lu OF Waiting %lu OF Processing %d Processed | %d",
        OFWaiting_.size(), OFProcessing_.size(),
-       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
+       std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
                        [](int sum, const auto& pair) { return sum + pair.second.size(); }),
        OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
   packGatheredMultiStream();
@@ -93,7 +93,7 @@ PackingResult ROIExtractor::prepareInference(std::vector<InferenceInfo>& nextInf
   Frame* fullFrameTarget = fullFrameTarget_;
 
   std::map<int, std::set<MergedROI*>> groupedMergedROIs;
-  for (const auto& [vid, frames] : packedFrames_) {
+  for (const auto& [vid, frames] : OFProcessed_) {
     for (Frame* frame : frames) {
       assert(frame != fullFrameTarget);
       for (auto& mergedROI : frame->mergedROIs) {
@@ -118,8 +118,8 @@ PackingResult ROIExtractor::prepareInference(std::vector<InferenceInfo>& nextInf
     }
   }
 
-  MultiStream selectedFrames = std::move(packedFrames_);
-  packedFrames_.clear();
+  MultiStream selectedFrames = std::move(OFProcessed_);
+  OFProcessed_.clear();
   fullyPacked_ = false;
   candidateLastFrames_.clear();
 
@@ -165,14 +165,14 @@ PackingResult ROIExtractor::prepareInference(std::vector<InferenceInfo>& nextInf
 void ROIExtractor::packGatheredMultiStream() {
   time_us startTime = NowMicros();
   // Full frame
-  if (packedFrames_.find(fullFrameVid_) != packedFrames_.end()) {
-    fullFrameTarget_ = *packedFrames_.at(fullFrameVid_).rbegin();
-    packedFrames_[fullFrameVid_].erase(fullFrameTarget_);
+  if (OFProcessed_.find(fullFrameVid_) != OFProcessed_.end()) {
+    fullFrameTarget_ = *OFProcessed_.at(fullFrameVid_).rbegin();
+    OFProcessed_[fullFrameVid_].erase(fullFrameTarget_);
 //    LOGD("XXX == Last Full Frame %d", fullFrameTarget_->frameIndex);
   }
 
   // Last frames
-  for (const auto& [vid, frames] : packedFrames_) {
+  for (const auto& [vid, frames] : OFProcessed_) {
     if (vid == fullFrameVid_) {
       continue;
     }
@@ -208,7 +208,7 @@ void ROIExtractor::packGatheredMultiStream() {
   time_us packLastTime = NowMicros();
 
   // Order MergedROIs
-  auto orderedMergedROIs = ROIPrioritizer::order(packedFrames_, fullFrameVid_,
+  auto orderedMergedROIs = ROIPrioritizer::order(OFProcessed_, fullFrameVid_,
                                                  config_.ROI_PRIORITIZER_TYPE);
   time_us orderTime = NowMicros();
 
@@ -233,10 +233,10 @@ void ROIExtractor::packGatheredMultiStream() {
 
   LOGD("Packing %d Frames with %lu ROIs | "
        "total: %lld, packLastTime: %lld, orderTime: %lld, packOthersTime: %lld",
-       std::accumulate(packedFrames_.begin(), packedFrames_.end(), 0,
+       std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
                        [](int sum, const auto& pair) {
                          return sum + pair.second.size();
-                       }) + (packedFrames_.find(fullFrameVid_) != packedFrames_.end() ? 1 : 0),
+                       }) + (OFProcessed_.find(fullFrameVid_) != OFProcessed_.end() ? 1 : 0),
        orderedMergedROIs.size(),
        packOthersTime - startTime,
        packLastTime - startTime,
@@ -394,7 +394,7 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
                        }));
   }
 
-  packedFrames_[currFrame->vid].insert(currFrame);
+  OFProcessed_[currFrame->vid].insert(currFrame);
   OFProcessing_.erase(currFrame);
   currFrame->isROIsReady = true;
 }
