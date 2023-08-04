@@ -47,7 +47,6 @@ class Frame {
 
   bool isLastFrame;
   IntPairs boxesIfLast;
-  IntPairs boxesIfScaled;
 
   int inferenceFrameSize;
   Device inferenceDevice;
@@ -88,6 +87,16 @@ class Frame {
   void sortMergedROIs();
 
   void resetProbeROIs();
+
+  void setBoxesIfLast(ROIResizer* roiResizer,
+                      ExecutionType executionType,
+                      bool noDownsampling);
+
+  void prepareFrameLast(const IntPairs& indices,
+                        const IntPairs& locations,
+                        ExecutionType executionType,
+                        int roiSize,
+                        bool noDownsampling);
 
   bool isReadyToMarry(int packedFrameIndex) const;
 

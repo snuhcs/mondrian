@@ -209,6 +209,66 @@ void Frame::resetProbeROIs() {
   }
 }
 
+void Frame::setBoxesIfLast(ROIResizer* roiResizer,
+                           ExecutionType executionType,
+                           bool noDownsampling) {
+  // TODO: Synchronize simulation with add logics
+  for (const auto& mergedROI : mergedROIs) {
+    // TODO: Make below two condition as single value(or function) of condition
+    float scale = mergedROI->targetScale();
+    if (executionType == MONDRIAN && noDownsampling) {
+      scale = 1.0f;
+    }
+    auto [bw, bh] = mergedROI->borderedMatWH(scale);
+    boxesIfLast.emplace_back(bw, bh);
+  }
+  for (const auto& roi : rois) {
+    if (roi->scaleLevel() == ROIResizer::INVALID_LEVEL) {
+      roi->probeScales.clear();
+      continue;
+    }
+    roiResizer->getProbingCandidates(roi.get());
+    for (auto scale : roi->probeScales) {
+      int bw = MergedROI::borderedLengthOf(roi->paddedLoc.w, scale);
+      int bh = MergedROI::borderedLengthOf(roi->paddedLoc.h, scale);
+      boxesIfLast.emplace_back(bw, bh);
+    }
+  }
+}
+
+void Frame::prepareFrameLast(const IntPairs& indices,
+                             const IntPairs& locations,
+                             ExecutionType executionType,
+                             int roiSize,
+                             bool noDownsampling) {
+  assert(indices.size() == locations.size());
+  isLastFrame = true;
+  resetProbeROIs();
+  int i = 0;
+  for (const auto& mergedROI : mergedROIs) {
+    if (executionType == MONDRIAN && noDownsampling) {
+      mergedROI->setTargetScale(1.0f);
+    }
+    mergedROI->setPackInfo(locations[i], indices[i].first, executionType, roiSize);
+    i++;
+  }
+  for (const auto& roi : rois) {
+    if (roi->scaleLevel() == ROIResizer::INVALID_LEVEL) {
+      assert(roi->probeScales.empty());
+      continue;
+    }
+    for (auto probeScale : roi->probeScales) {
+      std::unique_ptr<MergedROI> probeROI(new MergedROI({roi.get()}, probeScale, true));
+      assert(0.0f < probeScale && probeScale <= 1.0f);
+      probeROI->setPackInfo(locations[i], indices[i].first, executionType, roiSize);
+      roi->roisForProbing.push_back(probeROI.get());
+      probingROIs.push_back(std::move(probeROI));
+      i++;
+    }
+  }
+  assert(i == locations.size());
+}
+
 bool Frame::isReadyToMarry(int packedCanvasIndex) const {
   auto isROIReady = [&packedCanvasIndex](const std::unique_ptr<MergedROI>& mergedROI) {
     return !mergedROI->isPacked() || mergedROI->relativePackedCanvasIndex() <= packedCanvasIndex;

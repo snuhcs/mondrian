@@ -5,6 +5,7 @@
 #include "mondrian/Frame.hpp"
 #include "mondrian/ROIExtractor.hpp"
 #include "mondrian/Log.hpp"
+#include "mondrian/Mondrian.hpp"
 
 namespace md {
 

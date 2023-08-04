@@ -16,18 +16,13 @@
 
 namespace md {
 
-struct PackingResult {
-  std::vector<PackedCanvas> packedCanvases;
-  Frame* fullFrameTarget;
-  MultiStream selectedFrames;
-  Stream droppedFrames;
-};
-
 class ROIExtractor {
  public:
-  ROIExtractor(const ROIExtractorConfig& config, int maxMergeSize,
-               ROIResizer* roiResizer, ExecutionType executionType, int roiSize,
-               std::vector<InferenceInfo> inferencePlan, int numVideos);
+  ROIExtractor(const ROIExtractorConfig& config,
+               int maxMergeSize,
+               ROIResizer* roiResizer,
+               ExecutionType executionType,
+               int roiSize);
 
   ~ROIExtractor();
 
@@ -35,8 +30,7 @@ class ROIExtractor {
 
   void notify();
 
-  PackingResult prepareInference(std::vector<InferenceInfo>& nextInferencePlan,
-                                 bool runFull, int scheduleID);
+  MultiStream collectFrames(int currID);
 
  private:
   void work(int extractorId);
@@ -46,14 +40,6 @@ class ROIExtractor {
   void processOF(Frame* currFrame);
 
   void postprocessOF(Frame* currFrame);
-
-  void packGatheredMultiStream();
-
-  void tryPack(Frame* frame);
-
-  bool tryPackFullVid(Frame* frame);
-
-  bool tryPackNonFullVid(Frame* frame);
 
   static void getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,
                                  const std::vector<BoundingBox>& boundingBoxes,
@@ -73,21 +59,7 @@ class ROIExtractor {
 
   static void cannyEdgeDetection(cv::Mat mat);
 
-  void resetPatchMixerWithPlan(const std::vector<InferenceInfo>& inferencePlan);
-
-  void prepareFrameLast(Frame* frame,
-                        const IntPairs& indices, const IntPairs& locations);
-
-  IntPairs getBoxesIfLast(const Frame* frame);
-
-  void prepareFrameScaled(Frame* frame, const IntPairs& indices, const IntPairs& locations);
-
-  static IntPairs getBoxesIfScaled(const Frame* frame);
-
-  void applyLasts();
-
   std::vector<std::thread> threads_;
-  bool pull_;
   bool stop_;
 
   static const cv::TermCriteria CRITERIA;
@@ -97,39 +69,16 @@ class ROIExtractor {
   const cv::Size targetSize_;
   const int maxMergeSize_;
   const ROIExtractorConfig config_;
-  const int numVideos_;
-  int fullFrameVid_;
-  Frame* fullFrameTarget_;
 
   ROIResizer* ROIResizer_;
 
-  int fullFrameInferenceCount_;
-  std::vector<InferenceInfo> inferencePlan_;
-
-  /*
-   * If you want to acquire queueMtx_ and packMtx_ at the same time,
-   * you must acquire packMtx_ first.
-   */
   std::mutex queueMtx_;
-  std::mutex packMtx_;
   std::condition_variable queueCV_;
-
   Stream PDWaiting_;
   Stream PDProcessing_;
   Stream OFWaiting_;
   Stream OFProcessing_;
   MultiStream OFProcessed_;
-  std::vector<std::vector<IntRect>> freeRectsVec_;
-  bool fullyPacked_; // Only for back to back mode
-
-  struct LastPackInfo {
-    Frame* frame;
-    IntPairs indices;
-    IntPairs locations;
-  };
-
-  // Can be packed as last. Otherwise packed as scaled.
-  std::map<int, LastPackInfo> candidateLastFrames_;
 };
 
 } // namespace md
