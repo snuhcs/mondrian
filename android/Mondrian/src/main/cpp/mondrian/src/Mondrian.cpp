@@ -387,6 +387,7 @@ void Mondrian::workPostprocess() {
     // Notify results of rest of the frames
     for (auto& it : selectedFrames) {
       for (Frame* frame : it.second) {
+        if (frame == fullFrameTarget) continue;
         for (auto& roi : frame->rois) {
           if (roi->box == nullptr) {
             continue;
