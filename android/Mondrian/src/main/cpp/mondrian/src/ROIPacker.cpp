@@ -25,7 +25,6 @@ PackingResult ROIPacker::packCanvases(MultiStream streams,
   Frame* fullFrameTarget = nullptr;
   if (streams.find(fullFrameVid) != streams.end()) {
     fullFrameTarget = *streams.at(fullFrameVid).rbegin();
-    streams[fullFrameVid].erase(fullFrameTarget);
     LOGD("XXX == Last Full Frame %d", fullFrameTarget->frameIndex);
   }
 
@@ -85,7 +84,6 @@ PackingResult ROIPacker::packCanvases(MultiStream streams,
 
   // Order MergedROIs
   auto orderedMergedROIs = ROIPrioritizer::order(streams,
-                                                 fullFrameVid,
                                                  roiPrioritizerType);
   time_us orderTime = NowMicros();
 
@@ -125,7 +123,7 @@ PackingResult ROIPacker::packCanvases(MultiStream streams,
        std::accumulate(streams.begin(), streams.end(), 0,
                        [](int sum, const auto& pair) {
                          return sum + pair.second.size();
-                       }) + (streams.find(fullFrameVid) != streams.end() ? 1 : 0),
+                       }),
        orderedMergedROIs.size(),
        packOthersTime - startTime,
        packLastTime - startTime,
@@ -135,7 +133,7 @@ PackingResult ROIPacker::packCanvases(MultiStream streams,
   std::map<int, std::set<MergedROI*>> groupedMergedROIs;
   for (const auto& [vid, frames] : streams) {
     for (Frame* frame : frames) {
-      assert(frame != fullFrameTarget);
+      if (frame == fullFrameTarget) continue;
       for (auto& mergedROI : frame->mergedROIs) {
         if (mergedROI->isPacked()) {
           groupedMergedROIs[mergedROI->relativePackedCanvasIndex()].insert(mergedROI.get());

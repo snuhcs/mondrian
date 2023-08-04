@@ -66,14 +66,13 @@ struct MergedROIoFPriorityComparator {
 
 class ROIPrioritizer {
  public:
-  static std::vector<MergedROI*> order(const MultiStream& packedFrames, int fullFrameVid,
-                                       ROIPrioritizerType type);
+  static std::vector<MergedROI*> order(const MultiStream& streams,
+                                       const ROIPrioritizerType type);
 
  private:
-  static std::vector<MergedROI*> minMaxPropagation(const MultiStream& packedFrames,
-                                                   int fullFrameVid);
+  static std::vector<MergedROI*> minMaxPropagation(const MultiStream& streams);
 
-  static std::vector<MergedROI*> ofConfidence(const MultiStream& packedFrames, int fullFrameVid);
+  static std::vector<MergedROI*> ofConfidence(const MultiStream& streams);
 };
 
 } // namespace md
