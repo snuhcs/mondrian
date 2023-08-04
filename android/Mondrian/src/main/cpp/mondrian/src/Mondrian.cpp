@@ -124,7 +124,8 @@ void Mondrian::workSchedule() {
     // Getting PackedFrames
     MultiStream streams = ROIExtractor_->collectFrames(currID);
 
-    packingResults_.put(ROIPacker::packCanvases(
+    std::unique_lock<std::mutex> packingResultsLock(packingResultsMtx_);
+    packingResults_.push(ROIPacker::packCanvases(
         /*streams=*/std::move(streams),
         /*inferencePlan=*/std::move(inferencePlan),
         /*fullFrameVid=*/fullFrameVid,
@@ -132,6 +133,8 @@ void Mondrian::workSchedule() {
         /*roiSize=*/config_.ROI_SIZE,
         /*roiPrioritizerType=*/config_.roiExtractorConfig.ROI_PRIORITIZER_TYPE,
         /*noDownsamplingForLast=*/config_.roiExtractorConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME));
+    packingResultsLock.unlock();
+    packingResultsCV_.notify_one();
 
     LOGD("========== Schedule %d End   at %.2f ms ==========",
          currID, (float) (NowMicros() - startTime_) / 1000);
@@ -283,14 +286,21 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
       return numFirstFrameReadyVideos_ == numVideos_;
     });
   }
-  preprocessQueue_.put(frame);
+  std::unique_lock<std::mutex> preprocessLock(preprocessMtx_);
+  preprocessQueue_.push(frame);
+  preprocessLock.unlock();
+  preprocessCV_.notify_one();
 }
 
 void Mondrian::workPreprocess() {
   int id = 0;
   while (!stop_) {
     int currID = id++;
-    Frame* frame = preprocessQueue_.take();
+    std::unique_lock<std::mutex> preprocessLock(preprocessMtx_);
+    preprocessCV_.wait(preprocessLock, [this]() { return !preprocessQueue_.empty() || stop_; });
+    Frame* frame = preprocessQueue_.front();
+    preprocessQueue_.pop();
+    preprocessLock.unlock();
 
     frame->prepareRgbMatAndResizedGrayMat(preprocessTargetSize_);
 
@@ -330,7 +340,14 @@ void Mondrian::workPostprocess() {
   int id = 0;
   while (!stop_) {
     int currID = id++;
-    PackingResult packingResult = packingResults_.take();
+    std::unique_lock<std::mutex> packingResultsLock(packingResultsMtx_);
+    packingResultsCV_.wait(packingResultsLock, [this]() {
+      return !packingResults_.empty() || stop_;
+    });
+    PackingResult packingResult = std::move(packingResults_.front());
+    packingResults_.pop();
+    packingResultsLock.unlock();
+
     auto& packedCanvases = packingResult.packedCanvases;
     auto& fullFrameTarget = packingResult.fullFrameTarget;
     auto& selectedFrames = packingResult.streams;

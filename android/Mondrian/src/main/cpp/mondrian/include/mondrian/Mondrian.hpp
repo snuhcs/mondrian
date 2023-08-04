@@ -4,6 +4,7 @@
 #include <jni.h>
 
 #include <thread>
+#include <queue>
 
 #include "opencv2/core/mat.hpp"
 
@@ -77,11 +78,15 @@ class Mondrian {
   // Thread: Preprocessing
   std::thread preprocessThread_;
   const cv::Size preprocessTargetSize_;
-  BlockingQueue<Frame*> preprocessQueue_;
+  std::mutex preprocessMtx_;
+  std::condition_variable preprocessCV_;
+  std::queue<Frame*> preprocessQueue_;
 
   // Thread: Postprocessing
   std::thread postprocessThread_;
-  BlockingQueue<PackingResult> packingResults_;
+  std::mutex packingResultsMtx_;
+  std::condition_variable packingResultsCV_;
+  std::queue<PackingResult> packingResults_;
 
   // Thread : Logging
   std::thread logThread_;
