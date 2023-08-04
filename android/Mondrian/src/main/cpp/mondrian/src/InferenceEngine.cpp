@@ -75,11 +75,11 @@ void InferenceEngine::enqueue(const cv::Mat& rgbMat,
                               Device device,
                               int inputSize,
                               bool isFullFrame,
-                              int key) {
+                              Key key) {
   workers_[device]->enqueue(rgbMat, inputSize, isFullFrame, key);
 }
 
-Result InferenceEngine::getResults(int key) {
+Result InferenceEngine::getResults(Key key) {
   std::unique_lock<std::mutex> resultLock(resultMtx_);
   resultCv_.wait(resultLock, [this, key]() {
     return results_.find(key) != results_.end();
@@ -89,19 +89,45 @@ Result InferenceEngine::getResults(int key) {
   return result;
 }
 
-void InferenceEngine::enqueueResult(const int handle, const Result& result) {
+void InferenceEngine::enqueueResult(const Key key, const Result& result) {
   std::unique_lock<std::mutex> resultLock(resultMtx_);
-  results_.emplace(handle, result);
+  results_.emplace(key, result);
   resultLock.unlock();
   resultCv_.notify_all();
 }
 
-std::map<Device, std::map<std::pair<int, bool>, time_us>> InferenceEngine::latencyTable() const {
-  std::map<Device, std::map<std::pair<int, bool>, time_us>> latencyTable;
+LatencyTable InferenceEngine::latencyTable() const {
+  LatencyTable latencyTable;
   for (const auto& [device, worker] : workers_) {
     latencyTable[device] = worker->latencyMap();
   }
   return latencyTable;
 }
 
-} // namespace md
+std::map<Device, time_us> InferenceEngine::remainingTimes() const {
+  std::map<Device, time_us> times;
+  for (const auto& [device, worker] : workers_) {
+    times[device] = worker->remainingTime();
+  }
+  return times;
+}
+
+std::string str(const LatencyTable& latencyTable) {
+  std::stringstream ss;
+  for (auto& [device, sizeIsFullLatency] : latencyTable) {
+    for (auto& [sizeIsFull, latency] : sizeIsFullLatency) {
+      ss << str(device) << "_" << sizeIsFull.first << "=" << latency << " ";
+    }
+  }
+  return ss.str();
+}
+
+std::string str(const std::map<Device, time_us>& remainingTimes) {
+  std::stringstream ss;
+  for (auto& [device, remainingTime] : remainingTimes) {
+    ss << str(device) << "=" << remainingTime << " ";
+  }
+  return ss.str();
+}
+
+}  // namespace md

@@ -6,17 +6,20 @@
 #include <map>
 #include <queue>
 
+#include "opencv2/core/mat.hpp"
+
 #include "mondrian/Config.hpp"
 #include "mondrian/Worker.hpp"
-#include "mondrian/model/Classifier.hpp"
 
 namespace md {
 
-using Result = std::tuple<std::vector<BoundingBox>, std::pair<time_us, time_us>, Device>;
+class Classifier;
+
+std::string str(const LatencyTable& latencyTable);
+
+std::string str(const std::map<Device, time_us>& remainingTimes);
 
 class InferenceEngine {
-  friend Worker;
-
  public:
   InferenceEngine(const InferenceEngineConfig& config, JNIEnv* env, jobject app);
 
@@ -26,15 +29,17 @@ class InferenceEngine {
                Device device,
                int inputSize,
                bool isFullFrame,
-               int key);
+               Key key);
 
-  Result getResults(int key);
+  void enqueueResult(const Key key, const Result& result);
 
-  std::map<Device, std::map<std::pair<int, bool>, time_us>> latencyTable() const;
+  Result getResults(Key key);
+
+  LatencyTable latencyTable() const;
+
+  std::map<Device, time_us> remainingTimes() const;
 
  private:
-  void enqueueResult(const int handle, const Result& result);
-
   template<typename T>
   void addClassifiers(Device device,
                       const InferenceEngineConfig& config,
@@ -48,7 +53,7 @@ class InferenceEngine {
 
   std::mutex resultMtx_;
   std::condition_variable resultCv_;
-  std::map<int, Result> results_;
+  std::map<Key, Result> results_;
 };
 
 } // namespace md

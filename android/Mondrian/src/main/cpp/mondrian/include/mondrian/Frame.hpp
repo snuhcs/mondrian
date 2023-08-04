@@ -6,6 +6,7 @@
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/DataType.hpp"
+#include "mondrian/InferenceEngine.hpp"
 #include "mondrian/MergedROI.hpp"
 #include "mondrian/ROI.hpp"
 
@@ -113,8 +114,8 @@ class Frame {
     return height_;
   }
 
-  int getKey() const {
-    return frameIndex + FULL_KEY_OFFSET;
+  Key getKey() const {
+    return {vid, frameIndex};
   }
 };
 

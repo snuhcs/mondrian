@@ -12,7 +12,9 @@ namespace md {
 
 class InferenceEngine;
 
-using Key = int;
+using Key = std::pair<int, int>;
+using Result = std::tuple<std::vector<BoundingBox>, std::pair<time_us, time_us>, Device>;
+using LatencyTable = std::map<Device, std::map<std::pair<int, bool>, time_us>>;
 
 class Worker {
  public:

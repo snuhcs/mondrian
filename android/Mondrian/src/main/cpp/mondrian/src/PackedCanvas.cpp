@@ -5,6 +5,8 @@
 
 namespace md {
 
+const int PackedCanvas::PACKED_CANVAS_VID = -1;
+
 int PackedCanvas::numPackedCanvases = 0;
 
 PackedCanvas::PackedCanvas(const std::set<MergedROI*>& mergedROIs,
