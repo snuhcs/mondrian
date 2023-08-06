@@ -47,27 +47,6 @@ ROIResizer::ROIResizer(const ROIResizerConfig& config)
                    : AREA_LEVELS.at(config.DATASET)) {}
 
 std::pair<float, int> ROIResizer::getTargetScale(const ID id,
-                                                 const Features& features,
-                                                 const float maxEdgeLength) {
-  auto [targetScale, targetLevel] = getTargetScale(id, features);
-  float originalArea = features.width * features.height;
-  if (maxEdgeLength * targetScale > config_.MAX_OF_ROI_SIZE) {
-    for (int level = int(targetAreas_.size()) - 1; level >= 0; level--) {
-      float scale = getTargetScale(level, originalArea);
-      if (maxEdgeLength * scale <= config_.MAX_OF_ROI_SIZE) {
-        targetScale = scale;
-        break;
-      }
-    }
-    while (maxEdgeLength * targetScale > config_.MAX_OF_ROI_SIZE) {
-      targetScale -= config_.PROBE_STEP_SIZE;
-    }
-    assert(targetScale > 0.0f);
-  }
-  return {targetScale, targetLevel};
-}
-
-std::pair<float, int> ROIResizer::getTargetScale(const ID id,
                                                  const Features& features) {
   assert(features.type == OF);
   const int targetLevel = getMaxVotedLevel(id, features);
@@ -95,7 +74,7 @@ int ROIResizer::getMaxVotedLevel(const ID id, const Features& features) {
   auto record = prevPredictionBuffer_.find(id);
   if (record == prevPredictionBuffer_.end()) {
     prevPredictionBuffer_[id] = CircularBuffer(int(targetAreas_.size()),
-                                               config_.VOTING_WINDOW);
+                                               config_.VOTING_WINDOW_SIZE);
   }
   prevPredictionBuffer_[id].push(predictLevelWithFeatures(features));
   return prevPredictionBuffer_[id].maxVote();
@@ -191,8 +170,8 @@ void ROIResizer::getProbingCandidates(ROI* roi) const {
 bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
   return box != nullptr && referenceBox != nullptr
       && box->label == referenceBox->label
-      && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRESHOLD
-      && box->confidence > config_.PROBE_CONF_THRESHOLD;
+      && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRES
+      && box->confidence > config_.PROBE_CONF_THRES;
 }
 
 float ROIResizer::calculateTargetScale(float targetArea, float originalArea) const {

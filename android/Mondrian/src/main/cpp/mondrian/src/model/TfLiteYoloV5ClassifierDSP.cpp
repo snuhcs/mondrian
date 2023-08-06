@@ -17,10 +17,10 @@
 namespace md {
 
 TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int inputSize,
-                                                     float confidenceThreshold, float iouThreshold,
+                                                     float confThres, float iouThres,
                                                      bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
-                 confidenceThreshold, iouThreshold),
+                 confThres, iouThres),
       delegate(nullptr, [](TfLiteDelegate* d) {}) {
   std::stringstream ss;
   ss << "/data/local/tmp/models/";
@@ -164,7 +164,7 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat
 //    }
 
     maxConfidence *= objConf;
-    if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
+    if (maxLabel == 0 && maxConfidence > confThres) {
 //      LOGD("XXX box: %d %d %d %d => %f %f %f %f",
 //           box[0], box[1], box[2], box[3],
 //           float(box[0] - outputBias) * outputScale,
@@ -180,7 +180,7 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::recognizeImage(const cv::Mat
       detections.emplace_back(INVALID_ID, rect, maxConfidence, maxLabel, O_INVALID);
     }
   }
-  return nms(detections, numLabels, iouThreshold);
+  return nms(detections, numLabels, iouThres);
 }
 
 Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float h,

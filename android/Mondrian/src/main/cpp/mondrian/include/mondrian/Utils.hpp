@@ -25,10 +25,10 @@ std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
                                           const std::vector<Rect>& prevRects);
 
 std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
-                             const int numLabels, const float iouThreshold);
+                             const int numLabels, const float iouThres);
 
 void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
-         const int numLabels, const float iouThreshold);
+         const int numLabels, const float iouThres);
 
 } // namespace md
 

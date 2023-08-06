@@ -17,11 +17,7 @@ namespace md {
 
 class ROIExtractor {
  public:
-  ROIExtractor(const ROIExtractorConfig& config,
-               int maxMergeSize,
-               ROIResizer* roiResizer,
-               ExecutionType executionType,
-               int roiSize);
+  ROIExtractor(const ROIExtractorConfig& config, ROIResizer* roiResizer);
 
   ~ROIExtractor();
 
@@ -43,9 +39,6 @@ class ROIExtractor {
   std::vector<std::thread> threads_;
   bool stop_;
 
-  const ExecutionType executionType_;
-  const int ROISize_;
-  const int maxMergeSize_;
   const ROIExtractorConfig config_;
 
   ROIResizer* ROIResizer_;

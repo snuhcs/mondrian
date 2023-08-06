@@ -24,8 +24,7 @@ class ROIResizer {
 
   ROIResizer(const ROIResizerConfig& config);
 
-  std::pair<float, int> getTargetScale(const ID id, const Features& features,
-                                       const float maxEdgeLength);
+  std::pair<float, int> getTargetScale(const ID id, const Features& features);
 
   void updateTable(ROI* roi);
 
@@ -53,8 +52,6 @@ class ROIResizer {
     size_t size_;
     std::vector<int> data_;
   };
-
-  std::pair<float, int> getTargetScale(const ID id, const Features& features);
 
   float getTargetScale(const int scaleLevel, const float originalArea) const;
 

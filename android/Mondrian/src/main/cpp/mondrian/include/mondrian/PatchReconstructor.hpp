@@ -21,7 +21,7 @@ class PatchReconstructor {
 
   void matchBoxesROIs(Frame* frame, bool isFullFrame) const;
 
-  float getIoUThreshold() const;
+  float iouThres() const;
 
  private:
   PatchReconstructorConfig mConfig;

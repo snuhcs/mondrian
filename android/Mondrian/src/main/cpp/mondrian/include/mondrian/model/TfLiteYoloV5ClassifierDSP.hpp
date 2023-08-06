@@ -11,7 +11,7 @@ namespace md {
 class TfLiteYoloV5ClassifierDSP : public Classifier {
  public:
   TfLiteYoloV5ClassifierDSP(std::string dataset, int inputSize,
-                            float confidenceThreshold, float iouThreshold,
+                            float confThres, float iouThres,
                             bool isTiny, bool forFullFrame);
 
   std::vector<BoundingBox> recognizeImage(const cv::Mat& mat) override;

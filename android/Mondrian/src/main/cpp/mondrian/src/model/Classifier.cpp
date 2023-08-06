@@ -8,9 +8,9 @@
 namespace md {
 
 Classifier::Classifier(const int numLabels, const int inputSize, const int outputSize,
-                       const float confidenceThreshold, const float iouThreshold)
+                       const float confThres, const float iouThres)
     : numLabels(numLabels), inputSize(inputSize, inputSize), outputSize(outputSize),
-      confidenceThreshold(confidenceThreshold), iouThreshold(iouThreshold) {}
+      confThres(confThres), iouThres(iouThres) {}
 
 std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& rgbMat) {
   time_us start = NowMicros();
@@ -20,7 +20,7 @@ std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& rgbMat) {
   time_us inferenceTime = NowMicros();
   std::vector<BoundingBox> boxesAll = postprocess(rgbMat.cols, rgbMat.rows);
   time_us postprocessTime = NowMicros();
-  std::vector<BoundingBox> boxesNms = nms(boxesAll, numLabels, iouThreshold);
+  std::vector<BoundingBox> boxesNms = nms(boxesAll, numLabels, iouThres);
   time_us nmsTime = NowMicros();
 
   LOGD("[InferenceEngine] Latency with %dx%d input on %s "
@@ -49,7 +49,7 @@ std::vector<BoundingBox> Classifier::postprocess(int width, int height) const {
       }
     }
     maxConfidence *= getObjectConfidence(i);
-    if (maxLabel == 0 && maxConfidence > confidenceThreshold) {
+    if (maxLabel == 0 && maxConfidence > confThres) {
       Rect rect = reconstructBox(float(box[0]), float(box[1]),
                                  float(box[2]), float(box[3]),
                                  float(width), float(height));
@@ -59,10 +59,6 @@ std::vector<BoundingBox> Classifier::postprocess(int width, int height) const {
     }
   }
   return boxes;
-}
-
-const cv::Size& Classifier::getInputSize() const {
-  return inputSize;
 }
 
 const float* Classifier::getBox(const int i) const {

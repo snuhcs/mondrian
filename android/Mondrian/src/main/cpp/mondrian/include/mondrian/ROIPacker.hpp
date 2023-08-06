@@ -4,10 +4,13 @@
 #include <sstream>
 #include <vector>
 
+#include "mondrian/Config.hpp"
 #include "mondrian/Frame.hpp"
-#include "mondrian/PackedCanvas.hpp"
 
 namespace md {
+
+class PackedCanvas;
+class ROIResizer;
 
 struct IntRect {
   int l;
@@ -28,35 +31,26 @@ struct IntRect {
   }
 };
 
-struct PackingResult {
-  MultiStream streams;
-  Frame* fullFrameTarget;
-  std::vector<PackedCanvas> packedCanvases;
-};
-
 class ROIPacker {
  public:
-  static std::vector<PackedCanvas> packCanvases(const int currID,
-                                                const MultiStream& streams,
-                                                const std::vector<InferenceInfo>& inferencePlan,
-                                                const Frame* fullFrameTarget,
-                                                const ExecutionType executionType,
-                                                const int roiSize,
-                                                const ROIPrioritizerType roiPrioritizerType,
-                                                const bool noDownsamplingForLast);
+  ROIPacker(const ROIPackerConfig& config,
+            const ExecutionType executionType,
+            const int roiSize,
+            ROIResizer* roiResizer);
+
+  std::vector<PackedCanvas> packCanvases(const int currID,
+                                         const MultiStream& streams,
+                                         const std::vector<InferenceInfo>& inferencePlan,
+                                         const Frame* fullFrameTarget);
 
  private:
-  static std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
-                                            const IntPairs& boxWHs,
-                                            bool backward,
-                                            ExecutionType executionType,
-                                            int roiSize);
+  std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
+                                     const IntPairs& boxWHs,
+                                     bool backward = false) const;
 
-  static void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                    const IntPairs& boxWH,
-                    const IntPairs& indices,
-                    ExecutionType executionType,
-                    int roiSize);
+  void apply(std::vector<std::vector<IntRect>>& freeRectsVec,
+             const IntPairs& boxWH,
+             const IntPairs& indices) const;
 
   static int getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, int w, int h);
 
@@ -66,6 +60,11 @@ class ROIPacker {
   static bool canFit(int w, int h, const IntRect& freeRect);
 
   static std::pair<IntRect, IntRect> splitFreeRect(int w, int h, const IntRect& freeRect);
+
+  const ROIPackerConfig config_;
+  const ExecutionType executionType_;
+  const int roiSize_;
+  ROIResizer* roiResizer_;
 };
 
 } // namespace md

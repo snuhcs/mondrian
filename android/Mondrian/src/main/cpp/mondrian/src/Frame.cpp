@@ -27,7 +27,40 @@ void Frame::prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize) {
   cv::cvtColor(resizedGrayMat, resizedGrayMat, cv::COLOR_RGB2GRAY);
 }
 
-void Frame::filterPDROIs(float threshold, bool eatPD) {
+void Frame::eatPDROIs(float overlap_thres) {
+  std::vector<ROI*> ofROIs;
+  for (auto& roi : rois) {
+    if (roi->type == OF) {
+      ofROIs.push_back(roi.get());
+    }
+  }
+
+  for (auto it = rois.begin(); it != rois.end();) {
+    if ((*it)->type == OF) {
+      it++;
+      continue;
+    }
+    auto& pdROI = *it;
+    ROI* maxOverlapROI = nullptr;
+    float maxIntersection = -1;
+    for (ROI* ofROI : ofROIs) {
+      float intersection = pdROI->paddedLoc.intersection(ofROI->origLoc);
+      if (intersection > maxIntersection) {
+        maxOverlapROI = ofROI;
+        maxIntersection = intersection;
+      }
+    }
+    if (maxIntersection / pdROI->paddedArea() >= overlap_thres) {
+      assert(maxOverlapROI != nullptr);
+      maxOverlapROI->eatPD(pdROI->paddedLoc);
+      it = rois.erase(it);
+    } else {
+      it++;
+    }
+  }
+}
+
+void Frame::filterPDROIs(float overlap_thres) {
   std::vector<ROI*> OFROIs;
   for (auto& roi : rois) {
     if (roi->type == OF) {
@@ -36,37 +69,24 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
   }
 
   for (auto it = rois.begin(); it != rois.end();) {
-    auto& roi = *it;
-    if (roi->type == PD) {
-      if (eatPD) {
-        ROI* maxOverlapROI = nullptr;
-        float maxInterSection = 0;
-        for (ROI* OFROI : OFROIs) {
-          float intersection = roi->paddedLoc.intersection(OFROI->origLoc);
-          if (intersection > maxInterSection) {
-            maxOverlapROI = OFROI;
-            maxInterSection = intersection;
-          }
-        }
-        if (maxInterSection / roi->paddedArea() >= threshold) {
-          assert(maxOverlapROI != nullptr);
-          maxOverlapROI->eatPD(roi->paddedLoc);
-          it = rois.erase(it);
-        }
-      }
-
-      float totalOFCoverage = 0;
-      for (ROI* OFROI : OFROIs) {
-        totalOFCoverage += roi->paddedLoc.intersection(OFROI->paddedLoc);
-      }
-      if (totalOFCoverage / roi->paddedArea() >= threshold) {
-        it = rois.erase(it);
-        continue;
-      }
+    if ((*it)->type == OF) {
+      it++;
+      continue;
     }
-    it++;
+    auto& pdROI = *it;
+    float ofCoverage = 0;
+    for (ROI* ofROI : OFROIs) {
+      ofCoverage += pdROI->paddedLoc.intersection(ofROI->paddedLoc);
+    }
+    if (ofCoverage / pdROI->paddedArea() >= overlap_thres) {
+      it = rois.erase(it);
+    } else {
+      it++;
+    }
   }
+}
 
+void Frame::assignPDROIIDs() {
   for (auto& roi : rois) {
     if (roi->type == PD) {
       assert(roi->id == INVALID_ID);
@@ -77,35 +97,14 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
   }
 }
 
-void Frame::resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize) {
-  if (executionType == EMULATED_BATCH || executionType == ROI_WISE_INFERENCE) {
-    for (auto& roi : rois) {
-      float w = roi->paddedLoc.w;
-      float h = roi->paddedLoc.h;
-      float scale = std::min(1.0f, float(roiSize - 2 * MergedROI::BORDER) / std::max(h, w));
-      roi->scaleTo(scale, ROIResizer::INVALID_LEVEL);
-      int bw = MergedROI::borderedLengthOf(w, scale);
-      int bh = MergedROI::borderedLengthOf(h, scale);
-      if (roiSize < std::max(bw, bh)) {
-        LOGE("Frame::resizeROIs: roiSize=%3d | %4.2f*%4.2f=%4.2f => %3d | %4.2f*%4.2f=%4.2f => %3d",
-             roiSize, w, scale, w * scale, bw, h, scale, h * scale, bh);
-        assert(false);
-      }
-    }
-  } else {
-    for (auto& roi : rois) {
-      if (roi->type == OF) {
-        auto [scale, level] = roiResizer->getTargetScale(roi->id, roi->features,
-                                                         roi->maxEdgeLength);
-        assert(0.0f < scale && scale <= 1.0f);
-        roi->scaleTo(scale, level);
-      } else {
-        if (roi->nextROI != nullptr) {
-          roi->scaleTo(roi->nextROI->targetScale(), roi->nextROI->scaleLevel());
-        } else {
-          roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL);
-        }
-      }
+void Frame::resizeROIs(ROIResizer* roiResizer) {
+  for (auto& roi : rois) {
+    if (roi->type == OF) {
+      auto [scale, level] = roiResizer->getTargetScale(roi->id, roi->features);
+      assert(0.0f < scale && scale <= 1.0f);
+      roi->scaleTo(scale, level);
+    } else {
+      roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL);
     }
   }
 }
@@ -209,10 +208,11 @@ void Frame::resetProbeROIs() {
   }
 }
 
-void Frame::setBoxesIfLast(ROIResizer* roiResizer,
-                           ExecutionType executionType,
-                           bool noDownsampling) {
+IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
+                            ExecutionType executionType,
+                            bool noDownsampling) {
   // TODO: Synchronize simulation with add logics
+  IntPairs boxWHs;
   for (const auto& mergedROI : mergedROIs) {
     // TODO: Make below two condition as single value(or function) of condition
     float scale = mergedROI->targetScale();
@@ -220,7 +220,7 @@ void Frame::setBoxesIfLast(ROIResizer* roiResizer,
       scale = 1.0f;
     }
     auto [bw, bh] = mergedROI->borderedMatWH(scale);
-    boxesIfLast.emplace_back(bw, bh);
+    boxWHs.emplace_back(bw, bh);
   }
   for (const auto& roi : rois) {
     if (roi->scaleLevel() == ROIResizer::INVALID_LEVEL) {
@@ -231,9 +231,10 @@ void Frame::setBoxesIfLast(ROIResizer* roiResizer,
     for (auto scale : roi->probeScales) {
       int bw = MergedROI::borderedLengthOf(roi->paddedLoc.w, scale);
       int bh = MergedROI::borderedLengthOf(roi->paddedLoc.h, scale);
-      boxesIfLast.emplace_back(bw, bh);
+      boxWHs.emplace_back(bw, bh);
     }
   }
+  return boxWHs;
 }
 
 void Frame::prepareFrameLast(const IntPairs& indices,

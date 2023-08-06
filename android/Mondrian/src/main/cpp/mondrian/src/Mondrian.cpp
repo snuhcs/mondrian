@@ -15,25 +15,29 @@
 #include "mondrian/PatchReconstructor.hpp"
 #include "mondrian/ROI.hpp"
 #include "mondrian/ROIExtractor.hpp"
-#include "mondrian/ROIPrioritizer.hpp"
+#include "mondrian/ROIPacker.hpp"
 #include "mondrian/ROIResizer.hpp"
 #include "mondrian/Utils.hpp"
 
 namespace md {
 
 Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app)
-    : config_(config), stop_(false), numFirstFrameReadyVideos_(0), numVideos_(numVideos),
-      preprocessTargetSize_(int(config_.roiExtractorConfig.EXTRACTION_RESIZE_WIDTH),
-                            int(config_.roiExtractorConfig.EXTRACTION_RESIZE_HEIGHT)),
-      scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2), packingTime_(0), numIntervals_(0),
-      ROIResizer_(new ROIResizer(config.roiResizerConfig)), startTime_(NowMicros()),
-      inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)),
-      patchReconstructor_(new PatchReconstructor(config.patchReconstructorConfig,
-                                                 ROIResizer_.get())) {
+    : config_(config),
+      startTime_(NowMicros()),
+      numFirstFrameReadyVideos_(0),
+      numVideos_(numVideos),
+      scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2),
+      packingTime_(0),
+      numIntervals_(0),
+      stop_(false),
+      ROIResizer_(new ROIResizer(config.roiResizerConfig)),
+      inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)) {
+  ROIPacker_ = std::make_unique<ROIPacker>(
+      config.roiPackerConfig, config.EXECUTION_TYPE, config.ROI_SIZE, ROIResizer_.get());
+  patchReconstructor_ = std::make_unique<PatchReconstructor>(
+      config.patchReconstructorConfig, ROIResizer_.get());
   config_.print();
   config_.test();
-  ROI::PADDING = config.roiExtractorConfig.ROI_PADDING;
-  MergedROI::BORDER = config.roiExtractorConfig.ROI_BORDER;
 
   // Create loggers
   if (config.LOG_BOXES) {
@@ -54,36 +58,28 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
     frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid);
   }
 
-  // Start preprocessing thread
-  preprocessThread_ = std::thread([this]() { workPreprocess(); });
-
-  // Start postprocessing thread
-  postprocessThread_ = std::thread([this]() { workPostprocess(); });
-
   // Start logging thread
   logThread_ = std::thread([this]() { workLog(); });
 
   // If frame-wise inference, skip ROI extraction and scheduling
   if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) return;
 
-  // Prepare ROI extractor and start scheduling
+  // Latency profiling
   inferenceEngine_->profileLatency();
-  int maxMergeSize = config.EXECUTION_TYPE == MONDRIAN
-                     ? *config_.inferenceEngineConfig.INPUT_SIZES.begin()
-                     : config.ROI_SIZE;
-  auto latencyTable = inferenceEngine_->latencyTable();
-  auto inferencePlan = InferencePlanner::getInferencePlan(
-      latencyTable, scheduleInterval_, config_.EXECUTION_TYPE == ROI_WISE_INFERENCE);
-  ROIExtractor_ = std::make_unique<ROIExtractor>(
-      config_.roiExtractorConfig, maxMergeSize, ROIResizer_.get(),
-      config.EXECUTION_TYPE, config.ROI_SIZE);
+
+  // Start ROI extraction threads
+  ROIExtractor_ = std::make_unique<ROIExtractor>(config_.roiExtractorConfig, ROIResizer_.get());
+
+  // Start postprocessing thread
+  postprocessThread_ = std::thread([this]() { workPostprocess(); });
+
+  // Start scheduling thread
   scheduleThread_ = std::thread([this]() { workSchedule(); });
 }
 
 Mondrian::~Mondrian() {
   stop_ = true;
   resultsCV_.notify_all();
-  preprocessThread_.join();
   scheduleThread_.join();
   postprocessThread_.join();
   logThread_.join();
@@ -134,15 +130,11 @@ void Mondrian::workSchedule() {
 
     // Prepare Packed Canvases
     time_us packingStart = NowMicros();
-    std::vector<PackedCanvas> packedCanvases = ROIPacker::packCanvases(
+    std::vector<PackedCanvas> packedCanvases = ROIPacker_->packCanvases(
         /*currID=*/currID,
         /*streams=*/streams,
         /*inferencePlan=*/inferencePlan,
-        /*fullFrameTarget=*/fullFrameTarget,
-        /*executionType=*/config_.EXECUTION_TYPE,
-        /*roiSize=*/config_.ROI_SIZE,
-        /*roiPrioritizerType=*/config_.roiExtractorConfig.ROI_PRIORITIZER_TYPE,
-        /*noDownsamplingForLast=*/config_.roiExtractorConfig.NO_DOWNSAMPLING_FOR_LAST_FRAME);
+        /*fullFrameTarget=*/fullFrameTarget);
 
     std::unique_lock<std::mutex> packingResultsLock(packingResultsMtx_);
     packingResults_.push({streams, fullFrameTarget, packedCanvases});
@@ -166,6 +158,8 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   auto [boxes, times, device] = inferenceEngine_->getResults(frame->getKey());
   LOGD("[Schedule %d] FULL Inference at %lld // vid=%d fid=%d",
        currID, NowMicros() - startTime_, frame->vid, frame->frameIndex);
+  frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
+  frame->inferenceDevice = config_.FULL_DEVICE;
   frame->fullInferenceStartTime = times.first;
   frame->fullInferenceEndTime = times.second;
   for (const BoundingBox& box : boxes) {
@@ -220,7 +214,7 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
     for (Frame* frame : packedCanvases[i].getPackedFrames()) {
       if (frame->isReadyToMarry(i)) { // If all mergedROIs are packed and inferenced
         // Match boxes with ROIs (per frame)
-        nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
+        nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());
         patchReconstructor_->matchBoxesROIs(frame, false);
         frame->isBoxesReady = true;
       }
@@ -258,7 +252,7 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
   }
 
   for (Frame* frame : inferenceFrames) {
-    nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
+    nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());
     patchReconstructor_->matchBoxesROIs(frame, false);
   }
 }
@@ -296,59 +290,49 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
       return numFirstFrameReadyVideos_ == numVideos_;
     });
   }
-  std::unique_lock<std::mutex> preprocessLock(preprocessMtx_);
-  preprocessQueue_.push(frame);
-  preprocessLock.unlock();
-  preprocessCV_.notify_one();
+
+  if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
+    enqueueFrameWise(frame);
+  } else {
+    enqueue(frame);
+  }
+
+  // Notify when a video is ready
+  if (frame->frameIndex == 0) {
+    std::lock_guard<std::mutex> startLock(startMtx_);
+    numFirstFrameReadyVideos_++;
+    startCV_.notify_all();
+  }
 }
 
-void Mondrian::workPreprocess() {
-  int id = 0;
-  while (!stop_) {
-    int currID = id++;
-    std::unique_lock<std::mutex> preprocessLock(preprocessMtx_);
-    preprocessCV_.wait(preprocessLock, [this]() { return !preprocessQueue_.empty() || stop_; });
-    Frame* frame = preprocessQueue_.front();
-    preprocessQueue_.pop();
-    preprocessLock.unlock();
+void Mondrian::enqueueFrameWise(Frame* frame) {
+  cv::cvtColor(frame->yuvMat, frame->rgbMat, cv::COLOR_YUV2RGB_NV21);
+  inferenceEngine_->enqueue(
+      frame->rgbMat,
+      config_.FULL_DEVICE,
+      config_.FULL_FRAME_SIZE,
+      true,
+      frame->getKey());
+  handleFullFrameResults(frame, frame->frameIndex);
+  std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
+  frameBuffers_.at(frame->vid)->free(frame->frameIndex);
+}
 
-    frame->prepareRgbMatAndResizedGrayMat(preprocessTargetSize_);
-
-    if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
-      inferenceEngine_->enqueue(
-          frame->rgbMat,
-          config_.FULL_DEVICE,
-          config_.FULL_FRAME_SIZE,
-          true,
-          frame->getKey());
-      frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
-      frame->inferenceDevice = config_.FULL_DEVICE;
-      handleFullFrameResults(frame, currID);
-      std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
-      log(frame);
-      frameBuffers_.at(frame->vid)->free(frame->frameIndex);
-      continue;
-    }
-
-    if (frame->frameIndex == 0) {
-      frame->useInferenceResultForOF = true;
-      inferenceEngine_->enqueue(
-          frame->rgbMat,
-          config_.FULL_DEVICE,
-          config_.FULL_FRAME_SIZE,
-          true,
-          frame->getKey());
-      frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
-      frame->inferenceDevice = config_.FULL_DEVICE;
-      handleFullFrameResults(frame, currID);
-
-      std::unique_lock<std::mutex> startLock(startMtx_);
-      numFirstFrameReadyVideos_++;
-      startLock.unlock();
-      startCV_.notify_all();
-    } else {
-      ROIExtractor_->enqueue(frame);
-    }
+void Mondrian::enqueue(Frame* frame) {
+  // Handle the first frame
+  if (frame->frameIndex == 0) {
+    frame->prepareRgbMatAndResizedGrayMat(config_.roiExtractorConfig.EXTRACTION_SIZE);
+    frame->useInferenceResultForOF = true;
+    inferenceEngine_->enqueue(
+        frame->rgbMat,
+        config_.FULL_DEVICE,
+        config_.FULL_FRAME_SIZE,
+        true,
+        frame->getKey());
+    handleFullFrameResults(frame, -1);
+    return;
+  } else {
+    ROIExtractor_->enqueue(frame);
   }
 }
 
@@ -375,8 +359,6 @@ void Mondrian::workPostprocess() {
           config_.FULL_DEVICE,
           config_.FULL_FRAME_SIZE,
           true, fullFrameTarget->getKey());
-      fullFrameTarget->inferenceFrameSize = config_.FULL_FRAME_SIZE;
-      fullFrameTarget->inferenceDevice = config_.FULL_DEVICE;
     }
 
     // Enqueue packed canvases
@@ -403,7 +385,7 @@ void Mondrian::workPostprocess() {
     }
 
     // Interpolate results
-    Interpolator::interpolate(streams, config_.INTERPOLATION_THRESHOLD);
+    Interpolator::interpolate(streams, config_.INTERPOLATION_THRES);
 
     // Notify results of rest of the frames
     for (const auto& [vid, stream] : streams) {
@@ -417,7 +399,7 @@ void Mondrian::workPostprocess() {
           assert(roi->box->id == roi->id);
           assert(roi->box->label == roi->label);
         }
-        nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
+        nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());
         frame->isBoxesReady = true;
         frame->endTime = NowMicros();
       }

@@ -14,10 +14,10 @@
 namespace md {
 
 TfLiteYoloV4Classifier::TfLiteYoloV4Classifier(std::string dataset, int inputSize,
-                                               float confidenceThreshold, float iouThreshold,
+                                               float confThres, float iouThres,
                                                bool isTiny, bool forFullFrame)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
-                 confidenceThreshold, iouThreshold) {
+                 confThres, iouThres) {
 
   // TODO : use forFullFrame
   std::stringstream ss;
