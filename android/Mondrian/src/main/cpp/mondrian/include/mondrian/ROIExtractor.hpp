@@ -38,25 +38,13 @@ class ROIExtractor {
 
   void processPD(Frame* currFrame) const;
 
-  void processOF(Frame* currFrame);
-
-  static void getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,
-                                 const std::vector<BoundingBox>& boundingBoxes,
-                                 const cv::Size& targetSize,
-                                 std::vector<std::unique_ptr<ROI>>& outChildROIs);
-
-  static std::vector<OFFeatures> opticalFlowTracking(
-      const Frame* prevFrame, const Frame* currFrame, const std::vector<Rect>& boundingBoxes,
-      const cv::Size& targetSize);
+  void processOF(Frame* currFrame) const;
 
   std::vector<std::thread> threads_;
   bool stop_;
 
-  static const cv::TermCriteria CRITERIA;
-
   const ExecutionType executionType_;
   const int ROISize_;
-  const cv::Size targetSize_;
   const int maxMergeSize_;
   const ROIExtractorConfig config_;
 
