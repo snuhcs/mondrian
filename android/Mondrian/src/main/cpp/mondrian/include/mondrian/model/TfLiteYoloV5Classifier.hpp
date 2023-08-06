@@ -11,7 +11,7 @@ namespace md {
 class TfLiteYoloV5Classifier : public Classifier {
  public:
   TfLiteYoloV5Classifier(std::string dataset, int inputSize,
-                         float confidenceThreshold, float iouThreshold,
+                         float confThres, float iouThres,
                          bool isTiny, bool forFullFrame);
 
   ~TfLiteYoloV5Classifier();

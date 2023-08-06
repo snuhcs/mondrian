@@ -243,7 +243,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   const Frame* prevFrame = currFrame->prevFrame;
   if (prevFrame->useInferenceResultForOF) {
     for (const auto& box : prevFrame->boxes) {
-      if (box->confidence < config_.OF_CONF_THRESHOLD) continue;
+      if (box->confidence < config_.OF_CONF_THRES) continue;
       Rect clippedLoc = box->loc.clip(imageSize);
       if (clippedLoc.minWH < 1) continue;
       BoundingBox prevBox(
@@ -319,7 +319,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   }
   currFrame->opticalFlowROIProcessEndTime = NowMicros();
 
-  currFrame->filterPDROIs(config_.PD_FILTER_THRESHOLD, config_.EAT_PD);
+  currFrame->filterPDROIs(config_.PD_FILTER_THRES, config_.EAT_PD);
 
   currFrame->resizeStartTime = NowMicros();
   currFrame->resizeROIs(ROIResizer_, executionType_, ROISize_);

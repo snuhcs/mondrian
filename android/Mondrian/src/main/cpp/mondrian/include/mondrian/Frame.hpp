@@ -76,7 +76,7 @@ class Frame {
 
   void prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize);
 
-  void filterPDROIs(float threshold, bool eatPD);
+  void filterPDROIs(float thres, bool eatPD);
 
   void resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize);
 

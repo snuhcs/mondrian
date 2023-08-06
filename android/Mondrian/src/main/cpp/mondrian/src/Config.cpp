@@ -37,8 +37,8 @@ ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   config.EAT_PD = parseBool(json, "eat_pd");
   config.ROI_PADDING = parseFloat(json, "roi_padding");
   config.ROI_BORDER = parseInt(json, "roi_border");
-  config.OF_CONF_THRESHOLD = parseFloat(json, "of_conf_threshold");
-  config.PD_FILTER_THRESHOLD = parseFloat(json, "pd_filter_threshold");
+  config.OF_CONF_THRES = parseFloat(json, "of_conf_thres");
+  config.PD_FILTER_THRES = parseFloat(json, "pd_filter_thres");
   config.PD_INTERVAL = parseInt(json, "pd_interval");
   config.MERGE = parseBool(json, "merge");
   config.NO_DOWNSAMPLING_FOR_LAST_FRAME = parseBool(json, "no_downsampling_for_last_frame");
@@ -57,8 +57,8 @@ ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
   config.MAX_OF_ROI_SIZE = parseFloat(json, "max_of_roi_size");
   config.PROBE_STEP_SIZE = parseFloat(json, "probe_step_size");
   config.NUM_PROBE_STEPS = parseInt(json, "num_probe_steps");
-  config.PROBE_CONF_THRESHOLD = parseFloat(json, "probe_conf_threshold");
-  config.PROBE_IOU_THRESHOLD = parseFloat(json, "probe_iou_threshold");
+  config.PROBE_CONF_THRES = parseFloat(json, "probe_conf_thres");
+  config.PROBE_IOU_THRES = parseFloat(json, "probe_iou_thres");
   return config;
 }
 
@@ -68,8 +68,8 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   config.DATASET = parseString(json, "dataset");
   config.MODEL = parseString(json, "model");
   config.USE_TINY = parseBool(json, "use_tiny");
-  config.CONF_THRESHOLD = parseFloat(json, "conf_threshold");
-  config.IOU_THRESHOLD = parseFloat(json, "iou_threshold");
+  config.CONF_THRES = parseFloat(json, "conf_thres");
+  config.IOU_THRES = parseFloat(json, "iou_thres");
   config.PROFILE_WARMUPS = parseInt(json, "profile_warmups");
   config.PROFILE_RUNS = parseInt(json, "profile_runs");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
@@ -84,9 +84,9 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
 
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json) {
   PatchReconstructorConfig config = {};
-  config.FRAME_BOXES_IOU_THRESHOLD = parseFloat(json, "frame_boxes_iou_threshold");
-  config.BOX_FILTER_OVERLAP_THRESHOLD = parseFloat(json, "box_filter_overlap_threshold");
-  config.ID_MAPPING_IOU_THRESHOLD = parseFloat(json, "id_mapping_iou_threshold");
+  config.FRAME_BOXES_IOU_THRES = parseFloat(json, "frame_boxes_iou_thres");
+  config.BOX_FILTER_OVERLAP_THRES = parseFloat(json, "box_filter_overlap_thres");
+  config.ID_MAPPING_IOU_THRES = parseFloat(json, "id_mapping_iou_thres");
   return config;
 }
 
@@ -102,7 +102,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.LOG_BOXES = parseBool(json, "log_boxes");
   config.LOG_ROI = parseBool(json, "log_roi");
   config.LOG_FRAME = parseBool(json, "log_frame");
-  config.INTERPOLATION_THRESHOLD = parseFloat(json, "interpolation_threshold");
+  config.INTERPOLATION_THRES = parseFloat(json, "interpolation_thres");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
   config.FULL_DEVICE = deviceOf(parseString(json, "full_device"));
@@ -165,7 +165,7 @@ void MondrianConfig::print() const {
   ss << "LOG_BOXES: " << LOG_BOXES << std::endl;
   ss << "LOG_ROI: " << LOG_ROI << std::endl;
   ss << "LOG_FRAME: " << LOG_FRAME << std::endl;
-  ss << "INTERPOLATION_THRESHOLD: " << INTERPOLATION_THRESHOLD << std::endl;
+  ss << "INTERPOLATION_THRES: " << INTERPOLATION_THRES << std::endl;
   ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
   ss << "FULL_DEVICE: " << md::str(FULL_DEVICE) << std::endl;
@@ -190,8 +190,8 @@ void ROIExtractorConfig::print() const {
   ss << "EAT_PD: " << EAT_PD << std::endl;
   ss << "ROI_PADDING: " << ROI_PADDING << std::endl;
   ss << "ROI_BORDER: " << ROI_BORDER << std::endl;
-  ss << "OF_CONF_THRESHOLD: " << OF_CONF_THRESHOLD << std::endl;
-  ss << "PD_FILTER_THRESHOLD: " << PD_FILTER_THRESHOLD << std::endl;
+  ss << "OF_CONF_THRES: " << OF_CONF_THRES << std::endl;
+  ss << "PD_FILTER_THRES: " << PD_FILTER_THRES << std::endl;
   ss << "PD_INTERVAL: " << PD_INTERVAL << std::endl;
   ss << "MERGE: " << MERGE << std::endl;
   ss << "NO_DOWNSAMPLING_FOR_LAST_FRAME: " << NO_DOWNSAMPLING_FOR_LAST_FRAME << std::endl;
@@ -210,8 +210,8 @@ void ROIResizerConfig::print() const {
   ss << "MAX_OF_ROI_SIZE: " << MAX_OF_ROI_SIZE << std::endl;
   ss << "PROBE_STEP_SIZE: " << PROBE_STEP_SIZE << std::endl;
   ss << "NUM_PROBE_STEPS: " << NUM_PROBE_STEPS << std::endl;
-  ss << "PROBE_CONF_THRESHOLD: " << PROBE_CONF_THRESHOLD << std::endl;
-  ss << "PROBE_IOU_THRESHOLD: " << PROBE_IOU_THRESHOLD << std::endl;
+  ss << "PROBE_CONF_THRES: " << PROBE_CONF_THRES << std::endl;
+  ss << "PROBE_IOU_THRES: " << PROBE_IOU_THRES << std::endl;
   LOGD("%s", ss.str().c_str());
 }
 
@@ -222,8 +222,8 @@ void InferenceEngineConfig::print() const {
   ss << "DATASET: " << DATASET << std::endl;
   ss << "MODEL: " << MODEL << std::endl;
   ss << "USE_TINY: " << USE_TINY << std::endl;
-  ss << "CONF_THRESHOLD: " << CONF_THRESHOLD << std::endl;
-  ss << "IOU_THRESHOLD: " << IOU_THRESHOLD << std::endl;
+  ss << "CONF_THRES: " << CONF_THRES << std::endl;
+  ss << "IOU_THRES: " << IOU_THRES << std::endl;
   ss << "PROFILE_WARMUPS: " << PROFILE_WARMUPS << std::endl;
   ss << "PROFILE_RUNS: " << PROFILE_RUNS << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
@@ -243,9 +243,9 @@ void InferenceEngineConfig::print() const {
 void PatchReconstructorConfig::print() const {
   std::stringstream ss;
   ss << "========== PatchReconstructorConfig ==========" << std::endl;
-  ss << "FRAME_BOXES_IOU_THRESHOLD: " << FRAME_BOXES_IOU_THRESHOLD << std::endl;
-  ss << "BOX_FILTER_OVERLAP_THRESHOLD: " << BOX_FILTER_OVERLAP_THRESHOLD << std::endl;
-  ss << "ID_MAPPING_IOU_THRESHOLD: " << ID_MAPPING_IOU_THRESHOLD << std::endl;
+  ss << "FRAME_BOXES_IOU_THRES: " << FRAME_BOXES_IOU_THRES << std::endl;
+  ss << "BOX_FILTER_OVERLAP_THRES: " << BOX_FILTER_OVERLAP_THRES << std::endl;
+  ss << "ID_MAPPING_IOU_THRES: " << ID_MAPPING_IOU_THRES << std::endl;
   LOGD("%s", ss.str().c_str());
 }
 

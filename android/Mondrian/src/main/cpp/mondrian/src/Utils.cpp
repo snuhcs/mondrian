@@ -127,7 +127,7 @@ std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
 }
 
 std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
-                             const int numLabels, const float iouThreshold) {
+                             const int numLabels, const float iouThres) {
   std::vector<BoundingBox> nmsList;
 
   auto comp = [](const BoundingBox& l, const BoundingBox& r) -> bool {
@@ -152,7 +152,7 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
       sortedBoxes.erase(startIt);
 
       for (auto it = sortedBoxes.begin(); it != sortedBoxes.end();) {
-        if (max.loc.iou(it->loc) >= iouThreshold) {
+        if (max.loc.iou(it->loc) >= iouThres) {
           it = sortedBoxes.erase(it);
         } else {
           it++;
@@ -164,7 +164,7 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
 }
 
 void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
-         const int numLabels, const float iouThreshold) {
+         const int numLabels, const float iouThres) {
   std::set<int> nmsIndices;
 
   auto comp = [&boxes](int l, int r) -> bool {
@@ -186,7 +186,7 @@ void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
       sortedBoxes.erase(startIt);
 
       for (auto it = sortedBoxes.begin(); it != sortedBoxes.end();) {
-        if (boxes[max]->loc.iou(boxes[*it]->loc) >= iouThreshold) {
+        if (boxes[max]->loc.iou(boxes[*it]->loc) >= iouThres) {
           it = sortedBoxes.erase(it);
         } else {
           it++;

@@ -22,8 +22,8 @@ struct ROIExtractorConfig {
   bool EAT_PD;
   float ROI_PADDING;
   int ROI_BORDER;
-  float OF_CONF_THRESHOLD;
-  float PD_FILTER_THRESHOLD;
+  float OF_CONF_THRES;
+  float PD_FILTER_THRES;
   int PD_INTERVAL;
   bool MERGE;
   bool NO_DOWNSAMPLING_FOR_LAST_FRAME;
@@ -45,8 +45,8 @@ struct ROIResizerConfig {
   // Reactive probing configs
   float PROBE_STEP_SIZE;
   int NUM_PROBE_STEPS;
-  float PROBE_CONF_THRESHOLD;
-  float PROBE_IOU_THRESHOLD;
+  float PROBE_CONF_THRES;
+  float PROBE_IOU_THRES;
 
   void print() const;
 };
@@ -56,8 +56,8 @@ struct InferenceEngineConfig {
   std::string DATASET;
   std::string MODEL;
   bool USE_TINY;
-  float CONF_THRESHOLD;
-  float IOU_THRESHOLD;
+  float CONF_THRES;
+  float IOU_THRES;
   int PROFILE_WARMUPS;
   int PROFILE_RUNS;
   int FULL_FRAME_SIZE;
@@ -68,9 +68,9 @@ struct InferenceEngineConfig {
 };
 
 struct PatchReconstructorConfig {
-  float FRAME_BOXES_IOU_THRESHOLD;
-  float BOX_FILTER_OVERLAP_THRESHOLD;
-  float ID_MAPPING_IOU_THRESHOLD;
+  float FRAME_BOXES_IOU_THRES;
+  float BOX_FILTER_OVERLAP_THRES;
+  float ID_MAPPING_IOU_THRES;
 
   void print() const;
 };
@@ -80,7 +80,7 @@ struct MondrianConfig {
   bool LOG_BOXES;
   bool LOG_FRAME;
   bool LOG_ROI;
-  float INTERPOLATION_THRESHOLD;
+  float INTERPOLATION_THRES;
   int FULL_FRAME_INTERVAL;
   int FULL_FRAME_SIZE;
   Device FULL_DEVICE;

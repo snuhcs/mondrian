@@ -220,7 +220,7 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
     for (Frame* frame : packedCanvases[i].getPackedFrames()) {
       if (frame->isReadyToMarry(i)) { // If all mergedROIs are packed and inferenced
         // Match boxes with ROIs (per frame)
-        nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
+        nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());
         patchReconstructor_->matchBoxesROIs(frame, false);
         frame->isBoxesReady = true;
       }
@@ -258,7 +258,7 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
   }
 
   for (Frame* frame : inferenceFrames) {
-    nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
+    nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());
     patchReconstructor_->matchBoxesROIs(frame, false);
   }
 }
@@ -403,7 +403,7 @@ void Mondrian::workPostprocess() {
     }
 
     // Interpolate results
-    Interpolator::interpolate(streams, config_.INTERPOLATION_THRESHOLD);
+    Interpolator::interpolate(streams, config_.INTERPOLATION_THRES);
 
     // Notify results of rest of the frames
     for (const auto& [vid, stream] : streams) {
@@ -417,7 +417,7 @@ void Mondrian::workPostprocess() {
           assert(roi->box->id == roi->id);
           assert(roi->box->label == roi->label);
         }
-        nms(frame->boxes, NUM_LABELS, patchReconstructor_->getIoUThreshold());
+        nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());
         frame->isBoxesReady = true;
         frame->endTime = NowMicros();
       }

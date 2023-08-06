@@ -27,7 +27,7 @@ void Frame::prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize) {
   cv::cvtColor(resizedGrayMat, resizedGrayMat, cv::COLOR_RGB2GRAY);
 }
 
-void Frame::filterPDROIs(float threshold, bool eatPD) {
+void Frame::filterPDROIs(float thres, bool eatPD) {
   std::vector<ROI*> OFROIs;
   for (auto& roi : rois) {
     if (roi->type == OF) {
@@ -48,7 +48,7 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
             maxInterSection = intersection;
           }
         }
-        if (maxInterSection / roi->paddedArea() >= threshold) {
+        if (maxInterSection / roi->paddedArea() >= thres) {
           assert(maxOverlapROI != nullptr);
           maxOverlapROI->eatPD(roi->paddedLoc);
           it = rois.erase(it);
@@ -59,7 +59,7 @@ void Frame::filterPDROIs(float threshold, bool eatPD) {
       for (ROI* OFROI : OFROIs) {
         totalOFCoverage += roi->paddedLoc.intersection(OFROI->paddedLoc);
       }
-      if (totalOFCoverage / roi->paddedArea() >= threshold) {
+      if (totalOFCoverage / roi->paddedArea() >= thres) {
         it = rois.erase(it);
         continue;
       }

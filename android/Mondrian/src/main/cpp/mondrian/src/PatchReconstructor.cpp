@@ -76,8 +76,8 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
         maxROI = mergedROI;
       }
     }
-    if (maxROI != nullptr && maxOverlap >= mConfig.BOX_FILTER_OVERLAP_THRESHOLD) {
-      // filter overly large boxes from packed inference by PROBE_IOU_THRESHOLD
+    if (maxROI != nullptr && maxOverlap >= mConfig.BOX_FILTER_OVERLAP_THRES) {
+      // filter overly large boxes from packed inference by PROBE_IOU_THRES
       if (maxROI->isProbing()) {
         maxROI->frame()->probingBoxes.push_back(std::make_unique<BoundingBox>(
             INVALID_ID, reconstructBoxPos(box, maxROI),
@@ -127,7 +127,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     }
     // if overlap is large enough, assign box to roi.boxes
     // else that bounding box is considered as newly appeared object
-    if (maxROI != nullptr && maxIoU >= mConfig.ID_MAPPING_IOU_THRESHOLD) {
+    if (maxROI != nullptr && maxIoU >= mConfig.ID_MAPPING_IOU_THRES) {
       roiToBoxesMap[maxROI].push_back(box.get());
       box->choiceOfBox = maxROI->id;
     } else {
@@ -223,8 +223,8 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   testROIBoxConnection();
 }
 
-float PatchReconstructor::getIoUThreshold() const {
-  return mConfig.FRAME_BOXES_IOU_THRESHOLD;
+float PatchReconstructor::iouThres() const {
+  return mConfig.FRAME_BOXES_IOU_THRES;
 }
 
 } // namespace md

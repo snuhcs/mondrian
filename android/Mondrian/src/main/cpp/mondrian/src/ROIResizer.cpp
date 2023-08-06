@@ -191,8 +191,8 @@ void ROIResizer::getProbingCandidates(ROI* roi) const {
 bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
   return box != nullptr && referenceBox != nullptr
       && box->label == referenceBox->label
-      && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRESHOLD
-      && box->confidence > config_.PROBE_CONF_THRESHOLD;
+      && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRES
+      && box->confidence > config_.PROBE_CONF_THRES;
 }
 
 float ROIResizer::calculateTargetScale(float targetArea, float originalArea) const {
