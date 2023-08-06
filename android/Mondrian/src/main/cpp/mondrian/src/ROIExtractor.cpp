@@ -125,20 +125,20 @@ void ROIExtractor::work(int extractorId) {
   };
 
   while (true) {
-    bool isOF = false;
+    bool pd = false;
     Frame* frame = nullptr;
 
     std::unique_lock<std::mutex> lock(mtx_);
-    cv_.wait(lock, [this, &isOF, &frame, &getPDJob, &getOFJob]() {
+    cv_.wait(lock, [this, &pd, &frame, &getPDJob, &getOFJob]() {
       if (stop_) return true;
       frame = getOFJob();
       if (frame != nullptr) {
-        isOF = true;
+        pd = false;
         return true;
       }
       frame = getPDJob();
       if (frame != nullptr) {
-        isOF = false;
+        pd = true;
         return true;
       }
       return false;
@@ -150,26 +150,29 @@ void ROIExtractor::work(int extractorId) {
       return;
     }
 
-    if (isOF) {
-      frame->OFExtractorID = extractorId;
-      OFWaiting_.erase(frame);
-      OFProcessing_.insert(frame);
-    } else {
+    if (pd) {
       frame->PDExtractorID = extractorId;
       PDWaiting_.erase(frame);
       PDProcessing_.insert(frame);
+    } else {
+      frame->OFExtractorID = extractorId;
+      OFWaiting_.erase(frame);
+      OFProcessing_.insert(frame);
     }
     lock.unlock();
     cv_.notify_all();
 
-    if (isOF) {
-      processOF(frame);
-    } else {
+    if (pd) {
       processPD(frame);
+    } else {
+      processOF(frame);
     }
 
     lock.lock();
-    if (isOF) {
+    if (pd) {
+      PDProcessing_.erase(frame);
+      OFWaiting_.insert(frame);
+    } else {
       OFProcessing_.erase(frame);
       if (frame->extractOFAgain) {
         OFWaiting_.insert(frame);
@@ -177,14 +180,11 @@ void ROIExtractor::work(int extractorId) {
         OFProcessed_[frame->vid].insert(frame);
         frame->isROIsReady = true;
       }
-    } else {
-      PDProcessing_.erase(frame);
-      OFWaiting_.insert(frame);
     }
     lock.unlock();
     time_us end = NowMicros();
 
-    if (!isOF) {
+    if (pd) {
       LOGD("[ROIExtractor] PDTime=%lld // vid=%d fid=%d #PDROIs=%lu",
            end - start, frame->vid, frame->frameIndex,
            std::count_if(frame->rois.begin(), frame->rois.end(),
