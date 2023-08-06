@@ -27,9 +27,11 @@ class ROIExtractor {
 
   void enqueue(Frame* frame);
 
-  void notify();
-
   MultiStream collectFrames(int currID);
+
+  std::condition_variable& cv() {
+    return cv_;
+  }
 
  private:
   void work(int extractorId);

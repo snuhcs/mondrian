@@ -181,7 +181,7 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   frame->isBoxesReady = true;
   frame->endTime = NowMicros();
   if (ROIExtractor_ != nullptr) {
-    ROIExtractor_->notify();
+    ROIExtractor_->cv().notify_all();
   }
 
   log(frame);
@@ -226,7 +226,7 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
       }
     }
     // Notify results of processed frames
-    ROIExtractor_->notify();
+    ROIExtractor_->cv().notify_all();
   }
 }
 
@@ -422,7 +422,7 @@ void Mondrian::workPostprocess() {
         frame->endTime = NowMicros();
       }
     }
-    ROIExtractor_->notify();
+    ROIExtractor_->cv().notify_all();
 
     // Update results for system output
     std::unique_lock<std::mutex> resultLock(logMtx_);

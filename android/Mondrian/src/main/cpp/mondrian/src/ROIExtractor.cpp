@@ -55,10 +55,6 @@ void ROIExtractor::enqueue(Frame* frame) {
        OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
 }
 
-void ROIExtractor::notify() {
-  cv_.notify_all();
-}
-
 MultiStream ROIExtractor::collectFrames(int currID) {
   std::unique_lock<std::mutex> queueLock(mtx_);
   cv_.wait(queueLock, [this]() { return OFProcessing_.empty(); });
