@@ -168,15 +168,22 @@ void ROIExtractor::work(int extractorId) {
       processPD(frame);
     }
 
+    lock.lock();
     if (isOF) {
-      postprocessOF(frame);
+      OFProcessing_.erase(frame);
+      if (frame->extractOFAgain) {
+        OFWaiting_.insert(frame);
+      } else {
+        OFProcessed_[frame->vid].insert(frame);
+        frame->isROIsReady = true;
+      }
     } else {
-      lock.lock();
       PDProcessing_.erase(frame);
       OFWaiting_.insert(frame);
-      lock.unlock();
     }
+    lock.unlock();
     time_us end = NowMicros();
+
     if (!isOF) {
       LOGD("[ROIExtractor] PDTime=%lld // vid=%d fid=%d #PDROIs=%lu",
            end - start, frame->vid, frame->frameIndex,
@@ -192,40 +199,6 @@ void ROIExtractor::work(int extractorId) {
     }
 
     cv_.notify_all();
-  }
-}
-
-void ROIExtractor::postprocessOF(Frame* currFrame) {
-  currFrame->filterPDROIs(config_.PD_FILTER_THRESHOLD, config_.EAT_PD);
-  currFrame->resizeStartTime = NowMicros();
-  currFrame->resizeROIs(ROIResizer_, executionType_, ROISize_);
-  currFrame->resizeEndTime = NowMicros();
-  currFrame->mergeROIStartTime = NowMicros();
-  currFrame->resetMergedROIs();
-  if (config_.MERGE) {
-    currFrame->mergeMergedROIs(maxMergeSize_);
-  }
-  currFrame->sortMergedROIs();
-  currFrame->mergeROIEndTime = NowMicros();
-
-  currFrame->setBoxesIfLast(ROIResizer_,
-                            executionType_,
-                            config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
-
-  if (executionType_ == EMULATED_BATCH) {
-    assert(std::all_of(currFrame->boxesIfLast.begin(), currFrame->boxesIfLast.end(),
-                       [this](const auto& box) {
-                         return std::max(box.first, box.second) <= ROISize_;
-                       }));
-  }
-
-  std::lock_guard<std::mutex> lock(mtx_);
-  OFProcessing_.erase(currFrame);
-  if (currFrame->extractOFAgain) {
-    OFWaiting_.insert(currFrame);
-  } else {
-    OFProcessed_[currFrame->vid].insert(currFrame);
-    currFrame->isROIsReady = true;
   }
 }
 
@@ -274,6 +247,22 @@ void ROIExtractor::processOF(Frame* currFrame) {
   currFrame->opticalFlowROIProcessStartTime = NowMicros();
   getOpticalFlowROIs(prevFrame, currFrame, reliablePrevBoxes, targetSize_, currFrame->rois);
   currFrame->opticalFlowROIProcessEndTime = NowMicros();
+
+  currFrame->filterPDROIs(config_.PD_FILTER_THRESHOLD, config_.EAT_PD);
+  currFrame->resizeStartTime = NowMicros();
+  currFrame->resizeROIs(ROIResizer_, executionType_, ROISize_);
+  currFrame->resizeEndTime = NowMicros();
+  currFrame->mergeROIStartTime = NowMicros();
+  currFrame->resetMergedROIs();
+  if (config_.MERGE) {
+    currFrame->mergeMergedROIs(maxMergeSize_);
+  }
+  currFrame->sortMergedROIs();
+  currFrame->mergeROIEndTime = NowMicros();
+
+  currFrame->setBoxesIfLast(ROIResizer_,
+                        executionType_,
+                        config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
 }
 
 void ROIExtractor::getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,

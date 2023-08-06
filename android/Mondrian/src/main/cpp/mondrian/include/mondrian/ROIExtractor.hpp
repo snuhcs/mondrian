@@ -40,8 +40,6 @@ class ROIExtractor {
 
   void processOF(Frame* currFrame);
 
-  void postprocessOF(Frame* currFrame);
-
   static void getOpticalFlowROIs(const Frame* prevFrame, Frame* currFrame,
                                  const std::vector<BoundingBox>& boundingBoxes,
                                  const cv::Size& targetSize,
