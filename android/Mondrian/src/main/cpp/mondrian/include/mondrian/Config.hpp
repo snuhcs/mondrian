@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "json/json.h"
+#include "opencv2/core/types.hpp"
 
 #include "mondrian/DataType.hpp"
 
@@ -15,43 +16,49 @@ constexpr int NUM_LABELS = 80;
 
 struct ROIExtractorConfig {
   int NUM_WORKERS;
-  float EXTRACTION_RESIZE_WIDTH;
-  float EXTRACTION_RESIZE_HEIGHT;
-  float MAX_PD_ROI_SIZE;
-  float MIN_PD_ROI_SIZE;
-  bool EAT_PD;
-  float ROI_PADDING;
-  int ROI_BORDER;
-  float OF_CONF_THRES;
-  float PD_FILTER_THRES;
+  cv::Size EXTRACTION_SIZE;
   int PD_INTERVAL;
+  float MIN_PD_ROI_SIZE;
+  float MAX_PD_ROI_SIZE;
+  float OF_CONF_THRES;
+  float OF_ROI_PADDING;
+  float PD_EAT_OVERLAP_THRES;
+  float PD_FILTER_OVERLAP_THRES;
   bool MERGE;
-  bool NO_DOWNSAMPLING_FOR_LAST_FRAME;
-  ROIPrioritizerType ROI_PRIORITIZER_TYPE;
+  int MAX_MERGE_SIZE;
 
   void print() const;
 };
 
 struct ROIResizerConfig {
   // Predictive model configs
-  std::string DATASET;
-  int VOTING_WINDOW;
-  float SCALE_SHIFT;
-  float AREA_SHIFT;
   bool STATIC_AREA;
   float STATIC_TARGET_AREA;
-  float MAX_OF_ROI_SIZE;
+  std::string DATASET;
+  int VOTING_WINDOW_SIZE;
+  float AREA_SHIFT;
+  float SCALE_SHIFT;
 
   // Reactive probing configs
-  float PROBE_STEP_SIZE;
   int NUM_PROBE_STEPS;
+  float PROBE_STEP_SIZE;
   float PROBE_CONF_THRES;
   float PROBE_IOU_THRES;
 
   void print() const;
 };
 
+struct ROIPackerConfig {
+  bool NO_DOWNSAMPLING_FOR_LAST_FRAME;
+  ROIPackerType TYPE;
+
+  void print() const;
+};
+
 struct InferenceEngineConfig {
+  int FULL_FRAME_SIZE;
+  std::set<int> INPUT_SIZES;
+  std::set<Device> DEVICES;
   bool DRAW_INFERENCE_RESULT;
   std::string DATASET;
   std::string MODEL;
@@ -60,9 +67,6 @@ struct InferenceEngineConfig {
   float IOU_THRES;
   int PROFILE_WARMUPS;
   int PROFILE_RUNS;
-  int FULL_FRAME_SIZE;
-  std::set<int> INPUT_SIZES;
-  std::set<Device> DEVICES;
 
   void print() const;
 };
@@ -88,6 +92,7 @@ struct MondrianConfig {
   int ROI_SIZE; // Used for Emulated Batch or ROI-wise Inference
   ROIExtractorConfig roiExtractorConfig;
   ROIResizerConfig roiResizerConfig;
+  ROIPackerConfig roiPackerConfig;
   InferenceEngineConfig inferenceEngineConfig;
   PatchReconstructorConfig patchReconstructorConfig;
 
@@ -98,6 +103,7 @@ struct MondrianConfig {
 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json);
 ROIResizerConfig parseROIResizerConfig(const Json::Value& json);
+ROIPackerConfig parseROIPackerConfig(const Json::Value& json);
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json);
 PatchReconstructorConfig parsePatchReconstructorConfig(const Json::Value& json);
 MondrianConfig parseMondrianConfig(const std::string& jsonPath);

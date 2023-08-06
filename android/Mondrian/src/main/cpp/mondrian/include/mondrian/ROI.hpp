@@ -17,7 +17,6 @@ class MergedROI;
 
 class ROI {
  public:
-  static float PADDING;
   static const float INVALID_CONF;
 
   Frame* const frame;
@@ -54,7 +53,8 @@ class ROI {
       const Origin origin,
       const int label,
       const OFFeatures ofFeatures,
-      const float confidence);
+      const float confidence,
+      const float padding);
 
   void setPaddedLoc(const Rect& newOrigLoc);
 

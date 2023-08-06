@@ -11,7 +11,7 @@
 namespace md {
 
 std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& streams,
-                                              const ROIPrioritizerType type) {
+                                              const ROIPackerType type) {
   switch (type) {
     case MIN_MAX_PROPAGATION:return minMaxPropagation(streams);
     case OF_CONFIDENCE:return ofConfidence(streams);

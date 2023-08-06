@@ -5,7 +5,6 @@
 #include "mondrian/Frame.hpp"
 #include "mondrian/ROIExtractor.hpp"
 #include "mondrian/Log.hpp"
-#include "mondrian/Mondrian.hpp"
 
 namespace md {
 
@@ -79,24 +78,24 @@ std::string str(const ExecutionType& executionType) {
   }
 }
 
-ROIPrioritizerType roiPrioritizerTypeOf(const std::string& roiPrioritizerTypeStr) {
-  if (roiPrioritizerTypeStr == "min_max_propagation") {
+ROIPackerType roiPackerTypeOf(const std::string& roiPackerTypeStr) {
+  if (roiPackerTypeStr == "min_max_propagation") {
     return MIN_MAX_PROPAGATION;
-  } else if (roiPrioritizerTypeStr == "of_confidence") {
+  } else if (roiPackerTypeStr == "of_confidence") {
     return OF_CONFIDENCE;
   } else {
-    LOGE("Unknown ROI prioritizer type: %s", roiPrioritizerTypeStr.c_str());
+    LOGE("Unknown ROI packer type: %s", roiPackerTypeStr.c_str());
     assert(false);
   }
 }
 
-std::string str(const ROIPrioritizerType& roiPrioritizerType) {
-  if (roiPrioritizerType == MIN_MAX_PROPAGATION) {
+std::string str(const ROIPackerType& roiPackerType) {
+  if (roiPackerType == MIN_MAX_PROPAGATION) {
     return "min_max_propagation";
-  } else if (roiPrioritizerType == OF_CONFIDENCE) {
+  } else if (roiPackerType == OF_CONFIDENCE) {
     return "of_confidence";
   } else {
-    LOGE("Unknown ROI prioritizer type: %d", roiPrioritizerType);
+    LOGE("Unknown ROIPackerType: %d", roiPackerType);
     assert(false);
   }
 }

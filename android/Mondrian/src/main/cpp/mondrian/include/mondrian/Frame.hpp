@@ -13,6 +13,7 @@
 namespace md {
 
 class BoundingBox;
+class PackedCanvas;
 class ROIResizer;
 
 class Frame {
@@ -46,7 +47,6 @@ class Frame {
   std::vector<std::unique_ptr<MergedROI>> mergedROIs;
 
   bool isLastFrame;
-  IntPairs boxesIfLast;
 
   int inferenceFrameSize;
   Device inferenceDevice;
@@ -76,9 +76,13 @@ class Frame {
 
   void prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize);
 
-  void filterPDROIs(float thres, bool eatPD);
+  void eatPDROIs(float overlap_thres);
 
-  void resizeROIs(ROIResizer* roiResizer, ExecutionType executionType, int roiSize);
+  void filterPDROIs(float overlap_thres);
+
+  void assignPDROIIDs();
+
+  void resizeROIs(ROIResizer* roiResizer);
 
   void resetMergedROIs();
 
@@ -88,9 +92,9 @@ class Frame {
 
   void resetProbeROIs();
 
-  void setBoxesIfLast(ROIResizer* roiResizer,
-                      ExecutionType executionType,
-                      bool noDownsampling);
+  IntPairs boxesIfLast(ROIResizer* roiResizer,
+                       ExecutionType executionType,
+                       bool noDownsampling);
 
   void prepareFrameLast(const IntPairs& indices,
                         const IntPairs& locations,
@@ -134,6 +138,12 @@ using MultiStream = std::map<int, Stream>;
 std::string str(const Stream& stream);
 
 std::string str(const MultiStream& streams);
+
+struct PackingResult {
+  MultiStream streams;
+  Frame* fullFrameTarget;
+  std::vector<PackedCanvas> packedCanvases;
+};
 
 } // namespace md
 

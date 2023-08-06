@@ -8,21 +8,36 @@
 namespace md {
 
 static int parseInt(const Json::Value& json, const std::string& key) {
+  LOGD("parseInt key: %s", key.c_str());
   assert(!json[key].isNull());
   return json[key].asInt();
 }
 
+static std::vector<int> parseInts(const Json::Value& json, const std::string& key, const int size) {
+  LOGD("parseInts key: %s", key.c_str());
+  assert(!json[key].isNull());
+  assert(json[key].isArray() && json[key].size() == size);
+  std::vector<int> values;
+  for (const auto& value : json[key]) {
+    values.push_back(value.asInt());
+  }
+  return values;
+}
+
 static float parseFloat(const Json::Value& json, const std::string& key) {
+  LOGD("parseFloat key: %s", key.c_str());
   assert(!json[key].isNull());
   return json[key].asFloat();
 }
 
 static bool parseBool(const Json::Value& json, const std::string& key) {
+  LOGD("parseBool key: %s", key.c_str());
   assert(!json[key].isNull());
   return json[key].asBool();
 }
 
 static std::string parseString(const Json::Value& json, const std::string& key) {
+  LOGD("parseString key: %s", key.c_str());
   assert(!json[key].isNull());
   return json[key].asString();
 }
@@ -30,40 +45,51 @@ static std::string parseString(const Json::Value& json, const std::string& key) 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   ROIExtractorConfig config = {};
   config.NUM_WORKERS = parseInt(json, "num_workers");
-  config.EXTRACTION_RESIZE_WIDTH = parseFloat(json, "extraction_resize_width");
-  config.EXTRACTION_RESIZE_HEIGHT = parseFloat(json, "extraction_resize_height");
-  config.MAX_PD_ROI_SIZE = parseFloat(json, "max_pd_roi_size");
-  config.MIN_PD_ROI_SIZE = parseFloat(json, "min_pd_roi_size");
-  config.EAT_PD = parseBool(json, "eat_pd");
-  config.ROI_PADDING = parseFloat(json, "roi_padding");
-  config.ROI_BORDER = parseInt(json, "roi_border");
-  config.OF_CONF_THRES = parseFloat(json, "of_conf_thres");
-  config.PD_FILTER_THRES = parseFloat(json, "pd_filter_thres");
+  auto extraction_size = parseInts(json, "extraction_size", 2);
+  config.EXTRACTION_SIZE = cv::Size(extraction_size[0], extraction_size[1]);
   config.PD_INTERVAL = parseInt(json, "pd_interval");
+  config.MIN_PD_ROI_SIZE = parseFloat(json, "min_pd_roi_size");
+  config.MAX_PD_ROI_SIZE = parseFloat(json, "max_pd_roi_size");
+  config.OF_CONF_THRES = parseFloat(json, "of_conf_thres");
+  config.OF_ROI_PADDING = parseFloat(json, "of_roi_padding");
+  config.PD_EAT_OVERLAP_THRES = parseFloat(json, "pd_eat_overlap_thres");
+  config.PD_FILTER_OVERLAP_THRES = parseFloat(json, "pd_filter_overlap_thres");
   config.MERGE = parseBool(json, "merge");
-  config.NO_DOWNSAMPLING_FOR_LAST_FRAME = parseBool(json, "no_downsampling_for_last_frame");
-  config.ROI_PRIORITIZER_TYPE = roiPrioritizerTypeOf(parseString(json, "roi_prioritizer_type"));
+  config.MAX_MERGE_SIZE = parseInt(json, "max_merge_size");
   return config;
 }
 
 ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
   ROIResizerConfig config = {};
-  config.DATASET = parseString(json, "dataset");
-  config.VOTING_WINDOW = parseInt(json, "voting_window");
-  config.SCALE_SHIFT = parseFloat(json, "scale_shift");
-  config.AREA_SHIFT = parseFloat(json, "area_shift");
   config.STATIC_AREA = parseBool(json, "static_area");
   config.STATIC_TARGET_AREA = parseFloat(json, "static_target_area");
-  config.MAX_OF_ROI_SIZE = parseFloat(json, "max_of_roi_size");
-  config.PROBE_STEP_SIZE = parseFloat(json, "probe_step_size");
+  config.DATASET = parseString(json, "dataset");
+  config.VOTING_WINDOW_SIZE = parseInt(json, "voting_window_size");
+  config.AREA_SHIFT = parseFloat(json, "area_shift");
+  config.SCALE_SHIFT = parseFloat(json, "scale_shift");
   config.NUM_PROBE_STEPS = parseInt(json, "num_probe_steps");
+  config.PROBE_STEP_SIZE = parseFloat(json, "probe_step_size");
   config.PROBE_CONF_THRES = parseFloat(json, "probe_conf_thres");
   config.PROBE_IOU_THRES = parseFloat(json, "probe_iou_thres");
   return config;
 }
 
+ROIPackerConfig parseROIPackerConfig(const Json::Value& json) {
+  ROIPackerConfig config = {};
+  config.NO_DOWNSAMPLING_FOR_LAST_FRAME = parseBool(json, "no_downsampling_for_last_frame");
+  config.TYPE = roiPackerTypeOf(parseString(json, "type"));
+  return config;
+}
+
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   InferenceEngineConfig config = {};
+  config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
+  for (const auto& inputSizeJson : json["input_sizes"]) {
+    config.INPUT_SIZES.insert(inputSizeJson.asInt());
+  }
+  for (const auto& deviceJson : json["devices"]) {
+    config.DEVICES.insert(deviceOf(deviceJson.asString()));
+  }
   config.DRAW_INFERENCE_RESULT = parseBool(json, "draw_inference_result");
   config.DATASET = parseString(json, "dataset");
   config.MODEL = parseString(json, "model");
@@ -72,13 +98,6 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   config.IOU_THRES = parseFloat(json, "iou_thres");
   config.PROFILE_WARMUPS = parseInt(json, "profile_warmups");
   config.PROFILE_RUNS = parseInt(json, "profile_runs");
-  config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
-  for (const auto& inputSizeJson : json["input_sizes"]) {
-    config.INPUT_SIZES.insert(inputSizeJson.asInt());
-  }
-  for (const auto& deviceJson : json["devices"]) {
-    config.DEVICES.insert(deviceOf(deviceJson.asString()));
-  }
   return config;
 }
 
@@ -111,6 +130,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
 
   config.roiExtractorConfig = parseROIExtractorConfig(json["roi_extractor"]);
   config.roiResizerConfig = parseROIResizerConfig(json["roi_resizer"]);
+  config.roiPackerConfig = parseROIPackerConfig(json["roi_packer"]);
   config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
   config.patchReconstructorConfig = parsePatchReconstructorConfig(json["patch_reconstructor"]);
   return config;
@@ -174,6 +194,7 @@ void MondrianConfig::print() const {
   LOGD("%s", ss.str().c_str());
   roiExtractorConfig.print();
   roiResizerConfig.print();
+  roiPackerConfig.print();
   inferenceEngineConfig.print();
   patchReconstructorConfig.print();
   LOGD("====================================");
@@ -183,49 +204,48 @@ void ROIExtractorConfig::print() const {
   std::stringstream ss;
   ss << "========== ROIExtractorConfig ==========" << std::endl;
   ss << "NUM_WORKERS: " << NUM_WORKERS << std::endl;
-  ss << "EXTRACTION_RESIZE_WIDTH: " << EXTRACTION_RESIZE_WIDTH << std::endl;
-  ss << "EXTRACTION_RESIZE_HEIGHT: " << EXTRACTION_RESIZE_HEIGHT << std::endl;
-  ss << "MAX_PD_ROI_SIZE: " << MAX_PD_ROI_SIZE << std::endl;
-  ss << "MIN_PD_ROI_SIZE: " << MIN_PD_ROI_SIZE << std::endl;
-  ss << "EAT_PD: " << EAT_PD << std::endl;
-  ss << "ROI_PADDING: " << ROI_PADDING << std::endl;
-  ss << "ROI_BORDER: " << ROI_BORDER << std::endl;
-  ss << "OF_CONF_THRES: " << OF_CONF_THRES << std::endl;
-  ss << "PD_FILTER_THRES: " << PD_FILTER_THRES << std::endl;
+  ss << "EXTRACTION_SIZE: ["
+     << EXTRACTION_SIZE.width << ", "
+     << EXTRACTION_SIZE.height << "]" << std::endl;
   ss << "PD_INTERVAL: " << PD_INTERVAL << std::endl;
+  ss << "MIN_PD_ROI_SIZE: " << MIN_PD_ROI_SIZE << std::endl;
+  ss << "MAX_PD_ROI_SIZE: " << MAX_PD_ROI_SIZE << std::endl;
+  ss << "OF_CONF_THRES: " << OF_CONF_THRES << std::endl;
+  ss << "OF_ROI_PADDING: " << OF_ROI_PADDING << std::endl;
+  ss << "PD_EAT_OVERLAP_THRES: " << PD_EAT_OVERLAP_THRES << std::endl;
+  ss << "PD_FILTER_OVERLAP_THRES: " << PD_FILTER_OVERLAP_THRES << std::endl;
   ss << "MERGE: " << MERGE << std::endl;
-  ss << "NO_DOWNSAMPLING_FOR_LAST_FRAME: " << NO_DOWNSAMPLING_FOR_LAST_FRAME << std::endl;
+  ss << "MAX_MERGE_SIZE: " << MAX_MERGE_SIZE << std::endl;
   LOGD("%s", ss.str().c_str());
 }
 
 void ROIResizerConfig::print() const {
   std::stringstream ss;
   ss << "========== ROIResizerConfig ==========" << std::endl;
-  ss << "DATASET: " << DATASET << std::endl;
-  ss << "VOTING_WINDOW: " << VOTING_WINDOW << std::endl;
-  ss << "SCALE_SHIFT: " << SCALE_SHIFT << std::endl;
-  ss << "AREA_SHIFT: " << AREA_SHIFT << std::endl;
   ss << "STATIC_AREA: " << STATIC_AREA << std::endl;
   ss << "STATIC_TARGET_AREA: " << STATIC_TARGET_AREA << std::endl;
-  ss << "MAX_OF_ROI_SIZE: " << MAX_OF_ROI_SIZE << std::endl;
-  ss << "PROBE_STEP_SIZE: " << PROBE_STEP_SIZE << std::endl;
+  ss << "DATASET: " << DATASET << std::endl;
+  ss << "VOTING_WINDOW_SIZE: " << VOTING_WINDOW_SIZE << std::endl;
+  ss << "AREA_SHIFT: " << AREA_SHIFT << std::endl;
+  ss << "SCALE_SHIFT: " << SCALE_SHIFT << std::endl;
   ss << "NUM_PROBE_STEPS: " << NUM_PROBE_STEPS << std::endl;
+  ss << "PROBE_STEP_SIZE: " << PROBE_STEP_SIZE << std::endl;
   ss << "PROBE_CONF_THRES: " << PROBE_CONF_THRES << std::endl;
   ss << "PROBE_IOU_THRES: " << PROBE_IOU_THRES << std::endl;
+  LOGD("%s", ss.str().c_str());
+}
+
+void ROIPackerConfig::print() const {
+  std::stringstream ss;
+  ss << "========== ROIPackerConfig ==========" << std::endl;
+  ss << "NO_DOWNSAMPLING_FOR_LAST_FRAME: " << NO_DOWNSAMPLING_FOR_LAST_FRAME << std::endl;
+  ss << "TYPE: " << md::str(TYPE) << std::endl;
   LOGD("%s", ss.str().c_str());
 }
 
 void InferenceEngineConfig::print() const {
   std::stringstream ss;
   ss << "========== InferenceEngineConfig ==========" << std::endl;
-  ss << "DRAW_INFERENCE_RESULT: " << DRAW_INFERENCE_RESULT << std::endl;
-  ss << "DATASET: " << DATASET << std::endl;
-  ss << "MODEL: " << MODEL << std::endl;
-  ss << "USE_TINY: " << USE_TINY << std::endl;
-  ss << "CONF_THRES: " << CONF_THRES << std::endl;
-  ss << "IOU_THRES: " << IOU_THRES << std::endl;
-  ss << "PROFILE_WARMUPS: " << PROFILE_WARMUPS << std::endl;
-  ss << "PROFILE_RUNS: " << PROFILE_RUNS << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
   ss << "INPUT_SIZES: ";
   for (auto& inputSize : INPUT_SIZES) {
@@ -237,6 +257,14 @@ void InferenceEngineConfig::print() const {
     ss << md::str(device) << " ";
   }
   ss << std::endl;
+  ss << "DRAW_INFERENCE_RESULT: " << DRAW_INFERENCE_RESULT << std::endl;
+  ss << "DATASET: " << DATASET << std::endl;
+  ss << "MODEL: " << MODEL << std::endl;
+  ss << "USE_TINY: " << USE_TINY << std::endl;
+  ss << "CONF_THRES: " << CONF_THRES << std::endl;
+  ss << "IOU_THRES: " << IOU_THRES << std::endl;
+  ss << "PROFILE_WARMUPS: " << PROFILE_WARMUPS << std::endl;
+  ss << "PROFILE_RUNS: " << PROFILE_RUNS << std::endl;
   LOGD("%s", ss.str().c_str());
 }
 

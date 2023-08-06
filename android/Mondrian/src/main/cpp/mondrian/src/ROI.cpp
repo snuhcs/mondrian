@@ -5,7 +5,6 @@
 
 namespace md {
 
-float ROI::PADDING = -1e5;
 const float ROI::INVALID_CONF = -1.0f;
 
 ROI::ROI(ROI* prevROI,
@@ -16,7 +15,8 @@ ROI::ROI(ROI* prevROI,
          const Origin origin,
          const int label,
          const OFFeatures ofFeatures,
-         const float confidence)
+         const float confidence,
+         const float padding)
     : prevROI(prevROI), id(id), frame(frame), origLoc(origLoc),
       type(type), origin(origin), label(label), features{
         -1,         // width
@@ -32,10 +32,10 @@ ROI::ROI(ROI* prevROI,
   if (prevROI != nullptr) {
     prevROI->nextROI = this;
   }
-  setPaddedLoc({std::max(0.0f, origLoc.l - PADDING),
-                std::max(0.0f, origLoc.t - PADDING),
-                std::min(float(frame->rgbMat.cols), origLoc.r + PADDING),
-                std::min(float(frame->rgbMat.rows), origLoc.b + PADDING)});
+  setPaddedLoc({std::max(0.0f, origLoc.l - padding),
+                std::max(0.0f, origLoc.t - padding),
+                std::min(float(frame->rgbMat.cols), origLoc.r + padding),
+                std::min(float(frame->rgbMat.rows), origLoc.b + padding)});
 }
 
 void ROI::setPaddedLoc(const Rect& newPaddedLoc) {

@@ -11,7 +11,6 @@
 #include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
 #include "mondrian/Frame.hpp"
-#include "mondrian/ROIPacker.hpp"
 
 namespace md {
 
@@ -20,6 +19,7 @@ class InferenceEngine;
 class Logger;
 class PackedCanvas;
 class ROIExtractor;
+class ROIPacker;
 class ROIResizer;
 class PatchReconstructor;
 
@@ -32,9 +32,11 @@ class Mondrian {
   void enqueue(const int vid, const cv::Mat& yuvMat);
 
  private:
-  void workSchedule();
+  void enqueue(Frame* frame);
 
-  void workPreprocess();
+  void enqueueFrameWise(Frame* frame);
+
+  void workSchedule();
 
   void workPostprocess();
 
@@ -60,6 +62,7 @@ class Mondrian {
   // Components
   std::unique_ptr<ROIExtractor> ROIExtractor_;
   std::unique_ptr<ROIResizer> ROIResizer_;
+  std::unique_ptr<ROIPacker> ROIPacker_;
   std::unique_ptr<InferenceEngine> inferenceEngine_;
   std::unique_ptr<PatchReconstructor> patchReconstructor_;
 

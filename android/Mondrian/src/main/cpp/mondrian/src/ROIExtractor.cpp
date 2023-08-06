@@ -5,8 +5,6 @@
 #include <set>
 #include <utility>
 
-#include "opencv2/video/tracking.hpp"
-
 #include "mondrian/Log.hpp"
 #include "mondrian/Utils.hpp"
 
@@ -14,17 +12,10 @@ namespace md {
 
 ROIExtractor::ROIExtractor(
     const ROIExtractorConfig& config,
-    int maxMergeSize,
-    ROIResizer* roiResizer,
-    ExecutionType executionType,
-    int roiSize)
+    ROIResizer* roiResizer)
     : config_(config),
-      maxMergeSize_(maxMergeSize),
       ROIResizer_(roiResizer),
-      executionType_(executionType),
-      ROISize_(roiSize),
       stop_(false) {
-  assert(executionType_ == MONDRIAN || ROISize_ == maxMergeSize_);
   threads_.reserve(config.NUM_WORKERS);
   for (int extractorId = 0; extractorId < config.NUM_WORKERS; extractorId++) {
     threads_.emplace_back([this, extractorId]() { work(extractorId); });
@@ -97,7 +88,7 @@ void ROIExtractor::work(int extractorId) {
            "// fid=%d, useInfResult=%d",
            extractorId,
            (*OFWaiting_.begin())->frameIndex,
-           (*OFWaiting_.begin())->useInferenceResultForOF);
+           (*OFWaiting_.begin())->prevFrame->useInferenceResultForOF);
     }
     if (ofFrameExists && readyForOFExtraction) {
       return *OFWaiting_.begin();
@@ -187,6 +178,8 @@ void ROIExtractor::processPD(Frame* currFrame) const {
   assert(currFrame->rois.empty());
   currFrame->pixelDiffROIProcessStartTime = NowMicros();
 
+  currFrame->prepareRgbMatAndResizedGrayMat(config_.EXTRACTION_SIZE);
+
   float wRatio = (float) currFrame->resizedGrayMat.cols / (float) currFrame->width();
   float hRatio = (float) currFrame->resizedGrayMat.rows / (float) currFrame->height();
 
@@ -223,7 +216,8 @@ void ROIExtractor::processPD(Frame* currFrame) const {
           /*origin=*/O_PD,
           /*label=*/-1,
           /*ofFeatures=*/OFFeatures(),
-          /*confidence=*/ROI::INVALID_CONF));
+          /*confidence=*/ROI::INVALID_CONF,
+          /*padding=*/0));
     }
   }
   currFrame->pixelDiffROIProcessEndTime = NowMicros();
@@ -315,27 +309,26 @@ void ROIExtractor::processOF(Frame* currFrame) const {
         /*origin=*/box.origin,
         /*label=*/box.label,
         /*ofFeatures=*/ofFeatures,
-        /*confidence=*/box.confidence));
+        /*confidence=*/box.confidence,
+        /*padding=*/config_.OF_ROI_PADDING));
   }
   currFrame->opticalFlowROIProcessEndTime = NowMicros();
 
-  currFrame->filterPDROIs(config_.PD_FILTER_THRES, config_.EAT_PD);
+  currFrame->eatPDROIs(config_.PD_EAT_OVERLAP_THRES);
+  currFrame->filterPDROIs(config_.PD_FILTER_OVERLAP_THRES);
+  currFrame->assignPDROIIDs();
 
   currFrame->resizeStartTime = NowMicros();
-  currFrame->resizeROIs(ROIResizer_, executionType_, ROISize_);
+  currFrame->resizeROIs(ROIResizer_);
   currFrame->resizeEndTime = NowMicros();
 
   currFrame->mergeROIStartTime = NowMicros();
   currFrame->resetMergedROIs();
   if (config_.MERGE) {
-    currFrame->mergeMergedROIs(maxMergeSize_);
+    currFrame->mergeMergedROIs(config_.MAX_MERGE_SIZE);
   }
   currFrame->sortMergedROIs();
   currFrame->mergeROIEndTime = NowMicros();
-
-  currFrame->setBoxesIfLast(ROIResizer_,
-                            executionType_,
-                            config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
 }
 
 } // namespace md
