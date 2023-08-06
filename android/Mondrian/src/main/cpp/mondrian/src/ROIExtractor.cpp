@@ -44,7 +44,7 @@ ROIExtractor::~ROIExtractor() {
 }
 
 void ROIExtractor::enqueue(Frame* frame) {
-  std::lock_guard<std::mutex> queueLock(mtx_);
+  std::lock_guard<std::mutex> lock(mtx_);
   PDWaiting_.insert(frame);
   cv_.notify_all();
   LOGD("[ROIExtractor] enqueue "
@@ -56,8 +56,8 @@ void ROIExtractor::enqueue(Frame* frame) {
 }
 
 MultiStream ROIExtractor::collectFrames(int currID) {
-  std::unique_lock<std::mutex> queueLock(mtx_);
-  cv_.wait(queueLock, [this]() { return OFProcessing_.empty(); });
+  std::unique_lock<std::mutex> lock(mtx_);
+  cv_.wait(lock, [this]() { return OFProcessing_.empty(); });
 
   for (Frame* frame : OFProcessing_) {
     frame->resetOFROIExtraction();
@@ -128,8 +128,8 @@ void ROIExtractor::work(int extractorId) {
     bool isOF = false;
     Frame* frame = nullptr;
 
-    std::unique_lock<std::mutex> queueLock(mtx_);
-    cv_.wait(queueLock, [this, &isOF, &frame, &getPDJob, &getOFJob]() {
+    std::unique_lock<std::mutex> lock(mtx_);
+    cv_.wait(lock, [this, &isOF, &frame, &getPDJob, &getOFJob]() {
       if (stop_) return true;
       frame = getOFJob();
       if (frame != nullptr) {
@@ -159,7 +159,7 @@ void ROIExtractor::work(int extractorId) {
       PDWaiting_.erase(frame);
       PDProcessing_.insert(frame);
     }
-    queueLock.unlock();
+    lock.unlock();
     cv_.notify_all();
 
     if (isOF) {
@@ -171,10 +171,10 @@ void ROIExtractor::work(int extractorId) {
     if (isOF) {
       postprocessOF(frame);
     } else {
-      queueLock.lock();
+      lock.lock();
       PDProcessing_.erase(frame);
       OFWaiting_.insert(frame);
-      queueLock.unlock();
+      lock.unlock();
     }
     time_us end = NowMicros();
     if (!isOF) {
@@ -219,7 +219,7 @@ void ROIExtractor::postprocessOF(Frame* currFrame) {
                        }));
   }
 
-  std::lock_guard<std::mutex> queueLock(mtx_);
+  std::lock_guard<std::mutex> lock(mtx_);
   OFProcessing_.erase(currFrame);
   if (currFrame->extractOFAgain) {
     OFWaiting_.insert(currFrame);
