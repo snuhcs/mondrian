@@ -82,12 +82,4 @@ void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
   }
 }
 
-std::set<int> range(int startIndex, int endIndex) {
-  std::set<int> range;
-  for (int i = startIndex; i < endIndex; i++) {
-    range.insert(i);
-  }
-  return range;
-}
-
 } // namespace md

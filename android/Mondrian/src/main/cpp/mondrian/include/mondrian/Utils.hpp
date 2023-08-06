@@ -15,8 +15,6 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
 void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
          const int numLabels, const float iouThreshold);
 
-std::set<int> range(int startIndex, int endIndex);
-
 } // namespace md
 
 #endif // UTILS_HPP_
