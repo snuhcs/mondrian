@@ -5,9 +5,9 @@
 #include <memory>
 #include <set>
 
-namespace md {
+#include "mondrian/DataType.hpp"
 
-class BoundingBox;
+namespace md {
 
 std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
                              const int numLabels, const float iouThreshold);
@@ -16,8 +16,6 @@ void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
          const int numLabels, const float iouThreshold);
 
 std::set<int> range(int startIndex, int endIndex);
-
-extern const char* COCO_LABELS[];
 
 } // namespace md
 

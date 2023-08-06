@@ -5,7 +5,6 @@
 #include <queue>
 
 #include "mondrian/Time.hpp"
-#include "mondrian/Utils.hpp"
 
 namespace md {
 
@@ -14,6 +13,7 @@ using IntPair = std::pair<int, int>;
 using IntPairs = std::vector<std::pair<int, int>>;
 
 extern const ID INVALID_ID;
+extern const char* COCO_LABELS[];
 
 enum Type {
   OF = 1,
