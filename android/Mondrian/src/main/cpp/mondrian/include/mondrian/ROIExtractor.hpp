@@ -36,7 +36,7 @@ class ROIExtractor {
  private:
   void work(int extractorId);
 
-  void processPD(Frame* currFrame);
+  void processPD(Frame* currFrame) const;
 
   void processOF(Frame* currFrame);
 
@@ -48,15 +48,6 @@ class ROIExtractor {
   static std::vector<OFFeatures> opticalFlowTracking(
       const Frame* prevFrame, const Frame* currFrame, const std::vector<Rect>& boundingBoxes,
       const cv::Size& targetSize);
-
-  void getPixelDiffROIs(Frame* currFrame, const cv::Size& targetSize,
-                        const float maxPDROISize, const float minPDROISize,
-                        std::vector<std::unique_ptr<ROI>>& outChildROIs) const;
-
-  static cv::Mat calculateDiffAndThreshold(
-      const cv::Mat& prevMat, const cv::Mat& currMat);
-
-  static void cannyEdgeDetection(cv::Mat mat);
 
   std::vector<std::thread> threads_;
   bool stop_;
