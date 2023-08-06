@@ -83,13 +83,13 @@ void ROIExtractor::work(int extractorId) {
   auto getOFJob = [this, &extractorId]() {
     bool ofFrameExists = !OFWaiting_.empty();
     bool readyForOFExtraction = ofFrameExists && (*OFWaiting_.begin())->readyForOFExtraction();
-    if (ofFrameExists && !readyForOFExtraction) {
-      LOGD("[ROIExtractor %d] OF frame exists but not ready for OF extraction "
-           "// fid=%d, useInfResult=%d",
-           extractorId,
-           (*OFWaiting_.begin())->frameIndex,
-           (*OFWaiting_.begin())->prevFrame->useInferenceResultForOF);
-    }
+//    if (ofFrameExists && !readyForOFExtraction) {
+//      LOGD("[ROIExtractor %d] OF frame exists but not ready for OF extraction "
+//           "// fid=%d, useInfResult=%d",
+//           extractorId,
+//           (*OFWaiting_.begin())->frameIndex,
+//           (*OFWaiting_.begin())->prevFrame->useInferenceResultForOF);
+//    }
     if (ofFrameExists && readyForOFExtraction) {
       return *OFWaiting_.begin();
     } else {
