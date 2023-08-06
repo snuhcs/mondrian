@@ -93,33 +93,19 @@ void ROIExtractor::work(int extractorId) {
       return (Frame*) nullptr;
     }
   };
-  auto getOFJob = [this]() {
+  auto getOFJob = [this, &extractorId]() {
     bool ofFrameExists = !OFWaiting_.empty();
     bool readyForOFExtraction = ofFrameExists && (*OFWaiting_.begin())->readyForOFExtraction();
+    if (ofFrameExists && !readyForOFExtraction) {
+      LOGD("[ROIExtractor %d] OF frame exists but not ready for OF extraction "
+           "// fid=%d, useInfResult=%d",
+           extractorId,
+           (*OFWaiting_.begin())->frameIndex,
+           (*OFWaiting_.begin())->useInferenceResultForOF);
+    }
     if (ofFrameExists && readyForOFExtraction) {
       return *OFWaiting_.begin();
     } else {
-//      LOGD("XXX %s %s %s",
-//           ofFrameExists
-//           ? "ofFrameExists"
-//           : "no of frames ",
-//           notFullyPacked
-//           ? "notFullyPacked"
-//           : "fullyPacked   ",
-//           readyForOFExtraction
-//           ? "readyForOFExtraction    "
-//           : "not readyForOFExtraction");
-//      if (ofFrameExists && !readyForOFExtraction) {
-//        Frame* frame = *OFWaiting_.begin();
-//        LOGD("XXX Frame %d, %s %s",
-//             frame->frameIndex,
-//             frame->useInferenceResultForOF
-//             ? "useInferenceResultForOF"
-//             : "useOFResult            ",
-//             frame->readyForOFExtraction()
-//             ? "readyForOFExtraction    "
-//             : "not readyForOFExtraction");
-//      }
       return (Frame*) nullptr;
     }
   };
@@ -143,28 +129,24 @@ void ROIExtractor::work(int extractorId) {
       }
       return false;
     });
+
+    if (stop_) return;
+
     time_us start = NowMicros();
-
-    if (stop_) {
-      cv_.notify_all();
-      return;
-    }
-
     if (pd) {
-      frame->PDExtractorID = extractorId;
       PDWaiting_.erase(frame);
       PDProcessing_.insert(frame);
     } else {
-      frame->OFExtractorID = extractorId;
       OFWaiting_.erase(frame);
       OFProcessing_.insert(frame);
     }
     lock.unlock();
-    cv_.notify_all();
 
     if (pd) {
+      frame->PDExtractorID = extractorId;
       processPD(frame);
     } else {
+      frame->OFExtractorID = extractorId;
       processOF(frame);
     }
 
@@ -174,31 +156,34 @@ void ROIExtractor::work(int extractorId) {
       OFWaiting_.insert(frame);
     } else {
       OFProcessing_.erase(frame);
-      if (frame->extractOFAgain) {
-        OFWaiting_.insert(frame);
-      } else {
+      if (!frame->reprocessOF) {
+        // Common case
         OFProcessed_[frame->vid].insert(frame);
         frame->isROIsReady = true;
+      } else {
+        // When scheduling is triggered while OF processing
+        frame->resetOFROIExtraction();
+        OFWaiting_.insert(frame);
       }
     }
     lock.unlock();
-    time_us end = NowMicros();
+    cv_.notify_one();
 
+    time_us end = NowMicros();
     if (pd) {
-      LOGD("[ROIExtractor] PDTime=%lld // vid=%d fid=%d #PDROIs=%lu",
-           end - start, frame->vid, frame->frameIndex,
+      LOGD("[ROIExtractor %d] PDTime=%lld // vid=%d fid=%d #PDROIs=%lu",
+           extractorId, end - start, frame->vid, frame->frameIndex,
            std::count_if(frame->rois.begin(), frame->rois.end(),
                          [](auto& roi) { return roi->type == PD; }));
     } else {
-      LOGD("[ROIExtractor] OFTime=%lld // vid=%d fid=%d #OFROIs=%lu resizeTime=%lld mergeTime=%lld",
-           end - start, frame->vid, frame->frameIndex,
+      LOGD("[ROIExtractor %d] OFTime=%lld "
+           "// vid=%d fid=%d #OFROIs=%lu resizeTime=%lld mergeTime=%lld",
+           extractorId, end - start, frame->vid, frame->frameIndex,
            std::count_if(frame->rois.begin(), frame->rois.end(),
                          [](auto& roi) { return roi->type == OF; }),
            frame->resizeEndTime - frame->resizeStartTime,
            frame->mergeROIEndTime - frame->mergeROIStartTime);
     }
-
-    cv_.notify_all();
   }
 }
 
