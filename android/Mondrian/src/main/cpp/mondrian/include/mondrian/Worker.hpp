@@ -4,6 +4,7 @@
 #include <jni.h>
 
 #include <list>
+#include <map>
 #include <thread>
 
 #include "mondrian/model/Classifier.hpp"

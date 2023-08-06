@@ -5,7 +5,6 @@
 #include <queue>
 
 #include "mondrian/Time.hpp"
-#include "mondrian/Utils.hpp"
 
 namespace md {
 
@@ -14,6 +13,7 @@ using IntPair = std::pair<int, int>;
 using IntPairs = std::vector<std::pair<int, int>>;
 
 extern const ID INVALID_ID;
+extern const char* COCO_LABELS[];
 
 enum Type {
   OF = 1,
@@ -67,6 +67,7 @@ struct Rect {
   float b;
   float w;
   float h;
+  float minWH;
   float maxWH;
   float area;
 
@@ -75,6 +76,7 @@ struct Rect {
   Rect(float l, float t, float r, float b) : l(l), t(t), r(r), b(b) {
     w = r - l;
     h = b - t;
+    minWH = std::min(w, h);
     maxWH = std::max(w, h);
     area = w * h;
   };
