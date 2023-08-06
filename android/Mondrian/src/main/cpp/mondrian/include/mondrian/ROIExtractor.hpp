@@ -71,8 +71,8 @@ class ROIExtractor {
 
   ROIResizer* ROIResizer_;
 
-  std::mutex queueMtx_;
-  std::condition_variable queueCV_;
+  std::mutex mtx_;
+  std::condition_variable cv_;
   Stream PDWaiting_;
   Stream PDProcessing_;
   Stream OFWaiting_;
