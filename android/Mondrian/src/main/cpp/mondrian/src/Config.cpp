@@ -8,15 +8,18 @@
 namespace md {
 
 static int parseInt(const Json::Value& json, const std::string& key) {
-  LOGD("parseInt key: %s", key.c_str());
-  assert(!json[key].isNull());
+  if (json[key].isNull()) {
+    LOGE("[Config] parseInt fail // key=%s json=%s", key.c_str(), json.toStyledString().c_str());
+    assert(false);
+  }
   return json[key].asInt();
 }
 
 static std::vector<int> parseInts(const Json::Value& json, const std::string& key, const int size) {
-  LOGD("parseInts key: %s", key.c_str());
-  assert(!json[key].isNull());
-  assert(json[key].isArray() && json[key].size() == size);
+  if (json[key].isNull() || json[key].size() != size) {
+    LOGE("[Config] parseInts fail // key=%s json=%s", key.c_str(), json.toStyledString().c_str());
+    assert(false);
+  }
   std::vector<int> values;
   for (const auto& value : json[key]) {
     values.push_back(value.asInt());
@@ -25,20 +28,26 @@ static std::vector<int> parseInts(const Json::Value& json, const std::string& ke
 }
 
 static float parseFloat(const Json::Value& json, const std::string& key) {
-  LOGD("parseFloat key: %s", key.c_str());
-  assert(!json[key].isNull());
+  if (json[key].isNull()) {
+    LOGE("[Config] parseFloat fail // key=%s json=%s", key.c_str(), json.toStyledString().c_str());
+    assert(false);
+  }
   return json[key].asFloat();
 }
 
 static bool parseBool(const Json::Value& json, const std::string& key) {
-  LOGD("parseBool key: %s", key.c_str());
-  assert(!json[key].isNull());
+  if (json[key].isNull()) {
+    LOGE("[Config] parseBool fail // key=%s json=%s", key.c_str(), json.toStyledString().c_str());
+    assert(false);
+  }
   return json[key].asBool();
 }
 
 static std::string parseString(const Json::Value& json, const std::string& key) {
-  LOGD("parseString key: %s", key.c_str());
-  assert(!json[key].isNull());
+  if (json[key].isNull()) {
+    LOGE("[Config] parseString fail // key=%s json=%s", key.c_str(), json.toStyledString().c_str());
+    assert(false);
+  }
   return json[key].asString();
 }
 
