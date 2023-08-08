@@ -18,8 +18,6 @@ class ROIResizer;
 
 class Frame {
  private:
-  static const int FULL_KEY_OFFSET;
-
   int width_;
   int height_;
 
@@ -38,6 +36,7 @@ class Frame {
 
   bool isBoxesReady;
   bool isROIsReady;
+  int numFeaturePoints;
   std::vector<std::unique_ptr<BoundingBox>> boxes;
   std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
   std::vector<std::unique_ptr<MergedROI>> probingROIs;
@@ -101,6 +100,8 @@ class Frame {
                         ExecutionType executionType,
                         int roiSize,
                         bool noDownsampling);
+
+  int maxRelativePackedCanvasIndex() const;
 
   bool isReadyToMarry(int packedFrameIndex) const;
 

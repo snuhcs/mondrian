@@ -9,18 +9,30 @@
 
 namespace md {
 
-const int Frame::FULL_KEY_OFFSET = 1000000;
-
 Frame::Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
              const Frame* prevFrame, const time_us& enqueueTime)
-    : vid(vid), frameIndex(frameIndex), scheduleID(-1), yuvMat(yuvMat),
-      width_(0), height_(0), prevFrame(prevFrame),
-      useInferenceResultForOF(false), reprocessOF(false), enqueueTime(enqueueTime),
-      isBoxesReady(false), isROIsReady(false), PDExtractorID(-1), OFExtractorID(-1),
-      isLastFrame(false), inferenceFrameSize(0), inferenceDevice(NO_DEVICE) {}
+    : vid(vid),
+      frameIndex(frameIndex),
+      scheduleID(-1),
+      yuvMat(yuvMat),
+      width_(0),
+      height_(0),
+      prevFrame(prevFrame),
+      useInferenceResultForOF(false),
+      reprocessOF(false),
+      enqueueTime(enqueueTime),
+      isBoxesReady(false),
+      isROIsReady(false),
+      numFeaturePoints(-1),
+      PDExtractorID(-1),
+      OFExtractorID(-1),
+      isLastFrame(false),
+      inferenceFrameSize(0),
+      inferenceDevice(NO_DEVICE) {}
 
 void Frame::prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize) {
   cv::cvtColor(yuvMat, rgbMat, cv::COLOR_YUV2RGB_NV12, 3);
+  yuvMat.release();
   width_ = rgbMat.cols;
   height_ = rgbMat.rows;
   cv::resize(rgbMat, resizedGrayMat, targetSize, 0, 0, CV_INTER_LINEAR);
@@ -270,12 +282,25 @@ void Frame::prepareFrameLast(const IntPairs& indices,
   assert(i == locations.size());
 }
 
+int Frame::maxRelativePackedCanvasIndex() const {
+  int maxIndex = -1;
+  for (const auto& mergedROI : mergedROIs) {
+    if (mergedROI->isPacked()) {
+      maxIndex = std::max(maxIndex, mergedROI->relativePackedCanvasIndex());
+    }
+  }
+  for (const auto& probingROI : probingROIs) {
+    if (probingROI->isPacked()) {
+      maxIndex = std::max(maxIndex, probingROI->relativePackedCanvasIndex());
+    }
+  }
+  return maxIndex;
+}
+
 bool Frame::isReadyToMarry(int packedCanvasIndex) const {
-  auto isROIReady = [&packedCanvasIndex](const std::unique_ptr<MergedROI>& mergedROI) {
-    return !mergedROI->isPacked() || mergedROI->relativePackedCanvasIndex() <= packedCanvasIndex;
-  };
-  bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIReady)
-      && std::all_of(probingROIs.begin(), probingROIs.end(), isROIReady);
+  int maxIndex = maxRelativePackedCanvasIndex();
+  bool isAllReady = packedCanvasIndex == maxIndex;
+  assert(packedCanvasIndex <= maxIndex);
   bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
                                      [](auto& box) { return box->id == INVALID_ID; });
   bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),

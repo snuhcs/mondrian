@@ -135,15 +135,24 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
   }
   time_us generatingTime = NowMicros();
 
+  for (const auto& [vid, frames] : streams) {
+    for (Frame* frame : frames) {
+      if (frame == fullFrameTarget) continue;
+      frame->rgbMat.release();
+    }
+  }
+  time_us releaseTime = NowMicros();
+
   LOGD("[Schedule %d] Packing %lu MergedROIs "
-       "// total=%lld packLastTime=%lld orderOthersTime=%lld packOthersTime=%lld groupingTime=%lld generatingTime=%lld",
+       "// total=%lld packLast=%lld orderOthers=%lld packOthers=%lld grouping=%lld generating=%lld release=%lld",
        currID, orderedMergedROIs.size(),
-  /*total=*/generatingTime - startTime,
-  /*packLastTime=*/packLastTime - startTime,
-  /*orderOthersTime=*/orderOthersTime - packLastTime,
-  /*packOthersTime=*/packOthersTime - orderOthersTime,
-  /*groupingTime=*/groupingTime - packOthersTime,
-  /*generatingTime=*/generatingTime - groupingTime);
+  /*total=*/releaseTime - startTime,
+  /*packLast=*/packLastTime - startTime,
+  /*orderOthers=*/orderOthersTime - packLastTime,
+  /*packOthers=*/packOthersTime - orderOthersTime,
+  /*grouping=*/groupingTime - packOthersTime,
+  /*generating=*/generatingTime - groupingTime,
+  /*release=*/releaseTime - generatingTime);
   return packedCanvases;
 }
 

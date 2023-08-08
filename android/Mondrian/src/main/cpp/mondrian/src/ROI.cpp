@@ -34,8 +34,8 @@ ROI::ROI(ROI* prevROI,
   }
   setPaddedLoc({std::max(0.0f, origLoc.l - padding),
                 std::max(0.0f, origLoc.t - padding),
-                std::min(float(frame->rgbMat.cols), origLoc.r + padding),
-                std::min(float(frame->rgbMat.rows), origLoc.b + padding)});
+                std::min((float) frame->width(), origLoc.r + padding),
+                std::min((float) frame->height(), origLoc.b + padding)});
 }
 
 void ROI::setPaddedLoc(const Rect& newPaddedLoc) {

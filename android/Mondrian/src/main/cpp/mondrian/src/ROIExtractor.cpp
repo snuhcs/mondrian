@@ -34,12 +34,6 @@ void ROIExtractor::enqueue(Frame* frame) {
   std::lock_guard<std::mutex> lock(mtx_);
   PDWaiting_.insert(frame);
   cv_.notify_all();
-  LOGD("[ROIExtractor] enqueue "
-       "// OFWaiting=%lu OFProcessing=%lu OFProcessed=%d | OFWaiting.front()=%d",
-       OFWaiting_.size(), OFProcessing_.size(),
-       std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
-                       [](int sum, const auto& pair) { return sum + pair.second.size(); }),
-       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
 }
 
 MultiStream ROIExtractor::collectFrames(int currID) {
@@ -119,7 +113,7 @@ void ROIExtractor::work(int extractorId) {
 
     if (stop_) return;
 
-    time_us start = NowMicros();
+    time_us startTime = NowMicros();
     if (pd) {
       PDWaiting_.erase(frame);
       PDProcessing_.insert(frame);
@@ -128,6 +122,7 @@ void ROIExtractor::work(int extractorId) {
       OFProcessing_.insert(frame);
     }
     lock.unlock();
+    time_us gettingTime = NowMicros();
 
     if (pd) {
       frame->PDExtractorID = extractorId;
@@ -136,8 +131,10 @@ void ROIExtractor::work(int extractorId) {
       frame->OFExtractorID = extractorId;
       processOF(frame);
     }
+    time_us processingTime = NowMicros();
 
     lock.lock();
+    time_us lockingTime = NowMicros();
     if (pd) {
       PDProcessing_.erase(frame);
       OFWaiting_.insert(frame);
@@ -153,32 +150,41 @@ void ROIExtractor::work(int extractorId) {
         OFWaiting_.insert(frame);
       }
     }
+    time_us endTime = NowMicros();
+
+    std::stringstream ss;
+    ss << "[ROIExtractor " << extractorId << "] "
+       << (pd ? " PD" : " OF")
+       << " (" << frame->vid << ", " << frame->frameIndex << ")"
+       << " #=" << std::count_if(frame->rois.begin(), frame->rois.end(),
+                                 [pd](auto& roi) { return roi->type == (pd ? PD : OF); })
+       << " PDQ=" << PDWaiting_.size()
+       << " OFQ=" << OFWaiting_.size()
+       << " RQ=" << std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
+                                    [](int sum, const auto& pair) {
+                                      return sum + pair.second.size();
+                                    })
+       << " total=" << endTime - startTime
+       << " getting=" << gettingTime - startTime
+       << " processing=" << processingTime - gettingTime
+       << " locking=" << lockingTime - processingTime
+       << " putting=" << endTime - lockingTime;
+    if (!pd) {
+      ss << " #Features=" << frame->numFeaturePoints
+         << " ext=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime
+         << " resize=" << frame->resizeEndTime - frame->resizeStartTime
+         << " merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
+    }
+    LOGD("%s", ss.str().c_str());
+
     lock.unlock();
     cv_.notify_one();
-
-    time_us end = NowMicros();
-    if (pd) {
-      LOGD("[ROIExtractor %d] PDTime=%lld // vid=%d fid=%d #PDROIs=%lu",
-           extractorId, end - start, frame->vid, frame->frameIndex,
-           std::count_if(frame->rois.begin(), frame->rois.end(),
-                         [](auto& roi) { return roi->type == PD; }));
-    } else {
-      LOGD("[ROIExtractor %d] OFTime=%lld "
-           "// vid=%d fid=%d #OFROIs=%lu resizeTime=%lld mergeTime=%lld",
-           extractorId, end - start, frame->vid, frame->frameIndex,
-           std::count_if(frame->rois.begin(), frame->rois.end(),
-                         [](auto& roi) { return roi->type == OF; }),
-           frame->resizeEndTime - frame->resizeStartTime,
-           frame->mergeROIEndTime - frame->mergeROIStartTime);
-    }
   }
 }
 
 void ROIExtractor::processPD(Frame* currFrame) const {
   assert(currFrame->rois.empty());
   currFrame->pixelDiffROIProcessStartTime = NowMicros();
-
-  currFrame->prepareRgbMatAndResizedGrayMat(config_.EXTRACTION_SIZE);
 
   float wRatio = (float) currFrame->resizedGrayMat.cols / (float) currFrame->width();
   float hRatio = (float) currFrame->resizedGrayMat.rows / (float) currFrame->height();
@@ -272,16 +278,19 @@ void ROIExtractor::processOF(Frame* currFrame) const {
                 box.loc.r * wRatio,
                 box.loc.b * hRatio};
       });
-  for (const auto& scaledRect: scaledPrevRects) {
+  for (const auto& scaledRect : scaledPrevRects) {
     assert(0 <= scaledRect.l && scaledRect.l <= scaledRect.r &&
-           scaledRect.r <= currFrame->resizedGrayMat.cols &&
-           0 <= scaledRect.t && scaledRect.t <= scaledRect.b &&
-           scaledRect.b <= currFrame->resizedGrayMat.rows);
+        scaledRect.r <= currFrame->resizedGrayMat.cols &&
+        0 <= scaledRect.t && scaledRect.t <= scaledRect.b &&
+        scaledRect.b <= currFrame->resizedGrayMat.rows);
   }
 
   // OF ROI Extraction with Scaled Image
   std::vector<RectTrackingResult> trackingResults = extractOF(
-      prevFrame->resizedGrayMat, currFrame->resizedGrayMat, scaledPrevRects);
+      prevFrame->resizedGrayMat,
+      currFrame->resizedGrayMat,
+      scaledPrevRects,
+      &currFrame->numFeaturePoints);
   assert(trackingResults.size() == prevBoxes.size());
 
   for (int i = 0; i < trackingResults.size(); i++) {
