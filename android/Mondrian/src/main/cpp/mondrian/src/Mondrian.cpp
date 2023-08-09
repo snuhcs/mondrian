@@ -186,7 +186,6 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
     ROIExtractor_->cv().notify_all();
   }
 
-  log(frame);
   assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
                      [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
 
@@ -266,8 +265,8 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
   }
 }
 
-void Mondrian::releaseFrames(const MultiStream& multiStream) {
-  for (const auto& [vid, stream] : multiStream) {
+void Mondrian::releaseFrames(const MultiStream& streams) {
+  for (const auto& [vid, stream] : streams) {
     if (stream.empty()) continue;
     for (Frame* frame : stream) {
       log(frame);
@@ -324,6 +323,7 @@ void Mondrian::enqueueFrameWise(Frame* frame) {
       true,
       frame->getKey());
   handleFullFrameResults(frame, frame->frameIndex);
+  log(frame);
   std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
   frameBuffers_.at(frame->vid)->free(frame->frameIndex);
 }
@@ -419,12 +419,11 @@ void Mondrian::workPostprocess() {
     std::unique_lock<std::mutex> resultLock(logMtx_);
     for (const auto& it : streams) {
       for (Frame* frame : it.second) {
-        if (frame != fullFrameTarget) {
-          std::vector<BoundingBox> boxes;
-          std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
-                         [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-          results_[frame->vid][frame->frameIndex] = {frame->endTime, std::move(boxes)};
-        }
+        if (frame == fullFrameTarget) continue;
+        std::vector<BoundingBox> boxes;
+        std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
+                       [](const std::unique_ptr<BoundingBox>& box) { return *box; });
+        results_[frame->vid][frame->frameIndex] = {frame->endTime, std::move(boxes)};
       }
     }
     resultLock.unlock();
