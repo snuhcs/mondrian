@@ -63,7 +63,8 @@ std::vector<Rect> extractPD(const cv::Mat& prevGrayMat, const cv::Mat& nextGrayM
 
 std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
                                           const cv::Mat& nextGrayMat,
-                                          const std::vector<Rect>& prevRects) {
+                                          const std::vector<Rect>& prevRects,
+                                          int* numFeaturePoints) {
   assert(prevGrayMat.size() == nextGrayMat.size());
 
   std::vector<int> startEndIndices = {0};
@@ -95,6 +96,10 @@ std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
     prevPoints.insert(prevPoints.end(), aRectPoints.begin(), aRectPoints.end());
   }
   assert(startEndIndices.back() == prevPoints.size());
+
+  if (numFeaturePoints != nullptr) {
+    *numFeaturePoints = prevPoints.size();
+  }
 
   std::vector<cv::Point2f> nextPoints;
   std::vector<uchar> statuses;

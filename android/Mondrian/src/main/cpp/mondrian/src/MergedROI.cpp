@@ -105,10 +105,10 @@ void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, i
 }
 
 cv::Mat MergedROI::mat() const {
-  int l = std::max(0, std::min(frame_->rgbMat.cols, int(loc_.l)));
-  int t = std::max(0, std::min(frame_->rgbMat.rows, int(loc_.t)));
-  int w = std::max(0, std::min(frame_->rgbMat.cols - l, int(loc_.w)));
-  int h = std::max(0, std::min(frame_->rgbMat.rows - t, int(loc_.h)));
+  int l = std::max(0, std::min(frame_->width(), int(loc_.l)));
+  int t = std::max(0, std::min(frame_->height(), int(loc_.t)));
+  int w = std::max(0, std::min(frame_->width() - l, int(loc_.w)));
+  int h = std::max(0, std::min(frame_->height() - t, int(loc_.h)));
   return frame_->rgbMat.operator()(cv::Rect(l, t, w, h));
 }
 

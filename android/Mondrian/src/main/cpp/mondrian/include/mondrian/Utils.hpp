@@ -22,7 +22,8 @@ std::vector<Rect> extractPD(const cv::Mat& prevGrayMat, const cv::Mat& nextGrayM
 
 std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
                                           const cv::Mat& nextGrayMat,
-                                          const std::vector<Rect>& prevRects);
+                                          const std::vector<Rect>& prevRects,
+                                          int* numFeaturePoints = nullptr);
 
 std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
                              const int numLabels, const float iouThres);
