@@ -2,7 +2,6 @@
 
 #include "mondrian/Log.hpp"
 #include "mondrian/Worker.hpp"
-#include "mondrian/model/TfLiteYoloV4Classifier.hpp"
 #include "mondrian/model/TfLiteYoloV5Classifier.hpp"
 #include "mondrian/model/TfLiteYoloV5ClassifierDSP.hpp"
 
@@ -15,9 +14,7 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  jobject app)
     : config_(config) {
   for (Device device : config.DEVICES) {
-    if (config.MODEL == "YOLO_V4" && device == GPU) {
-      addClassifiers<TfLiteYoloV4Classifier>(device, config, env, app);
-    } else if (config.MODEL == "YOLO_V5" && device == GPU) {
+    if (config.MODEL == "YOLO_V5" && device == GPU) {
       addClassifiers<TfLiteYoloV5Classifier>(device, config, env, app);
     } else if (config.MODEL == "YOLO_V5" && device == DSP) {
       addClassifiers<TfLiteYoloV5ClassifierDSP>(device, config, env, app);
