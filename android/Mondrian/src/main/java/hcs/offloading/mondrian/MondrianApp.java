@@ -98,7 +98,10 @@ public class MondrianApp implements VideoLoader.Callback {
         Bitmap bitmap = Bitmap.createBitmap(rgbMat.cols(), rgbMat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(rgbMat, bitmap);
         Bitmap outputBitmap = ImageUtils.drawBoxes(bitmap, results);
-        outputView.post(() -> outputView.setImageBitmap(outputBitmap));
+        outputView.post(() -> {
+            outputView.setImageBitmap(outputBitmap);
+            rgbMat.release();
+        });
     }
 
     private native long createHandle(int numVideos);

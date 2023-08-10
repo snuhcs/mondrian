@@ -6,6 +6,7 @@
 #include "mondrian/ROI.hpp"
 #include "mondrian/ROIResizer.hpp"
 #include "mondrian/Log.hpp"
+#include "mondrian/Utils.hpp"
 
 namespace md {
 
@@ -30,13 +31,18 @@ Frame::Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
       inferenceFrameSize(0),
       inferenceDevice(NO_DEVICE) {}
 
-void Frame::prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize) {
-  cv::cvtColor(yuvMat, rgbMat, cv::COLOR_YUV2RGB_NV12, 3);
-  yuvMat.release();
-  width_ = rgbMat.cols;
-  height_ = rgbMat.rows;
-  cv::resize(rgbMat, resizedGrayMat, targetSize, 0, 0, CV_INTER_LINEAR);
-  cv::cvtColor(resizedGrayMat, resizedGrayMat, cv::COLOR_RGB2GRAY);
+cv::Mat Frame::rgbMat() const {
+  cv::Mat rgbMat;
+  cv::cvtColor(yuvMat, rgbMat, cv::COLOR_YUV2RGB_NV12);
+  return rgbMat;
+}
+
+void Frame::prepareResizedGrayMat(const cv::Size& targetSize) {
+  assert(yuvMat.rows % 3 == 0);
+  width_ = yuvMat.cols;
+  height_ = yuvMat.rows * 2 / 3;
+  cv::cvtColor(yuvMat, resizedGrayMat, cv::COLOR_YUV2GRAY_NV12, 1);
+  cv::resize(resizedGrayMat, resizedGrayMat, targetSize, 0, 0, CV_INTER_LINEAR);
 }
 
 void Frame::eatPDROIs(float overlap_thres) {
@@ -282,25 +288,12 @@ void Frame::prepareFrameLast(const IntPairs& indices,
   assert(i == locations.size());
 }
 
-int Frame::maxRelativePackedCanvasIndex() const {
-  int maxIndex = -1;
-  for (const auto& mergedROI : mergedROIs) {
-    if (mergedROI->isPacked()) {
-      maxIndex = std::max(maxIndex, mergedROI->relativePackedCanvasIndex());
-    }
-  }
-  for (const auto& probingROI : probingROIs) {
-    if (probingROI->isPacked()) {
-      maxIndex = std::max(maxIndex, probingROI->relativePackedCanvasIndex());
-    }
-  }
-  return maxIndex;
-}
-
 bool Frame::isReadyToMarry(int packedCanvasIndex) const {
-  int maxIndex = maxRelativePackedCanvasIndex();
-  bool isAllReady = packedCanvasIndex == maxIndex;
-  assert(packedCanvasIndex <= maxIndex);
+  auto isROIReady = [&packedCanvasIndex](const std::unique_ptr<MergedROI>& mergedROI) {
+    return !mergedROI->isPacked() || mergedROI->relativePackedCanvasIndex() <= packedCanvasIndex;
+  };
+  bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIReady)
+      && std::all_of(probingROIs.begin(), probingROIs.end(), isROIReady);
   bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
                                      [](auto& box) { return box->id == INVALID_ID; });
   bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),

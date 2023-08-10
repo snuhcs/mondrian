@@ -51,7 +51,6 @@ add_library(
     mondrian/src/tree/MTA.cpp
     mondrian/src/tree/VIRAT.cpp
     mondrian/src/model/Classifier.cpp
-    mondrian/src/model/TfLiteYoloV4Classifier.cpp
     mondrian/src/model/TfLiteYoloV5Classifier.cpp
     mondrian/src/model/TfLiteYoloV5ClassifierDSP.cpp
     jni/Mondrian_jni.cpp

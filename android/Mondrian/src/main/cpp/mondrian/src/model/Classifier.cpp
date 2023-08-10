@@ -2,6 +2,8 @@
 
 #include <set>
 
+#include "opencv2/imgproc.hpp"
+
 #include "mondrian/Log.hpp"
 #include "mondrian/Utils.hpp"
 
@@ -33,44 +35,6 @@ std::vector<BoundingBox> Classifier::recognizeImage(const cv::Mat& rgbMat) {
        nmsTime - postprocessTime);
 
   return boxesNms;
-}
-
-std::vector<BoundingBox> Classifier::postprocess(int width, int height) const {
-  std::vector<BoundingBox> boxes;
-  for (int i = 0; i < outputSize; i++) {
-    const float* box = getBox(i);
-    const float* classConfidences = getClassConfidences(i);
-    float maxConfidence = 0;
-    int maxLabel = -1;
-    for (int label = 0; label < numLabels; label++) {
-      if (maxConfidence < classConfidences[label]) {
-        maxLabel = label;
-        maxConfidence = classConfidences[label];
-      }
-    }
-    maxConfidence *= getObjectConfidence(i);
-    if (maxLabel == 0 && maxConfidence > confThres) {
-      Rect rect = reconstructBox(float(box[0]), float(box[1]),
-                                 float(box[2]), float(box[3]),
-                                 float(width), float(height));
-      if (rect.l <= rect.r && rect.t <= rect.b) {
-        boxes.emplace_back(INVALID_ID, rect, maxConfidence, maxLabel, O_INVALID);
-      }
-    }
-  }
-  return boxes;
-}
-
-const float* Classifier::getBox(const int i) const {
-  return nullptr;
-}
-
-float Classifier::getObjectConfidence(const int i) const {
-  return 0.0f;
-}
-
-const float* Classifier::getClassConfidences(const int i) const {
-  return nullptr;
 }
 
 } // namespace md

@@ -163,7 +163,6 @@ void Mondrian::workSchedule() {
 
 void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   auto [boxes, times, device] = inferenceEngine_->getResults(frame->getKey());
-  frame->rgbMat.release();
   LOGD("[Schedule %d] FULL Inference at %lld // vid=%d fid=%d",
        currID, NowMicros() - startTime_, frame->vid, frame->frameIndex);
   frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
@@ -291,7 +290,7 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
   assert(!yuvMat.empty());
 
   Frame* frame = frameBuffers_.at(vid)->enqueue(yuvMat);
-  frame->prepareRgbMatAndResizedGrayMat(config_.roiExtractorConfig.EXTRACTION_SIZE);
+  frame->prepareResizedGrayMat(config_.roiExtractorConfig.EXTRACTION_SIZE);
   if (frame->frameIndex == 1) {
     std::unique_lock<std::mutex> startLock(startMtx_);
     startCV_.wait(startLock, [this]() {
@@ -315,9 +314,8 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
 }
 
 void Mondrian::enqueueFrameWise(Frame* frame) {
-  cv::cvtColor(frame->yuvMat, frame->rgbMat, cv::COLOR_YUV2RGB_NV21);
   inferenceEngine_->enqueue(
-      frame->rgbMat,
+      frame->rgbMat(),
       config_.FULL_DEVICE,
       config_.FULL_FRAME_SIZE,
       true,
@@ -333,7 +331,7 @@ void Mondrian::enqueue(Frame* frame) {
   if (frame->frameIndex == 0) {
     frame->useInferenceResultForOF = true;
     inferenceEngine_->enqueue(
-        frame->rgbMat,
+        frame->rgbMat(),
         config_.FULL_DEVICE,
         config_.FULL_FRAME_SIZE,
         true,
@@ -364,7 +362,7 @@ void Mondrian::workPostprocess() {
     // Enqueue full frame
     if (fullFrameTarget != nullptr) {
       inferenceEngine_->enqueue(
-          fullFrameTarget->rgbMat,
+          fullFrameTarget->rgbMat(),
           config_.FULL_DEVICE,
           config_.FULL_FRAME_SIZE,
           true, fullFrameTarget->getKey());
@@ -422,7 +420,7 @@ void Mondrian::workPostprocess() {
         if (frame == fullFrameTarget) continue;
         std::vector<BoundingBox> boxes;
         std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
-                       [](const std::unique_ptr<BoundingBox>& box) { return *box; });
+                        [](const std::unique_ptr<BoundingBox>& box) { return *box; });
         results_[frame->vid][frame->frameIndex] = {frame->endTime, std::move(boxes)};
       }
     }

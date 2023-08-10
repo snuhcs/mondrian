@@ -15,23 +15,14 @@ class Classifier {
 
   virtual ~Classifier() {};
 
-  virtual std::vector<BoundingBox> recognizeImage(const cv::Mat& rgbMat);
+  std::vector<BoundingBox> recognizeImage(const cv::Mat& rgbMat);
 
  protected:
-  std::vector<BoundingBox> postprocess(int width, int height) const;
+  virtual cv::Mat preprocess(const cv::Mat& rgbMat) const = 0;
 
-  virtual cv::Mat preprocess(const cv::Mat& mat) = 0;
+  virtual void inference(const cv::Mat& inputTensor) const = 0;
 
-  virtual void inference(const cv::Mat& mat) = 0;
-
-  virtual const float* getBox(const int i) const;
-
-  virtual float getObjectConfidence(const int i) const;
-
-  virtual const float* getClassConfidences(const int i) const;
-
-  virtual Rect reconstructBox(float x, float y, float w, float h,
-                              float imageWidth, float imageHeight) const = 0;
+  virtual std::vector<BoundingBox> postprocess(int width, int height) const = 0;
 
   virtual Device device() const = 0;
 
