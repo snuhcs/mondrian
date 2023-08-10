@@ -11,6 +11,10 @@
 
 namespace md {
 
+cv::Vec3b yuv2rgb(uchar Y, uchar U, uchar V);
+
+cv::Mat extractRgbROIFromYuvMat(cv::Mat yuvMat, int l, int t, int r, int b);
+
 struct RectTrackingResult {
   std::vector<cv::Point2f> prevPoints;
   std::vector<cv::Point2f> nextPoints;

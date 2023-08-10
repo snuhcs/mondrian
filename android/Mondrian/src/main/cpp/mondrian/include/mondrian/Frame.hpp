@@ -27,7 +27,6 @@ class Frame {
   const Frame* prevFrame;
   int scheduleID;
   cv::Mat yuvMat;
-  cv::Mat rgbMat;
   cv::Mat resizedGrayMat;
   int PDExtractorID;
   int OFExtractorID;
@@ -73,7 +72,9 @@ class Frame {
   Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
         const Frame* prevFrame, const time_us& enqueueTime);
 
-  void prepareRgbMatAndResizedGrayMat(const cv::Size& targetSize);
+  cv::Mat rgbMat() const;
+
+  void prepareResizedGrayMat(const cv::Size& targetSize);
 
   void eatPDROIs(float overlap_thres);
 
@@ -100,8 +101,6 @@ class Frame {
                         ExecutionType executionType,
                         int roiSize,
                         bool noDownsampling);
-
-  int maxRelativePackedCanvasIndex() const;
 
   bool isReadyToMarry(int packedFrameIndex) const;
 

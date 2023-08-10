@@ -138,7 +138,7 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
   for (const auto& [vid, frames] : streams) {
     for (Frame* frame : frames) {
       if (frame == fullFrameTarget) continue;
-      frame->rgbMat.release();
+      frame->yuvMat.release();
     }
   }
   time_us releaseTime = NowMicros();

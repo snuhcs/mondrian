@@ -9,6 +9,34 @@
 
 namespace md {
 
+cv::Vec3b yuv2rgb(uchar Y, uchar U, uchar V) {
+  int C = Y - 16;
+  int D = U - 128;
+  int E = V - 128;
+
+  uchar R = cv::saturate_cast<uchar>((298 * C + 409 * E + 128) >> 8);
+  uchar G = cv::saturate_cast<uchar>((298 * C - 100 * D - 208 * E + 128) >> 8);
+  uchar B = cv::saturate_cast<uchar>((298 * C + 516 * D + 128) >> 8);
+
+  return {R, G, B};
+}
+
+cv::Mat extractRgbROIFromYuvMat(cv::Mat yuvMat, int l, int t, int r, int b) {
+  assert(yuvMat.rows % 3 == 0);
+  const int height = yuvMat.rows * 2 / 3;
+
+  cv::Mat rgbROI(b - t, r - l, CV_8UC3);
+  for (int y = t; y < b; y++) {
+    for (int x = l; x < r; x++) {
+      uchar Y = yuvMat.at<uchar>(y, x);
+      uchar U = yuvMat.at<uchar>(height + y / 2, x - x % 2);
+      uchar V = yuvMat.at<uchar>(height + y / 2, x - x % 2 + 1);
+      rgbROI.at<cv::Vec3b>(y - t, x - l) = yuv2rgb(Y, U, V);
+    }
+  }
+  return rgbROI;
+}
+
 std::vector<Rect> extractPD(const cv::Mat& prevGrayMat, const cv::Mat& nextGrayMat) {
   assert(prevGrayMat.size() == nextGrayMat.size());
   cv::Mat mat;
