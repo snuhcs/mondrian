@@ -74,56 +74,67 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(std::string dataset, int inputSiz
   assert(outputTensorDims->size == 3 && outputTensorDims->data[0] == 1
              && outputTensorDims->data[1] == outputSize && outputTensorDims->data[2] == 85);
 
-  input = interpreter->typed_tensor<float>(inputTensorIndices[0]);
-  outputs = interpreter->typed_tensor<float>(outputTensorIndices[0]);
+  TfLiteTensor* inputTensor = interpreter->tensor(inputTensorIndices[0]);
+  TfLiteTensor* outputTensor = interpreter->tensor(outputTensorIndices[0]);
+  input = inputTensor->data.f;
+  outputs = outputTensor->data.f;
 }
 
-TfLiteYoloV5Classifier::~TfLiteYoloV5Classifier() {
-  TfLiteGpuDelegateV2Delete(delegate);
-}
-
-cv::Mat TfLiteYoloV5Classifier::preprocess(const cv::Mat& rgbMat) {
-  cv::Mat mat;
+cv::Mat TfLiteYoloV5Classifier::preprocess(const cv::Mat& rgbMat) const {
   const int& width = rgbMat.cols;
   const int& height = rgbMat.rows;
-  if (width * inputSize.height > height * inputSize.width) {
-    resizeWidth = inputSize.width;
-    resizeHeight = height * inputSize.width / width;
-    left = 0;
-    right = 0;
-    top = (inputSize.height - resizeHeight) / 2;
-    bottom = (inputSize.height - resizeHeight) - top;
-  } else {
-    resizeHeight = inputSize.height;
-    resizeWidth = width * inputSize.height / height;
-    top = 0;
-    bottom = 0;
-    left = (inputSize.width - resizeWidth) / 2;
-    right = (inputSize.width - resizeWidth) - left;
-  }
-  cv::resize(rgbMat, mat, cv::Size(resizeWidth, resizeHeight));
-  cv::copyMakeBorder(mat, mat, top, bottom, left, right,
+  bool isLandscape = width * inputSize.height >= height * inputSize.width;
+  int resizeWidth = isLandscape ? inputSize.width
+                                : (width * inputSize.height / height);
+  int resizeHeight = isLandscape ? (height * inputSize.width / width)
+                                 : inputSize.height;
+  int left = (inputSize.width - resizeWidth) / 2;
+  int right = (inputSize.width - resizeWidth) - left;
+  int top = (inputSize.height - resizeHeight) / 2;
+  int bottom = (inputSize.height - resizeHeight) - top;
+
+  cv::Mat inputTensor;
+  cv::resize(rgbMat, inputTensor, {resizeWidth, resizeHeight});
+  cv::copyMakeBorder(inputTensor, inputTensor,
+                     top, bottom, left, right,
                      cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
-  mat.convertTo(mat, CV_32FC3, 1.f / 255);
-  return mat;
+  inputTensor.convertTo(inputTensor, CV_32FC3, 1.f / 255);
+  return inputTensor;
 }
 
-void TfLiteYoloV5Classifier::inference(const cv::Mat& mat) {
-  assert(mat.cols == inputSize.width && mat.rows == inputSize.height && mat.type() == CV_32FC3);
-  std::memcpy((void*) input, (void*) mat.data, inputSize.area() * mat.elemSize());
+void TfLiteYoloV5Classifier::inference(const cv::Mat& inputTensor) const {
+  assert(inputTensor.cols == inputSize.width);
+  assert(inputTensor.rows == inputSize.height);
+  assert(inputTensor.type() == CV_32FC3);
+  std::memcpy((void*) input, (void*) inputTensor.data, inputSize.area() * inputTensor.elemSize());
   interpreter->Invoke();
 }
 
-const float* TfLiteYoloV5Classifier::getBox(const int i) const {
-  return &outputs[i * 85];
-}
-
-float TfLiteYoloV5Classifier::getObjectConfidence(const int i) const {
-  return outputs[i * 85 + 4];
-}
-
-const float* TfLiteYoloV5Classifier::getClassConfidences(const int i) const {
-  return &outputs[i * 85 + 5];
+std::vector<BoundingBox> TfLiteYoloV5Classifier::postprocess(int width, int height) const {
+  std::vector<BoundingBox> boxes;
+  for (int i = 0; i < outputSize; i++) {
+    float maxConfidence = 0;
+    int maxLabel = -1;
+    for (int label = 0; label < numLabels; label++) {
+      float confidence = outputs[i * 85 + 5 + label];
+      if (maxConfidence < confidence) {
+        maxConfidence = confidence;
+        maxLabel = label;
+      }
+    }
+    maxConfidence *= outputs[i * 85 + 4];
+    if (maxLabel == 0 && maxConfidence > confThres) {
+      Rect rect = reconstructBox((float) outputs[i * 85 + 0],
+                                 (float) outputs[i * 85 + 1],
+                                 (float) outputs[i * 85 + 2],
+                                 (float) outputs[i * 85 + 3],
+                                 (float) width, (float) height);
+      if (rect.l <= rect.r && rect.t <= rect.b) {
+        boxes.emplace_back(INVALID_ID, rect, maxConfidence, maxLabel, O_INVALID);
+      }
+    }
+  }
+  return boxes;
 }
 
 Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,

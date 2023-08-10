@@ -14,32 +14,26 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
                             float confThres, float iouThres,
                             bool isTiny, bool forFullFrame);
 
-  std::vector<BoundingBox> recognizeImage(const cv::Mat& mat) override;
-
  private:
-  cv::Mat preprocess(const cv::Mat& mat) override;
+  cv::Mat preprocess(const cv::Mat& rgbMat) const override;
 
-  void inference(const cv::Mat& mat) override;
+  void inference(const cv::Mat& inputTensor) const override;
 
-  Rect reconstructBox(float x, float y, float w, float h,
-                      float imageWidth, float imageHeight) const override;
+  std::vector<BoundingBox> postprocess(int width, int height) const override;
 
   Device device() const override;
 
-  tflite::Interpreter::TfLiteDelegatePtr delegate;
+  Rect reconstructBox(float x, float y, float w, float h,
+                      float imageWidth, float imageHeight) const;
+
+  float dequantize(uint8_t value) const;
+
+  TfLiteDelegate* delegate;
   std::unique_ptr<tflite::Interpreter> interpreter;
 
-  int resizeWidth;
-  int resizeHeight;
-  int left;
-  int top;
-  int right;
-  int bottom;
-
-  int inputBias;
   int outputBias;
-  float inputScale;
   float outputScale;
+
   uint8_t* input; // 1 x inputSize.height x inputSize.width x 3
   uint8_t* outputs; // 1 x outputSize x 85 (boxes, maxConf, confidences)
 };
