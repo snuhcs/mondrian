@@ -171,14 +171,14 @@ void Mondrian::workSchedule() {
 }
 
 void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
-  auto [boxes, times, device] = inferenceEngine_->getResults(frame->getKey());
+  Result result = inferenceEngine_->getResults(frame->getKey());
   LOGD("[Schedule %d] FULL Inference at %lld // vid=%d fid=%d",
        currID, NowMicros() - startTime_, frame->vid, frame->frameIndex);
   frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
   frame->inferenceDevice = config_.FULL_DEVICE;
-  frame->fullInferenceStartTime = times.first;
-  frame->fullInferenceEndTime = times.second;
-  for (const BoundingBox& box : boxes) {
+  frame->fullInferenceStartTime = result.detectionStart;
+  frame->fullInferenceEndTime = result.detectionEnd;
+  for (const BoundingBox& box : result.boxes) {
     auto& loc = box.loc;
     frame->boxes.push_back(std::make_unique<BoundingBox>(
         INVALID_ID, box.loc, box.confidence, box.label, O_FULL_FRAME));
@@ -209,22 +209,22 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
 void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanvases, int currID) {
   // Get results of packed canvases sequentially
   for (int i = 0; i < packedCanvases.size(); i++) {
-    auto [boxes, times, device] = inferenceEngine_->getResults(packedCanvases[i].getKey());
+    Result result = inferenceEngine_->getResults(packedCanvases[i].getKey());
     packedCanvases[i].packedMat.release();
     const int inputSize = packedCanvases[i].packedCanvasSize;
     LOGD("[Schedule %d] Pack Inference on %s at %lld // %s",
-         currID, str(device).c_str(), NowMicros() - startTime_,
+         currID, str(result.device).c_str(), NowMicros() - startTime_,
          str(packedCanvases[i].getPackedFrames()).c_str());
-    assert(device == packedCanvases[i].device);
+    assert(result.device == packedCanvases[i].device);
     for (Frame* frame : packedCanvases[i].getPackedFrames()) {
       if (frame->inferenceDevice == NO_DEVICE) {
         frame->inferenceFrameSize = inputSize;
-        frame->inferenceDevice = device;
-        frame->packedInferenceStartTime = times.first;
-        frame->packedInferenceEndTime = times.second;
+        frame->inferenceDevice = result.device;
+        frame->packedInferenceStartTime = result.detectionStart;
+        frame->packedInferenceEndTime = result.detectionEnd;
       }
     }
-    patchReconstructor_->assignBoxesToFrame(packedCanvases[i], boxes);
+    patchReconstructor_->assignBoxesToFrame(packedCanvases[i], result.boxes);
 
     for (Frame* frame : packedCanvases[i].getPackedFrames()) {
       if (frame->isReadyToMarry(i)) { // If all mergedROIs are packed and inferenced
@@ -242,21 +242,21 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
 void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
   Stream inferenceFrames;
   for (auto& packedCanvas : packedCanvases) {
-    auto [boxes, times, device] = inferenceEngine_->getResults(packedCanvas.getKey());
+    Result result = inferenceEngine_->getResults(packedCanvas.getKey());
     packedCanvas.packedMat.release();
     assert(packedCanvas.packedROIs.size() == 1);
-    assert(device == packedCanvas.device);
+    assert(result.device == packedCanvas.device);
     auto [x, y] = (*packedCanvas.packedROIs.begin())->packedXY();
     MergedROI* mergedROI = *packedCanvas.packedROIs.begin();
     if (mergedROI->frame()->inferenceDevice == NO_DEVICE) {
       mergedROI->frame()->inferenceFrameSize = packedCanvas.packedCanvasSize;
-      mergedROI->frame()->inferenceDevice = device;
-      mergedROI->frame()->packedInferenceStartTime = times.first;
-      mergedROI->frame()->packedInferenceEndTime = times.second;
+      mergedROI->frame()->inferenceDevice = result.device;
+      mergedROI->frame()->packedInferenceStartTime = result.detectionStart;
+      mergedROI->frame()->packedInferenceEndTime = result.detectionEnd;
     }
     inferenceFrames.insert(mergedROI->frame());
     const float mergedScale = mergedROI->targetScale();
-    for (BoundingBox& b : boxes) {
+    for (BoundingBox& b : result.boxes) {
       float newL = std::max(0.0f, (b.loc.l - float(x)) / mergedScale + mergedROI->loc().l);
       float newT = std::max(0.0f, (b.loc.t - float(y)) / mergedScale + mergedROI->loc().t);
       float newR = std::max(0.0f, (b.loc.r - float(x)) / mergedScale + mergedROI->loc().l);

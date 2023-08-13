@@ -52,23 +52,24 @@ void Worker::work() {
 
     // Prepare input
     time_us start = NowMicros();
-    auto [rgbMat, size, isFullFrame, key] = std::move(inputs_.front());
+    Input input = std::move(inputs_.front());
     inputs_.pop_front();
     lock.unlock();
 
     // Inference
-    time_us inferenceStart = NowMicros();
-    auto boxes = classifierMap_[{size, isFullFrame}]->recognizeImage(rgbMat);
-    time_us inferenceEnd = NowMicros();
+    time_us detectionStart = NowMicros();
+    Classifier* classifier = classifierMap_[{input.size, input.full}];
+    std::vector<BoundingBox> boxes = classifier->recognizeImage(input.rgbMat);
+    time_us detectionEnd = NowMicros();
 
     // Enqueue & draw result
-    engine_->enqueueResult(key, {boxes, {inferenceStart, inferenceEnd}, device_});
+    engine_->enqueueResult(input.key, {boxes, detectionStart, detectionEnd, device_});
     if (draw_) {
-      drawInferenceResult(rgbMat, boxes, isFullFrame);
+      drawInferenceResult(input.rgbMat, boxes, input.full);
     }
     time_us end = NowMicros();
 
-    updateLatency(size, isFullFrame, end - start);
+    updateLatency(input.size, input.full, end - start);
     updateRemainingTime();
   }
 }
@@ -84,7 +85,7 @@ void Worker::updateRemainingTime() {
   std::lock_guard<std::mutex> lock(mtx_);
   estimatedEndTime_ = NowMicros();
   for (const auto& input : inputs_) {
-    estimatedEndTime_ += latencyMap_[{std::get<1>(input), std::get<2>(input)}];
+    estimatedEndTime_ += latencyMap_[{input.size, input.full}];
   }
 }
 
@@ -93,7 +94,7 @@ void Worker::enqueue(const cv::Mat& rgbMat,
                      const bool isFullFrame,
                      const Key key) {
   std::unique_lock<std::mutex> lock(mtx_);
-  inputs_.emplace_back(rgbMat, inputSize, isFullFrame, key);
+  inputs_.push_back({rgbMat, inputSize, isFullFrame, key});
   estimatedEndTime_ = std::max(estimatedEndTime_, NowMicros());
   estimatedEndTime_ += latencyMap_[{inputSize, isFullFrame}];
   lock.unlock();

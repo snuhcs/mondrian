@@ -14,8 +14,21 @@ namespace md {
 class InferenceEngine;
 
 using Key = std::pair<int, int>;
-using Result = std::tuple<std::vector<BoundingBox>, std::pair<time_us, time_us>, Device>;
 using LatencyTable = std::map<Device, std::map<std::pair<int, bool>, time_us>>;
+
+struct Input {
+  const cv::Mat rgbMat;
+  int size;
+  bool full;
+  Key key;
+};
+
+struct Result {
+  std::vector<BoundingBox> boxes;
+  time_us detectionStart;
+  time_us detectionEnd;
+  Device device;
+};
 
 class Worker {
  public:
@@ -55,7 +68,7 @@ class Worker {
 
   std::mutex mtx_;
   std::condition_variable cv_;
-  std::list<std::tuple<const cv::Mat, int, bool, Key>> inputs_;
+  std::list<Input> inputs_;
 
   InferenceEngine* engine_;
   std::map<std::pair<int, bool>, Classifier*> classifierMap_;
