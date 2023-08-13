@@ -20,14 +20,10 @@ std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& streams,
 }
 
 std::vector<MergedROI*> ROIPrioritizer::minConsecutiveDrop(const MultiStream& streams) {
-  // roiMap[vid, roiID][fid] = roi
-  std::map<std::pair<int, int>, std::map<int, ROI*>> roiMap;
+  std::map<std::pair<VID, ID>, std::map<FID, ROI*>> roiMap;
   for (const auto& [vid, stream] : streams) {
     for (Frame* frame : stream) {
-      // Skip last frame
-      if (frame == *stream.rbegin()) {
-        continue;
-      }
+      if (frame == *stream.rbegin()) continue; // Skip last frame
       for (auto& roi : frame->rois) {
         roiMap[{vid, roi->id}][frame->fid] = roi.get();
       }
@@ -46,8 +42,8 @@ std::vector<MergedROI*> ROIPrioritizer::minConsecutiveDrop(const MultiStream& st
   std::vector<MergedROI*> orderedMergedROIs;
   while (!startEndLengths.empty()) {
     auto longest = startEndLengths.begin();
-    int vid = longest->vid_;
-    int fid = longest->mid();
+    VID vid = longest->vid_;
+    FID fid = longest->mid();
 
     MergedROI* mergedROI = roiMap[{vid, longest->roiID_}][fid]->mergedROI;
     assert(std::find(orderedMergedROIs.begin(), orderedMergedROIs.end(),

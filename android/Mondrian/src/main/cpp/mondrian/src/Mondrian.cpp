@@ -54,7 +54,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   }
 
   // Prepare frame buffers
-  for (int vid = 0; vid < numVideos; vid++) {
+  for (VID vid = 0; vid < numVideos; vid++) {
     frameBuffers_[vid] = std::make_unique<FrameBuffer>(vid);
   }
 
@@ -295,7 +295,7 @@ void Mondrian::log(const Frame* frame) {
   }
 }
 
-void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
+void Mondrian::enqueue(const VID vid, const cv::Mat& yuvMat) {
   assert(!yuvMat.empty());
 
   Frame* frame = frameBuffers_.at(vid)->enqueue(yuvMat);

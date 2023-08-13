@@ -243,7 +243,7 @@ void Logger::logBoxesHeader() {
   logFile.flush();
 }
 
-void Logger::logBoxes(int vid, int fid, const std::vector<BoundingBox>& boxes) {
+void Logger::logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes) {
   if (!logFile.is_open()) {
     return;
   }

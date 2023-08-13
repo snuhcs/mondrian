@@ -10,7 +10,7 @@
 
 namespace md {
 
-Frame::Frame(const int vid, const int fid, const cv::Mat& yuvMat,
+Frame::Frame(const VID vid, const FID fid, const cv::Mat& yuvMat,
              const Frame* prevFrame, const time_us& enqueueTime)
     : vid(vid),
       fid(fid),

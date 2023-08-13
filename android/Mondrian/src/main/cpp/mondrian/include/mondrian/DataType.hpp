@@ -8,6 +8,8 @@
 
 namespace md {
 
+using VID = int;
+using FID = int;
 using ID = int;
 using IntPair = std::pair<int, int>;
 using IntPairs = std::vector<std::pair<int, int>>;

@@ -22,8 +22,8 @@ class Frame {
   int height_;
 
  public:
-  const int vid;
-  const int fid;
+  const VID vid;
+  const FID fid;
   const Frame* prevFrame;
   int scheduleID;
   cv::Mat yuvMat;
@@ -69,7 +69,7 @@ class Frame {
   time_us reconstructEndTime = 0;
   time_us endTime = 0;
 
-  Frame(const int vid, const int fid, const cv::Mat& yuvMat,
+  Frame(const VID vid, const FID fid, const cv::Mat& yuvMat,
         const Frame* prevFrame, const time_us& enqueueTime);
 
   cv::Mat rgbMat() const;
