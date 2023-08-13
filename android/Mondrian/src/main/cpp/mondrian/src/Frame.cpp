@@ -10,10 +10,10 @@
 
 namespace md {
 
-Frame::Frame(const int vid, const int frameIndex, const cv::Mat& yuvMat,
+Frame::Frame(const int vid, const int fid, const cv::Mat& yuvMat,
              const Frame* prevFrame, const time_us& enqueueTime)
     : vid(vid),
-      frameIndex(frameIndex),
+      fid(fid),
       scheduleID(-1),
       yuvMat(yuvMat),
       width_(0),
@@ -336,7 +336,7 @@ std::string str(const MultiStream& streams) {
     } else {
       Frame* firstFrame = *stream.begin();
       Frame* lastFrame = *stream.rbegin();
-      ss << "[" << firstFrame->frameIndex << ", " << lastFrame->frameIndex << "]";
+      ss << "[" << firstFrame->fid << ", " << lastFrame->fid << "]";
     }
     ss << " ";
   }

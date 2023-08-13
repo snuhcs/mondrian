@@ -20,7 +20,7 @@ std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& streams,
 }
 
 std::vector<MergedROI*> ROIPrioritizer::minConsecutiveDrop(const MultiStream& streams) {
-  // roiMap[vid, roiID][frameIndex] = roi
+  // roiMap[vid, roiID][fid] = roi
   std::map<std::pair<int, int>, std::map<int, ROI*>> roiMap;
   for (const auto& [vid, stream] : streams) {
     for (Frame* frame : stream) {
@@ -29,16 +29,16 @@ std::vector<MergedROI*> ROIPrioritizer::minConsecutiveDrop(const MultiStream& st
         continue;
       }
       for (auto& roi : frame->rois) {
-        roiMap[{vid, roi->id}][frame->frameIndex] = roi.get();
+        roiMap[{vid, roi->id}][frame->fid] = roi.get();
       }
     }
   }
 
   std::set<StartEndLength> startEndLengths;
-  for (const auto& [key, frameIndexMap] : roiMap) {
+  for (const auto& [key, fidMap] : roiMap) {
     auto& [vid, roiID] = key;
-    int start = (*frameIndexMap.begin()).first;
-    int end = (*frameIndexMap.rbegin()).first + 1;
+    int start = (*fidMap.begin()).first;
+    int end = (*fidMap.rbegin()).first + 1;
     startEndLengths.emplace(vid, roiID, start, end);
   }
   assert(roiMap.size() == startEndLengths.size());

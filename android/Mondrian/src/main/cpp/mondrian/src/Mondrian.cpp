@@ -117,7 +117,7 @@ void Mondrian::workSchedule() {
           /*isFullFrame=*/true,
           /*key=*/fullFrameTarget->getKey());
       LOGD("[Schedule %d] Full Frame vid=%d fid=%d", currID,
-           fullFrameTarget->vid, fullFrameTarget->frameIndex);
+           fullFrameTarget->vid, fullFrameTarget->fid);
     } else {
       LOGD("[Schedule %d] NO Full Frame", currID);
     }
@@ -139,7 +139,7 @@ void Mondrian::workSchedule() {
     assert(!inferencePlan.empty());
     LOGD("[Schedule %d] FullFid=%d | RemainingTimes %s | PlanningTime %lld | LatencyTable %s",
          currID,
-         fullFrameTarget != nullptr ? fullFrameTarget->frameIndex : -1,
+         fullFrameTarget != nullptr ? fullFrameTarget->fid : -1,
          str(remainingTimes).c_str(),
          planningTime_,
          str(latencyTable).c_str());
@@ -173,7 +173,7 @@ void Mondrian::workSchedule() {
 void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   Result result = inferenceEngine_->getResults(frame->getKey());
   LOGD("[Schedule %d] FULL Inference at %lld // vid=%d fid=%d",
-       currID, NowMicros() - startTime_, frame->vid, frame->frameIndex);
+       currID, NowMicros() - startTime_, frame->vid, frame->fid);
   frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
   frame->inferenceDevice = config_.FULL_DEVICE;
   frame->fullInferenceStartTime = result.detectionStart;
@@ -201,7 +201,7 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   std::vector<BoundingBox> resultBoxes;
   std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(resultBoxes),
                  [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-  results_[frame->vid][frame->frameIndex] = {frame->endTime, std::move(resultBoxes)};
+  results_[frame->vid][frame->fid] = {frame->endTime, std::move(resultBoxes)};
   resultLock.unlock();
   resultsCV_.notify_all();
 }
@@ -279,7 +279,7 @@ void Mondrian::releaseFrames(const MultiStream& streams) {
     for (Frame* frame : stream) {
       log(frame);
     }
-    int lastFrameIndex = (*stream.rbegin())->frameIndex;
+    int lastFrameIndex = (*stream.rbegin())->fid;
     frameBuffers_.at(vid)->free(lastFrameIndex - config_.roiExtractorConfig.PD_INTERVAL);
   }
 }
@@ -300,7 +300,7 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
 
   Frame* frame = frameBuffers_.at(vid)->enqueue(yuvMat);
   frame->prepareResizedGrayMat(config_.roiExtractorConfig.EXTRACTION_SIZE);
-  if (frame->frameIndex == 1) {
+  if (frame->fid == 1) {
     std::unique_lock<std::mutex> startLock(startMtx_);
     startCV_.wait(startLock, [this]() {
       assert(numFirstFrameReadyVideos_ <= numVideos_);
@@ -315,7 +315,7 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
   }
 
   // Notify when a video is ready
-  if (frame->frameIndex == 0) {
+  if (frame->fid == 0) {
     std::lock_guard<std::mutex> startLock(startMtx_);
     numFirstFrameReadyVideos_++;
     startCV_.notify_all();
@@ -329,15 +329,15 @@ void Mondrian::enqueueFrameWise(Frame* frame) {
       /*inputSize=*/config_.FULL_FRAME_SIZE,
       /*isFullFrame=*/true,
       /*key=*/frame->getKey());
-  handleFullFrameResults(frame, frame->frameIndex);
+  handleFullFrameResults(frame, frame->fid);
   log(frame);
   std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
-  frameBuffers_.at(frame->vid)->free(frame->frameIndex);
+  frameBuffers_.at(frame->vid)->free(frame->fid);
 }
 
 void Mondrian::enqueue(Frame* frame) {
   // Handle the first frame
-  if (frame->frameIndex == 0) {
+  if (frame->fid == 0) {
     frame->useInferenceResultForOF = true;
     inferenceEngine_->enqueue(
         /*rgbMat=*/frame->rgbMat(),
@@ -421,7 +421,7 @@ void Mondrian::workPostprocess() {
         std::vector<BoundingBox> boxes;
         std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
                         [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-        results_[frame->vid][frame->frameIndex] = {frame->endTime, std::move(boxes)};
+        results_[frame->vid][frame->fid] = {frame->endTime, std::move(boxes)};
       }
     }
     resultLock.unlock();
@@ -440,9 +440,9 @@ void Mondrian::workLog() {
                                   [](const auto& it) { return !it.second.empty(); });
     });
     for (const auto& [vid, frameResults] : results_) {
-      for (const auto& [frameIndex, endTimeBoxes] : frameResults) {
+      for (const auto& [fid, endTimeBoxes] : frameResults) {
         const auto& [endTime, boxes] = endTimeBoxes;
-        loggerBoxes_->logBoxes(vid, frameIndex, boxes);
+        loggerBoxes_->logBoxes(vid, fid, boxes);
       }
       LOGD("[Logger] vid=%d %d ~ %d frames logged",
            vid, frameResults.begin()->first, frameResults.rbegin()->first);

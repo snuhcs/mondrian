@@ -60,7 +60,7 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
       }
       LOGD("[Schedule %d] Last Packed Frame vid=%d fid=%d "
            "// %lu / %lu MergedROIs Packed into %d ~ %d PackedCanvas",
-           currID, lastFrame->vid, lastFrame->frameIndex,
+           currID, lastFrame->vid, lastFrame->fid,
            indices.size(), boxesIfLast.size(),
            minPackedCanvasIndex, maxPackedCanvasIndex);
       if (fullyPacked) {

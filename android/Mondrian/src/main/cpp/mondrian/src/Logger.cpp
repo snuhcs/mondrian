@@ -76,7 +76,7 @@ void Logger::logFrame(const Frame* frame) {
   }
   std::lock_guard<std::mutex> lock(mtx);
   logFile << frame->vid << DELIM
-          << frame->frameIndex << DELIM
+          << frame->fid << DELIM
           << frame->scheduleID << DELIM
           << frame->PDExtractorID << DELIM
           << frame->OFExtractorID << DELIM
@@ -179,7 +179,7 @@ void Logger::logROI(const ROI* roi) {
   logFile
       // frame
       << roi->frame->vid << DELIM
-      << roi->frame->frameIndex << DELIM
+      << roi->frame->fid << DELIM
 
       // origLoc
       << roi->origLoc.l << DELIM
@@ -243,14 +243,14 @@ void Logger::logBoxesHeader() {
   logFile.flush();
 }
 
-void Logger::logBoxes(int vid, int frameIndex, const std::vector<BoundingBox>& boxes) {
+void Logger::logBoxes(int vid, int fid, const std::vector<BoundingBox>& boxes) {
   if (!logFile.is_open()) {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
   for (const auto& box : boxes) {
     logFile << vid << DELIM
-            << frameIndex << DELIM
+            << fid << DELIM
             << box.str() << '\n';
   }
   logFile.flush();

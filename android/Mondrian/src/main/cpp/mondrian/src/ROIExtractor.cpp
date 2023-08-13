@@ -62,7 +62,7 @@ MultiStream ROIExtractor::collectFrames(int currID) {
        currID,
        OFWaiting_.size(),
        OFProcessing_.size(),
-       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
+       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->fid);
   return streams;
 }
 
@@ -81,7 +81,7 @@ void ROIExtractor::work(int extractorId) {
 //      LOGD("[ROIExtractor %d] OF frame exists but not ready for OF extraction "
 //           "// fid=%d, useInfResult=%d",
 //           extractorId,
-//           (*OFWaiting_.begin())->frameIndex,
+//           (*OFWaiting_.begin())->fid,
 //           (*OFWaiting_.begin())->prevFrame->useInferenceResultForOF);
 //    }
     if (ofFrameExists && readyForOFExtraction) {
@@ -155,7 +155,7 @@ void ROIExtractor::work(int extractorId) {
     std::stringstream ss;
     ss << "[ROIExtractor " << extractorId << "] "
        << (pd ? " PD" : " OF")
-       << " (" << frame->vid << ", " << frame->frameIndex << ")"
+       << " (" << frame->vid << ", " << frame->fid << ")"
        << " #=" << std::count_if(frame->rois.begin(), frame->rois.end(),
                                  [pd](auto& roi) {
                                    return roi->type == (pd ? ROIType::PD : ROIType::OF);
@@ -194,7 +194,7 @@ void ROIExtractor::processPD(Frame* currFrame) const {
   // Get prevFrame
   const Frame* prevFrame = currFrame;
   for (int i = 0; i < config_.PD_INTERVAL; i++) {
-    if (prevFrame->frameIndex == 0) break;
+    if (prevFrame->fid == 0) break;
     prevFrame = prevFrame->prevFrame;
   }
   assert(prevFrame != nullptr && prevFrame != currFrame);

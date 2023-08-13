@@ -27,7 +27,7 @@ class Logger {
 
   void logBoxesHeader();
 
-  void logBoxes(int vid, int frameIndex, const std::vector<BoundingBox>& boxes);
+  void logBoxes(int vid, int fid, const std::vector<BoundingBox>& boxes);
 
  private:
   time_us fromBaseTime(const time_us& time) const;
