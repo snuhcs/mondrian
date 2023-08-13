@@ -13,13 +13,13 @@ namespace md {
 std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& streams,
                                               const ROIPackerType type) {
   switch (type) {
-    case MIN_MAX_PROPAGATION:return minMaxPropagation(streams);
+    case MIN_CONSECUTIVE_DROP:return minConsecutiveDrop(streams);
     case OF_CONFIDENCE:return ofConfidence(streams);
     default:assert(false);
   }
 }
 
-std::vector<MergedROI*> ROIPrioritizer::minMaxPropagation(const MultiStream& streams) {
+std::vector<MergedROI*> ROIPrioritizer::minConsecutiveDrop(const MultiStream& streams) {
   // roiMap[vid, roiID][frameIndex] = roi
   std::map<std::pair<int, int>, std::map<int, ROI*>> roiMap;
   for (const auto& [vid, stream] : streams) {

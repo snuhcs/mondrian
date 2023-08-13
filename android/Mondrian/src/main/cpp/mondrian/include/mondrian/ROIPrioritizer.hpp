@@ -70,7 +70,7 @@ class ROIPrioritizer {
                                        const ROIPackerType type);
 
  private:
-  static std::vector<MergedROI*> minMaxPropagation(const MultiStream& streams);
+  static std::vector<MergedROI*> minConsecutiveDrop(const MultiStream& streams);
 
   static std::vector<MergedROI*> ofConfidence(const MultiStream& streams);
 };

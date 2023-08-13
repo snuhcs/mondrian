@@ -79,8 +79,8 @@ std::string str(const ExecutionType& executionType) {
 }
 
 ROIPackerType roiPackerTypeOf(const std::string& roiPackerTypeStr) {
-  if (roiPackerTypeStr == "min_max_propagation") {
-    return MIN_MAX_PROPAGATION;
+  if (roiPackerTypeStr == "min_consecutive_drop") {
+    return MIN_CONSECUTIVE_DROP;
   } else if (roiPackerTypeStr == "of_confidence") {
     return OF_CONFIDENCE;
   } else {
@@ -90,8 +90,8 @@ ROIPackerType roiPackerTypeOf(const std::string& roiPackerTypeStr) {
 }
 
 std::string str(const ROIPackerType& roiPackerType) {
-  if (roiPackerType == MIN_MAX_PROPAGATION) {
-    return "min_max_propagation";
+  if (roiPackerType == MIN_CONSECUTIVE_DROP) {
+    return "min_consecutive_drop";
   } else if (roiPackerType == OF_CONFIDENCE) {
     return "of_confidence";
   } else {

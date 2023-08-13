@@ -52,7 +52,7 @@ enum Origin {
 };
 
 enum ROIPackerType {
-  MIN_MAX_PROPAGATION = 0,
+  MIN_CONSECUTIVE_DROP = 0,
   OF_CONFIDENCE,
 };
 
