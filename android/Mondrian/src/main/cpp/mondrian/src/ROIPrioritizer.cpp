@@ -20,7 +20,7 @@ std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& streams,
 }
 
 std::vector<MergedROI*> ROIPrioritizer::minConsecutiveDrop(const MultiStream& streams) {
-  std::map<std::pair<VID, ID>, std::map<FID, ROI*>> roiMap;
+  std::map<std::pair<VID, OID>, std::map<FID, ROI*>> roiMap;
   for (const auto& [vid, stream] : streams) {
     for (Frame* frame : stream) {
       if (frame == *stream.rbegin()) continue; // Skip last frame

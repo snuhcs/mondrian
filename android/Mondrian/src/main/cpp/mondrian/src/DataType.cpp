@@ -8,7 +8,7 @@
 
 namespace md {
 
-const ID INVALID_ID = -1;
+const OID INVALID_OID = -1;
 const char DELIM = '\t';
 const int NUM_LABELS = 80;
 const char* COCO_LABELS[] =

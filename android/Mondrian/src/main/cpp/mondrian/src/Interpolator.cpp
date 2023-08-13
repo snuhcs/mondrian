@@ -6,7 +6,7 @@ namespace md {
 
 void Interpolator::interpolate(MultiStream& frames, float thres) {
   for (const auto& [vid, aStreamFrames] : frames) {
-    std::set<ID> roiIds = getROIIds(aStreamFrames);
+    std::set<OID> roiIds = getROIIds(aStreamFrames);
     for (auto id : roiIds) {
       std::vector<ROI*> rois = getROIStream(aStreamFrames, id);
       std::vector<int> validIndices = findValidROIs(rois);
@@ -26,8 +26,8 @@ void Interpolator::interpolate(MultiStream& frames, float thres) {
   }
 }
 
-std::set<ID> Interpolator::getROIIds(const Stream& frames) {
-  std::set<ID> childIDs;
+std::set<OID> Interpolator::getROIIds(const Stream& frames) {
+  std::set<OID> childIDs;
   for (const Frame* frame : frames) {
     for (const auto& roi : frame->rois) {
       childIDs.insert(roi->id);
@@ -36,7 +36,7 @@ std::set<ID> Interpolator::getROIIds(const Stream& frames) {
   return childIDs;
 }
 
-std::vector<ROI*> Interpolator::getROIStream(const Stream& frames, ID roiId) {
+std::vector<ROI*> Interpolator::getROIStream(const Stream& frames, OID roiId) {
   std::vector<ROI*> roiStream;
   for (const Frame* frame : frames) {
     for (const auto& roi : frame->rois) {
@@ -52,7 +52,7 @@ std::vector<int> Interpolator::findValidROIs(std::vector<ROI*>& rois) {
   std::vector<int> indices;
   for (int i = 0; i < rois.size(); i++) {
     if (rois[i]->box != nullptr) {
-      assert(rois[i]->box->id != INVALID_ID);
+      assert(rois[i]->box->id != INVALID_OID);
       indices.push_back(i);
     }
   }

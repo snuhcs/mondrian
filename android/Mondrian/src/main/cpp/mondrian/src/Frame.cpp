@@ -107,10 +107,10 @@ void Frame::filterPDROIs(float overlap_thres) {
 void Frame::assignPDROIIDs() {
   for (auto& roi : rois) {
     if (roi->type == ROIType::PD) {
-      assert(roi->id == INVALID_ID);
+      assert(roi->id == INVALID_OID);
       roi->id = ROI::getNewIds(1).first;
     } else {
-      assert(roi->id != INVALID_ID);
+      assert(roi->id != INVALID_OID);
     }
   }
 }
@@ -299,9 +299,9 @@ bool Frame::isReadyToMarry(int packedCanvasIndex) const {
   bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIReady)
       && std::all_of(probingROIs.begin(), probingROIs.end(), isROIReady);
   bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
-                                     [](auto& box) { return box->id == INVALID_ID; });
+                                     [](auto& box) { return box->id == INVALID_OID; });
   bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),
-                                   [](auto& box) { return box->id != INVALID_ID; });
+                                   [](auto& box) { return box->id != INVALID_OID; });
   assert(isAllUnassigned || isAllAssigned);
   return isAllReady && isAllUnassigned;
 }

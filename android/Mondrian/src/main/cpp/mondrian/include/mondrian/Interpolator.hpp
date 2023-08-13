@@ -10,9 +10,9 @@ class Interpolator {
   static void interpolate(MultiStream& frames, float thres);
 
  private:
-  static std::set<ID> getROIIds(const Stream& frames);
+  static std::set<OID> getROIIds(const Stream& frames);
 
-  static std::vector<ROI*> getROIStream(const Stream& frames, ID roiId);
+  static std::vector<ROI*> getROIStream(const Stream& frames, OID roiId);
 
   static std::vector<int> findValidROIs(std::vector<ROI*>& childROIs);
 

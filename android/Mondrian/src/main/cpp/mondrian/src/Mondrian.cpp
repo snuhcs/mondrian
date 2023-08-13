@@ -181,12 +181,12 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   for (const BoundingBox& box : result.boxes) {
     auto& loc = box.loc;
     frame->boxes.push_back(std::make_unique<BoundingBox>(
-        INVALID_ID, box.loc, box.confidence, box.label, Origin::FULL_FRAME));
+        INVALID_OID, box.loc, box.confidence, box.label, Origin::FULL_FRAME));
   }
   patchReconstructor_->matchBoxesROIs(frame, true);
 
   for (auto& box : frame->boxes) {
-    assert(box->id != INVALID_ID);
+    assert(box->id != INVALID_OID);
   }
   frame->isBoxesReady = true;
   frame->endTime = NowMicros();
@@ -263,7 +263,7 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
       float newB = std::max(0.0f, (b.loc.b - float(y)) / mergedScale + mergedROI->loc().t);
       assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
       mergedROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
-          INVALID_ID, Rect(newL, newT, newR, newB), b.confidence, b.label, Origin::FULL_FRAME));
+          INVALID_OID, Rect(newL, newT, newR, newB), b.confidence, b.label, Origin::FULL_FRAME));
     }
   }
 

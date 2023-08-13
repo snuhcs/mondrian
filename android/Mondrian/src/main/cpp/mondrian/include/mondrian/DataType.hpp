@@ -10,11 +10,11 @@ namespace md {
 
 using VID = int;
 using FID = int;
-using ID = int;
+using OID = int;
 using IntPair = std::pair<int, int>;
 using IntPairs = std::vector<std::pair<int, int>>;
 
-extern const ID INVALID_ID;
+extern const OID INVALID_OID;
 extern const char DELIM;
 extern const int NUM_LABELS;
 extern const char* COCO_LABELS[];
@@ -141,17 +141,17 @@ struct Rect {
 class ROI;
 
 struct BoundingBox {
-  ID id;
+  OID id;
   Rect loc;
   float confidence;
   int label;
   ROI* srcROI;
   Origin origin;
-  ID choiceOfBox;
+  OID choiceOfBox;
 
-  BoundingBox(ID id, const Rect location, const float confidence, int label, Origin origin)
+  BoundingBox(OID id, const Rect location, const float confidence, int label, Origin origin)
       : id(id), loc(location), confidence(confidence), label(label), origin(origin),
-        srcROI(nullptr), choiceOfBox(INVALID_ID) {}
+        srcROI(nullptr), choiceOfBox(INVALID_OID) {}
 
   static std::string header() {
     std::stringstream ss;

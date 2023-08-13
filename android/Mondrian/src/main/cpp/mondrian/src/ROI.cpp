@@ -8,7 +8,7 @@ namespace md {
 const float ROI::INVALID_CONF = -1.0f;
 
 ROI::ROI(ROI* prevROI,
-         const ID id,
+         const OID id,
          Frame* frame,
          const Rect& origLoc,
          const ROIType type,

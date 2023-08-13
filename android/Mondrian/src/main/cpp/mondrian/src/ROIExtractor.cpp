@@ -217,7 +217,7 @@ void ROIExtractor::processPD(Frame* currFrame) const {
     if (config_.MIN_PD_ROI_SIZE <= pdRect.minWH && pdRect.maxWH <= config_.MAX_PD_ROI_SIZE) {
       currFrame->rois.emplace_back(new ROI(
           /*prevROI=*/nullptr,
-          /*id=*/INVALID_ID,
+          /*id=*/INVALID_OID,
           /*frame=*/currFrame,
           /*origLoc=*/pdRect,
           /*type=*/ROIType::PD,

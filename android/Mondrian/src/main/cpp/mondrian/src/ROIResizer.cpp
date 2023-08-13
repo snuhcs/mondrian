@@ -40,7 +40,7 @@ ROIResizer::ROIResizer(const ROIResizerConfig& config)
       predictor_(CANDIDATE_PREDICTORS.at(config.DATASET)),
       targetAreas_(AREA_LEVELS.at(config.DATASET)) {}
 
-std::pair<float, int> ROIResizer::getTargetScale(const ID id,
+std::pair<float, int> ROIResizer::getTargetScale(const OID id,
                                                  const Features& features,
                                                  const float area) {
   assert(features.type == ROIType::OF);
@@ -65,12 +65,12 @@ float ROIResizer::getTargetScale(const int scaleLevel, const float originalArea)
   return std::min(1.0f, targetScale);
 }
 
-bool ROIResizer::isCalibrated(const ID id, const int scaleLevel) const {
+bool ROIResizer::isCalibrated(const OID id, const int scaleLevel) const {
   return calibrationTable_.find(id) != calibrationTable_.end()
       && calibrationTable_.at(id).first == scaleLevel;
 }
 
-int ROIResizer::getMaxVotedLevel(const ID id, const Features& features) {
+int ROIResizer::getMaxVotedLevel(const OID id, const Features& features) {
   auto record = prevPredictionBuffer_.find(id);
   if (record == prevPredictionBuffer_.end()) {
     prevPredictionBuffer_[id] = CircularBuffer(int(targetAreas_.size()),

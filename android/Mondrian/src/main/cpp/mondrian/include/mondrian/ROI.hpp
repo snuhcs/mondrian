@@ -30,8 +30,8 @@ class ROI {
   std::vector<float> probeScales;
   std::vector<MergedROI*> roisForProbing;
 
-  inline static std::atomic<ID> lastId = 0;
-  ID id;
+  inline static std::atomic<OID> lastId = 0;
+  OID id;
   ROI* prevROI; // only valid with rois_
   ROI* nextROI; // only valid with rois_
   MergedROI* mergedROI;
@@ -46,7 +46,7 @@ class ROI {
   BoundingBox* box;
 
   ROI(ROI* prevROI,
-      const ID id,
+      const OID id,
       Frame* frame,
       const Rect& origLoc,
       const ROIType type,
@@ -60,10 +60,10 @@ class ROI {
 
   void eatPD(const Rect& PDRect);
 
-  static std::pair<ID, ID> getNewIds(unsigned long num) {
-    ID minId = lastId.fetch_add(num);
-    ID maxId = minId + num;
-    return std::pair<ID, ID>(minId, maxId); // [minId, maxId)
+  static std::pair<OID, OID> getNewIds(unsigned long num) {
+    OID minId = lastId.fetch_add(num);
+    OID maxId = minId + num;
+    return std::pair<OID, OID>(minId, maxId); // [minId, maxId)
   }
 
   float paddedArea() const {

@@ -24,7 +24,7 @@ class ROIResizer {
 
   ROIResizer(const ROIResizerConfig& config);
 
-  std::pair<float, int> getTargetScale(const ID id,
+  std::pair<float, int> getTargetScale(const OID id,
                                        const Features& features,
                                        const float area);
 
@@ -53,9 +53,9 @@ class ROIResizer {
 
   float getTargetScale(const int scaleLevel, const float originalArea) const;
 
-  bool isCalibrated(const ID id, const int scaleLevel) const;
+  bool isCalibrated(const OID id, const int scaleLevel) const;
 
-  int getMaxVotedLevel(const ID id, const Features& features);
+  int getMaxVotedLevel(const OID id, const Features& features);
 
   int predictLevelWithFeatures(const Features& features) const;
 
@@ -69,10 +69,10 @@ class ROIResizer {
   const std::vector<float> targetAreas_;
 
   // Save prev prediction to smooth the predicted size
-  std::map<ID, CircularBuffer> prevPredictionBuffer_;
+  std::map<OID, CircularBuffer> prevPredictionBuffer_;
 
   // Save <targetScale_ of ROI, calibration for that targetScale_>
-  std::map<ID, std::pair<int, float>> calibrationTable_;
+  std::map<OID, std::pair<int, float>> calibrationTable_;
 };
 
 } // namespace md
