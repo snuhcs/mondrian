@@ -137,14 +137,13 @@ void Mondrian::workSchedule() {
         /*roiWiseInference=*/config_.EXECUTION_TYPE == ROI_WISE_INFERENCE,
         /*startTimes=*/remainingTimesAfterPlanning);
     assert(!inferencePlan.empty());
-    LOGD("[Schedule %d] FullFid=%d | LatencyTable %s | "
-         "PlanningTime %lld | RemainingTimes %s | InferencePlan %s",
+    LOGD("[Schedule %d] FullFid=%d | RemainingTimes %s | PlanningTime %lld | LatencyTable %s",
          currID,
          fullFrameTarget != nullptr ? fullFrameTarget->frameIndex : -1,
-         str(latencyTable).c_str(),
-         planningTime_,
          str(remainingTimes).c_str(),
-         str(inferencePlan).c_str());
+         planningTime_,
+         str(latencyTable).c_str());
+    LOGD("[Schedule %d] InferencePlan %s", currID, str(inferencePlan).c_str());
 
     // Prepare Packed Canvases
     std::vector<PackedCanvas> packedCanvases = ROIPacker_->packCanvases(
