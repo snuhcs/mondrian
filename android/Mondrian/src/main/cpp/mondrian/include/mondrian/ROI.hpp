@@ -12,6 +12,7 @@
 
 namespace md {
 
+class BoundingBox;
 class Frame;
 class MergedROI;
 

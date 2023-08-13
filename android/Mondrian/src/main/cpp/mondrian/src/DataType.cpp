@@ -147,17 +147,4 @@ std::string str(const Origin& origin) {
   assert(false);
 }
 
-std::string str(const std::vector<InferenceInfo>& inferencePlan) {
-  std::stringstream ss;
-  for (int i = int(inferencePlan.size()) - 1; i >= 0; i--) {
-    const InferenceInfo& info = inferencePlan[i];
-    ss << "(" << str(info.device) << ", "
-       << info.size << ")";
-    if (i != 0) {
-      ss << ", ";
-    }
-  }
-  return ss.str();
-}
-
 } // namespace md

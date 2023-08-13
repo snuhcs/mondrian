@@ -5,9 +5,15 @@
 #include <map>
 
 #include "mondrian/DataType.hpp"
-#include "mondrian/Time.hpp"
 
 namespace md {
+
+struct InferenceInfo {
+  Device device;
+  int size;
+  time_us latency;
+  time_us accumulatedLatency = -1;
+};
 
 class InferencePlanner {
  public:
@@ -22,6 +28,8 @@ class InferencePlanner {
                                      const std::vector<time_us>& bars,
                                      std::map<long long, double>& profile);
 };
+
+std::string str(const std::vector<InferenceInfo>& inferencePlan);
 
 } // namespace md
 

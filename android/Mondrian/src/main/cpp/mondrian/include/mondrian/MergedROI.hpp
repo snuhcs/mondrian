@@ -8,6 +8,8 @@
 
 namespace md {
 
+class BoundingBox;
+
 class MergedROI {
  public:
   static int BORDER;

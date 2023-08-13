@@ -9,6 +9,7 @@
 
 namespace md {
 
+class InferenceInfo;
 class PackedCanvas;
 class ROIResizer;
 

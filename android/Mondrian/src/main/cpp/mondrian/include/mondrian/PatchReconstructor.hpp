@@ -8,6 +8,7 @@
 
 namespace md {
 
+class BoundingBox;
 class Frame;
 class PackedCanvas;
 class ROIResizer;

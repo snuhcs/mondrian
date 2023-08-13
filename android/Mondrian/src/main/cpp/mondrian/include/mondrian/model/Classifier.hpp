@@ -3,8 +3,8 @@
 
 #include "opencv2/core/mat.hpp"
 
+#include "mondrian/BoundingBox.hpp"
 #include "mondrian/DataType.hpp"
-#include "mondrian/Time.hpp"
 
 namespace md {
 

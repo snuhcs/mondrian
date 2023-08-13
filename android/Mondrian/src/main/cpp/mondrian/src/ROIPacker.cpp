@@ -3,6 +3,7 @@
 #include <numeric>
 #include <sstream>
 
+#include "mondrian/InferencePlanner.hpp"
 #include "mondrian/PackedCanvas.hpp"
 #include "mondrian/ROIPrioritizer.hpp"
 #include "mondrian/ROIResizer.hpp"

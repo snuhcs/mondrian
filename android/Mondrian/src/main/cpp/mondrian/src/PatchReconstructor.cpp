@@ -2,6 +2,7 @@
 
 #include <set>
 
+#include "mondrian/BoundingBox.hpp"
 #include "mondrian/Log.hpp"
 #include "mondrian/PackedCanvas.hpp"
 #include "mondrian/ROIResizer.hpp"
