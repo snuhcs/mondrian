@@ -23,7 +23,7 @@ class ROI {
   const Rect origLoc;
   Rect paddedLoc;
 
-  Type type;
+  ROIType type;
   Origin origin;
   int label;
   Features features;
@@ -49,7 +49,7 @@ class ROI {
       const ID id,
       Frame* frame,
       const Rect& origLoc,
-      const Type type,
+      const ROIType type,
       const Origin origin,
       const int label,
       const OFFeatures ofFeatures,

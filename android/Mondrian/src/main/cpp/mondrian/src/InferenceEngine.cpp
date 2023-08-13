@@ -14,9 +14,9 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  jobject app)
     : config_(config) {
   for (Device device : config.DEVICES) {
-    if (config.MODEL == "YOLO_V5" && device == GPU) {
+    if (config.MODEL == "YOLO_V5" && device == Device::GPU) {
       addClassifiers<TfLiteYoloV5Classifier>(device, config, env, app);
-    } else if (config.MODEL == "YOLO_V5" && device == DSP) {
+    } else if (config.MODEL == "YOLO_V5" && device == Device::DSP) {
       addClassifiers<TfLiteYoloV5ClassifierDSP>(device, config, env, app);
     } else {
       LOGE("Running %s model on %s is not supported yet",
@@ -42,7 +42,7 @@ void InferenceEngine::addClassifiers(Device device,
     classifiers_.push_back(std::move(classifier));
   }
 
-  if (device == GPU) {
+  if (device == Device::GPU) {
     // classifier for full frame inference
     // identical with above code block inside the for loop
     int inputSize = config.FULL_FRAME_SIZE;

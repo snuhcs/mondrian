@@ -62,7 +62,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   logThread_ = std::thread([this]() { workLog(); });
 
   // If frame-wise inference, skip ROI extraction and scheduling
-  if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) return;
+  if (config_.EXECUTION_TYPE == ExecutionType::FRAME_WISE_INFERENCE) return;
 
   // Latency profiling
   inferenceEngine_->profileLatency();
@@ -134,7 +134,7 @@ void Mondrian::workSchedule() {
     std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
         /*latencyTable=*/latencyTable,
         /*interval=*/scheduleInterval_,
-        /*roiWiseInference=*/config_.EXECUTION_TYPE == ROI_WISE_INFERENCE,
+        /*roiWiseInference=*/config_.EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE,
         /*startTimes=*/remainingTimesAfterPlanning);
     assert(!inferencePlan.empty());
     LOGD("[Schedule %d] FullFid=%d | RemainingTimes %s | PlanningTime %lld | LatencyTable %s",
@@ -181,7 +181,7 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   for (const BoundingBox& box : result.boxes) {
     auto& loc = box.loc;
     frame->boxes.push_back(std::make_unique<BoundingBox>(
-        INVALID_ID, box.loc, box.confidence, box.label, O_FULL_FRAME));
+        INVALID_ID, box.loc, box.confidence, box.label, Origin::FULL_FRAME));
   }
   patchReconstructor_->matchBoxesROIs(frame, true);
 
@@ -217,7 +217,7 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
          str(packedCanvases[i].getPackedFrames()).c_str());
     assert(result.device == packedCanvases[i].device);
     for (Frame* frame : packedCanvases[i].getPackedFrames()) {
-      if (frame->inferenceDevice == NO_DEVICE) {
+      if (frame->inferenceDevice == Device::INVALID) {
         frame->inferenceFrameSize = inputSize;
         frame->inferenceDevice = result.device;
         frame->packedInferenceStartTime = result.detectionStart;
@@ -248,7 +248,7 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
     assert(result.device == packedCanvas.device);
     auto [x, y] = (*packedCanvas.packedROIs.begin())->packedXY();
     MergedROI* mergedROI = *packedCanvas.packedROIs.begin();
-    if (mergedROI->frame()->inferenceDevice == NO_DEVICE) {
+    if (mergedROI->frame()->inferenceDevice == Device::INVALID) {
       mergedROI->frame()->inferenceFrameSize = packedCanvas.packedCanvasSize;
       mergedROI->frame()->inferenceDevice = result.device;
       mergedROI->frame()->packedInferenceStartTime = result.detectionStart;
@@ -263,7 +263,7 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
       float newB = std::max(0.0f, (b.loc.b - float(y)) / mergedScale + mergedROI->loc().t);
       assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
       mergedROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
-          INVALID_ID, Rect(newL, newT, newR, newB), b.confidence, b.label, O_FULL_FRAME));
+          INVALID_ID, Rect(newL, newT, newR, newB), b.confidence, b.label, Origin::FULL_FRAME));
     }
   }
 
@@ -308,7 +308,7 @@ void Mondrian::enqueue(const int vid, const cv::Mat& yuvMat) {
     });
   }
 
-  if (config_.EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
+  if (config_.EXECUTION_TYPE == ExecutionType::FRAME_WISE_INFERENCE) {
     enqueueFrameWise(frame);
   } else {
     enqueue(frame);
@@ -370,7 +370,7 @@ void Mondrian::workPostprocess() {
 
     // Enqueue packed canvases
     for (const auto& packedCanvas : packedCanvases) {
-      assert(packedCanvas.device != NO_DEVICE);
+      assert(packedCanvas.device != Device::INVALID);
       inferenceEngine_->enqueue(
           /*rgbMat=*/packedCanvas.packedMat,
           /*device=*/packedCanvas.device,
@@ -385,7 +385,7 @@ void Mondrian::workPostprocess() {
     }
 
     // Handle packed canvases or ROI-wise inference results
-    if (config_.EXECUTION_TYPE == ROI_WISE_INFERENCE) {
+    if (config_.EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE) {
       handleROIWiseResults(packedCanvases);
     } else {
       handlePackedCanvasesResults(packedCanvases, currID);

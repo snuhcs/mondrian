@@ -2,7 +2,6 @@
 
 #include <fstream>
 
-#include "mondrian/DataType.hpp"
 #include "mondrian/Log.hpp"
 
 namespace md {
@@ -149,7 +148,7 @@ void MondrianConfig::test() const {
   std::set<std::string> datasets = {"pretrained", "virat", "mta"};
 
   // Common
-  if (EXECUTION_TYPE == FRAME_WISE_INFERENCE) {
+  if (EXECUTION_TYPE == ExecutionType::FRAME_WISE_INFERENCE) {
     assert(FULL_FRAME_INTERVAL == 0);
   } else {
     assert(FULL_FRAME_INTERVAL > 0);
@@ -164,9 +163,10 @@ void MondrianConfig::test() const {
   } else {
     assert(inferenceEngineConfig.DATASET == roiResizerConfig.DATASET);
     assert(roiResizerConfig.NUM_PROBE_STEPS == 0 || roiResizerConfig.PROBE_STEP_SIZE > 0);
-    assert(EXECUTION_TYPE == MONDRIAN || roiResizerConfig.NUM_PROBE_STEPS == 0);
+    assert(EXECUTION_TYPE == ExecutionType::MONDRIAN || roiResizerConfig.NUM_PROBE_STEPS == 0);
   }
-  if (EXECUTION_TYPE == ROI_WISE_INFERENCE || EXECUTION_TYPE == EMULATED_BATCH) {
+  if (EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE
+      || EXECUTION_TYPE == ExecutionType::EMULATED_BATCH) {
     assert(roiResizerConfig.NUM_PROBE_STEPS == 0);
   }
 
@@ -174,7 +174,7 @@ void MondrianConfig::test() const {
   assert(datasets.find(inferenceEngineConfig.DATASET) != datasets.end());
   assert(!inferenceEngineConfig.DEVICES.empty());
   assert(!inferenceEngineConfig.INPUT_SIZES.empty());
-  if (EXECUTION_TYPE == ROI_WISE_INFERENCE) {
+  if (EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE) {
     assert(inferenceEngineConfig.INPUT_SIZES.size() == 1);
     assert(ROI_SIZE == *inferenceEngineConfig.INPUT_SIZES.begin());
   }
@@ -184,7 +184,7 @@ void MondrianConfig::test() const {
   bool isDivisible = std::all_of(
       inferenceEngineConfig.INPUT_SIZES.begin(), inferenceEngineConfig.INPUT_SIZES.end(),
       [this](int input_size) { return input_size % ROI_SIZE == 0; });
-  assert(EXECUTION_TYPE != EMULATED_BATCH || isDivisible);
+  assert(EXECUTION_TYPE != ExecutionType::EMULATED_BATCH || isDivisible);
 }
 
 void MondrianConfig::print() const {

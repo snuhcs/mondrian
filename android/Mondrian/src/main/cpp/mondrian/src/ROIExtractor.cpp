@@ -157,7 +157,9 @@ void ROIExtractor::work(int extractorId) {
        << (pd ? " PD" : " OF")
        << " (" << frame->vid << ", " << frame->frameIndex << ")"
        << " #=" << std::count_if(frame->rois.begin(), frame->rois.end(),
-                                 [pd](auto& roi) { return roi->type == (pd ? PD : OF); })
+                                 [pd](auto& roi) {
+                                   return roi->type == (pd ? ROIType::PD : ROIType::OF);
+                                 })
        << " PDQ=" << PDWaiting_.size()
        << " OFQ=" << OFWaiting_.size()
        << " RQ=" << std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
@@ -218,8 +220,8 @@ void ROIExtractor::processPD(Frame* currFrame) const {
           /*id=*/INVALID_ID,
           /*frame=*/currFrame,
           /*origLoc=*/pdRect,
-          /*type=*/PD,
-          /*origin=*/O_PD,
+          /*type=*/ROIType::PD,
+          /*origin=*/Origin::PD,
           /*label=*/-1,
           /*ofFeatures=*/OFFeatures(),
           /*confidence=*/ROI::INVALID_CONF,
@@ -231,7 +233,7 @@ void ROIExtractor::processPD(Frame* currFrame) const {
 
 void ROIExtractor::processOF(Frame* currFrame) const {
   assert(std::all_of(currFrame->rois.begin(), currFrame->rois.end(),
-                     [](auto& roi) { return roi->type == PD; }));
+                     [](auto& roi) { return roi->type == ROIType::PD; }));
   currFrame->opticalFlowROIProcessStartTime = NowMicros();
 
   Rect imageSize(0.0f, 0.0f, float(currFrame->width()), float(currFrame->height()));
@@ -251,7 +253,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
           /*location=*/clippedLoc,
           /*confidence=*/box->confidence,
           /*label=*/box->label,
-          /*origin=*/O_PACKED_CANVAS);
+          /*origin=*/Origin::FULL_FRAME);
       prevBox.srcROI = box->srcROI;
       prevBoxes.push_back(prevBox);
     }
@@ -314,7 +316,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
         /*id=*/box.id,
         /*frame=*/currFrame,
         /*origLoc=*/currLoc,
-        /*type=*/OF,
+        /*type=*/ROIType::OF,
         /*origin=*/box.origin,
         /*label=*/box.label,
         /*ofFeatures=*/ofFeatures,

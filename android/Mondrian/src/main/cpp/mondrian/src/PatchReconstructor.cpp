@@ -81,12 +81,12 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
       if (maxROI->isProbing()) {
         maxROI->frame()->probingBoxes.push_back(std::make_unique<BoundingBox>(
             INVALID_ID, reconstructBoxPos(box, maxROI),
-            box.confidence, box.label, O_PACKED_CANVAS));
+            box.confidence, box.label, Origin::FULL_FRAME));
         maxROI->setProbingBox(maxROI->frame()->probingBoxes.rbegin()->get());
       } else {
         maxROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
             INVALID_ID, reconstructBoxPos(box, maxROI),
-            box.confidence, box.label, O_INVALID));
+            box.confidence, box.label, Origin::INVALID));
       }
     }
   }
@@ -184,9 +184,9 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
       assert(id < idRange.second);
       box->id = id++;
       if (isFullFrame) {
-        box->origin = O_NEW_FULL_FRAME;
+        box->origin = Origin::NEW_FULL_FRAME;
       } else {
-        box->origin = O_NEW_PACKED_CANVAS;
+        box->origin = Origin::NEW_PACKED_CANVAS;
       }
       assert(box->srcROI == nullptr);
     }

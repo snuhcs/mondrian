@@ -13,10 +13,10 @@ namespace md {
 std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& streams,
                                               const ROIPackerType type) {
   switch (type) {
-    case MIN_CONSECUTIVE_DROP:return minConsecutiveDrop(streams);
-    case OF_CONFIDENCE:return ofConfidence(streams);
-    default:assert(false);
+    case ROIPackerType::MIN_CONSECUTIVE_DROP: return minConsecutiveDrop(streams);
+    case ROIPackerType::OF_CONFIDENCE: return ofConfidence(streams);
   }
+  assert(false);
 }
 
 std::vector<MergedROI*> ROIPrioritizer::minConsecutiveDrop(const MultiStream& streams) {

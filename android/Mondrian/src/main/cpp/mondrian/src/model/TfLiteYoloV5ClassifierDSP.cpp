@@ -149,7 +149,7 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::postprocess(int width, int h
                                  (float) dequantize(outputs[i * 85 + 3]),
                                  (float) width, (float) height);
       if (rect.l <= rect.r && rect.t <= rect.b) {
-        boxes.emplace_back(INVALID_ID, rect, maxConfidence, maxLabel, O_INVALID);
+        boxes.emplace_back(INVALID_ID, rect, maxConfidence, maxLabel, Origin::INVALID);
       }
     }
   }
@@ -175,7 +175,7 @@ Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float 
 }
 
 Device TfLiteYoloV5ClassifierDSP::device() const {
-  return DSP;
+  return Device::DSP;
 }
 
 float TfLiteYoloV5ClassifierDSP::dequantize(uint8_t value) const {

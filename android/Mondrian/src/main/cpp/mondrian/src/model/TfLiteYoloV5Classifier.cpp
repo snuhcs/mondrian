@@ -130,7 +130,7 @@ std::vector<BoundingBox> TfLiteYoloV5Classifier::postprocess(int width, int heig
                                  (float) outputs[i * 85 + 3],
                                  (float) width, (float) height);
       if (rect.l <= rect.r && rect.t <= rect.b) {
-        boxes.emplace_back(INVALID_ID, rect, maxConfidence, maxLabel, O_INVALID);
+        boxes.emplace_back(INVALID_ID, rect, maxConfidence, maxLabel, Origin::INVALID);
       }
     }
   }
@@ -156,7 +156,7 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
 }
 
 Device TfLiteYoloV5Classifier::device() const {
-  return GPU;
+  return Device::GPU;
 }
 
 } // namespace md

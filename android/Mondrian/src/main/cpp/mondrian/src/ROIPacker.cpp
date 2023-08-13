@@ -39,7 +39,7 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
         /*roiResizer=*/roiResizer_,
         /*executionType=*/executionType_,
         /*noDownsampling=*/config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
-    if (executionType_ == ROI_WISE_INFERENCE) {
+    if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
       for (auto& mergedROI : lastFrame->mergedROIs) {
         if (!freeRectsVec.empty()) {
           mergedROI->setPackInfo({0, 0},
@@ -85,7 +85,7 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
 
   // Pack MergedROIs
   for (MergedROI* mergedROI : orderedMergedROIs) {
-    if (executionType_ == ROI_WISE_INFERENCE) {
+    if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
       if (!freeRectsVec.empty()) {
         mergedROI->setPackInfo({0, 0},
                                (int) freeRectsVec.size() - 1,
@@ -169,7 +169,7 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
       int i = backward
               ? int(copiedFreeRectsVec.size()) - 1 - _i
               : _i;
-      if (executionType_ == EMULATED_BATCH) {
+      if (executionType_ == ExecutionType::EMULATED_BATCH) {
         pack_j = !copiedFreeRectsVec[i].empty() ? 0 : -1;
       } else {
         pack_j = getBestFitFreeRectIndex(copiedFreeRectsVec[i], w, h);
@@ -187,7 +187,7 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
     const IntRect& rect = copiedFreeRectsVec[pack_i][pack_j];
     packIndices.emplace_back(pack_i, pack_j);
     packLocations.emplace_back(rect.l, rect.t);
-    if (executionType_ == EMULATED_BATCH) {
+    if (executionType_ == ExecutionType::EMULATED_BATCH) {
       packBox(copiedFreeRectsVec, roiSize_, roiSize_, pack_i, pack_j);
     } else {
       packBox(copiedFreeRectsVec, w, h, pack_i, pack_j);
@@ -204,7 +204,7 @@ void ROIPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
   for (int i = 0; i < boxWH.size(); i++) {
     auto [w, h] = boxWH[i];
     auto [pack_i, pack_j] = indices[i];
-    if (executionType_ == EMULATED_BATCH) {
+    if (executionType_ == ExecutionType::EMULATED_BATCH) {
       packBox(freeRectsVec, roiSize_, roiSize_, pack_i, pack_j);
     } else {
       packBox(freeRectsVec, w, h, pack_i, pack_j);

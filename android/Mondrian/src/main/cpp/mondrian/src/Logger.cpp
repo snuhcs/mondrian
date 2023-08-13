@@ -38,34 +38,34 @@ void Logger::logFrameHeader() {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << "videoId" << delim
-          << "frameIndex" << delim
-          << "scheduleID" << delim
-          << "PDExtractorID" << delim
-          << "OFExtractorID" << delim
-          << "numBoxes" << delim
-          << "numROIs" << delim
-          << "numMergedROIs" << delim
-          << "inferenceFrameSize" << delim
-          << "inferenceDevice" << delim
-          << "enqueueTime" << delim
-          << "fullInferenceStartTime" << delim
-          << "fullInferenceEndTime" << delim
-          << "pixelDiffROIProcessStartTime" << delim
-          << "pixelDiffROIProcessEndTime" << delim
-          << "opticalFlowROIProcessStartTime" << delim
-          << "opticalFlowROIProcessEndTime" << delim
-          << "resizeStartTime" << delim
-          << "resizeEndTime" << delim
-          << "mergeROIStartTime" << delim
-          << "mergeROIEndTime" << delim
-          << "packingStartTime" << delim
-          << "packingEndTime" << delim
-          << "scheduledTime" << delim
-          << "packedInferenceStartTime" << delim
-          << "packedInferenceEndTime" << delim
-          << "reconstructStartTime" << delim
-          << "reconstructEndTime" << delim
+  logFile << "videoId" << DELIM
+          << "frameIndex" << DELIM
+          << "scheduleID" << DELIM
+          << "PDExtractorID" << DELIM
+          << "OFExtractorID" << DELIM
+          << "numBoxes" << DELIM
+          << "numROIs" << DELIM
+          << "numMergedROIs" << DELIM
+          << "inferenceFrameSize" << DELIM
+          << "inferenceDevice" << DELIM
+          << "enqueueTime" << DELIM
+          << "fullInferenceStartTime" << DELIM
+          << "fullInferenceEndTime" << DELIM
+          << "pixelDiffROIProcessStartTime" << DELIM
+          << "pixelDiffROIProcessEndTime" << DELIM
+          << "opticalFlowROIProcessStartTime" << DELIM
+          << "opticalFlowROIProcessEndTime" << DELIM
+          << "resizeStartTime" << DELIM
+          << "resizeEndTime" << DELIM
+          << "mergeROIStartTime" << DELIM
+          << "mergeROIEndTime" << DELIM
+          << "packingStartTime" << DELIM
+          << "packingEndTime" << DELIM
+          << "scheduledTime" << DELIM
+          << "packedInferenceStartTime" << DELIM
+          << "packedInferenceEndTime" << DELIM
+          << "reconstructStartTime" << DELIM
+          << "reconstructEndTime" << DELIM
           << "endTime" << '\n';
   logFile.flush();
 }
@@ -75,34 +75,34 @@ void Logger::logFrame(const Frame* frame) {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << frame->vid << delim
-          << frame->frameIndex << delim
-          << frame->scheduleID << delim
-          << frame->PDExtractorID << delim
-          << frame->OFExtractorID << delim
-          << frame->boxes.size() << delim
-          << frame->rois.size() << delim
-          << frame->mergedROIs.size() << delim
-          << frame->inferenceFrameSize << delim
-          << frame->inferenceDevice << delim
-          << fromBaseTime(frame->enqueueTime) << delim
-          << fromBaseTime(frame->fullInferenceStartTime) << delim
-          << fromBaseTime(frame->fullInferenceEndTime) << delim
-          << fromBaseTime(frame->pixelDiffROIProcessStartTime) << delim
-          << fromBaseTime(frame->pixelDiffROIProcessEndTime) << delim
-          << fromBaseTime(frame->opticalFlowROIProcessStartTime) << delim
-          << fromBaseTime(frame->opticalFlowROIProcessEndTime) << delim
-          << fromBaseTime(frame->resizeStartTime) << delim
-          << fromBaseTime(frame->resizeEndTime) << delim
-          << fromBaseTime(frame->mergeROIStartTime) << delim
-          << fromBaseTime(frame->mergeROIEndTime) << delim
-          << fromBaseTime(frame->packingStartTime) << delim
-          << fromBaseTime(frame->packingEndTime) << delim
-          << fromBaseTime(frame->scheduledTime) << delim
-          << fromBaseTime(frame->packedInferenceStartTime) << delim
-          << fromBaseTime(frame->packedInferenceEndTime) << delim
-          << fromBaseTime(frame->reconstructStartTime) << delim
-          << fromBaseTime(frame->reconstructEndTime) << delim
+  logFile << frame->vid << DELIM
+          << frame->frameIndex << DELIM
+          << frame->scheduleID << DELIM
+          << frame->PDExtractorID << DELIM
+          << frame->OFExtractorID << DELIM
+          << frame->boxes.size() << DELIM
+          << frame->rois.size() << DELIM
+          << frame->mergedROIs.size() << DELIM
+          << frame->inferenceFrameSize << DELIM
+          << str(frame->inferenceDevice) << DELIM
+          << fromBaseTime(frame->enqueueTime) << DELIM
+          << fromBaseTime(frame->fullInferenceStartTime) << DELIM
+          << fromBaseTime(frame->fullInferenceEndTime) << DELIM
+          << fromBaseTime(frame->pixelDiffROIProcessStartTime) << DELIM
+          << fromBaseTime(frame->pixelDiffROIProcessEndTime) << DELIM
+          << fromBaseTime(frame->opticalFlowROIProcessStartTime) << DELIM
+          << fromBaseTime(frame->opticalFlowROIProcessEndTime) << DELIM
+          << fromBaseTime(frame->resizeStartTime) << DELIM
+          << fromBaseTime(frame->resizeEndTime) << DELIM
+          << fromBaseTime(frame->mergeROIStartTime) << DELIM
+          << fromBaseTime(frame->mergeROIEndTime) << DELIM
+          << fromBaseTime(frame->packingStartTime) << DELIM
+          << fromBaseTime(frame->packingEndTime) << DELIM
+          << fromBaseTime(frame->scheduledTime) << DELIM
+          << fromBaseTime(frame->packedInferenceStartTime) << DELIM
+          << fromBaseTime(frame->packedInferenceEndTime) << DELIM
+          << fromBaseTime(frame->reconstructStartTime) << DELIM
+          << fromBaseTime(frame->reconstructEndTime) << DELIM
           << fromBaseTime(frame->endTime) << '\n';
   logFile.flush();
 }
@@ -114,57 +114,57 @@ void Logger::logROIHeader() {
   std::lock_guard<std::mutex> lock(mtx);
   logFile
       // frame
-      << "videoId" << delim
-      << "frameIndex" << delim
+      << "videoId" << DELIM
+      << "frameIndex" << DELIM
 
       // origLoc
-      << "origLoc_l" << delim
-      << "origLoc_t" << delim
-      << "origLoc_r" << delim
-      << "origLoc_b" << delim
+      << "origLoc_l" << DELIM
+      << "origLoc_t" << DELIM
+      << "origLoc_r" << DELIM
+      << "origLoc_b" << DELIM
 
       // paddedLoc
-      << "paddedLoc_l" << delim
-      << "paddedLoc_t" << delim
-      << "paddedLoc_r" << delim
-      << "paddedLoc_b" << delim
+      << "paddedLoc_l" << DELIM
+      << "paddedLoc_t" << DELIM
+      << "paddedLoc_r" << DELIM
+      << "paddedLoc_b" << DELIM
 
       // type & origin
-      << "type" << delim
-      << "origin" << delim
+      << "type" << DELIM
+      << "origin" << DELIM
 
       // features
-      << "width" << delim
-      << "height" << delim
-      << "xyRatio" << delim
-      << "confidence" << delim
+      << "width" << DELIM
+      << "height" << DELIM
+      << "xyRatio" << DELIM
+      << "confidence" << DELIM
 
       // OF features
-      << "shiftAvgX" << delim
-      << "shiftAvgY" << delim
-      << "shiftStdX" << delim
-      << "shiftStdY" << delim
-      << "shiftNcc" << delim
-      << "avgErr" << delim
+      << "shiftAvgX" << DELIM
+      << "shiftAvgY" << DELIM
+      << "shiftStdX" << DELIM
+      << "shiftStdY" << DELIM
+      << "shiftNcc" << DELIM
+      << "avgErr" << DELIM
 
-      << "numProbingROIs" << delim
-      << "id" << delim
+      << "numProbingROIs" << DELIM
+      << "id" << DELIM
 
       // Packing info
-      << "mergedLoc_l" << delim
-      << "mergedLoc_t" << delim
-      << "mergedLoc_r" << delim
-      << "mergedLoc_b" << delim
-      << "packedXY_x" << delim
-      << "packedXY_y" << delim
-      << "mergedScale" << delim
-      << "absolutePackedCanvasIndex" << delim
-      << "packedCanvasSize" << delim
+      << "mergedLoc_l" << DELIM
+      << "mergedLoc_t" << DELIM
+      << "mergedLoc_r" << DELIM
+      << "mergedLoc_b" << DELIM
+      << "packedXY_x" << DELIM
+      << "packedXY_y" << DELIM
+      << "mergedScale" << DELIM
+      << "absolutePackedCanvasIndex" << DELIM
+      << "packedCanvasSize" << DELIM
 
-      << "box" << delim
+      << "box" << DELIM
 
-      << "maxEdgeLength" << delim
-      << "targetScale" << delim
+      << "maxEdgeLength" << DELIM
+      << "targetScale" << DELIM
       << "scaleLevel" << '\n';
   logFile.flush();
 }
@@ -178,56 +178,56 @@ void Logger::logROI(const ROI* roi) {
   std::lock_guard<std::mutex> logLock(mtx);
   logFile
       // frame
-      << roi->frame->vid << delim
-      << roi->frame->frameIndex << delim
+      << roi->frame->vid << DELIM
+      << roi->frame->frameIndex << DELIM
 
       // origLoc
-      << roi->origLoc.l << delim
-      << roi->origLoc.t << delim
-      << roi->origLoc.r << delim
-      << roi->origLoc.b << delim
+      << roi->origLoc.l << DELIM
+      << roi->origLoc.t << DELIM
+      << roi->origLoc.r << DELIM
+      << roi->origLoc.b << DELIM
 
       // paddedLoc
-      << roi->paddedLoc.l << delim
-      << roi->paddedLoc.t << delim
-      << roi->paddedLoc.r << delim
-      << roi->paddedLoc.b << delim
+      << roi->paddedLoc.l << DELIM
+      << roi->paddedLoc.t << DELIM
+      << roi->paddedLoc.r << DELIM
+      << roi->paddedLoc.b << DELIM
 
       // type & origin
-      << roi->type << delim
-      << roi->origin << delim
+      << str(roi->type) << DELIM
+      << str(roi->origin) << DELIM
 
       // features
-      << roi->features.width << delim
-      << roi->features.height << delim
-      << roi->features.xyRatio << delim
-      << roi->features.confidence << delim
+      << roi->features.width << DELIM
+      << roi->features.height << DELIM
+      << roi->features.xyRatio << DELIM
+      << roi->features.confidence << DELIM
 
       // OF features
-      << roi->features.ofFeatures.shiftAvg.first << delim
-      << roi->features.ofFeatures.shiftAvg.second << delim
-      << roi->features.ofFeatures.shiftStd.first << delim
-      << roi->features.ofFeatures.shiftStd.second << delim
-      << roi->features.ofFeatures.shiftNcc << delim
-      << roi->features.ofFeatures.avgErr << delim
+      << roi->features.ofFeatures.shiftAvg.first << DELIM
+      << roi->features.ofFeatures.shiftAvg.second << DELIM
+      << roi->features.ofFeatures.shiftStd.first << DELIM
+      << roi->features.ofFeatures.shiftStd.second << DELIM
+      << roi->features.ofFeatures.shiftNcc << DELIM
+      << roi->features.ofFeatures.avgErr << DELIM
 
-      << roi->roisForProbing.size() << delim
-      << roi->id << delim
+      << roi->roisForProbing.size() << DELIM
+      << roi->id << DELIM
 
-      << mergedROI->loc().l << delim
-      << mergedROI->loc().t << delim
-      << mergedROI->loc().r << delim
-      << mergedROI->loc().b << delim
-      << mergedROI->packedXY().first << delim
-      << mergedROI->packedXY().second << delim
-      << mergedROI->targetScale() << delim
-      << mergedROI->absolutePackedCanvasIndex() << delim
-      << mergedROI->packedCanvasSize() << delim
+      << mergedROI->loc().l << DELIM
+      << mergedROI->loc().t << DELIM
+      << mergedROI->loc().r << DELIM
+      << mergedROI->loc().b << DELIM
+      << mergedROI->packedXY().first << DELIM
+      << mergedROI->packedXY().second << DELIM
+      << mergedROI->targetScale() << DELIM
+      << mergedROI->absolutePackedCanvasIndex() << DELIM
+      << mergedROI->packedCanvasSize() << DELIM
 
-      << "X" << delim  // TODO: handle roi->box validity
+      << "X" << DELIM  // TODO: handle roi->box validity
 
-      << roi->maxEdgeLength << delim
-      << roi->targetScale() << delim
+      << roi->maxEdgeLength << DELIM
+      << roi->targetScale() << DELIM
       << roi->scaleLevel() << '\n';
   logFile.flush();
 }
@@ -237,9 +237,9 @@ void Logger::logBoxesHeader() {
     return;
   }
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << "videoId" << delim
-          << "frameIndex" << delim
-          << BoundingBox::header(delim) << '\n';
+  logFile << "videoId" << DELIM
+          << "frameIndex" << DELIM
+          << BoundingBox::header() << '\n';
   logFile.flush();
 }
 
@@ -249,9 +249,9 @@ void Logger::logBoxes(int vid, int frameIndex, const std::vector<BoundingBox>& b
   }
   std::lock_guard<std::mutex> lock(mtx);
   for (const auto& box : boxes) {
-    logFile << vid << delim
-            << frameIndex << delim
-            << box.str(delim) << '\n';
+    logFile << vid << DELIM
+            << frameIndex << DELIM
+            << box.str() << '\n';
   }
   logFile.flush();
 }

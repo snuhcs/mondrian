@@ -43,7 +43,7 @@ ROIResizer::ROIResizer(const ROIResizerConfig& config)
 std::pair<float, int> ROIResizer::getTargetScale(const ID id,
                                                  const Features& features,
                                                  const float area) {
-  assert(features.type == OF);
+  assert(features.type == ROIType::OF);
   const int targetLevel = getMaxVotedLevel(id, features);
   assert(0 <= targetLevel && targetLevel < targetAreas_.size());
   assert(features.width * features.height == area);
@@ -84,7 +84,7 @@ int ROIResizer::predictLevelWithFeatures(const Features& features) const {
   if (config_.STATIC_AREA) {
     return STATIC_LEVEL;
   }
-  assert(features.type == OF);
+  assert(features.type == ROIType::OF);
   auto& [shiftAvgX, shiftAvgY] = features.ofFeatures.shiftAvg;
   auto& [shiftStdX, shiftStdY] = features.ofFeatures.shiftStd;
   float shiftAvg = shiftAvgX * shiftAvgX + shiftAvgY * shiftAvgY;
