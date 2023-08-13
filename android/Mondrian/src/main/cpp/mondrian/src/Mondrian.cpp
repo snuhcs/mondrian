@@ -40,17 +40,17 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   config_.test();
 
   // Create loggers
-  if (config.LOG_BOXES) {
-    loggerBoxes_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
-    loggerBoxes_->logBoxesHeader();
+  if (config.LOG_FRAME) {
+    loggerFrame_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/frame.csv");
+    loggerFrame_->logFrameHeader();
   }
   if (config.LOG_ROI) {
     loggerROI_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/roi.csv");
     loggerROI_->logROIHeader();
   }
-  if (config.LOG_FRAME) {
-    loggerFrame_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/frame.csv");
-    loggerFrame_->logTimelineHeader();
+  if (config.LOG_BOXES) {
+    loggerBoxes_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
+    loggerBoxes_->logBoxesHeader();
   }
 
   // Prepare frame buffers
@@ -286,7 +286,7 @@ void Mondrian::releaseFrames(const MultiStream& streams) {
 
 void Mondrian::log(const Frame* frame) {
   if (loggerFrame_) {
-    loggerFrame_->logTimeline(frame);
+    loggerFrame_->logFrame(frame);
   }
   if (loggerROI_) {
     for (auto& roi : frame->rois) {

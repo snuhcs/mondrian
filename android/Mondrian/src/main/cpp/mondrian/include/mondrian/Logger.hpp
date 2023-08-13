@@ -19,17 +19,17 @@ class Logger {
 
   ~Logger();
 
-  void logBoxesHeader();
+  void logFrameHeader();
 
-  void logBoxes(int vid, int frameIndex, const std::vector<BoundingBox>& boxes);
-
-  void logTimelineHeader();
-
-  void logTimeline(const Frame* frame);
+  void logFrame(const Frame* frame);
 
   void logROIHeader();
 
   void logROI(const ROI* roi);
+
+  void logBoxesHeader();
+
+  void logBoxes(int vid, int frameIndex, const std::vector<BoundingBox>& boxes);
 
  private:
   time_us fromBaseTime(const time_us& time) const;
