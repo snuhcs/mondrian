@@ -75,7 +75,7 @@ class Mondrian {
   // Thread: Scheduling
   std::thread scheduleThread_;
   const time_us scheduleInterval_;
-  time_us packingTime_;
+  time_us planningTime_;
   int numIntervals_;
   bool stop_;
 
