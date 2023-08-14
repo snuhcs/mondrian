@@ -2,6 +2,20 @@
 
 namespace md {
 
+BoundingBox::BoundingBox(OID id,
+                         const Rect& loc,
+                         const float confidence,
+                         int label,
+                         Origin origin)
+    : bid(BoundingBox::nextBID_++),
+      id(id),
+      loc(loc),
+      confidence(confidence),
+      label(label),
+      origin(origin),
+      srcROI(nullptr),
+      choiceOfBox(INVALID_OID) {}
+
 std::string BoundingBox::header() {
   std::stringstream ss;
   ss << "id" << DELIM

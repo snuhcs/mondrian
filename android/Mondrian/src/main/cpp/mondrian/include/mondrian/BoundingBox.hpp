@@ -1,6 +1,8 @@
 #ifndef BOUNDING_BOX_HPP_
 #define BOUNDING_BOX_HPP_
 
+#include <atomic>
+
 #include "mondrian/DataType.hpp"
 
 namespace md {
@@ -8,6 +10,8 @@ namespace md {
 class ROI;
 
 struct BoundingBox {
+ public:
+  const BID bid;
   OID id;
   Rect loc;
   float confidence;
@@ -16,13 +20,17 @@ struct BoundingBox {
   Origin origin;
   OID choiceOfBox;
 
-  BoundingBox(OID id, const Rect location, const float confidence, int label, Origin origin)
-      : id(id), loc(location), confidence(confidence), label(label), origin(origin),
-        srcROI(nullptr), choiceOfBox(INVALID_OID) {}
+  BoundingBox(OID id,
+              const Rect& loc,
+              const float confidence,
+              int label,
+              Origin origin);
 
   static std::string header();
 
   std::string str() const;
+
+  static inline std::atomic_int nextBID_;
 };
 
 } // namespace md

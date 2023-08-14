@@ -17,18 +17,29 @@ ROI::ROI(ROI* prevROI,
          const OFFeatures ofFeatures,
          const float confidence,
          const float padding)
-    : prevROI(prevROI), id(id), frame(frame), origLoc(origLoc),
-      type(type), origin(origin), label(label), features{
-        -1,         // width
-        -1,         // height
-        label,      // label
-        type,       // type
-        origin,     // origin
-        -1,         // xyRatio
-        confidence, // confidence
-        ofFeatures  // OFFeatures
-    }, targetScale_(1.0f), // TODO: Start with targetScale_(-1) and assert
-      scaleLevel_(ROIResizer::INVALID_LEVEL), nextROI(nullptr), mergedROI(nullptr), box(nullptr) {
+    : uid(ROI::nextUID_++),
+      prevROI(prevROI),
+      id(id),
+      frame(frame),
+      origLoc(origLoc),
+      type(type),
+      origin(origin),
+      label(label),
+      features{
+          -1,         // width
+          -1,         // height
+          label,      // label
+          type,       // type
+          origin,     // origin
+          -1,         // xyRatio
+          confidence, // confidence
+          ofFeatures  // OFFeatures
+      },
+      targetScale_(1.0f), // TODO: Start with targetScale_(-1) and assert
+      scaleLevel_(ROIResizer::INVALID_LEVEL),
+      nextROI(nullptr),
+      mergedROI(nullptr),
+      box(nullptr) {
   if (prevROI != nullptr) {
     prevROI->nextROI = this;
   }

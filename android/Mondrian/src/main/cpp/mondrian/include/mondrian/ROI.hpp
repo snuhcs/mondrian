@@ -1,6 +1,7 @@
 #ifndef ROI_HPP_
 #define ROI_HPP_
 
+#include <atomic>
 #include <cmath>
 
 #include "opencv2/core/hal/interface.h"
@@ -20,6 +21,7 @@ class ROI {
  public:
   static const float INVALID_CONF;
 
+  const UID uid;
   Frame* const frame;
   const Rect origLoc;
   Rect paddedLoc;
@@ -39,11 +41,6 @@ class ROI {
 
   float maxEdgeLength;
 
- private:
-  float targetScale_;
-  int scaleLevel_;
-
- public:
   BoundingBox* box;
 
   ROI(ROI* prevROI,
@@ -80,6 +77,11 @@ class ROI {
   }
 
   void scaleTo(float newTargetScale, int newScaleLevel);
+
+  static inline std::atomic_int nextUID_;
+
+  float targetScale_;
+  int scaleLevel_;
 };
 
 } // namespace md
