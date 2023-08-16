@@ -19,7 +19,9 @@ class MergedROI;
 
 class ROI {
  public:
-  static const float INVALID_CONF;
+  static inline const float INVALID_CONF = -1.0f;
+  static inline std::atomic<UID> nextUID_ = 0;
+  static inline std::atomic<OID> lastId = 0;
 
   const UID uid;
   Frame* const frame;
@@ -33,7 +35,6 @@ class ROI {
   std::vector<float> probeScales;
   std::vector<MergedROI*> roisForProbing;
 
-  inline static std::atomic<OID> lastId = 0;
   OID id;
   ROI* prevROI; // only valid with rois_
   ROI* nextROI; // only valid with rois_
@@ -61,7 +62,7 @@ class ROI {
   static std::pair<OID, OID> getNewIds(unsigned long num) {
     OID minId = lastId.fetch_add(num);
     OID maxId = minId + num;
-    return std::pair<OID, OID>(minId, maxId); // [minId, maxId)
+    return {minId, maxId};
   }
 
   float paddedArea() const {
@@ -77,8 +78,6 @@ class ROI {
   }
 
   void scaleTo(float newTargetScale, int newScaleLevel);
-
-  static inline std::atomic_int nextUID_;
 
   float targetScale_;
   int scaleLevel_;

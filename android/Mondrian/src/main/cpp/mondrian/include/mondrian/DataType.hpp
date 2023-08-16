@@ -10,6 +10,7 @@ namespace md {
 
 using VID = int;
 using FID = int;
+using PID = int;
 using UID = int;
 using BID = int;
 using OID = int;

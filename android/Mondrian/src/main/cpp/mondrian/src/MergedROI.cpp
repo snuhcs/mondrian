@@ -5,10 +5,6 @@
 
 namespace md {
 
-int MergedROI::BORDER = 2;
-const cv::Scalar MergedROI::BORDER_COLOR(255, 255, 255);
-const IntPair MergedROI::INVALID_XY{-1, -1};
-
 MergedROI::MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isProbing)
     : rois_(rois), targetScale_(targetScale), isProbing_(isProbing),
       frame_(frameOf(rois)), loc_(locOf(rois)),

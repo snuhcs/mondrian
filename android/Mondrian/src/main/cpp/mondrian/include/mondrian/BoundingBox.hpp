@@ -11,6 +11,8 @@ class ROI;
 
 struct BoundingBox {
  public:
+  static inline std::atomic<BID> nextBID_ = 0;
+
   const BID bid;
   OID id;
   Rect loc;
@@ -29,8 +31,6 @@ struct BoundingBox {
   static std::string header();
 
   std::string str() const;
-
-  static inline std::atomic_int nextBID_;
 };
 
 } // namespace md

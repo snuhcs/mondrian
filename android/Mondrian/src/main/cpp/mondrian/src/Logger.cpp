@@ -158,7 +158,7 @@ void Logger::logROIHeader() {
       << "packedXY_x" << DELIM
       << "packedXY_y" << DELIM
       << "mergedScale" << DELIM
-      << "absolutePackedCanvasIndex" << DELIM
+      << "pid" << DELIM
       << "packedCanvasSize" << DELIM
 
       << "box" << DELIM

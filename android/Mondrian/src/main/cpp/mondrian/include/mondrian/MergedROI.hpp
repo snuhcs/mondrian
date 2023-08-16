@@ -12,9 +12,9 @@ class BoundingBox;
 
 class MergedROI {
  public:
-  static int BORDER;
-  static const cv::Scalar BORDER_COLOR;
-  static const IntPair INVALID_XY;
+  static inline int BORDER = 2;
+  static inline const cv::Scalar BORDER_COLOR{255, 255, 255};
+  static inline const IntPair INVALID_XY{-1, -1};
 
   MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isProbing);
 

@@ -250,7 +250,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
       if (clippedLoc.minWH < 1) continue;
       BoundingBox prevBox(
           /*id=*/box->id,
-          /*location=*/clippedLoc,
+          /*loc=*/clippedLoc,
           /*confidence=*/box->confidence,
           /*label=*/box->label,
           /*origin=*/Origin::FULL_FRAME);
@@ -261,7 +261,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
     for (auto& roi : currFrame->prevFrame->rois) {
       BoundingBox prevBox(
           /*id=*/roi->id,
-          /*location=*/roi->origLoc,
+          /*loc=*/roi->origLoc,
           /*confidence=*/1,
           /*label=*/roi->label,
           /*origin=*/roi->origin);
