@@ -156,7 +156,7 @@ void Interpolator::addBoxWithPrevInfo(ROI* currROI, const BoundingBox* prevBox,
   assert(newL <= newR && newT <= newB);
   Rect newBox(newL, newT, newR, newB);
   currROI->frame->boxes.push_back(std::make_unique<BoundingBox>(
-      prevBox->oid, newBox, prevBox->confidence, prevBox->label, Origin::INTERPOLATE));
+      prevBox->oid, -1, newBox, prevBox->confidence, prevBox->label, Origin::INTERPOLATE));
 
   BoundingBox* box = currROI->frame->boxes.back().get();
   assert(box->oid == prevBox->oid);

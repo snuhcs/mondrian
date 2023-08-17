@@ -81,12 +81,12 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
       // filter overly large boxes from packed inference by PROBE_IOU_THRES
       if (maxROI->isProbing()) {
         maxROI->frame()->probingBoxes.push_back(std::make_unique<BoundingBox>(
-            INVALID_OID, reconstructBoxPos(box, maxROI),
+            INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
             box.confidence, box.label, Origin::FULL_FRAME));
         maxROI->setProbingBox(maxROI->frame()->probingBoxes.rbegin()->get());
       } else {
         maxROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
-            INVALID_OID, reconstructBoxPos(box, maxROI),
+            INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
             box.confidence, box.label, Origin::INVALID));
       }
     }

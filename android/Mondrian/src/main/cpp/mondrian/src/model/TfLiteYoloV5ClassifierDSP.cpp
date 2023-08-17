@@ -149,7 +149,7 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::postprocess(int width, int h
                                  (float) dequantize(outputs[i * 85 + 3]),
                                  (float) width, (float) height);
       if (rect.l <= rect.r && rect.t <= rect.b) {
-        boxes.emplace_back(INVALID_OID, rect, maxConfidence, maxLabel, Origin::INVALID);
+        boxes.emplace_back(INVALID_OID, -1, rect, maxConfidence, maxLabel, Origin::INVALID);
       }
     }
   }

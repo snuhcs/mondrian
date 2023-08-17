@@ -5,13 +5,14 @@
 namespace md {
 
 BoundingBox::BoundingBox(OID oid,
+                         PID pid,
                          const Rect& loc,
                          const float confidence,
                          int label,
                          Origin origin)
     : bid(BoundingBox::nextBID_++),
       oid(oid),
-      pid(-1),
+      pid(pid),
       loc(loc),
       confidence(confidence),
       label(label),

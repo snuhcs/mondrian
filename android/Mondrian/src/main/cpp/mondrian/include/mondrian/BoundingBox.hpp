@@ -23,6 +23,7 @@ struct BoundingBox {
   OID choiceOfBox;
 
   BoundingBox(OID oid,
+              PID pid,
               const Rect& loc,
               const float confidence,
               int label,

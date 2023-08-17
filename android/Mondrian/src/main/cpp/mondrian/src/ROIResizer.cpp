@@ -125,7 +125,7 @@ void ROIResizer::updateTable(ROI* roi) {
 
   if (roi->box() == nullptr && largestProbeROIBox != nullptr) {
     auto copiedBox = std::make_unique<BoundingBox>(
-        roi->oid, largestProbeROIBox->loc, largestProbeROIBox->confidence,
+        roi->oid, largestProbeROIBox->pid, largestProbeROIBox->loc, largestProbeROIBox->confidence,
         largestProbeROIBox->label, roi->origin());
     copiedBox->setSrcROI(roi);
     roi->setLabel(copiedBox->label);
