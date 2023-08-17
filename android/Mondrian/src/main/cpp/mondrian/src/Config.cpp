@@ -128,6 +128,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.EXECUTION_TYPE = executionTypeOf(parseString(json, "execution_type"));
   config.LOG_BOXES = parseBool(json, "log_boxes");
   config.LOG_ROI = parseBool(json, "log_roi");
+  config.LOG_MERGED_ROI = parseBool(json, "log_merged_roi");
   config.LOG_FRAME = parseBool(json, "log_frame");
   config.INTERPOLATION_THRES = parseFloat(json, "interpolation_thres");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");

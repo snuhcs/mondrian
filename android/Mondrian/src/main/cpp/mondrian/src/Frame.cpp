@@ -48,13 +48,13 @@ void Frame::prepareResizedGrayMat(const cv::Size& targetSize) {
 void Frame::eatPDROIs(float overlap_thres) {
   std::vector<ROI*> ofROIs;
   for (auto& roi : rois) {
-    if (roi->type == ROIType::OF) {
+    if (roi->type() == ROIType::OF) {
       ofROIs.push_back(roi.get());
     }
   }
 
   for (auto it = rois.begin(); it != rois.end();) {
-    if ((*it)->type == ROIType::OF) {
+    if ((*it)->type() == ROIType::OF) {
       it++;
       continue;
     }
@@ -81,13 +81,13 @@ void Frame::eatPDROIs(float overlap_thres) {
 void Frame::filterPDROIs(float overlap_thres) {
   std::vector<ROI*> OFROIs;
   for (auto& roi : rois) {
-    if (roi->type == ROIType::OF) {
+    if (roi->type() == ROIType::OF) {
       OFROIs.push_back(roi.get());
     }
   }
 
   for (auto it = rois.begin(); it != rois.end();) {
-    if ((*it)->type == ROIType::OF) {
+    if ((*it)->type() == ROIType::OF) {
       it++;
       continue;
     }
@@ -106,7 +106,7 @@ void Frame::filterPDROIs(float overlap_thres) {
 
 void Frame::assignPDROIIDs() {
   for (auto& roi : rois) {
-    if (roi->type == ROIType::PD) {
+    if (roi->type() == ROIType::PD) {
       assert(roi->oid == INVALID_OID);
       roi->oid = ROI::getNewOIDs(1).first;
     } else {
@@ -117,7 +117,7 @@ void Frame::assignPDROIIDs() {
 
 void Frame::resizeROIs(ROIResizer* roiResizer) {
   for (auto& roi : rois) {
-    if (roi->type == ROIType::OF) {
+    if (roi->type() == ROIType::OF) {
       auto [scale, level] = roiResizer->getTargetScale(roi->oid,
                                                        roi->features,
                                                        roi->paddedArea());
@@ -316,15 +316,90 @@ bool Frame::readyForOFExtraction() const {
 
 void Frame::resetOFROIExtraction() {
   rois.erase(std::remove_if(rois.begin(), rois.end(),
-                            [](const auto& roi) { return roi->type == ROIType::OF; }),
+                            [](const auto& roi) { return roi->type() == ROIType::OF; }),
              rois.end());
   std::for_each(rois.begin(), rois.end(), [](auto& roi) {
-    assert(roi->type == ROIType::PD);
+    assert(roi->type() == ROIType::PD);
     roi->mergedROI = nullptr;
   });
   useInferenceResultForOF = false;
   reprocessOF = false;
   isROIsReady = false;
+}
+
+std::string Frame::header() {
+  std::stringstream ss;
+  ss << "vid" << DELIM
+     << "fid" << DELIM
+     << "numROIs" << DELIM
+     << "numMergedROIs" << DELIM
+     << "numProbingROIs" << DELIM
+     << "numBoxes" << DELIM
+     << "numProbingBoxes" << DELIM
+     << "scheduleID" << DELIM
+     << "PDExtractorID" << DELIM
+     << "OFExtractorID" << DELIM
+     << "numFeaturePoints" << DELIM
+     << "inferenceFrameSize" << DELIM
+     << "inferenceDevice" << DELIM
+     << "enqueueTime" << DELIM
+     << "fullInferenceStartTime" << DELIM
+     << "fullInferenceEndTime" << DELIM
+     << "pixelDiffROIProcessStartTime" << DELIM
+     << "pixelDiffROIProcessEndTime" << DELIM
+     << "opticalFlowROIProcessStartTime" << DELIM
+     << "opticalFlowROIProcessEndTime" << DELIM
+     << "resizeStartTime" << DELIM
+     << "resizeEndTime" << DELIM
+     << "mergeROIStartTime" << DELIM
+     << "mergeROIEndTime" << DELIM
+     << "packingStartTime" << DELIM
+     << "packingEndTime" << DELIM
+     << "scheduledTime" << DELIM
+     << "packedInferenceStartTime" << DELIM
+     << "packedInferenceEndTime" << DELIM
+     << "reconstructStartTime" << DELIM
+     << "reconstructEndTime" << DELIM
+     << "endTime";
+  return ss.str();
+}
+
+std::string Frame::str(time_us baseTime) const {
+  auto fromBaseTime = [baseTime](time_us time) { return time != 0 ? time - baseTime : 0; };
+  std::stringstream ss;
+  ss << vid << DELIM
+     << fid << DELIM
+     << rois.size() << DELIM
+     << mergedROIs.size() << DELIM
+     << probingROIs.size() << DELIM
+     << boxes.size() << DELIM
+     << probingBoxes.size() << DELIM
+     << scheduleID << DELIM
+     << PDExtractorID << DELIM
+     << OFExtractorID << DELIM
+     << numFeaturePoints << DELIM
+     << inferenceFrameSize << DELIM
+     << ::md::str(inferenceDevice) << DELIM
+     << fromBaseTime(enqueueTime) << DELIM
+     << fromBaseTime(fullInferenceStartTime) << DELIM
+     << fromBaseTime(fullInferenceEndTime) << DELIM
+     << fromBaseTime(pixelDiffROIProcessStartTime) << DELIM
+     << fromBaseTime(pixelDiffROIProcessEndTime) << DELIM
+     << fromBaseTime(opticalFlowROIProcessStartTime) << DELIM
+     << fromBaseTime(opticalFlowROIProcessEndTime) << DELIM
+     << fromBaseTime(resizeStartTime) << DELIM
+     << fromBaseTime(resizeEndTime) << DELIM
+     << fromBaseTime(mergeROIStartTime) << DELIM
+     << fromBaseTime(mergeROIEndTime) << DELIM
+     << fromBaseTime(packingStartTime) << DELIM
+     << fromBaseTime(packingEndTime) << DELIM
+     << fromBaseTime(scheduledTime) << DELIM
+     << fromBaseTime(packedInferenceStartTime) << DELIM
+     << fromBaseTime(packedInferenceEndTime) << DELIM
+     << fromBaseTime(reconstructStartTime) << DELIM
+     << fromBaseTime(reconstructEndTime) << DELIM
+     << fromBaseTime(endTime);
+  return ss.str();
 }
 
 std::string str(const MultiStream& streams) {

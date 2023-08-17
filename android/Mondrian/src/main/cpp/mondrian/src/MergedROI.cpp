@@ -9,7 +9,7 @@ MergedROI::MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isPr
     : rois_(rois), targetScale_(targetScale), isProbing_(isProbing),
       frame_(frameOf(rois)), loc_(locOf(rois)),
       packedXY_(INVALID_XY), packedCanvasIndex_(-1), pid_(-1),
-      packedCanvasSize_(-1), probingBox_(nullptr) {
+      packedCanvasSize_(-1), probingBox_(nullptr), probingBoxID_(-1) {
   for (ROI* roi : rois) {
     roi->mergedROI = this;
   }
@@ -143,6 +143,47 @@ void MergedROI::setPackInfo(IntPair xy, int packedCanvasIndex,
   }
   packedXY_ = xy;
   packedCanvasIndex_ = packedCanvasIndex;
+}
+
+std::string MergedROI::header() {
+  std::stringstream ss;
+  ss << "mergedROIs" << DELIM
+     << Rect::header("mergedLoc") << DELIM
+     << "mergedScale" << DELIM
+     << "pid" << DELIM
+     << "packedXY_x" << DELIM
+     << "packedXY_y" << DELIM
+     << "packedCanvasIndex" << DELIM
+     << "packedCanvasSize" << DELIM
+     << "isProbing" << DELIM
+     << "probingBoxID";
+  return ss.str();
+}
+
+std::string MergedROI::str() const {
+  std::stringstream ss;
+  for (int i = 0; i < rois_.size(); i++) {
+    ss << rois_[i]->rid;
+    if (i < rois_.size() - 1) {
+      ss << SUBDELIM;
+    }
+  }
+  ss << DELIM;
+  ss << loc_.str() << DELIM
+     << targetScale_ << DELIM
+     << pid_ << DELIM
+     << packedXY_.first << DELIM
+     << packedXY_.second << DELIM
+     << packedCanvasIndex_ << DELIM
+     << packedCanvasSize_ << DELIM
+     << isProbing_ << DELIM
+     << probingBoxID_;
+  return ss.str();
+}
+
+void MergedROI::setProbingBox(BoundingBox* box) {
+  probingBox_ = box;
+  probingBoxID_ = box != nullptr ? box->bid : -1;
 }
 
 } // namespace md

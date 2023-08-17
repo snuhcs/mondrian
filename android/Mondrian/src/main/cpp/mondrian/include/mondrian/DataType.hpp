@@ -19,6 +19,7 @@ using IntPairs = std::vector<std::pair<int, int>>;
 
 extern const OID INVALID_OID;
 extern const char DELIM;
+extern const char SUBDELIM;
 extern const int NUM_LABELS;
 extern const char* COCO_LABELS[];
 
@@ -139,6 +140,10 @@ struct Rect {
             std::min(std::max(r, other.l), other.r),
             std::min(std::max(b, other.t), other.b)};
   }
+
+  static std::string header(const char* rectName);
+
+  std::string str() const;
 };
 
 } // namespace md

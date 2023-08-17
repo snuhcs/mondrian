@@ -19,7 +19,6 @@ struct BoundingBox {
   Rect loc;
   float confidence;
   int label;
-  ROI* srcROI;
   Origin origin;
   OID choiceOfBox;
 
@@ -29,9 +28,17 @@ struct BoundingBox {
               int label,
               Origin origin);
 
+  void setSrcROI(ROI* roi);
+
+  ROI* srcROI() const { return srcROI_; }
+
   static std::string header();
 
   std::string str() const;
+
+ private:
+  ROI* srcROI_;
+  RID srcROIID_;
 };
 
 } // namespace md

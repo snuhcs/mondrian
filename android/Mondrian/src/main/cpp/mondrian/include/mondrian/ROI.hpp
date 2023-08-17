@@ -25,28 +25,31 @@ class ROI {
   static inline std::atomic<RID> nextRID_ = 0;
   static inline std::atomic<OID> nextOID_ = 0;
 
+ public:
+  Frame* const frame;
+  const RID rid;
+  OID oid;
+  const Rect origLoc;
+  Rect paddedLoc;
+  Features features;
+
+ private:
   float targetScale_;
   int scaleLevel_;
 
  public:
-  const RID rid;
-  Frame* const frame;
-  const Rect origLoc;
-  Rect paddedLoc;
-
-  ROIType type;
-  Origin origin;
-  int label;
-  Features features;
   std::vector<float> probeScales;
   std::vector<MergedROI*> roisForProbing;
-
-  OID oid;
   MergedROI* mergedROI;
 
-  float maxEdgeLength;
+ private:
+  BoundingBox* box_;
+  BID boxID_;
 
-  BoundingBox* box;
+ public:
+  void setBox(BoundingBox* box);
+
+  BoundingBox* box() const { return box_; }
 
   ROI(const OID oid,
       Frame* frame,
@@ -80,7 +83,27 @@ class ROI {
     return scaleLevel_;
   }
 
+  ROIType type() const {
+    return features.type;
+  }
+
+  Origin origin() const {
+    return features.origin;
+  }
+
+  void setLabel(int label) {
+    features.label = label;
+  }
+
+  int label() const {
+    return features.label;
+  }
+
   void scaleTo(float newTargetScale, int newScaleLevel);
+
+  static std::string header();
+
+  std::string str() const;
 };
 
 } // namespace md

@@ -25,30 +25,26 @@ class Frame {
   const VID vid;
   const FID fid;
   const Frame* prevFrame;
-  int scheduleID;
   cv::Mat yuvMat;
   cv::Mat resizedGrayMat;
-  int PDExtractorID;
-  int OFExtractorID;
-
-  bool useInferenceResultForOF;
-
-  bool isBoxesReady;
-  bool isROIsReady;
-  int numFeaturePoints;
-  std::vector<std::unique_ptr<BoundingBox>> boxes;
-  std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
-  std::vector<std::unique_ptr<MergedROI>> probingROIs;
-
-  bool reprocessOF;
   std::vector<std::unique_ptr<ROI>> rois;
   std::vector<std::unique_ptr<MergedROI>> mergedROIs;
+  std::vector<std::unique_ptr<MergedROI>> probingROIs;
+  std::vector<std::unique_ptr<BoundingBox>> boxes;
+  std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
 
+  bool useInferenceResultForOF;
+  bool isBoxesReady;
+  bool isROIsReady;
+  bool reprocessOF;
   bool isLastFrame;
 
+  int scheduleID;
+  int PDExtractorID;
+  int OFExtractorID;
+  int numFeaturePoints;
   int inferenceFrameSize;
   Device inferenceDevice;
-
   const time_us enqueueTime;
   time_us fullInferenceStartTime = 0;
   time_us fullInferenceEndTime = 0;
@@ -121,6 +117,10 @@ class Frame {
   Key getKey() const {
     return {vid, fid};
   }
+
+  static std::string header();
+
+  std::string str(time_us baseTime) const;
 };
 
 struct FrameComp {

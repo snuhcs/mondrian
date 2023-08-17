@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "mondrian/DataType.hpp"
 #include "mondrian/Log.hpp"
 
 namespace md {
@@ -138,6 +139,42 @@ float OFFeatures::avgOf(const std::vector<float>& errs) {
     sum += e;
   }
   return sum /= float(errs.size());
+}
+
+std::string Features::header() {
+  std::stringstream ss;
+  ss << "width" << DELIM
+     << "height" << DELIM
+     << "label" << DELIM
+     << "type" << DELIM
+     << "origin" << DELIM
+     << "xyRatio" << DELIM
+     << "confidence" << DELIM
+     << "shiftAvgX" << DELIM
+     << "shiftAvgY" << DELIM
+     << "shiftStdX" << DELIM
+     << "shiftStdY" << DELIM
+     << "shiftNcc" << DELIM
+     << "avgErr";
+  return ss.str();
+}
+
+std::string Features::str() const {
+  std::stringstream ss;
+  ss << width << DELIM
+     << height << DELIM
+     << COCO_LABELS[label] << DELIM
+     << ::md::str(type) << DELIM
+     << ::md::str(origin) << DELIM
+     << xyRatio << DELIM
+     << confidence << DELIM
+     << ofFeatures.shiftAvg.first << DELIM
+     << ofFeatures.shiftAvg.second << DELIM
+     << ofFeatures.shiftStd.first << DELIM
+     << ofFeatures.shiftStd.second << DELIM
+     << ofFeatures.shiftNcc << DELIM
+     << ofFeatures.avgErr;
+  return ss.str();
 }
 
 } // namespace md

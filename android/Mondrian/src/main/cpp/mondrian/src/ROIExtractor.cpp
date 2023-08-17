@@ -158,7 +158,7 @@ void ROIExtractor::work(int extractorId) {
        << " (" << frame->vid << ", " << frame->fid << ")"
        << " #=" << std::count_if(frame->rois.begin(), frame->rois.end(),
                                  [pd](auto& roi) {
-                                   return roi->type == (pd ? ROIType::PD : ROIType::OF);
+                                   return roi->type() == (pd ? ROIType::PD : ROIType::OF);
                                  })
        << " PDQ=" << PDWaiting_.size()
        << " OFQ=" << OFWaiting_.size()
@@ -232,7 +232,7 @@ void ROIExtractor::processPD(Frame* currFrame) const {
 
 void ROIExtractor::processOF(Frame* currFrame) const {
   assert(std::all_of(currFrame->rois.begin(), currFrame->rois.end(),
-                     [](auto& roi) { return roi->type == ROIType::PD; }));
+                     [](auto& roi) { return roi->type() == ROIType::PD; }));
   currFrame->opticalFlowROIProcessStartTime = NowMicros();
 
   Rect imageSize(0.0f, 0.0f, float(currFrame->width()), float(currFrame->height()));
@@ -253,7 +253,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
           /*confidence=*/box->confidence,
           /*label=*/box->label,
           /*origin=*/Origin::FULL_FRAME);
-      prevBox.srcROI = box->srcROI;
+      prevBox.setSrcROI(box->srcROI());
       prevBoxes.push_back(prevBox);
     }
   } else {
@@ -262,9 +262,9 @@ void ROIExtractor::processOF(Frame* currFrame) const {
           /*oid=*/roi->oid,
           /*loc=*/roi->origLoc,
           /*confidence=*/1,
-          /*label=*/roi->label,
-          /*origin=*/roi->origin);
-      prevBox.srcROI = roi.get();
+          /*label=*/roi->label(),
+          /*origin=*/roi->origin());
+      prevBox.setSrcROI(roi.get());
       prevBoxes.push_back(prevBox);
     }
   }

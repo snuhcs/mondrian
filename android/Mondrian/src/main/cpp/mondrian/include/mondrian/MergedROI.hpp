@@ -50,9 +50,7 @@ class MergedROI {
     return probingBox_;
   }
 
-  void setProbingBox(BoundingBox* box) {
-    probingBox_ = box;
-  }
+  void setProbingBox(BoundingBox* box);
 
   bool isPacked() const {
     return packedXY_ != INVALID_XY;
@@ -129,16 +127,19 @@ class MergedROI {
   void setPackInfo(IntPair xy, int packedCanvasIndex,
                    ExecutionType executionType, int roiSize);
 
+  static std::string header();
+
+  std::string str() const;
+
  private:
   static Frame* frameOf(const std::vector<ROI*>& rois);
 
   static Rect locOf(const std::vector<ROI*>& rois);
 
-  const std::vector<ROI*> rois_;
-  float targetScale_;
-
   Frame* const frame_;
+  const std::vector<ROI*> rois_;
   const Rect loc_;
+  float targetScale_;
 
   PID pid_;
   IntPair packedXY_;
@@ -147,6 +148,7 @@ class MergedROI {
 
   bool isProbing_;
   BoundingBox* probingBox_;
+  BID probingBoxID_;
 };
 
 } // namespace md
