@@ -20,9 +20,15 @@ class MergedROI;
 class ROI {
  public:
   static inline const float INVALID_CONF = -1.0f;
-  static inline std::atomic<UID> nextUID_ = 0;
-  static inline std::atomic<OID> lastId = 0;
 
+ private:
+  static inline std::atomic<UID> nextUID_ = 0;
+  static inline std::atomic<OID> nextOID_ = 0;
+
+  float targetScale_;
+  int scaleLevel_;
+
+ public:
   const UID uid;
   Frame* const frame;
   const Rect origLoc;
@@ -35,17 +41,14 @@ class ROI {
   std::vector<float> probeScales;
   std::vector<MergedROI*> roisForProbing;
 
-  OID id;
-  ROI* prevROI; // only valid with rois_
-  ROI* nextROI; // only valid with rois_
+  OID oid;
   MergedROI* mergedROI;
 
   float maxEdgeLength;
 
   BoundingBox* box;
 
-  ROI(ROI* prevROI,
-      const OID id,
+  ROI(const OID oid,
       Frame* frame,
       const Rect& origLoc,
       const ROIType type,
@@ -59,10 +62,10 @@ class ROI {
 
   void eatPD(const Rect& PDRect);
 
-  static std::pair<OID, OID> getNewIds(unsigned long num) {
-    OID minId = lastId.fetch_add(num);
-    OID maxId = minId + num;
-    return {minId, maxId};
+  static std::pair<OID, OID> getNewOIDs(unsigned long num) {
+    OID minOID = nextOID_.fetch_add(num);
+    OID maxOID = minOID + num;
+    return {minOID, maxOID};
   }
 
   float paddedArea() const {
@@ -78,9 +81,6 @@ class ROI {
   }
 
   void scaleTo(float newTargetScale, int newScaleLevel);
-
-  float targetScale_;
-  int scaleLevel_;
 };
 
 } // namespace md

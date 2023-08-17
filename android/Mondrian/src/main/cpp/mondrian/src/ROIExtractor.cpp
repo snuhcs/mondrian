@@ -216,8 +216,7 @@ void ROIExtractor::processPD(Frame* currFrame) const {
   for (const Rect& pdRect : pdRects) {
     if (config_.MIN_PD_ROI_SIZE <= pdRect.minWH && pdRect.maxWH <= config_.MAX_PD_ROI_SIZE) {
       currFrame->rois.emplace_back(new ROI(
-          /*prevROI=*/nullptr,
-          /*id=*/INVALID_OID,
+          /*oid=*/INVALID_OID,
           /*frame=*/currFrame,
           /*origLoc=*/pdRect,
           /*type=*/ROIType::PD,
@@ -249,7 +248,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
       Rect clippedLoc = box->loc.clip(imageSize);
       if (clippedLoc.minWH < 1) continue;
       BoundingBox prevBox(
-          /*id=*/box->id,
+          /*oid=*/box->oid,
           /*loc=*/clippedLoc,
           /*confidence=*/box->confidence,
           /*label=*/box->label,
@@ -260,7 +259,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   } else {
     for (auto& roi : currFrame->prevFrame->rois) {
       BoundingBox prevBox(
-          /*id=*/roi->id,
+          /*oid=*/roi->oid,
           /*loc=*/roi->origLoc,
           /*confidence=*/1,
           /*label=*/roi->label,
@@ -312,8 +311,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
                         box.loc.b + shiftY).clip(imageSize);
     if (currLoc.minWH < 1) continue;
     currFrame->rois.emplace_back(new ROI(
-        /*prevROI=*/box.srcROI,
-        /*id=*/box.id,
+        /*oid=*/box.oid,
         /*frame=*/currFrame,
         /*origLoc=*/currLoc,
         /*type=*/ROIType::OF,

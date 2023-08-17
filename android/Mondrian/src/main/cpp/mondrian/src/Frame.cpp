@@ -107,10 +107,10 @@ void Frame::filterPDROIs(float overlap_thres) {
 void Frame::assignPDROIIDs() {
   for (auto& roi : rois) {
     if (roi->type == ROIType::PD) {
-      assert(roi->id == INVALID_OID);
-      roi->id = ROI::getNewIds(1).first;
+      assert(roi->oid == INVALID_OID);
+      roi->oid = ROI::getNewOIDs(1).first;
     } else {
-      assert(roi->id != INVALID_OID);
+      assert(roi->oid != INVALID_OID);
     }
   }
 }
@@ -118,7 +118,7 @@ void Frame::assignPDROIIDs() {
 void Frame::resizeROIs(ROIResizer* roiResizer) {
   for (auto& roi : rois) {
     if (roi->type == ROIType::OF) {
-      auto [scale, level] = roiResizer->getTargetScale(roi->id,
+      auto [scale, level] = roiResizer->getTargetScale(roi->oid,
                                                        roi->features,
                                                        roi->paddedArea());
       assert(0.0f < scale && scale <= 1.0f);
@@ -299,9 +299,9 @@ bool Frame::isReadyToMarry(int packedCanvasIndex) const {
   bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIReady)
       && std::all_of(probingROIs.begin(), probingROIs.end(), isROIReady);
   bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
-                                     [](auto& box) { return box->id == INVALID_OID; });
+                                     [](auto& box) { return box->oid == INVALID_OID; });
   bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),
-                                   [](auto& box) { return box->id != INVALID_OID; });
+                                   [](auto& box) { return box->oid != INVALID_OID; });
   assert(isAllUnassigned || isAllAssigned);
   return isAllReady && isAllUnassigned;
 }

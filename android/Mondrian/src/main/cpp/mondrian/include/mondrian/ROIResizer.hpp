@@ -24,7 +24,7 @@ class ROIResizer {
 
   ROIResizer(const ROIResizerConfig& config);
 
-  std::pair<float, int> getTargetScale(const OID id,
+  std::pair<float, int> getTargetScale(const OID oid,
                                        const Features& features,
                                        const float area);
 
@@ -53,9 +53,9 @@ class ROIResizer {
 
   float getTargetScale(const int scaleLevel, const float originalArea) const;
 
-  bool isCalibrated(const OID id, const int scaleLevel) const;
+  bool isCalibrated(const OID oid, const int scaleLevel) const;
 
-  int getMaxVotedLevel(const OID id, const Features& features);
+  int getMaxVotedLevel(const OID oid, const Features& features);
 
   int predictLevelWithFeatures(const Features& features) const;
 

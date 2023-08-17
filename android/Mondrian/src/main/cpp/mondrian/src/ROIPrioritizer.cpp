@@ -25,7 +25,7 @@ std::vector<MergedROI*> ROIPrioritizer::minConsecutiveDrop(const MultiStream& st
     for (Frame* frame : stream) {
       if (frame == *stream.rbegin()) continue; // Skip last frame
       for (auto& roi : frame->rois) {
-        roiMap[{vid, roi->id}][frame->fid] = roi.get();
+        roiMap[{vid, roi->oid}][frame->fid] = roi.get();
       }
     }
   }
@@ -53,7 +53,7 @@ std::vector<MergedROI*> ROIPrioritizer::minConsecutiveDrop(const MultiStream& st
     for (auto& roi : mergedROI->rois()) {
       auto it = startEndLengths.begin();
       for (; it != startEndLengths.end(); it++) {
-        if (it->vid_ == vid && it->roiID_ == roi->id && it->start_ <= fid && fid < it->end_)
+        if (it->vid_ == vid && it->roiID_ == roi->oid && it->start_ <= fid && fid < it->end_)
           break;
       }
       assert(it != startEndLengths.end());

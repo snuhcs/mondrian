@@ -186,7 +186,7 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   patchReconstructor_->matchBoxesROIs(frame, true);
 
   for (auto& box : frame->boxes) {
-    assert(box->id != INVALID_OID);
+    assert(box->oid != INVALID_OID);
   }
   frame->isBoxesReady = true;
   frame->endTime = NowMicros();
@@ -353,9 +353,9 @@ void Mondrian::enqueue(Frame* frame) {
 }
 
 void Mondrian::workPostprocess() {
-  int id = 0;
+  int scheduleID = 0;
   while (!stop_) {
-    int currID = id++;
+    int currID = scheduleID++;
     std::unique_lock<std::mutex> packingResultsLock(packingResultsMtx_);
     packingResultsCV_.wait(packingResultsLock, [this]() {
       return !packingResults_.empty() || stop_;
@@ -403,7 +403,7 @@ void Mondrian::workPostprocess() {
             continue;
           }
           assert(roi->box->srcROI == roi.get());
-          assert(roi->box->id == roi->id);
+          assert(roi->box->oid == roi->oid);
           assert(roi->box->label == roi->label);
         }
         nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());

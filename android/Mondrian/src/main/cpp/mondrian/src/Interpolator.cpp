@@ -7,8 +7,8 @@ namespace md {
 void Interpolator::interpolate(MultiStream& frames, float thres) {
   for (const auto& [vid, aStreamFrames] : frames) {
     std::set<OID> roiIds = getROIIds(aStreamFrames);
-    for (auto id : roiIds) {
-      std::vector<ROI*> rois = getROIStream(aStreamFrames, id);
+    for (auto oid : roiIds) {
+      std::vector<ROI*> rois = getROIStream(aStreamFrames, oid);
       std::vector<int> validIndices = findValidROIs(rois);
       if (validIndices.empty() ||
           float(validIndices.size()) / float(rois.size()) < thres) {
@@ -30,7 +30,7 @@ std::set<OID> Interpolator::getROIIds(const Stream& frames) {
   std::set<OID> childIDs;
   for (const Frame* frame : frames) {
     for (const auto& roi : frame->rois) {
-      childIDs.insert(roi->id);
+      childIDs.insert(roi->oid);
     }
   }
   return childIDs;
@@ -40,7 +40,7 @@ std::vector<ROI*> Interpolator::getROIStream(const Stream& frames, OID roiId) {
   std::vector<ROI*> roiStream;
   for (const Frame* frame : frames) {
     for (const auto& roi : frame->rois) {
-      if (roi->id == roiId) {
+      if (roi->oid == roiId) {
         roiStream.push_back(roi.get());
       }
     }
@@ -52,7 +52,7 @@ std::vector<int> Interpolator::findValidROIs(std::vector<ROI*>& rois) {
   std::vector<int> indices;
   for (int i = 0; i < rois.size(); i++) {
     if (rois[i]->box != nullptr) {
-      assert(rois[i]->box->id != INVALID_OID);
+      assert(rois[i]->box->oid != INVALID_OID);
       indices.push_back(i);
     }
   }
@@ -71,7 +71,7 @@ void Interpolator::extrapolateLeft(std::vector<ROI*> rois, int idx) {
     std::pair<float, float> newCenter = std::make_pair(prevCenter.first - shift.first,
                                                        prevCenter.second - shift.second);
     BoundingBox* prevBox = prevROI->box;
-    assert(prevBox->id == prevROI->id);
+    assert(prevBox->oid == prevROI->oid);
     addBoxWithPrevInfo(currROI, prevBox, newCenter);
 
     prevROI = currROI;
@@ -91,7 +91,7 @@ void Interpolator::extrapolateRight(std::vector<ROI*> rois, int idx) {
     std::pair<float, float> newCenter = std::make_pair(prevCenter.first + shift.first,
                                                        prevCenter.second + shift.second);
     BoundingBox* prevBox = prevROI->box;
-    assert(prevBox->id == prevROI->id);
+    assert(prevBox->oid == prevROI->oid);
     addBoxWithPrevInfo(currROI, prevBox, newCenter);
 
     prevROI = currROI;
@@ -115,7 +115,7 @@ void Interpolator::interpolateBetween(std::vector<ROI*> rois, int leftIdx, int r
         prevCenter.first + shift.first * (float) bbxShift.first / totalShift.first,
         prevCenter.second + shift.second * (float) bbxShift.second / totalShift.second);
     BoundingBox* prevBox = prevROI->box;
-    assert(prevBox->id == prevROI->id);
+    assert(prevBox->oid == prevROI->oid);
     addBoxWithPrevInfo(currROI, prevBox, {newCenter.first, newCenter.second});
 
     prevROI = currROI;
@@ -156,11 +156,11 @@ void Interpolator::addBoxWithPrevInfo(ROI* currROI, const BoundingBox* prevBox,
   assert(newL <= newR && newT <= newB);
   Rect newBox(newL, newT, newR, newB);
   currROI->frame->boxes.push_back(std::make_unique<BoundingBox>(
-      prevBox->id, newBox, prevBox->confidence, prevBox->label, Origin::INTERPOLATE));
+      prevBox->oid, newBox, prevBox->confidence, prevBox->label, Origin::INTERPOLATE));
 
   BoundingBox* box = currROI->frame->boxes.back().get();
-  assert(box->id == prevBox->id);
-  assert(box->id == currROI->id);
+  assert(box->oid == prevBox->oid);
+  assert(box->oid == currROI->oid);
   box->srcROI = currROI;
   currROI->box = box;
   currROI->label = box->label;

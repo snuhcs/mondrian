@@ -40,19 +40,19 @@ ROIResizer::ROIResizer(const ROIResizerConfig& config)
       predictor_(CANDIDATE_PREDICTORS.at(config.DATASET)),
       targetAreas_(AREA_LEVELS.at(config.DATASET)) {}
 
-std::pair<float, int> ROIResizer::getTargetScale(const OID id,
+std::pair<float, int> ROIResizer::getTargetScale(const OID oid,
                                                  const Features& features,
                                                  const float area) {
   assert(features.type == ROIType::OF);
-  const int targetLevel = getMaxVotedLevel(id, features);
+  const int targetLevel = getMaxVotedLevel(oid, features);
   assert(0 <= targetLevel && targetLevel < targetAreas_.size());
   assert(features.width * features.height == area);
   float targetScale = getTargetScale(targetLevel, area);
 
-  if (isCalibrated(id, targetLevel)) {
-    targetScale = calibrationTable_[id].second;
-  } else if (calibrationTable_.find(id) != calibrationTable_.end()) {
-    calibrationTable_.erase(id);
+  if (isCalibrated(oid, targetLevel)) {
+    targetScale = calibrationTable_[oid].second;
+  } else if (calibrationTable_.find(oid) != calibrationTable_.end()) {
+    calibrationTable_.erase(oid);
   }
   return {targetScale, targetLevel};
 }
@@ -65,19 +65,19 @@ float ROIResizer::getTargetScale(const int scaleLevel, const float originalArea)
   return std::min(1.0f, targetScale);
 }
 
-bool ROIResizer::isCalibrated(const OID id, const int scaleLevel) const {
-  return calibrationTable_.find(id) != calibrationTable_.end()
-      && calibrationTable_.at(id).first == scaleLevel;
+bool ROIResizer::isCalibrated(const OID oid, const int scaleLevel) const {
+  return calibrationTable_.find(oid) != calibrationTable_.end()
+      && calibrationTable_.at(oid).first == scaleLevel;
 }
 
-int ROIResizer::getMaxVotedLevel(const OID id, const Features& features) {
-  auto record = prevPredictionBuffer_.find(id);
+int ROIResizer::getMaxVotedLevel(const OID oid, const Features& features) {
+  auto record = prevPredictionBuffer_.find(oid);
   if (record == prevPredictionBuffer_.end()) {
-    prevPredictionBuffer_[id] = CircularBuffer(int(targetAreas_.size()),
+    prevPredictionBuffer_[oid] = CircularBuffer(int(targetAreas_.size()),
                                                config_.VOTING_WINDOW_SIZE);
   }
-  prevPredictionBuffer_[id].push(predictLevelWithFeatures(features));
-  return prevPredictionBuffer_[id].maxVote();
+  prevPredictionBuffer_[oid].push(predictLevelWithFeatures(features));
+  return prevPredictionBuffer_[oid].maxVote();
 }
 
 int ROIResizer::predictLevelWithFeatures(const Features& features) const {
@@ -125,14 +125,14 @@ void ROIResizer::updateTable(ROI* roi) {
 
   if (roi->box == nullptr && largestProbeROIBox != nullptr) {
     auto copiedBox = std::make_unique<BoundingBox>(
-        roi->id, largestProbeROIBox->loc, largestProbeROIBox->confidence,
+        roi->oid, largestProbeROIBox->loc, largestProbeROIBox->confidence,
         largestProbeROIBox->label, roi->origin);
     copiedBox->srcROI = roi;
     roi->label = copiedBox->label;
     roi->box = copiedBox.get();
     roi->frame->boxes.push_back(std::move(copiedBox));
   }
-  calibrationTable_[roi->id] = {roi->scaleLevel(), newScale};
+  calibrationTable_[roi->oid] = {roi->scaleLevel(), newScale};
 }
 
 std::vector<float> ROIResizer::getProbingCandidates(float scale, int level, float area) const {

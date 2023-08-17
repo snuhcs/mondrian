@@ -5,8 +5,7 @@
 
 namespace md {
 
-ROI::ROI(ROI* prevROI,
-         const OID id,
+ROI::ROI(const OID oid,
          Frame* frame,
          const Rect& origLoc,
          const ROIType type,
@@ -16,8 +15,7 @@ ROI::ROI(ROI* prevROI,
          const float confidence,
          const float padding)
     : uid(ROI::nextUID_++),
-      prevROI(prevROI),
-      id(id),
+      oid(oid),
       frame(frame),
       origLoc(origLoc),
       type(type),
@@ -35,12 +33,8 @@ ROI::ROI(ROI* prevROI,
       },
       targetScale_(1.0f), // TODO: Start with targetScale_(-1) and assert
       scaleLevel_(ROIResizer::INVALID_LEVEL),
-      nextROI(nullptr),
       mergedROI(nullptr),
       box(nullptr) {
-  if (prevROI != nullptr) {
-    prevROI->nextROI = this;
-  }
   setPaddedLoc({std::max(0.0f, origLoc.l - padding),
                 std::max(0.0f, origLoc.t - padding),
                 std::min((float) frame->width(), origLoc.r + padding),

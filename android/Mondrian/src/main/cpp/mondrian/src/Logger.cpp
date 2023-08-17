@@ -148,7 +148,7 @@ void Logger::logROIHeader() {
       << "avgErr" << DELIM
 
       << "numProbingROIs" << DELIM
-      << "id" << DELIM
+      << "oid" << DELIM
 
       // Packing info
       << "mergedLoc_l" << DELIM
@@ -212,7 +212,7 @@ void Logger::logROI(const ROI* roi) {
       << roi->features.ofFeatures.avgErr << DELIM
 
       << roi->roisForProbing.size() << DELIM
-      << roi->id << DELIM
+      << roi->oid << DELIM
 
       << mergedROI->loc().l << DELIM
       << mergedROI->loc().t << DELIM

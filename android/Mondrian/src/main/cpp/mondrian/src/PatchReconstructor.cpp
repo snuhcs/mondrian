@@ -61,7 +61,7 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
   }
   for (const BoundingBox& box : results) {
     assert(box.srcROI == nullptr);
-    assert(box.id == INVALID_OID);
+    assert(box.oid == INVALID_OID);
   }
 
   // Insert boxes to appropriate Frame::boxes
@@ -102,8 +102,8 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
 void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   std::vector<std::unique_ptr<ROI>>& rois = frame->rois;
   std::vector<std::unique_ptr<BoundingBox>>& boxes = frame->boxes;
-  assert(std::all_of(rois.begin(), rois.end(), [](auto& roi) { return roi->id != INVALID_OID; }));
-  assert(std::all_of(boxes.begin(), boxes.end(), [](auto& box) { return box->id == INVALID_OID; }));
+  assert(std::all_of(rois.begin(), rois.end(), [](auto& roi) { return roi->oid != INVALID_OID; }));
+  assert(std::all_of(boxes.begin(), boxes.end(), [](auto& box) { return box->oid == INVALID_OID; }));
   assert(std::all_of(rois.begin(), rois.end(), [](auto& roi) { return roi->box == nullptr; }));
   assert(std::all_of(boxes.begin(), boxes.end(), [](auto& box) { return box->srcROI == nullptr; }));
 
@@ -130,7 +130,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     // else that bounding box is considered as newly appeared object
     if (maxROI != nullptr && maxIoU >= mConfig.ID_MAPPING_IOU_THRES) {
       roiToBoxesMap[maxROI].push_back(box.get());
-      box->choiceOfBox = maxROI->id;
+      box->choiceOfBox = maxROI->oid;
     } else {
       unassignedBoxes.push_back(box.get());
     }
@@ -138,7 +138,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   // End of 1
 
   // 2. Let ROIs select their favorite Box
-  // - Selection result is saved as ROI with same id
+  // - Selection result is saved as ROI with same oid
   for (auto& roi : rois) {
     if (isFullFrame || roi->mergedROI->isPacked()) {
       ROI* roiPtr = roi.get();
@@ -156,7 +156,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
         // 1-1 matching with ROI & box
         assert(maxIndex >= 0 && maxIndex < roiToBoxesMap[roiPtr].size());
         BoundingBox* maxBox = roiToBoxesMap[roiPtr][maxIndex];
-        maxBox->id = roi->id;
+        maxBox->oid = roi->oid;
         maxBox->srcROI = roiPtr;
         if (!isFullFrame) {
           maxBox->origin = roi->origin;
@@ -179,11 +179,11 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   //   a) who does not match with any ROI
   //   b) those who lost competition between other Boxes wrt ROI's selection
   if (!unassignedBoxes.empty()) {
-    std::pair<OID, OID> idRange = ROI::getNewIds(unassignedBoxes.size());
-    OID id = idRange.first;
+    auto [startOID, endOID] = ROI::getNewOIDs(unassignedBoxes.size());
+    OID oid = startOID;
     for (BoundingBox* box : unassignedBoxes) {
-      assert(id < idRange.second);
-      box->id = id++;
+      assert(oid < endOID);
+      box->oid = oid++;
       if (isFullFrame) {
         box->origin = Origin::NEW_FULL_FRAME;
       } else {
@@ -196,17 +196,17 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
 
   const auto testROIBoxConnection = [&boxes, &rois]() {
     for (const std::unique_ptr<BoundingBox>& box : boxes) {
-      assert(box->id != INVALID_OID);
+      assert(box->oid != INVALID_OID);
       if (box->srcROI != nullptr) {
         assert(box->srcROI->box == box.get());
         assert(box->srcROI->label == box->label);
-        assert(box->srcROI->id == box->id);
+        assert(box->srcROI->oid == box->oid);
       }
     }
     for (auto& roi : rois) {
-      assert(roi->id != INVALID_OID);
+      assert(roi->oid != INVALID_OID);
       if (roi->box != nullptr) {
-        assert(roi->box->id == roi->id);
+        assert(roi->box->oid == roi->oid);
       }
     }
   };

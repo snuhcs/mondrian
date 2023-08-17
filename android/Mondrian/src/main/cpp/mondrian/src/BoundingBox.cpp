@@ -2,13 +2,13 @@
 
 namespace md {
 
-BoundingBox::BoundingBox(OID id,
+BoundingBox::BoundingBox(OID oid,
                          const Rect& loc,
                          const float confidence,
                          int label,
                          Origin origin)
     : bid(BoundingBox::nextBID_++),
-      id(id),
+      oid(oid),
       loc(loc),
       confidence(confidence),
       label(label),
@@ -18,7 +18,7 @@ BoundingBox::BoundingBox(OID id,
 
 std::string BoundingBox::header() {
   std::stringstream ss;
-  ss << "id" << DELIM
+  ss << "oid" << DELIM
      << "left" << DELIM
      << "top" << DELIM
      << "right" << DELIM
@@ -32,7 +32,7 @@ std::string BoundingBox::header() {
 
 std::string BoundingBox::str() const {
   std::stringstream ss;
-  ss << id << DELIM
+  ss << oid << DELIM
      << loc.l << DELIM
      << loc.t << DELIM
      << loc.r << DELIM

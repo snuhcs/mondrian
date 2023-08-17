@@ -14,7 +14,7 @@ struct BoundingBox {
   static inline std::atomic<BID> nextBID_ = 0;
 
   const BID bid;
-  OID id;
+  OID oid;
   Rect loc;
   float confidence;
   int label;
@@ -22,7 +22,7 @@ struct BoundingBox {
   Origin origin;
   OID choiceOfBox;
 
-  BoundingBox(OID id,
+  BoundingBox(OID oid,
               const Rect& loc,
               const float confidence,
               int label,

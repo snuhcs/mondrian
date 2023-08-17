@@ -81,7 +81,6 @@ class Mondrian {
 
   // Thread: Preprocessing
   std::thread preprocessThread_;
-  const cv::Size preprocessTargetSize_;
   std::mutex preprocessMtx_;
   std::condition_variable preprocessCV_;
   std::queue<Frame*> preprocessQueue_;
