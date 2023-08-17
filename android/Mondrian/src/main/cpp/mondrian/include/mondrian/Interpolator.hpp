@@ -10,15 +10,15 @@ class Interpolator {
   static void interpolate(MultiStream& frames, float thres);
 
  private:
-  static std::set<OID> getROIIds(const Stream& frames);
+  static std::set<OID> getObjectIDs(const Stream& frames);
 
-  static std::vector<ROI*> getROIStream(const Stream& frames, OID roiId);
+  static std::vector<ROI*> getObjectSequence(const Stream& frames, OID oid);
 
-  static std::vector<int> findValidROIs(std::vector<ROI*>& childROIs);
+  static std::vector<int> findValidROIIndices(std::vector<ROI*>& childROIs);
 
   static std::pair<float, float> sumMotionVectors(std::vector<ROI*> childROIs, int start, int end);
 
-  static std::pair<float, float> getBbxShift(std::vector<ROI*> childROIs, int start, int end);
+  static std::pair<float, float> getBoxShift(std::vector<ROI*> childROIs, int start, int end);
 
   static void extrapolateLeft(std::vector<ROI*> childROIs, int idx);
 
