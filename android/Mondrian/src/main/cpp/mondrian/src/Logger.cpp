@@ -221,7 +221,7 @@ void Logger::logROI(const ROI* roi) {
       << mergedROI->packedXY().first << DELIM
       << mergedROI->packedXY().second << DELIM
       << mergedROI->targetScale() << DELIM
-      << mergedROI->absolutePackedCanvasIndex() << DELIM
+      << mergedROI->pid() << DELIM
       << mergedROI->packedCanvasSize() << DELIM
 
       << "X" << DELIM  // TODO: handle roi->box validity

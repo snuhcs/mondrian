@@ -8,7 +8,7 @@ namespace md {
 MergedROI::MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isProbing)
     : rois_(rois), targetScale_(targetScale), isProbing_(isProbing),
       frame_(frameOf(rois)), loc_(locOf(rois)),
-      packedXY_(INVALID_XY), relativePackedCanvasIndex_(-1), absolutePackedCanvasIndex_(-1),
+      packedXY_(INVALID_XY), packedCanvasIndex_(-1), pid_(-1),
       packedCanvasSize_(-1), probingBox_(nullptr) {
   for (ROI* roi : rois) {
     roi->mergedROI = this;
@@ -128,7 +128,7 @@ cv::Mat MergedROI::borderedMat() const {
   return rgbMat;
 }
 
-void MergedROI::setPackInfo(IntPair xy, int relativePackedCanvasIndex,
+void MergedROI::setPackInfo(IntPair xy, int packedCanvasIndex,
                             ExecutionType executionType, int roiSize) {
   if (executionType == ExecutionType::EMULATED_BATCH
       || executionType == ExecutionType::ROI_WISE_INFERENCE) {
@@ -142,7 +142,7 @@ void MergedROI::setPackInfo(IntPair xy, int relativePackedCanvasIndex,
     xy.second += (roiSize - bh) / 2;
   }
   packedXY_ = xy;
-  relativePackedCanvasIndex_ = relativePackedCanvasIndex;
+  packedCanvasIndex_ = packedCanvasIndex;
 }
 
 } // namespace md

@@ -114,12 +114,12 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
       if (frame == fullFrameTarget) continue;
       for (auto& mergedROI : frame->mergedROIs) {
         if (mergedROI->isPacked()) {
-          groupedMergedROIs[mergedROI->relativePackedCanvasIndex()].insert(mergedROI.get());
+          groupedMergedROIs[mergedROI->packedCanvasIndex()].insert(mergedROI.get());
         }
       }
       for (auto& probeROI : frame->probingROIs) {
         if (probeROI->isPacked()) {
-          groupedMergedROIs[probeROI->relativePackedCanvasIndex()].insert(probeROI.get());
+          groupedMergedROIs[probeROI->packedCanvasIndex()].insert(probeROI.get());
         }
       }
     }
@@ -127,9 +127,9 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
   time_us groupingTime = NowMicros();
 
   std::vector<PackedCanvas> packedCanvases;
-  for (auto& [relativePackedCanvasIndex, mergedROIs] : groupedMergedROIs) {
-    assert(relativePackedCanvasIndex < inferencePlan.size());
-    const auto& info = inferencePlan[relativePackedCanvasIndex];
+  for (auto& [packedCanvasIndex, mergedROIs] : groupedMergedROIs) {
+    assert(packedCanvasIndex < inferencePlan.size());
+    const auto& info = inferencePlan[packedCanvasIndex];
     if (!mergedROIs.empty()) {
       packedCanvases.emplace_back(mergedROIs, info.size, info.device);
     }

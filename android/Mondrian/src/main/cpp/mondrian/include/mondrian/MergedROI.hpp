@@ -62,16 +62,16 @@ class MergedROI {
     return packedXY_;
   }
 
-  int relativePackedCanvasIndex() const {
-    return relativePackedCanvasIndex_;
+  int packedCanvasIndex() const {
+    return packedCanvasIndex_;
   }
 
-  int absolutePackedCanvasIndex() const {
-    return absolutePackedCanvasIndex_;
+  PID pid() const {
+    return pid_;
   }
 
-  void setAbsolutePackedCanvasIndex(int absolutePackedCanvasIndex) {
-    absolutePackedCanvasIndex_ = absolutePackedCanvasIndex;
+  void setPID(PID pid) {
+    pid_ = pid;
   }
 
   int packedCanvasSize() const {
@@ -126,7 +126,7 @@ class MergedROI {
 
   cv::Mat borderedMat() const;
 
-  void setPackInfo(IntPair xy, int relativePackedCanvasIndex,
+  void setPackInfo(IntPair xy, int packedCanvasIndex,
                    ExecutionType executionType, int roiSize);
 
  private:
@@ -140,9 +140,9 @@ class MergedROI {
   Frame* const frame_;
   const Rect loc_;
 
+  PID pid_;
   IntPair packedXY_;
-  int relativePackedCanvasIndex_;
-  int absolutePackedCanvasIndex_;
+  int packedCanvasIndex_;
   int packedCanvasSize_;
 
   bool isProbing_;

@@ -15,6 +15,7 @@ struct BoundingBox {
 
   const BID bid;
   OID oid;
+  PID pid;
   Rect loc;
   float confidence;
   int label;
