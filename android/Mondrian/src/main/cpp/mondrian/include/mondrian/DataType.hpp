@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <queue>
+#include <array>
 
 #include "mondrian/Time.hpp"
 
@@ -37,6 +38,8 @@ enum class Device {
   GPU,
   DSP,
 };
+
+const std::array<Device, 2> Devices = {Device::GPU, Device::DSP};
 
 Device deviceOf(const std::string& deviceStr);
 
