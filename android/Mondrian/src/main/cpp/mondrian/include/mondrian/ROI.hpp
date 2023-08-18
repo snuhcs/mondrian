@@ -34,8 +34,8 @@ class ROI {
   Features features;
 
  private:
-  std::map<Device, float> targetScaleTable;
-  std::map<Device, int> scaleLevelTable;
+  std::map<Device, float> targetScaleTable_;
+  std::map<Device, int> scaleLevelTable_;
 
  public:
   std::vector<float> probeScales;
@@ -76,11 +76,11 @@ class ROI {
   }
 
   float targetScale() const {
-    return targetScaleTable.at(Device::GPU);
+    return targetScaleTable_.at(Device::GPU);
   }
 
   int scaleLevel() const {
-    return scaleLevelTable.at(Device::GPU);
+    return scaleLevelTable_.at(Device::GPU);
   }
 
   ROIType type() const {

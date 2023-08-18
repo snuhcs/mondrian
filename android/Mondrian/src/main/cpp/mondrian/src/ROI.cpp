@@ -37,8 +37,8 @@ ROI::ROI(const OID oid,
                 std::min((float) frame->height(), origLoc.b + padding)});
 
   for (Device device : Devices) {
-    targetScaleTable[device] = 1.0f; // TODO: Start with targetScale_(-1) and assert
-    scaleLevelTable[device] = ROIResizer::INVALID_LEVEL;
+    targetScaleTable_[device] = 1.0f; // TODO: Start with targetScale_(-1) and assert
+    scaleLevelTable_[device] = ROIResizer::INVALID_LEVEL;
   }
 
 }
@@ -57,8 +57,8 @@ void ROI::eatPD(const Rect& PDRect) {
 void ROI::scaleTo(float newTargetScale, int newScaleLevel) {
   assert(0.0f < newTargetScale);
   assert(newTargetScale <= 1.0f);
-  targetScaleTable[Device::GPU] = newTargetScale;
-  scaleLevelTable[Device::GPU] = newScaleLevel;
+  targetScaleTable_[Device::GPU] = newTargetScale;
+  scaleLevelTable_[Device::GPU] = newScaleLevel;
 }
 
 std::string ROI::header() {
@@ -88,8 +88,8 @@ std::string ROI::str() const {
      << origLoc.str() << DELIM
      << paddedLoc.str() << DELIM
      << features.str() << DELIM
-     << targetScaleTable.at(Device::GPU) << DELIM
-     << scaleLevelTable.at(Device::GPU) << DELIM
+     << targetScaleTable_.at(Device::GPU) << DELIM
+     << scaleLevelTable_.at(Device::GPU) << DELIM
      << probeScales.size() << DELIM
      << roisForProbing.size() << DELIM
      << mergedROI->str() << DELIM // TODO: Remove redundant mergedROI
