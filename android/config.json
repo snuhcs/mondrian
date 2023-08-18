@@ -40,6 +40,7 @@
         "area_shift": 0.0,
         "scale_shift": 0.0,
         "num_probe_steps": 5,
+        "only_smaller_probing": true,
         "probe_step_size": 0.1,
         "probe_conf_thres": 0.0,
         "probe_iou_thres": 0.5

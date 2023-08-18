@@ -76,6 +76,7 @@ ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
   config.AREA_SHIFT = parseFloat(json, "area_shift");
   config.SCALE_SHIFT = parseFloat(json, "scale_shift");
   config.NUM_PROBE_STEPS = parseInt(json, "num_probe_steps");
+  config.ONLY_SMALLER_PROBING = parseBool(json, "only_smaller_probing");
   config.PROBE_STEP_SIZE = parseFloat(json, "probe_step_size");
   config.PROBE_CONF_THRES = parseFloat(json, "probe_conf_thres");
   config.PROBE_IOU_THRES = parseFloat(json, "probe_iou_thres");
