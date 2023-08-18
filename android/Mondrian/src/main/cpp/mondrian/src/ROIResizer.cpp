@@ -35,23 +35,19 @@ const std::map<std::string, std::vector<float>> ROIResizer::AREA_LEVELS = {
     }}
 };
 
-static const auto toVec = [](float staticScale) -> std::vector<float> {
-  return {staticScale};
-};
-
 ROIResizer::ROIResizer(const ROIResizerConfig& config)
     : config_(config),
       predictor_(CANDIDATE_PREDICTORS.at(config.DATASET)),
-      targetAreas_(config.STATIC_AREA
-                   ? toVec(config.STATIC_TARGET_AREA)
-                   : AREA_LEVELS.at(config.DATASET)) {}
+      targetAreas_(AREA_LEVELS.at(config.DATASET)) {}
 
 std::pair<float, int> ROIResizer::getTargetScale(const ID id,
-                                                 const Features& features) {
+                                                 const Features& features,
+                                                 const float area) {
   assert(features.type == OF);
   const int targetLevel = getMaxVotedLevel(id, features);
   assert(0 <= targetLevel && targetLevel < targetAreas_.size());
-  float targetScale = getTargetScale(targetLevel, features.width * features.height);
+  assert(features.width * features.height == area);
+  float targetScale = getTargetScale(targetLevel, area);
 
   if (isCalibrated(id, targetLevel)) {
     targetScale = calibrationTable_[id].second;
@@ -62,7 +58,11 @@ std::pair<float, int> ROIResizer::getTargetScale(const ID id,
 }
 
 float ROIResizer::getTargetScale(const int scaleLevel, const float originalArea) const {
-  return std::min(1.0f, calculateTargetScale(targetAreas_.at(scaleLevel), originalArea));
+  float targetArea = config_.STATIC_AREA ? config_.STATIC_TARGET_AREA : targetAreas_.at(scaleLevel);
+  targetArea += config_.AREA_SHIFT;
+  float targetScale = std::sqrt(targetArea / originalArea);
+  targetScale += config_.SCALE_SHIFT;
+  return std::min(1.0f, targetScale);
 }
 
 bool ROIResizer::isCalibrated(const ID id, const int scaleLevel) const {
@@ -135,36 +135,18 @@ void ROIResizer::updateTable(ROI* roi) {
   calibrationTable_[roi->id] = {roi->scaleLevel(), newScale};
 }
 
-void ROIResizer::getProbingCandidates(ROI* roi) const {
-  float scale = roi->targetScale();
-  int level = roi->scaleLevel();
-  int numProbeSteps = getNumProbeSteps();
-  float originalArea = roi->features.width * roi->features.height;
+std::vector<float> ROIResizer::getProbingCandidates(float scale, int level, float area) const {
   assert(0.0f <= scale && scale <= 1.0f);
-  std::vector<float>& candidates = roi->probeScales;
-  if (config_.STATIC_AREA) {
-    for (int i = 0; i < numProbeSteps; i++) {
-      if (i == 0) {
-        candidates.push_back(scale);
-      } else {
-        candidates.push_back(scale * (1 - float(i) * config_.PROBE_STEP_SIZE));
-        candidates.push_back(scale * (1 + float(i) * config_.PROBE_STEP_SIZE));
-      }
-    }
-    candidates.erase(std::remove_if(candidates.begin(), candidates.end(),
-                                    [](float candidate) {
-                                      return candidate <= 1e-5 || 1.0f < candidate;
-                                    }), candidates.end());
-  } else {
-    for (int i = 0; i < numProbeSteps; i++) {
-      candidates.push_back(scale * (1 - float(i) * config_.PROBE_STEP_SIZE));
-    }
-    float lowerBound = level == 0 ? float(1e-5) : getTargetScale(level - 1, originalArea);
-    candidates.erase(std::remove_if(candidates.begin(), candidates.end(),
-                                    [lowerBound](float candidate) {
-                                      return candidate <= lowerBound;
-                                    }), candidates.end());
+  std::vector<float> candidates;
+  for (int i = 0; i < config_.NUM_PROBE_STEPS; i++) {
+    candidates.push_back(scale * (1 - (float) i * config_.PROBE_STEP_SIZE));
   }
+  float lowerBound = level == 0 ? 1e-5f : getTargetScale(level - 1, area);
+  candidates.erase(std::remove_if(candidates.begin(), candidates.end(),
+                                  [lowerBound](float candidate) {
+                                    return candidate <= lowerBound;
+                                  }), candidates.end());
+  return candidates;
 }
 
 bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
@@ -172,15 +154,6 @@ bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
       && box->label == referenceBox->label
       && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRES
       && box->confidence > config_.PROBE_CONF_THRES;
-}
-
-float ROIResizer::calculateTargetScale(float targetArea, float originalArea) const {
-  if (config_.STATIC_AREA) {
-    return std::min(1.0f, sqrt(targetArea / originalArea));
-  } else {
-    float scale = sqrt((targetArea + config_.AREA_SHIFT) / originalArea) + config_.SCALE_SHIFT;
-    return std::min(1.0f, scale);
-  }
 }
 
 ROIResizer::CircularBuffer::CircularBuffer(int numLevels, int capacity)

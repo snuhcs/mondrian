@@ -118,7 +118,9 @@ void Frame::assignPDROIIDs() {
 void Frame::resizeROIs(ROIResizer* roiResizer) {
   for (auto& roi : rois) {
     if (roi->type == OF) {
-      auto [scale, level] = roiResizer->getTargetScale(roi->id, roi->features);
+      auto [scale, level] = roiResizer->getTargetScale(roi->id,
+                                                       roi->features,
+                                                       roi->paddedArea());
       assert(0.0f < scale && scale <= 1.0f);
       roi->scaleTo(scale, level);
     } else {
@@ -245,7 +247,9 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
       roi->probeScales.clear();
       continue;
     }
-    roiResizer->getProbingCandidates(roi.get());
+    roi->probeScales = roiResizer->getProbingCandidates(roi->targetScale(),
+                                                        roi->scaleLevel(),
+                                                        roi->paddedArea());
     for (auto scale : roi->probeScales) {
       int bw = MergedROI::borderedLengthOf(roi->paddedLoc.w, scale);
       int bh = MergedROI::borderedLengthOf(roi->paddedLoc.h, scale);

@@ -24,15 +24,13 @@ class ROIResizer {
 
   ROIResizer(const ROIResizerConfig& config);
 
-  std::pair<float, int> getTargetScale(const ID id, const Features& features);
+  std::pair<float, int> getTargetScale(const ID id,
+                                       const Features& features,
+                                       const float area);
 
   void updateTable(ROI* roi);
 
-  int getNumProbeSteps() const {
-    return config_.NUM_PROBE_STEPS;
-  }
-
-  void getProbingCandidates(ROI* roi) const;
+  std::vector<float> getProbingCandidates(float scale, int level, float area) const;
 
  private:
   class CircularBuffer {
@@ -62,8 +60,6 @@ class ROIResizer {
   int predictLevelWithFeatures(const Features& features) const;
 
   bool isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const;
-
-  float calculateTargetScale(float targetArea, float originalArea) const;
 
   static const std::map<std::string, Predictor> CANDIDATE_PREDICTORS;
   static const std::map<std::string, std::vector<float>> AREA_LEVELS;
