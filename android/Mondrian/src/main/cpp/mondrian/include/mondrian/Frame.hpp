@@ -20,6 +20,7 @@ class Frame {
  private:
   int width_;
   int height_;
+  bool testROIsIntegrity() const;
 
  public:
   const VID vid;
