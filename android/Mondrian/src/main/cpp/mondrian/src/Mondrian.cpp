@@ -48,6 +48,11 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
     loggerROI_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/roi.csv");
     loggerROI_->logROIHeader();
   }
+  if (config.LOG_MERGED_ROI) {
+    loggerMergedROI_ = std::make_unique<Logger>(
+        "/data/data/hcs.offloading.mondrian/merged_roi.csv");
+    loggerMergedROI_->logMergedROIHeader();
+  }
   if (config.LOG_BOXES) {
     loggerBoxes_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
     loggerBoxes_->logBoxesHeader();
@@ -181,7 +186,7 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   for (const BoundingBox& box : result.boxes) {
     auto& loc = box.loc;
     frame->boxes.push_back(std::make_unique<BoundingBox>(
-        INVALID_OID, box.loc, box.confidence, box.label, Origin::FULL_FRAME));
+        INVALID_OID, -1, box.loc, box.confidence, box.label, Origin::FULL_FRAME));
   }
   patchReconstructor_->matchBoxesROIs(frame, true);
 
@@ -263,7 +268,12 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
       float newB = std::max(0.0f, (b.loc.b - float(y)) / mergedScale + mergedROI->loc().t);
       assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
       mergedROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
-          INVALID_OID, Rect(newL, newT, newR, newB), b.confidence, b.label, Origin::FULL_FRAME));
+          INVALID_OID,
+          packedCanvas.pid,
+          Rect(newL, newT, newR, newB),
+          b.confidence,
+          b.label,
+          Origin::FULL_FRAME));
     }
   }
 
@@ -289,8 +299,16 @@ void Mondrian::log(const Frame* frame) {
     loggerFrame_->logFrame(frame);
   }
   if (loggerROI_) {
-    for (auto& roi : frame->rois) {
+    for (const auto& roi : frame->rois) {
       loggerROI_->logROI(roi.get());
+    }
+  }
+  if (loggerMergedROI_) {
+    for (const auto& mergedROI : frame->mergedROIs) {
+      loggerMergedROI_->logMergedROI(mergedROI.get());
+    }
+    for (const auto& probingROI : frame->probingROIs) {
+      loggerMergedROI_->logMergedROI(probingROI.get());
     }
   }
 }
@@ -399,12 +417,12 @@ void Mondrian::workPostprocess() {
       for (Frame* frame : stream) {
         if (frame == fullFrameTarget) continue;
         for (auto& roi : frame->rois) {
-          if (roi->box == nullptr) {
+          if (roi->box() == nullptr) {
             continue;
           }
-          assert(roi->box->srcROI == roi.get());
-          assert(roi->box->oid == roi->oid);
-          assert(roi->box->label == roi->label);
+          assert(roi->box()->srcROI() == roi.get());
+          assert(roi->box()->oid == roi->oid);
+          assert(roi->box()->label == roi->label());
         }
         nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());
         frame->isBoxesReady = true;

@@ -18,9 +18,6 @@ ROI::ROI(const OID oid,
       oid(oid),
       frame(frame),
       origLoc(origLoc),
-      type(type),
-      origin(origin),
-      label(label),
       features{
           -1,         // width
           -1,         // height
@@ -34,7 +31,8 @@ ROI::ROI(const OID oid,
       targetScale_(1.0f), // TODO: Start with targetScale_(-1) and assert
       scaleLevel_(ROIResizer::INVALID_LEVEL),
       mergedROI(nullptr),
-      box(nullptr) {
+      box_(nullptr),
+      boxID_(-1) {
   setPaddedLoc({std::max(0.0f, origLoc.l - padding),
                 std::max(0.0f, origLoc.t - padding),
                 std::min((float) frame->width(), origLoc.r + padding),
@@ -46,7 +44,6 @@ void ROI::setPaddedLoc(const Rect& newPaddedLoc) {
   features.width = paddedLoc.w;
   features.height = paddedLoc.h;
   features.xyRatio = (float) paddedLoc.w / (float) paddedLoc.h;
-  maxEdgeLength = std::max(paddedLoc.w, paddedLoc.h);
 }
 
 void ROI::eatPD(const Rect& PDRect) {
@@ -58,6 +55,47 @@ void ROI::scaleTo(float newTargetScale, int newScaleLevel) {
   assert(newTargetScale <= 1.0f);
   targetScale_ = newTargetScale;
   scaleLevel_ = newScaleLevel;
+}
+
+std::string ROI::header() {
+  std::stringstream ss;
+  ss << "vid" << DELIM
+     << "fid" << DELIM
+     << "rid" << DELIM
+     << "oid" << DELIM
+     << Rect::header("origLoc") << DELIM
+     << Rect::header("paddedLoc") << DELIM
+     << Features::header() << DELIM
+     << "targetScale" << DELIM
+     << "scaleLevel" << DELIM
+     << "numProbingScales" << DELIM
+     << "numRoisForProbing" << DELIM
+     << MergedROI::header() << DELIM
+     << "boxID";
+  return ss.str();
+}
+
+std::string ROI::str() const {
+  std::stringstream ss;
+  ss << frame->vid << DELIM
+     << frame->fid << DELIM
+     << rid << DELIM
+     << oid << DELIM
+     << origLoc.str() << DELIM
+     << paddedLoc.str() << DELIM
+     << features.str() << DELIM
+     << targetScale_ << DELIM
+     << scaleLevel_ << DELIM
+     << probeScales.size() << DELIM
+     << roisForProbing.size() << DELIM
+     << mergedROI->str() << DELIM // TODO: Remove redundant mergedROI
+     << boxID_;
+  return ss.str();
+}
+
+void ROI::setBox(BoundingBox* box) {
+  box_ = box;
+  boxID_ = box != nullptr ? box->bid : -1;
 }
 
 } // namespace md

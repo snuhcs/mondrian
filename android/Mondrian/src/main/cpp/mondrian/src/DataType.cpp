@@ -10,6 +10,7 @@ namespace md {
 
 const OID INVALID_OID = -1;
 const char DELIM = '\t';
+const char SUBDELIM = ',';
 const int NUM_LABELS = 80;
 const char* COCO_LABELS[] =
     {"person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
@@ -145,6 +146,24 @@ std::string str(const Origin& origin) {
   }
   LOGE("Unknown origin: %d", origin);
   assert(false);
+}
+
+std::string Rect::header(const char* rectName) {
+  std::stringstream ss;
+  ss << rectName << "_l" << DELIM
+     << rectName << "_t" << DELIM
+     << rectName << "_r" << DELIM
+     << rectName << "_b";
+  return ss.str();
+}
+
+std::string Rect::str() const {
+  std::stringstream ss;
+  ss << l << DELIM
+     << t << DELIM
+     << r << DELIM
+     << b;
+  return ss.str();
 }
 
 } // namespace md

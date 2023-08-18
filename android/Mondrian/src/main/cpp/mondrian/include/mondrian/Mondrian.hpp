@@ -99,6 +99,7 @@ class Mondrian {
   std::unique_ptr<Logger> loggerBoxes_;
   std::unique_ptr<Logger> loggerFrame_;
   std::unique_ptr<Logger> loggerROI_;
+  std::unique_ptr<Logger> loggerMergedROI_;
 };
 
 } // namespace md

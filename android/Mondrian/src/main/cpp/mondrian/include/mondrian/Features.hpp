@@ -50,6 +50,10 @@ struct Features {
   float xyRatio;
   float confidence;
   OFFeatures ofFeatures;
+
+  static std::string header();
+
+  std::string str() const;
 };
 
 } // namespace md

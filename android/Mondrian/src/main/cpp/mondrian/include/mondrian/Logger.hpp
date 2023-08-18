@@ -9,6 +9,7 @@ namespace md {
 
 class BoundingBox;
 class Frame;
+class MergedROI;
 class ROI;
 
 class Logger {
@@ -25,13 +26,15 @@ class Logger {
 
   void logROI(const ROI* roi);
 
+  void logMergedROIHeader();
+
+  void logMergedROI(const MergedROI* mergedROI);
+
   void logBoxesHeader();
 
   void logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes);
 
  private:
-  time_us fromBaseTime(const time_us& time) const;
-
   std::ofstream logFile;
   std::mutex mtx;
 

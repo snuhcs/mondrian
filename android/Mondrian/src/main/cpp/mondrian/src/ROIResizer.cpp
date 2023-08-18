@@ -123,13 +123,13 @@ void ROIResizer::updateTable(ROI* roi) {
     }
   }
 
-  if (roi->box == nullptr && largestProbeROIBox != nullptr) {
+  if (roi->box() == nullptr && largestProbeROIBox != nullptr) {
     auto copiedBox = std::make_unique<BoundingBox>(
-        roi->oid, largestProbeROIBox->loc, largestProbeROIBox->confidence,
-        largestProbeROIBox->label, roi->origin);
-    copiedBox->srcROI = roi;
-    roi->label = copiedBox->label;
-    roi->box = copiedBox.get();
+        roi->oid, largestProbeROIBox->pid, largestProbeROIBox->loc, largestProbeROIBox->confidence,
+        largestProbeROIBox->label, roi->origin());
+    copiedBox->setSrcROI(roi);
+    roi->setLabel(copiedBox->label);
+    roi->setBox(copiedBox.get());
     roi->frame->boxes.push_back(std::move(copiedBox));
   }
   calibrationTable_[roi->oid] = {roi->scaleLevel(), newScale};
