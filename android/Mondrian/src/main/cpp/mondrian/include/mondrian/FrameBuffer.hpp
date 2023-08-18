@@ -8,20 +8,22 @@
 
 #include "opencv2/core/mat.hpp"
 
+#include "mondrian/DataType.hpp"
+
 namespace md {
 
 class Frame;
 
 class FrameBuffer {
  public:
-  FrameBuffer(int vid);
+  FrameBuffer(VID vid);
 
   Frame* enqueue(const cv::Mat& yuvMat);
 
   void free(int tailIndex);
 
  private:
-  const int vid;
+  const VID vid;
 
   int frameCount;
   std::queue<std::unique_ptr<Frame>> frames;

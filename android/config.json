@@ -45,7 +45,7 @@
     },
     "roi_packer": {
         "no_downsampling_for_last_frame": true,
-        "type": "min_max_propagation"
+        "type": "min_consecutive_drop"
     },
     "inference_engine": {
         "full_frame_size": 1024,

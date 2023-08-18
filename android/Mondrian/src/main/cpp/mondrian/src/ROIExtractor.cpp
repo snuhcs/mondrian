@@ -62,7 +62,7 @@ MultiStream ROIExtractor::collectFrames(int currID) {
        currID,
        OFWaiting_.size(),
        OFProcessing_.size(),
-       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->frameIndex);
+       OFWaiting_.empty() ? -1 : (*OFWaiting_.begin())->fid);
   return streams;
 }
 
@@ -81,7 +81,7 @@ void ROIExtractor::work(int extractorId) {
 //      LOGD("[ROIExtractor %d] OF frame exists but not ready for OF extraction "
 //           "// fid=%d, useInfResult=%d",
 //           extractorId,
-//           (*OFWaiting_.begin())->frameIndex,
+//           (*OFWaiting_.begin())->fid,
 //           (*OFWaiting_.begin())->prevFrame->useInferenceResultForOF);
 //    }
     if (ofFrameExists && readyForOFExtraction) {
@@ -155,9 +155,11 @@ void ROIExtractor::work(int extractorId) {
     std::stringstream ss;
     ss << "[ROIExtractor " << extractorId << "] "
        << (pd ? " PD" : " OF")
-       << " (" << frame->vid << ", " << frame->frameIndex << ")"
+       << " (" << frame->vid << ", " << frame->fid << ")"
        << " #=" << std::count_if(frame->rois.begin(), frame->rois.end(),
-                                 [pd](auto& roi) { return roi->type == (pd ? PD : OF); })
+                                 [pd](auto& roi) {
+                                   return roi->type == (pd ? ROIType::PD : ROIType::OF);
+                                 })
        << " PDQ=" << PDWaiting_.size()
        << " OFQ=" << OFWaiting_.size()
        << " RQ=" << std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
@@ -192,7 +194,7 @@ void ROIExtractor::processPD(Frame* currFrame) const {
   // Get prevFrame
   const Frame* prevFrame = currFrame;
   for (int i = 0; i < config_.PD_INTERVAL; i++) {
-    if (prevFrame->frameIndex == 0) break;
+    if (prevFrame->fid == 0) break;
     prevFrame = prevFrame->prevFrame;
   }
   assert(prevFrame != nullptr && prevFrame != currFrame);
@@ -214,12 +216,11 @@ void ROIExtractor::processPD(Frame* currFrame) const {
   for (const Rect& pdRect : pdRects) {
     if (config_.MIN_PD_ROI_SIZE <= pdRect.minWH && pdRect.maxWH <= config_.MAX_PD_ROI_SIZE) {
       currFrame->rois.emplace_back(new ROI(
-          /*prevROI=*/nullptr,
-          /*id=*/INVALID_ID,
+          /*oid=*/INVALID_OID,
           /*frame=*/currFrame,
           /*origLoc=*/pdRect,
-          /*type=*/PD,
-          /*origin=*/O_PD,
+          /*type=*/ROIType::PD,
+          /*origin=*/Origin::PD,
           /*label=*/-1,
           /*ofFeatures=*/OFFeatures(),
           /*confidence=*/ROI::INVALID_CONF,
@@ -231,7 +232,7 @@ void ROIExtractor::processPD(Frame* currFrame) const {
 
 void ROIExtractor::processOF(Frame* currFrame) const {
   assert(std::all_of(currFrame->rois.begin(), currFrame->rois.end(),
-                     [](auto& roi) { return roi->type == PD; }));
+                     [](auto& roi) { return roi->type == ROIType::PD; }));
   currFrame->opticalFlowROIProcessStartTime = NowMicros();
 
   Rect imageSize(0.0f, 0.0f, float(currFrame->width()), float(currFrame->height()));
@@ -247,19 +248,19 @@ void ROIExtractor::processOF(Frame* currFrame) const {
       Rect clippedLoc = box->loc.clip(imageSize);
       if (clippedLoc.minWH < 1) continue;
       BoundingBox prevBox(
-          /*id=*/box->id,
-          /*location=*/clippedLoc,
+          /*oid=*/box->oid,
+          /*loc=*/clippedLoc,
           /*confidence=*/box->confidence,
           /*label=*/box->label,
-          /*origin=*/O_PACKED_CANVAS);
+          /*origin=*/Origin::FULL_FRAME);
       prevBox.srcROI = box->srcROI;
       prevBoxes.push_back(prevBox);
     }
   } else {
     for (auto& roi : currFrame->prevFrame->rois) {
       BoundingBox prevBox(
-          /*id=*/roi->id,
-          /*location=*/roi->origLoc,
+          /*oid=*/roi->oid,
+          /*loc=*/roi->origLoc,
           /*confidence=*/1,
           /*label=*/roi->label,
           /*origin=*/roi->origin);
@@ -310,11 +311,10 @@ void ROIExtractor::processOF(Frame* currFrame) const {
                         box.loc.b + shiftY).clip(imageSize);
     if (currLoc.minWH < 1) continue;
     currFrame->rois.emplace_back(new ROI(
-        /*prevROI=*/box.srcROI,
-        /*id=*/box.id,
+        /*oid=*/box.oid,
         /*frame=*/currFrame,
         /*origLoc=*/currLoc,
-        /*type=*/OF,
+        /*type=*/ROIType::OF,
         /*origin=*/box.origin,
         /*label=*/box.label,
         /*ofFeatures=*/ofFeatures,

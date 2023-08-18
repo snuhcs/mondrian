@@ -8,51 +8,66 @@
 
 namespace md {
 
-using ID = int;
+using VID = int;
+using FID = int;
+using PID = int;
+using RID = int;
+using BID = int;
+using OID = int;
 using IntPair = std::pair<int, int>;
 using IntPairs = std::vector<std::pair<int, int>>;
 
-extern const ID INVALID_ID;
+extern const OID INVALID_OID;
+extern const char DELIM;
+extern const int NUM_LABELS;
 extern const char* COCO_LABELS[];
 
-enum Type {
+enum class ROIType {
   OF = 1,
-  PD = 2,
+  PD,
 };
 
-enum Device {
-  GPU = 0,
-  DSP = 1,
-  NO_DEVICE = 2,
+ROIType roiTypeOf(const std::string& roiTypeStr);
+
+std::string str(const ROIType& roiType);
+
+enum class Device {
+  INVALID = 0,
+  GPU,
+  DSP,
 };
 
 Device deviceOf(const std::string& deviceStr);
 
 std::string str(const Device& device);
 
-enum ExecutionType {
-  MONDRIAN = 0,
-  EMULATED_BATCH = 1,
-  ROI_WISE_INFERENCE = 2,
-  FRAME_WISE_INFERENCE = 3,
+enum class ExecutionType {
+  MONDRIAN = 1,
+  EMULATED_BATCH,
+  ROI_WISE_INFERENCE,
+  FRAME_WISE_INFERENCE,
 };
 
 ExecutionType executionTypeOf(const std::string& executionTypeStr);
 
 std::string str(const ExecutionType& executionType);
 
-enum Origin {
-  O_INVALID = 0,           // null value for initialization
-  O_FULL_FRAME = 1,        // (Box) matched Box from full frame_
-  O_PACKED_CANVAS = 2,     // (ROI, Box) OF ROI from bounding box, Box from those ROIs
-  O_PD = 3,                // (ROI, Box) PD ROI, OF ROI originated from PD ROI, Box from those ROIs
-  O_INTERPOLATE = 4,       // (Box) interpolated Box
-  O_NEW_FULL_FRAME = 5,    // (Box) unmatched Box from full frame_
-  O_NEW_PACKED_CANVAS = 6, // (Box) unmatched Box from packed canvas
+enum class Origin {
+  INVALID = 0,       // null value for initialization
+  FULL_FRAME,        // (Box) matched Box from full frame_
+  PACKED_CANVAS,     // (ROI, Box) OF ROI from bounding box, Box from those ROIs
+  PD,                // (ROI, Box) PD ROI, OF ROI originated from PD ROI, Box from those ROIs
+  INTERPOLATE,       // (Box) interpolated Box
+  NEW_FULL_FRAME,    // (Box) unmatched Box from full frame_
+  NEW_PACKED_CANVAS, // (Box) unmatched Box from packed canvas
 };
 
-enum ROIPackerType {
-  MIN_MAX_PROPAGATION = 0,
+Origin originOf(const std::string& originStr);
+
+std::string str(const Origin& origin);
+
+enum class ROIPackerType {
+  MIN_CONSECUTIVE_DROP = 1,
   OF_CONFIDENCE,
 };
 
@@ -125,59 +140,6 @@ struct Rect {
             std::min(std::max(b, other.t), other.b)};
   }
 };
-
-class ROI;
-
-struct BoundingBox {
-  ID id;
-  Rect loc;
-  float confidence;
-  int label;
-  ROI* srcROI;
-  Origin origin;
-  ID choiceOfBox;
-
-  BoundingBox(ID id, const Rect location, const float confidence, int label, Origin origin)
-      : id(id), loc(location), confidence(confidence), label(label), origin(origin),
-        srcROI(nullptr), choiceOfBox(INVALID_ID) {}
-
-  static std::string header(char delim) {
-    std::stringstream ss;
-    ss << "id" << delim
-       << "left" << delim
-       << "top" << delim
-       << "right" << delim
-       << "bottom" << delim
-       << "confidence" << delim
-       << "label" << delim
-       << "origin" << delim
-       << "choiceOfBox";
-    return ss.str();
-  }
-
-  std::string str(char delim) const {
-    std::stringstream ss;
-    ss << id << delim
-       << loc.l << delim
-       << loc.t << delim
-       << loc.r << delim
-       << loc.b << delim
-       << confidence << delim
-       << COCO_LABELS[label] << delim
-       << origin << delim
-       << choiceOfBox;
-    return ss.str();
-  }
-};
-
-struct InferenceInfo {
-  Device device;
-  int size;
-  time_us latency;
-  time_us accumulatedLatency = -1;
-};
-
-std::string str(const std::vector<InferenceInfo>& inferencePlan);
 
 } // namespace md
 

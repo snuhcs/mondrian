@@ -5,17 +5,14 @@
 
 namespace md {
 
-const int PackedCanvas::PACKED_CANVAS_VID = -1;
-
-int PackedCanvas::numPackedCanvases = 0;
-
 PackedCanvas::PackedCanvas(const std::set<MergedROI*>& mergedROIs,
                            int packedCanvasSize,
                            Device device)
     : device(device), packedROIs(mergedROIs), packedCanvasSize(packedCanvasSize),
       packedMat(packedCanvasSize, packedCanvasSize, CV_8UC3, cv::Scalar(114, 114, 114)),
-      absolutePackedCanvasIndex(numPackedCanvases++) {
-  // TODO: Handle different background colors according to the model (e.g. white for YOLOv4, gray for YOLOv5)
+      pid(nextPID_++) {
+  // TODO: Handle different background colors according to the model
+  //       e.g. white for YOLOv4, gray for YOLOv5
   for (MergedROI* mergedROI : mergedROIs) {
     assert(mergedROI->isPacked());
     cv::Mat borderMat = mergedROI->borderedMat();
@@ -32,7 +29,7 @@ PackedCanvas::PackedCanvas(const std::set<MergedROI*>& mergedROIs,
       assert(false);
     }
     borderMat.copyTo(packedMat(rect));
-    mergedROI->setAbsolutePackedCanvasIndex(absolutePackedCanvasIndex);
+    mergedROI->setPID(pid);
     mergedROI->setPackedCanvasSize(packedCanvasSize);
   }
 }

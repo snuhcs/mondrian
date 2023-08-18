@@ -45,7 +45,7 @@ struct Features {
   float width;
   float height;
   int label;
-  Type type;
+  ROIType type;
   Origin origin;
   float xyRatio;
   float confidence;

@@ -3,14 +3,12 @@
 
 #include <fstream>
 
-#include "mondrian/Time.hpp"
+#include "mondrian/DataType.hpp"
 
 namespace md {
 
 class BoundingBox;
-
 class Frame;
-
 class ROI;
 
 class Logger {
@@ -19,22 +17,20 @@ class Logger {
 
   ~Logger();
 
-  void logBoxesHeader();
+  void logFrameHeader();
 
-  void logBoxes(int vid, int frameIndex, const std::vector<BoundingBox>& boxes);
-
-  void logTimelineHeader();
-
-  void logTimeline(const Frame* frame);
+  void logFrame(const Frame* frame);
 
   void logROIHeader();
 
   void logROI(const ROI* roi);
 
+  void logBoxesHeader();
+
+  void logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes);
+
  private:
   time_us fromBaseTime(const time_us& time) const;
-
-  const char delim = '\t';
 
   std::ofstream logFile;
   std::mutex mtx;

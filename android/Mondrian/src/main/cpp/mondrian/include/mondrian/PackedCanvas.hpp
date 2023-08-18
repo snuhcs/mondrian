@@ -11,24 +11,24 @@ namespace md {
 
 class PackedCanvas {
  public:
-  static const int PACKED_CANVAS_VID;
+  static inline const int PACKED_CANVAS_VID = -1;
+  static inline std::atomic<PID> nextPID_ = 0;
+
+  const PID pid;
+
   std::set<MergedROI*> packedROIs;
   const Device device;
   const int packedCanvasSize;
 
   cv::Mat packedMat;
-  const int absolutePackedCanvasIndex;
 
   PackedCanvas(const std::set<MergedROI*>& mergedROIs, int packedCanvasSize, Device device);
 
   Stream getPackedFrames() const;
 
   Key getKey() const {
-    return {PACKED_CANVAS_VID, absolutePackedCanvasIndex};
+    return {PACKED_CANVAS_VID, pid};
   }
-
- private:
-  static int numPackedCanvases;
 };
 
 } // namespace md

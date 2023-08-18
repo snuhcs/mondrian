@@ -7,7 +7,7 @@
 
 #include "opencv2/core/mat.hpp"
 
-#include "mondrian/DataType.hpp"
+#include "mondrian/BoundingBox.hpp"
 
 namespace md {
 

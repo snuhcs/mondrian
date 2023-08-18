@@ -1,6 +1,7 @@
 #ifndef ROI_HPP_
 #define ROI_HPP_
 
+#include <atomic>
 #include <cmath>
 
 #include "opencv2/core/hal/interface.h"
@@ -12,44 +13,45 @@
 
 namespace md {
 
+class BoundingBox;
 class Frame;
 class MergedROI;
 
 class ROI {
  public:
-  static const float INVALID_CONF;
+  static inline const float INVALID_CONF = -1.0f;
 
+ private:
+  static inline std::atomic<RID> nextRID_ = 0;
+  static inline std::atomic<OID> nextOID_ = 0;
+
+  float targetScale_;
+  int scaleLevel_;
+
+ public:
+  const RID rid;
   Frame* const frame;
   const Rect origLoc;
   Rect paddedLoc;
 
-  Type type;
+  ROIType type;
   Origin origin;
   int label;
   Features features;
   std::vector<float> probeScales;
   std::vector<MergedROI*> roisForProbing;
 
-  inline static std::atomic<ID> lastId = 0;
-  ID id;
-  ROI* prevROI; // only valid with rois_
-  ROI* nextROI; // only valid with rois_
+  OID oid;
   MergedROI* mergedROI;
 
   float maxEdgeLength;
 
- private:
-  float targetScale_;
-  int scaleLevel_;
-
- public:
   BoundingBox* box;
 
-  ROI(ROI* prevROI,
-      const ID id,
+  ROI(const OID oid,
       Frame* frame,
       const Rect& origLoc,
-      const Type type,
+      const ROIType type,
       const Origin origin,
       const int label,
       const OFFeatures ofFeatures,
@@ -60,10 +62,10 @@ class ROI {
 
   void eatPD(const Rect& PDRect);
 
-  static std::pair<ID, ID> getNewIds(unsigned long num) {
-    ID minId = lastId.fetch_add(num);
-    ID maxId = minId + num;
-    return std::pair<ID, ID>(minId, maxId); // [minId, maxId)
+  static std::pair<OID, OID> getNewOIDs(unsigned long num) {
+    OID minOID = nextOID_.fetch_add(num);
+    OID maxOID = minOID + num;
+    return {minOID, maxOID};
   }
 
   float paddedArea() const {

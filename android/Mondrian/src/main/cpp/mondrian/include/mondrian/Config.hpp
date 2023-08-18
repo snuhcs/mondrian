@@ -12,8 +12,6 @@
 
 namespace md {
 
-constexpr int NUM_LABELS = 80;
-
 struct ROIExtractorConfig {
   int NUM_WORKERS;
   cv::Size EXTRACTION_SIZE;

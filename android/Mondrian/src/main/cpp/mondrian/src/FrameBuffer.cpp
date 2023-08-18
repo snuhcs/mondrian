@@ -5,21 +5,21 @@
 
 namespace md {
 
-FrameBuffer::FrameBuffer(int vid)
+FrameBuffer::FrameBuffer(VID vid)
     : vid(vid), frameCount(0) {}
 
 Frame* FrameBuffer::enqueue(const cv::Mat& yuvMat) {
   std::lock_guard<std::mutex> lock(mtx);
-  int frameIndex = frameCount++;
+  FID fid = frameCount++;
   Frame* prevFrame = frames.empty() ? nullptr : frames.back().get();
-  auto currFrame = std::make_unique<Frame>(vid, frameIndex, yuvMat, prevFrame, NowMicros());
+  auto currFrame = std::make_unique<Frame>(vid, fid, yuvMat, prevFrame, NowMicros());
   frames.push(std::move(currFrame));
   return frames.back().get();
 }
 
 void FrameBuffer::free(int tailIndex) {
   std::lock_guard<std::mutex> lock(mtx);
-  while (!frames.empty() && frames.front()->frameIndex <= tailIndex) {
+  while (!frames.empty() && frames.front()->fid <= tailIndex) {
     frames.pop();
   }
 }

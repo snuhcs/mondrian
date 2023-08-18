@@ -10,13 +10,13 @@ namespace md {
 class MergedROI;
 
 struct StartEndLength {
-  int vid_;
+  VID vid_;
   int roiID_;
   int start_;
   int end_;
   int length_;
 
-  StartEndLength(int vid, int roiID, int start, int end)
+  StartEndLength(VID vid, int roiID, int start, int end)
       : vid_(vid), roiID_(roiID), start_(start), end_(end), length_(end - start) {}
 
   int mid() const {
@@ -70,7 +70,7 @@ class ROIPrioritizer {
                                        const ROIPackerType type);
 
  private:
-  static std::vector<MergedROI*> minMaxPropagation(const MultiStream& streams);
+  static std::vector<MergedROI*> minConsecutiveDrop(const MultiStream& streams);
 
   static std::vector<MergedROI*> ofConfidence(const MultiStream& streams);
 };

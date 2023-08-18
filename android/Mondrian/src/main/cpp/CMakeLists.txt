@@ -27,6 +27,7 @@ find_library(
 add_library(
     mondrian
     SHARED
+    mondrian/src/BoundingBox.cpp
     mondrian/src/Config.cpp
     mondrian/src/DataType.cpp
     mondrian/src/Features.cpp

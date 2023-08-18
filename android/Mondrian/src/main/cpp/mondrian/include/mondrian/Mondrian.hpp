@@ -29,7 +29,7 @@ class Mondrian {
 
   ~Mondrian();
 
-  void enqueue(const int vid, const cv::Mat& yuvMat);
+  void enqueue(const VID vid, const cv::Mat& yuvMat);
 
  private:
   void enqueue(Frame* frame);
@@ -81,7 +81,6 @@ class Mondrian {
 
   // Thread: Preprocessing
   std::thread preprocessThread_;
-  const cv::Size preprocessTargetSize_;
   std::mutex preprocessMtx_;
   std::condition_variable preprocessCV_;
   std::queue<Frame*> preprocessQueue_;
@@ -96,7 +95,7 @@ class Mondrian {
   std::thread logThread_;
   std::mutex logMtx_;
   std::condition_variable resultsCV_;
-  std::map<int, std::map<int, std::pair<time_us, std::vector<BoundingBox>>>> results_;
+  std::map<VID, std::map<FID, std::pair<time_us, std::vector<BoundingBox>>>> results_;
   std::unique_ptr<Logger> loggerBoxes_;
   std::unique_ptr<Logger> loggerFrame_;
   std::unique_ptr<Logger> loggerROI_;

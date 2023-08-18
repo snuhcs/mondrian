@@ -13,32 +13,28 @@ namespace md {
 std::vector<MergedROI*> ROIPrioritizer::order(const MultiStream& streams,
                                               const ROIPackerType type) {
   switch (type) {
-    case MIN_MAX_PROPAGATION:return minMaxPropagation(streams);
-    case OF_CONFIDENCE:return ofConfidence(streams);
-    default:assert(false);
+    case ROIPackerType::MIN_CONSECUTIVE_DROP: return minConsecutiveDrop(streams);
+    case ROIPackerType::OF_CONFIDENCE: return ofConfidence(streams);
   }
+  assert(false);
 }
 
-std::vector<MergedROI*> ROIPrioritizer::minMaxPropagation(const MultiStream& streams) {
-  // roiMap[vid, roiID][frameIndex] = roi
-  std::map<std::pair<int, int>, std::map<int, ROI*>> roiMap;
+std::vector<MergedROI*> ROIPrioritizer::minConsecutiveDrop(const MultiStream& streams) {
+  std::map<std::pair<VID, OID>, std::map<FID, ROI*>> roiMap;
   for (const auto& [vid, stream] : streams) {
     for (Frame* frame : stream) {
-      // Skip last frame
-      if (frame == *stream.rbegin()) {
-        continue;
-      }
+      if (frame == *stream.rbegin()) continue; // Skip last frame
       for (auto& roi : frame->rois) {
-        roiMap[{vid, roi->id}][frame->frameIndex] = roi.get();
+        roiMap[{vid, roi->oid}][frame->fid] = roi.get();
       }
     }
   }
 
   std::set<StartEndLength> startEndLengths;
-  for (const auto& [key, frameIndexMap] : roiMap) {
+  for (const auto& [key, fidMap] : roiMap) {
     auto& [vid, roiID] = key;
-    int start = (*frameIndexMap.begin()).first;
-    int end = (*frameIndexMap.rbegin()).first + 1;
+    int start = (*fidMap.begin()).first;
+    int end = (*fidMap.rbegin()).first + 1;
     startEndLengths.emplace(vid, roiID, start, end);
   }
   assert(roiMap.size() == startEndLengths.size());
@@ -46,8 +42,8 @@ std::vector<MergedROI*> ROIPrioritizer::minMaxPropagation(const MultiStream& str
   std::vector<MergedROI*> orderedMergedROIs;
   while (!startEndLengths.empty()) {
     auto longest = startEndLengths.begin();
-    int vid = longest->vid_;
-    int fid = longest->mid();
+    VID vid = longest->vid_;
+    FID fid = longest->mid();
 
     MergedROI* mergedROI = roiMap[{vid, longest->roiID_}][fid]->mergedROI;
     assert(std::find(orderedMergedROIs.begin(), orderedMergedROIs.end(),
@@ -57,7 +53,7 @@ std::vector<MergedROI*> ROIPrioritizer::minMaxPropagation(const MultiStream& str
     for (auto& roi : mergedROI->rois()) {
       auto it = startEndLengths.begin();
       for (; it != startEndLengths.end(); it++) {
-        if (it->vid_ == vid && it->roiID_ == roi->id && it->start_ <= fid && fid < it->end_)
+        if (it->vid_ == vid && it->roiID_ == roi->oid && it->start_ <= fid && fid < it->end_)
           break;
       }
       assert(it != startEndLengths.end());

@@ -5,33 +5,36 @@
 
 namespace md {
 
-const float ROI::INVALID_CONF = -1.0f;
-
-ROI::ROI(ROI* prevROI,
-         const ID id,
+ROI::ROI(const OID oid,
          Frame* frame,
          const Rect& origLoc,
-         const Type type,
+         const ROIType type,
          const Origin origin,
          const int label,
          const OFFeatures ofFeatures,
          const float confidence,
          const float padding)
-    : prevROI(prevROI), id(id), frame(frame), origLoc(origLoc),
-      type(type), origin(origin), label(label), features{
-        -1,         // width
-        -1,         // height
-        label,      // label
-        type,       // type
-        origin,     // origin
-        -1,         // xyRatio
-        confidence, // confidence
-        ofFeatures  // OFFeatures
-    }, targetScale_(1.0f), // TODO: Start with targetScale_(-1) and assert
-      scaleLevel_(ROIResizer::INVALID_LEVEL), nextROI(nullptr), mergedROI(nullptr), box(nullptr) {
-  if (prevROI != nullptr) {
-    prevROI->nextROI = this;
-  }
+    : rid(ROI::nextRID_++),
+      oid(oid),
+      frame(frame),
+      origLoc(origLoc),
+      type(type),
+      origin(origin),
+      label(label),
+      features{
+          -1,         // width
+          -1,         // height
+          label,      // label
+          type,       // type
+          origin,     // origin
+          -1,         // xyRatio
+          confidence, // confidence
+          ofFeatures  // OFFeatures
+      },
+      targetScale_(1.0f), // TODO: Start with targetScale_(-1) and assert
+      scaleLevel_(ROIResizer::INVALID_LEVEL),
+      mergedROI(nullptr),
+      box(nullptr) {
   setPaddedLoc({std::max(0.0f, origLoc.l - padding),
                 std::max(0.0f, origLoc.t - padding),
                 std::min((float) frame->width(), origLoc.r + padding),
