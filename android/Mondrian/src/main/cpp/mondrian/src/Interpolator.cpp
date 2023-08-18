@@ -8,7 +8,7 @@ void Interpolator::interpolate(MultiStream& frames, float thres) {
   for (const auto& [vid, aStreamFrames] : frames) {
     std::set<OID> roiIds = getObjectIDs(aStreamFrames);
     for (auto oid : roiIds) {
-      std::vector<ROI*> rois = getObjectSequence(aStreamFrames, oid);
+      std::vector<ROI*> rois = getROIStream(aStreamFrames, oid);
       std::vector<int> validIndices = findValidROIIndices(rois);
       if (validIndices.empty() ||
           float(validIndices.size()) / float(rois.size()) < thres) {
@@ -36,7 +36,7 @@ std::set<OID> Interpolator::getObjectIDs(const Stream& frames) {
   return childIDs;
 }
 
-std::vector<ROI*> Interpolator::getObjectSequence(const Stream& frames, OID oid) {
+std::vector<ROI*> Interpolator::getROIStream(const Stream& frames, OID oid) {
   std::vector<ROI*> roiStream;
   for (const Frame* frame : frames) {
     for (const auto& roi : frame->rois) {

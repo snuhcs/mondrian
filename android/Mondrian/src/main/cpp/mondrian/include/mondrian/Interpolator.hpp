@@ -12,7 +12,7 @@ class Interpolator {
  private:
   static std::set<OID> getObjectIDs(const Stream& frames);
 
-  static std::vector<ROI*> getObjectSequence(const Stream& frames, OID oid);
+  static std::vector<ROI*> getROIStream(const Stream& frames, OID oid);
 
   static std::vector<int> findValidROIIndices(std::vector<ROI*>& childROIs);
 
