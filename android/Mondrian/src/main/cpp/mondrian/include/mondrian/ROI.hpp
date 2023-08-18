@@ -22,14 +22,14 @@ class ROI {
   static inline const float INVALID_CONF = -1.0f;
 
  private:
-  static inline std::atomic<UID> nextUID_ = 0;
+  static inline std::atomic<RID> nextRID_ = 0;
   static inline std::atomic<OID> nextOID_ = 0;
 
   float targetScale_;
   int scaleLevel_;
 
  public:
-  const UID uid;
+  const RID rid;
   Frame* const frame;
   const Rect origLoc;
   Rect paddedLoc;

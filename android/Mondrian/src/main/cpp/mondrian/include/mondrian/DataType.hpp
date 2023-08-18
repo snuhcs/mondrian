@@ -11,7 +11,7 @@ namespace md {
 using VID = int;
 using FID = int;
 using PID = int;
-using UID = int;
+using RID = int;
 using BID = int;
 using OID = int;
 using IntPair = std::pair<int, int>;

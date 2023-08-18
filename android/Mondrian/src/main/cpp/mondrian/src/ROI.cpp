@@ -14,7 +14,7 @@ ROI::ROI(const OID oid,
          const OFFeatures ofFeatures,
          const float confidence,
          const float padding)
-    : uid(ROI::nextUID_++),
+    : rid(ROI::nextRID_++),
       oid(oid),
       frame(frame),
       origLoc(origLoc),
