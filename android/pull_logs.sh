@@ -33,3 +33,5 @@ then
     echo "status : boxes.csv $r1 | roi.csv $r2 | frame.csv $r3"
     echo "saved at $base/$dir"
 fi
+
+echo $dir > $base/.last
