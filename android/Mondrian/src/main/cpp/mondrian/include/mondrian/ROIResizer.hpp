@@ -51,9 +51,9 @@ class ROIResizer {
     std::vector<int> data_;
   };
 
-  float getTargetScale(const int scaleLevel, const float originalArea) const;
+  float calcTargetScale(const int scaleLevel, const float originalArea) const;
 
-  bool isCalibrated(const OID oid, const int scaleLevel) const;
+  bool isCalibrated(const OID oid) const;
 
   int getMaxVotedLevel(const OID oid, const Features& features);
 
