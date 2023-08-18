@@ -94,6 +94,7 @@ void Worker::enqueue(const cv::Mat& rgbMat,
                      const Key key) {
   std::unique_lock<std::mutex> lock(mtx_);
   inputs_.emplace_back(rgbMat, inputSize, isFullFrame, key);
+  estimatedEndTime_ = std::max(estimatedEndTime_, NowMicros());
   estimatedEndTime_ += latencyMap_[{inputSize, isFullFrame}];
   lock.unlock();
   cv_.notify_one();
@@ -106,7 +107,7 @@ std::map<std::pair<int, bool>, time_us> Worker::latencyMap() {
 
 time_us Worker::remainingTime() {
   std::lock_guard<std::mutex> lock(mtx_);
-  return estimatedEndTime_ - NowMicros();
+  return std::max(estimatedEndTime_ - NowMicros(), 0LL);
 }
 
 void Worker::profileLatency(int warmupRuns, int numRuns) {
