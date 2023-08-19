@@ -139,13 +139,20 @@ std::vector<float> ROIResizer::getProbingCandidates(float scale, int level, floa
   assert(0.0f <= scale && scale <= 1.0f);
   std::vector<float> candidates;
   for (int i = 0; i < config_.NUM_PROBE_STEPS; i++) {
-    candidates.push_back(scale * (1 - (float) i * config_.PROBE_STEP_SIZE));
+    if (config_.ONLY_SMALLER_PROBING) {
+      candidates.push_back(scale * (1 - (float) i * config_.PROBE_STEP_SIZE));
+    } else {
+      candidates.push_back(scale * (1 - (float) i * config_.PROBE_STEP_SIZE));
+      candidates.push_back(scale * (1 + (float) i * config_.PROBE_STEP_SIZE));
+    }
   }
   float lowerBound = level == 0 ? 1e-5f : getTargetScale(level - 1, area);
-  candidates.erase(std::remove_if(candidates.begin(), candidates.end(),
-                                  [lowerBound](float candidate) {
-                                    return candidate <= lowerBound;
-                                  }), candidates.end());
+  float upperBound = 1.0f;
+  candidates.erase(std::remove_if(
+      candidates.begin(), candidates.end(),
+      [lowerBound, upperBound](float candidate) {
+        return candidate <= lowerBound || upperBound <= candidate;
+      }), candidates.end());
   return candidates;
 }
 
