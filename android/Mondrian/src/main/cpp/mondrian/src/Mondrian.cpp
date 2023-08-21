@@ -117,8 +117,8 @@ void Mondrian::workSchedule() {
       fullFrameTarget = *streams.at(fullFrameVid).rbegin();
       inferenceEngine_->enqueue(
           /*rgbMat=*/fullFrameTarget->rgbMat(),
-          /*device=*/config_.FULL_DEVICE,
-          /*inputSize=*/config_.FULL_FRAME_SIZE,
+          /*device=*/config_.inferenceEngineConfig.FULL_DEVICE,
+          /*inputSize=*/config_.inferenceEngineConfig.FULL_FRAME_SIZE,
           /*isFullFrame=*/true,
           /*key=*/fullFrameTarget->getKey());
       LOGD("[Schedule %d] Full Frame vid=%d fid=%d", currID,
@@ -179,8 +179,8 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   Result result = inferenceEngine_->getResults(frame->getKey());
   LOGD("[Schedule %d] FULL Inference at %lld // vid=%d fid=%d",
        currID, NowMicros() - startTime_, frame->vid, frame->fid);
-  frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
-  frame->inferenceDevice = config_.FULL_DEVICE;
+  frame->inferenceFrameSize = config_.inferenceEngineConfig.FULL_FRAME_SIZE;
+  frame->inferenceDevice = config_.inferenceEngineConfig.FULL_DEVICE;
   frame->fullInferenceStartTime = result.detectionStart;
   frame->fullInferenceEndTime = result.detectionEnd;
   for (const BoundingBox& box : result.boxes) {
@@ -343,8 +343,8 @@ void Mondrian::enqueue(const VID vid, const cv::Mat& yuvMat) {
 void Mondrian::enqueueFrameWise(Frame* frame) {
   inferenceEngine_->enqueue(
       /*rgbMat=*/frame->rgbMat(),
-      /*device=*/config_.FULL_DEVICE,
-      /*inputSize=*/config_.FULL_FRAME_SIZE,
+      /*device=*/config_.inferenceEngineConfig.FULL_DEVICE,
+      /*inputSize=*/config_.inferenceEngineConfig.FULL_FRAME_SIZE,
       /*isFullFrame=*/true,
       /*key=*/frame->getKey());
   handleFullFrameResults(frame, frame->fid);
@@ -359,8 +359,8 @@ void Mondrian::enqueue(Frame* frame) {
     frame->useInferenceResultForOF = true;
     inferenceEngine_->enqueue(
         /*rgbMat=*/frame->rgbMat(),
-        /*device=*/config_.FULL_DEVICE,
-        /*inputSize=*/config_.FULL_FRAME_SIZE,
+        /*device=*/config_.inferenceEngineConfig.FULL_DEVICE,
+        /*inputSize=*/config_.inferenceEngineConfig.FULL_FRAME_SIZE,
         /*isFullFrame=*/true,
         /*key=*/frame->getKey());
     handleFullFrameResults(frame, -1);

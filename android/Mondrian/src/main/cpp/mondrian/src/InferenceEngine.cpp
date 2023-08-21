@@ -13,48 +13,47 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  JNIEnv* env,
                                  jobject app)
     : config_(config) {
-  for (Device device : config.DEVICES) {
-    if (config.MODEL == "YOLO_V5" && device == Device::GPU) {
-      addClassifiers<TfLiteYoloV5Classifier>(device, config, env, app);
-    } else if (config.MODEL == "YOLO_V5" && device == Device::DSP) {
-      addClassifiers<TfLiteYoloV5ClassifierDSP>(device, config, env, app);
+  for (Device device : {Device::GPU, Device::DSP}) {
+    if (device == Device::GPU) {
+      addWorker<TfLiteYoloV5Classifier>(device, env, app);
+    } else if (device == Device::DSP) {
+      addWorker<TfLiteYoloV5ClassifierDSP>(device, env, app);
     } else {
-      LOGE("Running %s model on %s is not supported yet",
-           config.MODEL.c_str(), str(device).c_str());
+      LOGE("%s device is not supported yet", str(device).c_str());
     }
   }
 }
 
 template<typename T>
-void InferenceEngine::addClassifiers(Device device,
-                                     const InferenceEngineConfig& config,
-                                     JNIEnv* env,
-                                     jobject app) {
+void InferenceEngine::addWorker(Device device,
+                                JNIEnv* env,
+                                jobject app) {
   std::map<std::pair<int, bool>, Classifier*> classifierMap;
 
-  // classifiers for packed canvas inference
-  bool forFullFrame = false;
-  for (const auto& inputSize : config.INPUT_SIZES) {
+  // classifiers for full frame inference
+  if (device == config_.FULL_DEVICE) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-        config.DATASET, inputSize, config.CONF_THRES, config.IOU_THRES,
-        config.USE_TINY, forFullFrame);
-    classifierMap[{inputSize, forFullFrame}] = classifier.get();
+        config_.FULL_MODEL,
+        config_.FULL_FRAME_SIZE,
+        true,
+        config_.DATASET,
+        config_.CONF_THRES,
+        config_.IOU_THRES);
+    classifierMap[{config_.FULL_FRAME_SIZE, true}] = classifier.get();
     classifiers_.push_back(std::move(classifier));
   }
 
-  if (device == Device::GPU) {
-    // classifier for full frame inference
-    // identical with above code block inside the for loop
-    int inputSize = config.FULL_FRAME_SIZE;
-    forFullFrame = true;
+  // classifiers for packed canvas inference
+  const WorkerConfig& workerConfig = config_.WORKER_CONFIGS.at(device);
+  for (const auto& inputSize : workerConfig.INPUT_SIZES) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-        config.DATASET,
+        workerConfig.MODEL,
         inputSize,
-        config.CONF_THRES,
-        config.IOU_THRES,
-        config.USE_TINY,
-        forFullFrame);
-    classifierMap[{inputSize, forFullFrame}] = classifier.get();
+        false,
+        config_.DATASET,
+        config_.CONF_THRES,
+        config_.IOU_THRES);
+    classifierMap[{inputSize, false}] = classifier.get();
     classifiers_.push_back(std::move(classifier));
   }
 

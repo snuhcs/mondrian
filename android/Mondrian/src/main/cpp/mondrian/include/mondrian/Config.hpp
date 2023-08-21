@@ -54,14 +54,20 @@ struct ROIPackerConfig {
   void print() const;
 };
 
+struct WorkerConfig {
+  std::string MODEL;
+  std::vector<int> INPUT_SIZES;
+
+  std::string str() const;
+};
+
 struct InferenceEngineConfig {
+  Device FULL_DEVICE;
+  std::string FULL_MODEL;
   int FULL_FRAME_SIZE;
-  std::set<int> INPUT_SIZES;
-  std::set<Device> DEVICES;
+  std::map<Device, WorkerConfig> WORKER_CONFIGS;
   bool DRAW_INFERENCE_RESULT;
   std::string DATASET;
-  std::string MODEL;
-  bool USE_TINY;
   float CONF_THRES;
   float IOU_THRES;
   int PROFILE_WARMUPS;
@@ -86,8 +92,6 @@ struct MondrianConfig {
   bool LOG_MERGED_ROI;
   float INTERPOLATION_THRES;
   int FULL_FRAME_INTERVAL;
-  int FULL_FRAME_SIZE;
-  Device FULL_DEVICE;
   int LATENCY_SLO_MS;
   int ROI_SIZE; // Used for Emulated Batch or ROI-wise Inference
   ROIExtractorConfig roiExtractorConfig;
