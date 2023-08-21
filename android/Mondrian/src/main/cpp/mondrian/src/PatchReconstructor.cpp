@@ -121,7 +121,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
 
     for (auto& mergedROI : mergedROIs) {
       if (isFullFrame || mergedROI->isPacked()) {
-        float intersection = box->loc.intersection(moveResizeROIPos(mergedROI.get()));
+        float intersection = box->loc.intersection(mergedROI->loc());
         float overlapRatio = intersection / box->loc.area;
         if (maxOverlap < overlapRatio) {
           maxOverlap = overlapRatio;
