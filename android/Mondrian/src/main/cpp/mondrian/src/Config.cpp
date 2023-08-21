@@ -97,6 +97,7 @@ static std::map<Device, WorkerConfig> parseWorkerConfigs(const Json::Value& json
     const Json::Value& workerConfigJson = *it;
     WorkerConfig workerConfig = {};
     workerConfig.MODEL = parseString(workerConfigJson, "model");
+    workerConfig.DATASET = parseString(workerConfigJson, "dataset");
     for (const auto& value : workerConfigJson["input_sizes"]) {
       workerConfig.INPUT_SIZES.push_back(value.asInt());
     }
@@ -109,10 +110,10 @@ InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   InferenceEngineConfig config = {};
   config.FULL_DEVICE = deviceOf(parseString(json, "full_device"));
   config.FULL_MODEL = parseString(json, "full_model");
+  config.FULL_DATASET = parseString(json, "full_dataset");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
   config.WORKER_CONFIGS = parseWorkerConfigs(json["worker_configs"]);
   config.DRAW_INFERENCE_RESULT = parseBool(json, "draw_inference_result");
-  config.DATASET = parseString(json, "dataset");
   config.CONF_THRES = parseFloat(json, "conf_thres");
   config.IOU_THRES = parseFloat(json, "iou_thres");
   config.PROFILE_WARMUPS = parseInt(json, "profile_warmups");
@@ -181,7 +182,6 @@ void MondrianConfig::test() const {
   }
 
   // InferenceEngine
-  assert(datasets.find(inferenceEngineConfig.DATASET) != datasets.end());
   if (EXECUTION_TYPE != ExecutionType::FRAME_WISE_INFERENCE) {
     for (const auto& [device, workerConfig] : inferenceEngineConfig.WORKER_CONFIGS) {
       assert(!workerConfig.INPUT_SIZES.empty());
@@ -268,6 +268,7 @@ void ROIPackerConfig::print() const {
 std::string WorkerConfig::str() const {
   std::stringstream ss;
   ss << MODEL << " ";
+  ss << DATASET << " ";
   for (int input_size : INPUT_SIZES) {
     ss << input_size << " ";
   }
@@ -279,12 +280,12 @@ void InferenceEngineConfig::print() const {
   ss << "========== InferenceEngineConfig ==========" << std::endl;
   ss << "FULL_DEVICE: " << str(FULL_DEVICE) << std::endl;
   ss << "FULL_MODEL: " << FULL_MODEL << std::endl;
+  ss << "FULL_DATASET: " << FULL_DATASET << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
   for (const auto& [device, workerConfig]: WORKER_CONFIGS) {
     ss << "WORKER_CONFIGS [" << str(device) << "]: " << workerConfig.str() << std::endl;
   }
   ss << "DRAW_INFERENCE_RESULT: " << DRAW_INFERENCE_RESULT << std::endl;
-  ss << "DATASET: " << DATASET << std::endl;
   ss << "CONF_THRES: " << CONF_THRES << std::endl;
   ss << "IOU_THRES: " << IOU_THRES << std::endl;
   ss << "PROFILE_WARMUPS: " << PROFILE_WARMUPS << std::endl;

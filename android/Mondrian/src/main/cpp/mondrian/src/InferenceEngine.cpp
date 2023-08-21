@@ -36,7 +36,7 @@ void InferenceEngine::addWorker(Device device,
         config_.FULL_MODEL,
         config_.FULL_FRAME_SIZE,
         true,
-        config_.DATASET,
+        config_.FULL_DATASET,
         config_.CONF_THRES,
         config_.IOU_THRES);
     classifierMap[{config_.FULL_FRAME_SIZE, true}] = classifier.get();
@@ -51,7 +51,7 @@ void InferenceEngine::addWorker(Device device,
           workerConfig.MODEL,
           inputSize,
           false,
-          config_.DATASET,
+          workerConfig.DATASET,
           config_.CONF_THRES,
           config_.IOU_THRES);
       classifierMap[{inputSize, false}] = classifier.get();

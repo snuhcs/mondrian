@@ -56,6 +56,7 @@ struct ROIPackerConfig {
 
 struct WorkerConfig {
   std::string MODEL;
+  std::string DATASET;
   std::vector<int> INPUT_SIZES;
 
   std::string str() const;
@@ -64,10 +65,10 @@ struct WorkerConfig {
 struct InferenceEngineConfig {
   Device FULL_DEVICE;
   std::string FULL_MODEL;
+  std::string FULL_DATASET;
   int FULL_FRAME_SIZE;
   std::map<Device, WorkerConfig> WORKER_CONFIGS;
   bool DRAW_INFERENCE_RESULT;
-  std::string DATASET;
   float CONF_THRES;
   float IOU_THRES;
   int PROFILE_WARMUPS;

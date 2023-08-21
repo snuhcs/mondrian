@@ -50,10 +50,12 @@
     "inference_engine": {
         "full_device": "GPU",
         "full_model": "yolov5l",
+        "full_dataset": "mta",
         "full_frame_size": 1024,
         "worker_configs": {
             "GPU": {
                 "model": "yolov5m",
+                "dataset": "mta",
                 "input_sizes": [
                     640,
                     1280
@@ -61,13 +63,13 @@
             },
             "DSP": {
                 "model": "yolov5m",
+                "dataset": "pretrained",
                 "input_sizes": [
                     640
                 ]
             }
         },
         "draw_inference_result": true,
-        "dataset": "mta",
         "conf_thres": 0.5,
         "iou_thres": 0.5,
         "profile_warmups": 3,

@@ -26,8 +26,6 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(const std::string& modelName,
   if (dataset != "pretrained") {
     ss << dataset << "-"
     << (forFullFrame ? "full" : "pack") << "-";
-  } else {
-    assert(forFullFrame);
   }
   ss << modelName << "-"
      << inputSize << "-"

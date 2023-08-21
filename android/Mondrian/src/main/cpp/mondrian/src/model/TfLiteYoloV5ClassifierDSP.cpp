@@ -29,8 +29,6 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(const std::string& modelNam
   if (dataset != "pretrained") {
     ss << dataset << "-"
        << (forFullFrame ? "full" : "pack") << "-";
-  } else {
-    assert(forFullFrame);
   }
   ss << modelName << "-"
      << inputSize << "-"
