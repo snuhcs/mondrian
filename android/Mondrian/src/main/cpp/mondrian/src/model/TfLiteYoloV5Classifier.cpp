@@ -23,7 +23,7 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(const std::string& modelName,
                  confThres, iouThres) {
   std::stringstream ss;
   ss << "/data/local/tmp/models/";
-  if (dataset != "pretrained") {
+  if (dataset != "coco") {
     ss << dataset << "-"
     << (forFullFrame ? "full" : "pack") << "-";
   }

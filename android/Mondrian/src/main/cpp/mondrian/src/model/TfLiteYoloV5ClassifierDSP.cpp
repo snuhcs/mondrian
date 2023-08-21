@@ -26,7 +26,7 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(const std::string& modelNam
                  confThres, iouThres) {
   std::stringstream ss;
   ss << "/data/local/tmp/models/";
-  if (dataset != "pretrained") {
+  if (dataset != "coco") {
     ss << dataset << "-"
        << (forFullFrame ? "full" : "pack") << "-";
   }

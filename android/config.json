@@ -63,7 +63,7 @@
             },
             "DSP": {
                 "model": "yolov5m",
-                "dataset": "pretrained",
+                "dataset": "coco",
                 "input_sizes": [
                     640
                 ]
