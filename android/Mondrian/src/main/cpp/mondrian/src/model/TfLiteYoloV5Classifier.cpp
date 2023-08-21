@@ -22,12 +22,16 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(const std::string& modelName,
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
                  confThres, iouThres) {
   std::stringstream ss;
-  ss << "/data/local/tmp/models/"
-     << modelName << "-"
+  ss << "/data/local/tmp/models/";
+  if (dataset != "pretrained") {
+    ss << dataset << "-"
+    << (forFullFrame ? "full" : "pack") << "-";
+  } else {
+    assert(forFullFrame);
+  }
+  ss << modelName << "-"
      << inputSize << "-"
-     << "fp16-"
-     << dataset << "-"
-     << (forFullFrame ? "full.tflite" : "pack.tflite");
+     << "fp16.tflite";
 
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
   if (model == nullptr) {
