@@ -143,7 +143,6 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   // 2. Assign boxes to ROIs.
   // within ROIs in merged ROI and boxes assigned to that merged ROI,
   // do hungarian matching to assign boxes to ROIs
-  HungarianAlgorithm hungarianAlgorithm;
   for (auto& mergedROI : mergedROIs) {
     // prepare two groups
     std::vector<BoundingBox*> boxesInMergedROI = mergedROIToBoxesMap[mergedROI.get()];
@@ -174,7 +173,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     std::vector<int> assignment;
     // assignment[i] is the index of ROI assigned to boxesInMergedROI[i]
     // -1 means that box is not assigned to any ROI
-    hungarianAlgorithm.Solve(costMatrix, assignment);
+    HungarianAlgorithm::Solve(costMatrix, assignment);
 
     for (unsigned int x = 0; x < costMatrix.size(); x++) {
       if (assignment[x] == -1) {
