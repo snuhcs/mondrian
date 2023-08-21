@@ -100,100 +100,71 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
   }
 }
 
-
 void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
-  std::vector<std::unique_ptr<ROI>>& rois = frame->rois;
-  std::vector<std::unique_ptr<MergedROI>>& mergedROIs = frame->mergedROIs;
-  std::vector<std::unique_ptr<BoundingBox>>& boxes = frame->boxes;
+  // 1. Assign boxes to ROIs.
+  // do hungarian matching to assign boxes to ROIs
+  // prepare two groups
+  std::vector<BoundingBox*> boxes;
+  std::vector<ROI*> rois;
+  std::transform(frame->boxes.begin(), frame->boxes.end(),
+                 std::back_inserter(boxes),
+                 [](const std::unique_ptr<BoundingBox>& box) { return box.get(); });
+  std::transform(frame->rois.begin(), frame->rois.end(),
+                 std::back_inserter(rois),
+                 [](const std::unique_ptr<ROI>& roi) { return roi.get(); });
   assert(std::all_of(rois.begin(), rois.end(), [](auto& roi) { return roi->oid != INVALID_OID; }));
-  assert(std::all_of(boxes.begin(), boxes.end(), [](auto& box) { return box->oid == INVALID_OID; }));
+  assert(std::all_of(boxes.begin(),
+                     boxes.end(),
+                     [](auto& box) { return box->oid == INVALID_OID; }));
   assert(std::all_of(rois.begin(), rois.end(), [](auto& roi) { return roi->box() == nullptr; }));
-  assert(std::all_of(boxes.begin(), boxes.end(), [](auto& box) { return box->srcROI() == nullptr; }));
+  assert(std::all_of(boxes.begin(),
+                     boxes.end(),
+                     [](auto& box) { return box->srcROI() == nullptr; }));
 
   std::vector<BoundingBox*> unassignedBoxes;
 
-  // 1. Assign boxes to mergedROIs.
-  // each box selects the mergedROI with the largest overlap
-  std::map<MergedROI*, std::vector<BoundingBox*>> mergedROIToBoxesMap;
-  for (std::unique_ptr<BoundingBox>& box : boxes) {
-    float maxOverlap = 0;
-    MergedROI* maxMergedROI = nullptr;
-
-    for (auto& mergedROI : mergedROIs) {
-      if (isFullFrame || mergedROI->isPacked()) {
-        float intersection = box->loc.intersection(mergedROI->loc());
-        float overlapRatio = intersection / box->loc.area;
-        if (maxOverlap < overlapRatio) {
-          maxOverlap = overlapRatio;
-          maxMergedROI = mergedROI.get();
-        }
+  // prepare cost matrix. max is calculated to make it a minimization problem
+  std::vector<std::vector<float>> costMatrix(boxes.size());
+  float max = 0;
+  for (int i = 0; i < boxes.size(); i++) {
+    costMatrix[i].resize(rois.size());
+    for (int j = 0; j < rois.size(); j++) {
+      float iou = boxes[i]->loc.iou(rois[j]->paddedLoc);
+      costMatrix[i][j] = iou;
+      if (iou > max) {
+        max = iou;
       }
     }
-
-    if (maxMergedROI == nullptr) {
-      // cases :
-      // - when mergedROIs. size == 0
-      // else?
-      unassignedBoxes.push_back(box.get());
-      continue;
-    }
-    mergedROIToBoxesMap[maxMergedROI].push_back(box.get());
   }
-
-  // 2. Assign boxes to ROIs.
-  // within ROIs in merged ROI and boxes assigned to that merged ROI,
-  // do hungarian matching to assign boxes to ROIs
-  for (auto& mergedROI : mergedROIs) {
-    // prepare two groups
-    std::vector<BoundingBox*> boxesInMergedROI = mergedROIToBoxesMap[mergedROI.get()];
-    if (boxesInMergedROI.empty()) {
-      continue;
-    }
-    std::vector<ROI*> roisInMergedROI = mergedROI->rois();
-
-    // prepare cost matrix. max is calculated to make it a minimization problem
-    std::vector<std::vector<float>> costMatrix(boxesInMergedROI.size());
-    float max = 0;
-    for (int i = 0; i < boxesInMergedROI.size(); i++) {
-      costMatrix[i].resize(roisInMergedROI.size());
-      for (int j = 0; j < roisInMergedROI.size(); j++) {
-        float iou = boxesInMergedROI[i]->loc.iou(roisInMergedROI[j]->paddedLoc);
-        costMatrix[i][j] = iou;
-        if (iou > max) {
-          max = iou;
-        }
-      }
-    }
-    for (int i = 0; i < boxesInMergedROI.size(); i++) {
-      for (int j = 0; j < roisInMergedROI.size(); j++) {
-        costMatrix[i][j] = max - costMatrix[i][j];
-      }
-    }
-
-    std::vector<int> assignment;
-    // assignment[i] is the index of ROI assigned to boxesInMergedROI[i]
-    // -1 means that box is not assigned to any ROI
-    HungarianAlgorithm::Solve(costMatrix, assignment);
-
-    for (unsigned int x = 0; x < costMatrix.size(); x++) {
-      if (assignment[x] == -1) {
-        unassignedBoxes.push_back(boxesInMergedROI[x]);
-        continue;
-      }
-
-      ROI* srcROI = roisInMergedROI[assignment[x]];
-
-      boxesInMergedROI[x]->oid = srcROI->oid;
-      boxesInMergedROI[x]->setSrcROI(srcROI);
-      if (!isFullFrame) {
-        boxesInMergedROI[x]->origin = srcROI->origin();
-      }
-      srcROI->setBox(boxesInMergedROI[x]);
-      srcROI->setLabel(boxesInMergedROI[x]->label);
+  for (int i = 0; i < boxes.size(); i++) {
+    for (int j = 0; j < rois.size(); j++) {
+      costMatrix[i][j] = max - costMatrix[i][j];
     }
   }
 
-  // 3. Handle unassigned boxes
+  std::vector<int> assignment;
+  // assignment[i] is the index of ROI assigned to boxes[i]
+  // -1 means that box is not assigned to any ROI
+  HungarianAlgorithm::Solve(costMatrix, assignment);
+
+  for (unsigned int x = 0; x < costMatrix.size(); x++) {
+    if (assignment[x] == -1) {
+      unassignedBoxes.push_back(boxes[x]);
+      continue;
+    }
+
+    ROI* srcROI = rois[assignment[x]];
+
+    boxes[x]->oid = srcROI->oid;
+    boxes[x]->setSrcROI(srcROI);
+    if (!isFullFrame) {
+      boxes[x]->origin = srcROI->origin();
+    }
+    srcROI->setBox(boxes[x]);
+    srcROI->setLabel(boxes[x]->label);
+  }
+
+  // 2. Handle unassigned boxes
   if (!unassignedBoxes.empty()) {
     auto [startOID, endOID] = ROI::getNewOIDs(unassignedBoxes.size());
     OID oid = startOID;
@@ -211,10 +182,10 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
 
   // Test
   const auto testROIBoxConnection = [&boxes, &rois]() {
-    for (const std::unique_ptr<BoundingBox>& box : boxes) {
+    for (BoundingBox* box : boxes) {
       assert(box->oid != INVALID_OID);
       if (box->srcROI() != nullptr) {
-        assert(box->srcROI()->box() == box.get());
+        assert(box->srcROI()->box() == box);
         assert(box->srcROI()->label() == box->label);
         assert(box->srcROI()->oid == box->oid);
       }
@@ -230,8 +201,8 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   // Update resize profile
   testROIBoxConnection();
   if (frame->isLastFrame) {
-    for (auto& roi : rois) {
-      mROIResizer->updateTable(roi.get());
+    for (ROI* roi : rois) {
+      mROIResizer->updateTable(roi);
     }
   } else {
     assert(std::all_of(rois.begin(), rois.end(),
