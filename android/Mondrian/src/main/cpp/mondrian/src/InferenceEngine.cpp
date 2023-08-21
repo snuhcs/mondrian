@@ -13,7 +13,7 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  JNIEnv* env,
                                  jobject app)
     : config_(config) {
-  for (Device device : {Device::GPU, Device::DSP}) {
+  for (Device device : Devices) {
     if (device == Device::GPU) {
       addWorker<TfLiteYoloV5Classifier>(device, env, app);
     } else if (device == Device::DSP) {
@@ -44,17 +44,19 @@ void InferenceEngine::addWorker(Device device,
   }
 
   // classifiers for packed canvas inference
-  const WorkerConfig& workerConfig = config_.WORKER_CONFIGS.at(device);
-  for (const auto& inputSize : workerConfig.INPUT_SIZES) {
-    std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-        workerConfig.MODEL,
-        inputSize,
-        false,
-        config_.DATASET,
-        config_.CONF_THRES,
-        config_.IOU_THRES);
-    classifierMap[{inputSize, false}] = classifier.get();
-    classifiers_.push_back(std::move(classifier));
+  if (config_.WORKER_CONFIGS.find(device) != config_.WORKER_CONFIGS.end()) {
+    const WorkerConfig& workerConfig = config_.WORKER_CONFIGS.at(device);
+    for (const auto& inputSize : workerConfig.INPUT_SIZES) {
+      std::unique_ptr<Classifier> classifier = std::make_unique<T>(
+          workerConfig.MODEL,
+          inputSize,
+          false,
+          config_.DATASET,
+          config_.CONF_THRES,
+          config_.IOU_THRES);
+      classifierMap[{inputSize, false}] = classifier.get();
+      classifiers_.push_back(std::move(classifier));
+    }
   }
 
   workers_[device] = std::make_unique<Worker>(
