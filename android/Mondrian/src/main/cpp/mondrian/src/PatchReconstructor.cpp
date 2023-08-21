@@ -7,7 +7,7 @@
 #include "mondrian/PackedCanvas.hpp"
 #include "mondrian/ROIResizer.hpp"
 #include "mondrian/Utils.hpp"
-#include "mondrian/Hungarian.h"
+#include "mondrian/Hungarian.hpp"
 
 namespace md {
 
