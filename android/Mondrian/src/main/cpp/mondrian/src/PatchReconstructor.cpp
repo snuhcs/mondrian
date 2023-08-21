@@ -7,6 +7,7 @@
 #include "mondrian/PackedCanvas.hpp"
 #include "mondrian/ROIResizer.hpp"
 #include "mondrian/Utils.hpp"
+#include "mondrian/Hungarian.h"
 
 namespace md {
 
@@ -98,73 +99,6 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
     frame->reconstructEndTime = reconstructEndTime;
   }
 }
-/*
-
-std::pair<std::vector<std::pair<int, int>>, float> hungarianAlgorithm(std::vector<std::vector<float>>& costMatrix) {
-  int numRows = costMatrix.size();
-  int numCols = costMatrix[0].size();
-
-  std::vector<float> rowMinValues(numRows + 1), colMinValues(numCols + 1),
-      rowAssignment(numCols + 1), colAssignment(numCols + 1);
-
-  for (int row = 1; row <= numRows; ++row) {
-    rowAssignment[0] = row;
-    int col0 = 0;
-    std::vector<float> minDelta(numCols + 1, std::numeric_limits<float>::max());
-    std::vector<bool> markedCols(numCols + 1, false);
-
-    // Step 1: Find an augmenting path
-    while (true) {
-      markedCols[col0] = true;
-      int row0 = rowAssignment[col0];
-      float delta = std::numeric_limits<float>::max();
-      int col1;
-
-      // Step 2: Find the minimum delta
-      for (int col = 1; col <= numCols; ++col)
-        if (!markedCols[col]) {
-          float cur = costMatrix[row0 - 1][col - 1] - rowMinValues[row0] - colMinValues[col];
-          if (cur < minDelta[col])
-            minDelta[col] = cur, colAssignment[col] = col0;
-          if (minDelta[col] < delta)
-            delta = minDelta[col], col1 = col;
-        }
-
-      // Step 3: Update potentials
-      for (int col = 0; col <= numCols; ++col)
-        if (markedCols[col])
-          rowMinValues[rowAssignment[col]] += delta, colMinValues[col] -= delta;
-        else
-          minDelta[col] -= delta;
-
-      col0 = col1;
-
-      if (rowAssignment[col0] == 0)
-        break;
-    }
-
-    // Step 4: Update alternating paths
-    while (col0 != 0) {
-      int col1 = colAssignment[col0];
-      rowAssignment[col0] = rowAssignment[col1];
-      col0 = col1;
-    }
-  }
-
-  // Step 5: Build matched pairs and calculate minimum cost
-  float minCost = 0.0f;
-  std::vector<std::pair<int, int>> matchedPairs;
-  for (int col = 1; col <= numCols; ++col) {
-    if (rowAssignment[col] != 0) {
-      matchedPairs.emplace_back(rowAssignment[col] - 1, col - 1);
-      minCost += costMatrix[rowAssignment[col] - 1][col - 1];
-    }
-  }
-
-  return {matchedPairs, minCost};
-}
-
- */
 
 
 void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
@@ -180,13 +114,13 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   // first make an adjacency matrix, with boxes as rows and ROIs as columns
   // each value of the matrix is the IOU of the box and the ROI
   // and also find the maximum value in the matrix
-  std::vector<std::vector<float>> adjacencyMatrix(boxes.size());
+  std::vector<std::vector<float>> costMatrix(boxes.size());
   float max = 0;
   for (int i = 0; i < boxes.size(); i++) {
-    adjacencyMatrix[i].resize(rois.size());
+    costMatrix[i].resize(rois.size());
     for (int j = 0; j < rois.size(); j++) {
       float iou = boxes[i]->loc.iou(rois[j]->paddedLoc);
-      adjacencyMatrix[i][j] = iou;
+      costMatrix[i][j] = iou;
       if (iou > max) {
         max = iou;
       }
@@ -197,13 +131,21 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   // in order to make itself as a minimization problem
   for (int i = 0; i < boxes.size(); i++) {
       for (int j = 0; j < rois.size(); j++) {
-      adjacencyMatrix[i][j] = max - adjacencyMatrix[i][j];
+        costMatrix[i][j] = max - costMatrix[i][j];
       }
   }
 
   // run the Hungarian algorithm
-  // std::vector<std::pair<int, int>> matchedPairs = hungarianAlgorithm(adjacencyMatrix).first;
+  std::vector<int> assignment;
+  HungarianAlgorithm hungarianAlgorithm;
+  hungarianAlgorithm.Solve(costMatrix, assignment);
 
+
+  LOGD("XXX: ---");
+  for (unsigned int x = 0; x < costMatrix.size(); x++) {
+    LOGD("XXX: (%d, %d)", x, assignment[x]);
+  }
+  LOGD("XXX: ---");
 
   // 1. Let Boxes to select their favorite ROI.
   // - Boxes can be unmatched, if overlap ratio is lower than threshold

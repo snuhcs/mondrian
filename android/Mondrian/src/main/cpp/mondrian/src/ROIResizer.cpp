@@ -151,7 +151,7 @@ std::vector<float> ROIResizer::getProbingCandidates(float scale, int level, floa
       candidates.push_back(scale * (1 + (float) i * config_.PROBE_STEP_SIZE));
     }
   }
-  float lowerBound = level == 0 ? 1e-5f : getTargetScale(level - 1, area);
+  float lowerBound = level == 0 ? 1e-5f : calcTargetScale(level - 1, area);
   float upperBound = 1.0f;
   candidates.erase(std::remove_if(
       candidates.begin(), candidates.end(),
