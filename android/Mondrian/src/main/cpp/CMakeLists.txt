@@ -33,6 +33,7 @@ add_library(
     mondrian/src/Features.cpp
     mondrian/src/Frame.cpp
     mondrian/src/FrameBuffer.cpp
+    mondrian/src/Hungarian.cpp
     mondrian/src/InferenceEngine.cpp
     mondrian/src/InferencePlanner.cpp
     mondrian/src/Interpolator.cpp

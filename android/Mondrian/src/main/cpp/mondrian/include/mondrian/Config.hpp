@@ -39,6 +39,7 @@ struct ROIResizerConfig {
 
   // Reactive probing configs
   int NUM_PROBE_STEPS;
+  bool ONLY_SMALLER_PROBING;
   float PROBE_STEP_SIZE;
   float PROBE_CONF_THRES;
   float PROBE_IOU_THRES;
