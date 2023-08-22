@@ -188,19 +188,17 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
     frame->boxes.push_back(std::make_unique<BoundingBox>(
         INVALID_OID, -1, box.loc, box.confidence, box.label, Origin::FULL_FRAME));
   }
-  patchReconstructor_->matchBoxesROIs(frame, true);
+  if (config_.EXECUTION_TYPE != ExecutionType::FRAME_WISE_INFERENCE) {
+    patchReconstructor_->matchBoxesROIs(frame, true);
 
-  for (auto& box : frame->boxes) {
-    assert(box->oid != INVALID_OID);
-  }
-  frame->isBoxesReady = true;
-  frame->endTime = NowMicros();
-  if (ROIExtractor_ != nullptr) {
+    for (auto& box : frame->boxes) {
+      assert(box->oid != INVALID_OID);
+    }
+    frame->isBoxesReady = true;
     ROIExtractor_->cv().notify_all();
   }
 
-  assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
-                     [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
+  frame->endTime = NowMicros();
 
   std::unique_lock<std::mutex> resultLock(logMtx_);
   std::vector<BoundingBox> resultBoxes;
