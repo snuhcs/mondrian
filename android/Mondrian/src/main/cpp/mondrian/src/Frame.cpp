@@ -129,13 +129,26 @@ void Frame::resizeROIs(ROIResizer* roiResizer) {
   }
 }
 
-void Frame::resetMergedROIs() {
+bool Frame::testROIsIntegrity() const {
+  bool ret = true;
   for (const auto& roi : rois) {
-    assert(roi->frame == this);
+    //assert(roi->frame == this);
+    ret &= roi->frame == this;
   }
+
   for (const auto& mergedROI : mergedROIs) {
-    assert(mergedROI->frame() == this);
+    //assert(mergedROI->frame() == this);
+    ret &= mergedROI->frame() == this;
+    for (const auto& r : mergedROI->rois()) {
+      //assert(r->frame == mergedROI->frame());
+      ret &= r->frame == mergedROI->frame();
+    }
   }
+  return ret;
+}
+
+void Frame::resetMergedROIs() {
+  assert(testROIsIntegrity());
   for (const auto& mergedROI : mergedROIs) {
     for (const auto& roi : mergedROI->rois()) {
       roi->mergedROI = nullptr;
@@ -145,29 +158,13 @@ void Frame::resetMergedROIs() {
 
   for (const auto& roi : rois) {
     std::unique_ptr<MergedROI> mergedROI(new MergedROI({roi.get()}, roi->targetScale(), false));
-
-    assert(mergedROI->frame() == this);
-    for (const auto& r : mergedROI->rois()) {
-      assert(r->frame == mergedROI->frame());
-    }
     mergedROIs.push_back(std::move(mergedROI));
   }
-
-  for (const auto& mergedROI : mergedROIs) {
-    assert(mergedROI->frame() == this);
-    for (const auto& r : mergedROI->rois()) {
-      assert(r->frame == mergedROI->frame());
-    }
-  }
+  assert(testROIsIntegrity());
 }
 
 void Frame::mergeMergedROIs(int maxSize) {
-  for (const auto& mergedROI : mergedROIs) {
-    assert(mergedROI->frame() == this);
-    for (const auto& r : mergedROI->rois()) {
-      assert(r->frame == mergedROI->frame());
-    }
-  }
+  assert(testROIsIntegrity());
 
   std::vector<int> root(mergedROIs.size());
   std::iota(root.begin(), root.end(), 0);

@@ -112,6 +112,7 @@ obj/
 .idea/gradle.xml
 .idea/jarRepositories.xml
 .idea/navEditor.xml
+.idea/csv-editor.xml
 
 # Legacy Eclipse project files
 .classpath

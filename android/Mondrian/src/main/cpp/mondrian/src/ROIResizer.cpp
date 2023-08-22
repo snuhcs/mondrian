@@ -43,31 +43,35 @@ ROIResizer::ROIResizer(const ROIResizerConfig& config)
 std::pair<float, int> ROIResizer::getTargetScale(const OID oid,
                                                  const Features& features,
                                                  const float area) {
-  assert(features.type == ROIType::OF);
-  const int targetLevel = getMaxVotedLevel(oid, features);
-  assert(0 <= targetLevel && targetLevel < targetAreas_.size());
-  assert(features.width * features.height == area);
-  float targetScale = getTargetScale(targetLevel, area);
+  assert(features.type == ROIType::OF && "PD ROI should not be resized");
+  assert(features.width * features.height == area); // XXX
 
-  if (isCalibrated(oid, targetLevel)) {
-    targetScale = calibrationTable_[oid].second;
-  } else if (calibrationTable_.find(oid) != calibrationTable_.end()) {
-    calibrationTable_.erase(oid);
+  const int targetLevel = getMaxVotedLevel(oid, features);
+
+  float targetScale = calcTargetScale(targetLevel, area);;
+  if (isCalibrated(oid)) {
+    if (calibrationTable_.at(oid).first == targetLevel) {
+      // hit : use the calibrated scale
+      targetScale = calibrationTable_.at(oid).second;
+    } else {
+      // miss : invalidate the calibration
+      calibrationTable_.erase(oid);
+    }
   }
+
   return {targetScale, targetLevel};
 }
 
-float ROIResizer::getTargetScale(const int scaleLevel, const float originalArea) const {
+float ROIResizer::calcTargetScale(const int scaleLevel, const float originalArea) const {
   float targetArea = config_.STATIC_AREA ? config_.STATIC_TARGET_AREA : targetAreas_.at(scaleLevel);
   targetArea += config_.AREA_SHIFT;
   float targetScale = std::sqrt(targetArea / originalArea);
-  targetScale += config_.SCALE_SHIFT;
-  return std::min(1.0f, targetScale);
+  targetScale = std::min(1.0f, targetScale + config_.SCALE_SHIFT);
+  return targetScale;
 }
 
-bool ROIResizer::isCalibrated(const OID oid, const int scaleLevel) const {
-  return calibrationTable_.find(oid) != calibrationTable_.end()
-      && calibrationTable_.at(oid).first == scaleLevel;
+bool ROIResizer::isCalibrated(const OID oid) const {
+  return calibrationTable_.find(oid) != calibrationTable_.end();
 }
 
 int ROIResizer::getMaxVotedLevel(const OID oid, const Features& features) {
@@ -77,14 +81,15 @@ int ROIResizer::getMaxVotedLevel(const OID oid, const Features& features) {
                                                config_.VOTING_WINDOW_SIZE);
   }
   prevPredictionBuffer_[oid].push(predictLevelWithFeatures(features));
-  return prevPredictionBuffer_[oid].maxVote();
+  int maxVotedLevel = prevPredictionBuffer_[oid].maxVote();
+  assert(0 <= maxVotedLevel && maxVotedLevel < targetAreas_.size() && "Index out of range");
+  return maxVotedLevel;
 }
 
 int ROIResizer::predictLevelWithFeatures(const Features& features) const {
   if (config_.STATIC_AREA) {
     return STATIC_LEVEL;
   }
-  assert(features.type == ROIType::OF);
   auto& [shiftAvgX, shiftAvgY] = features.ofFeatures.shiftAvg;
   auto& [shiftStdX, shiftStdY] = features.ofFeatures.shiftStd;
   float shiftAvg = shiftAvgX * shiftAvgX + shiftAvgY * shiftAvgY;
@@ -109,7 +114,7 @@ void ROIResizer::updateTable(ROI* roi) {
   }
 
   // find the smallest target size with a usable box
-  float newScale = getTargetScale(roi->scaleLevel(), roi->features.width * roi->features.height);
+  float newScale = calcTargetScale(roi->scaleLevel(), roi->features.width * roi->features.height);
   BoundingBox* largestProbeROIBox = probingROIs.rbegin()->second->probingBox();
   if (largestProbeROIBox != nullptr) {
     for (auto it = probingROIs.rbegin(); it != probingROIs.rend(); it++) {
@@ -146,7 +151,7 @@ std::vector<float> ROIResizer::getProbingCandidates(float scale, int level, floa
       candidates.push_back(scale * (1 + (float) i * config_.PROBE_STEP_SIZE));
     }
   }
-  float lowerBound = level == 0 ? 1e-5f : getTargetScale(level - 1, area);
+  float lowerBound = level == 0 ? 1e-5f : calcTargetScale(level - 1, area);
   float upperBound = 1.0f;
   candidates.erase(std::remove_if(
       candidates.begin(), candidates.end(),

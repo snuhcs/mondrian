@@ -17,7 +17,7 @@ class PackedCanvas {
   const PID pid;
 
   std::set<MergedROI*> packedROIs;
-  const Device device;
+  const Device device; // TODO: change name to less general one. (usage of this field is not clear due to its too general name)
   const int packedCanvasSize;
 
   cv::Mat packedMat;
