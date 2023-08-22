@@ -307,8 +307,10 @@ void Mondrian::log(const Frame* frame) {
     for (const auto& mergedROI : frame->mergedROIs) {
       loggerMergedROI_->logMergedROI(mergedROI.get());
     }
-    for (const auto& probingROI : frame->probingROIsTable[Device::GPU]) {
-      loggerMergedROI_->logMergedROI(probingROI.get());
+    if (frame->probingROIsTable.find(Device::GPU) != frame->probingROIsTable.end()) {
+      for (const auto& probingROI : frame->probingROIsTable.at(Device::GPU)) {
+        loggerMergedROI_->logMergedROI(probingROI.get());
+      }
     }
   }
 }

@@ -65,14 +65,14 @@ class ROIResizer {
   static const std::map<std::string, std::vector<float>> AREA_LEVELS;
 
   const ROIResizerConfig config_;
-  const Predictor predictor_;
-  const std::vector<float> targetAreas_;
+  std::map<Device, Predictor> predictorTable_;
+  std::map<Device, std::vector<float>> targetAreasTable_;
 
   // Save prev prediction to smooth the predicted size
-  std::map<OID, CircularBuffer> prevPredictionBuffer_;
+  std::map<Device, std::map<OID, CircularBuffer>> prevPredictionBufferTable_;
 
   // Save <targetScale_ of ROI, calibration for that targetScale_>
-  std::map<OID, std::pair<int, float>> calibrationTable_;
+  std::map<Device, std::map<OID, std::pair<int, float>>> calibrationTableTable_;
 };
 
 } // namespace md

@@ -373,9 +373,9 @@ std::string Frame::str(time_us baseTime) const {
      << fid << DELIM
      << rois.size() << DELIM
      << mergedROIs.size() << DELIM
-     << probingROIsTable.at(Device::GPU).size() << DELIM
+     << (probingROIsTable.find(Device::GPU) == probingROIsTable.end() ? 0 : probingROIsTable.at(Device::GPU).size()) << DELIM
      << boxes.size() << DELIM
-     << probingBoxesTable.at(Device::GPU).size() << DELIM
+     << (probingBoxesTable.find(Device::GPU) == probingBoxesTable.end() ? 0 : probingBoxesTable.at(Device::GPU).size()) << DELIM
      << scheduleID << DELIM
      << PDExtractorID << DELIM
      << OFExtractorID << DELIM

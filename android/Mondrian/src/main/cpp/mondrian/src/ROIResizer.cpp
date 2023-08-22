@@ -36,9 +36,10 @@ const std::map<std::string, std::vector<float>> ROIResizer::AREA_LEVELS = {
 };
 
 ROIResizer::ROIResizer(const ROIResizerConfig& config)
-    : config_(config),
-      predictor_(CANDIDATE_PREDICTORS.at(config.DATASET)),
-      targetAreas_(AREA_LEVELS.at(config.DATASET)) {}
+    : config_(config) {
+  predictorTable_[Device::GPU] = CANDIDATE_PREDICTORS.at(config.DATASET);
+  targetAreasTable_[Device::GPU] = AREA_LEVELS.at(config.DATASET);
+}
 
 std::pair<float, int> ROIResizer::getTargetScale(const OID oid,
                                                  const Features& features,
@@ -50,12 +51,12 @@ std::pair<float, int> ROIResizer::getTargetScale(const OID oid,
 
   float targetScale = calcTargetScale(targetLevel, area);;
   if (isCalibrated(oid)) {
-    if (calibrationTable_.at(oid).first == targetLevel) {
+    if (calibrationTableTable_[Device::GPU].at(oid).first == targetLevel) {
       // hit : use the calibrated scale
-      targetScale = calibrationTable_.at(oid).second;
+      targetScale = calibrationTableTable_[Device::GPU].at(oid).second;
     } else {
       // miss : invalidate the calibration
-      calibrationTable_.erase(oid);
+      calibrationTableTable_[Device::GPU].erase(oid);
     }
   }
 
@@ -63,7 +64,7 @@ std::pair<float, int> ROIResizer::getTargetScale(const OID oid,
 }
 
 float ROIResizer::calcTargetScale(const int scaleLevel, const float originalArea) const {
-  float targetArea = config_.STATIC_AREA ? config_.STATIC_TARGET_AREA : targetAreas_.at(scaleLevel);
+  float targetArea = config_.STATIC_AREA ? config_.STATIC_TARGET_AREA : targetAreasTable_.at(Device::GPU).at(scaleLevel);
   targetArea += config_.AREA_SHIFT;
   float targetScale = std::sqrt(targetArea / originalArea);
   targetScale = std::min(1.0f, targetScale + config_.SCALE_SHIFT);
@@ -71,18 +72,19 @@ float ROIResizer::calcTargetScale(const int scaleLevel, const float originalArea
 }
 
 bool ROIResizer::isCalibrated(const OID oid) const {
-  return calibrationTable_.find(oid) != calibrationTable_.end();
+  return calibrationTableTable_.find(Device::GPU) != calibrationTableTable_.end() &&
+      calibrationTableTable_.at(Device::GPU).find(oid) != calibrationTableTable_.at(Device::GPU).end();
 }
 
 int ROIResizer::getMaxVotedLevel(const OID oid, const Features& features) {
-  auto record = prevPredictionBuffer_.find(oid);
-  if (record == prevPredictionBuffer_.end()) {
-    prevPredictionBuffer_[oid] = CircularBuffer(int(targetAreas_.size()),
+  auto record = prevPredictionBufferTable_[Device::GPU].find(oid);
+  if (record == prevPredictionBufferTable_[Device::GPU].end()) {
+    prevPredictionBufferTable_[Device::GPU][oid] = CircularBuffer(int(targetAreasTable_[Device::GPU].size()),
                                                config_.VOTING_WINDOW_SIZE);
   }
-  prevPredictionBuffer_[oid].push(predictLevelWithFeatures(features));
-  int maxVotedLevel = prevPredictionBuffer_[oid].maxVote();
-  assert(0 <= maxVotedLevel && maxVotedLevel < targetAreas_.size() && "Index out of range");
+  prevPredictionBufferTable_[Device::GPU][oid].push(predictLevelWithFeatures(features));
+  int maxVotedLevel = prevPredictionBufferTable_[Device::GPU][oid].maxVote();
+  assert(0 <= maxVotedLevel && maxVotedLevel < targetAreasTable_[Device::GPU].size() && "Index out of range");
   return maxVotedLevel;
 }
 
@@ -94,7 +96,7 @@ int ROIResizer::predictLevelWithFeatures(const Features& features) const {
   auto& [shiftStdX, shiftStdY] = features.ofFeatures.shiftStd;
   float shiftAvg = shiftAvgX * shiftAvgX + shiftAvgY * shiftAvgY;
   float shiftStd = shiftStdX * shiftStdX + shiftStdY * shiftStdY;
-  return predictor_(
+  return predictorTable_.at(Device::GPU)(
       std::max(features.width, features.height),
       features.width * features.height,
       features.xyRatio,
@@ -137,7 +139,7 @@ void ROIResizer::updateTable(ROI* roi) {
     roi->setBox(copiedBox.get());
     roi->frame->boxes.push_back(std::move(copiedBox));
   }
-  calibrationTable_[roi->oid] = {roi->scaleLevel(), newScale};
+  calibrationTableTable_[Device::GPU][roi->oid] = {roi->scaleLevel(), newScale};
 }
 
 std::vector<float> ROIResizer::getProbingCandidates(float scale, int level, float area) const {
