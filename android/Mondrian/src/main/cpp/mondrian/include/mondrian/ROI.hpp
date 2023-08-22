@@ -99,7 +99,7 @@ class ROI {
     return features.label;
   }
 
-  void scaleTo(float newTargetScale, int newScaleLevel);
+  void scaleTo(float newTargetScale, int newScaleLevel, Device device);
 
   static std::string header();
 

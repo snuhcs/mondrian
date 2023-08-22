@@ -122,9 +122,10 @@ void Frame::resizeROIs(ROIResizer* roiResizer) {
                                                        roi->features,
                                                        roi->paddedArea());
       assert(0.0f < scale && scale <= 1.0f);
-      roi->scaleTo(scale, level);
+      roi->scaleTo(scale, level, Device::GPU);
     } else {
-      roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL);
+      roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL, Device::GPU);
+      roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL, Device::DSP);
     }
   }
 }

@@ -54,11 +54,11 @@ void ROI::eatPD(const Rect& PDRect) {
   setPaddedLoc(Rect::merge(paddedLoc, PDRect));
 }
 
-void ROI::scaleTo(float newTargetScale, int newScaleLevel) {
+void ROI::scaleTo(float newTargetScale, int newScaleLevel, Device device) {
   assert(0.0f < newTargetScale);
   assert(newTargetScale <= 1.0f);
-  targetScaleTable_[Device::GPU] = newTargetScale;
-  scaleLevelTable_[Device::GPU] = newScaleLevel;
+  targetScaleTable_[device] = newTargetScale;
+  scaleLevelTable_[device] = newScaleLevel;
 }
 
 std::string ROI::header() {

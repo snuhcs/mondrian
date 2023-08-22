@@ -23,11 +23,11 @@ class MergedROI {
   static void mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize);
 
   float targetScale() const {
-    return targetScale_;
+    return targetScaleTable_.at(Device::GPU);
   }
 
   void setTargetScale(float targetScale) {
-    targetScale_ = targetScale;
+    targetScaleTable_[Device::GPU] = targetScale;
   }
 
   bool isProbing() const {
@@ -85,7 +85,7 @@ class MergedROI {
   }
 
   int resizedArea() const {
-    return resizedAreaOf(loc_.w, loc_.h, targetScale_);
+    return resizedAreaOf(loc_.w, loc_.h, targetScaleTable_.at(Device::GPU));
   }
 
   static int resizedAreaOf(float width, float height, float scale) {
@@ -100,7 +100,7 @@ class MergedROI {
 
   IntPair resizedMatWH(float scale = -1.0f) const {
     if (scale == -1.0f) {
-      scale = targetScale_;
+      scale = targetScaleTable_.at(Device::GPU);
     }
     return {resizedLengthOf(loc_.w, scale),
             resizedLengthOf(loc_.h, scale)};
@@ -112,7 +112,7 @@ class MergedROI {
 
   IntPair borderedMatWH(float scale = -1.0f) const {
     if (scale == -1.0f) {
-      scale = targetScale_;
+      scale = targetScaleTable_.at(Device::GPU);
     }
     return {borderedLengthOf(loc_.w, scale),
             borderedLengthOf(loc_.h, scale)};
@@ -139,7 +139,7 @@ class MergedROI {
   Frame* const frame_;
   const std::vector<ROI*> rois_;
   const Rect loc_;
-  float targetScale_;
+  std::map<Device, float> targetScaleTable_;
 
   PID pid_;
   IntPair packedXY_;
