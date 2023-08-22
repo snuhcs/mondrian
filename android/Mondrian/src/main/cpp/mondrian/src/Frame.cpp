@@ -221,8 +221,10 @@ void Frame::sortMergedROIs() {
 
 void Frame::resetProbeROIs() {
   for (auto& roi : rois) {
-    roi->roisForProbing.clear();
-    probingROIs.clear();
+    for (Device device : Devices) {
+      roi->roisForProbingTable[device].clear();
+      probingROIsTable[device].clear();
+    }
   }
 }
 
@@ -242,13 +244,15 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
   }
   for (const auto& roi : rois) {
     if (roi->scaleLevel() == ROIResizer::INVALID_LEVEL) {
-      roi->probeScales.clear();
+      for (Device device : Devices) {
+        roi->probeScalesTable[device].clear();
+      }
       continue;
     }
-    roi->probeScales = roiResizer->getProbingCandidates(roi->targetScale(),
+    roi->probeScalesTable[Device::GPU] = roiResizer->getProbingCandidates(roi->targetScale(),
                                                         roi->scaleLevel(),
                                                         roi->paddedArea());
-    for (auto scale : roi->probeScales) {
+    for (auto scale : roi->probeScalesTable[Device::GPU]) {
       int bw = MergedROI::borderedLengthOf(roi->paddedLoc.w, scale);
       int bh = MergedROI::borderedLengthOf(roi->paddedLoc.h, scale);
       boxWHs.emplace_back(bw, bh);
@@ -275,15 +279,15 @@ void Frame::prepareFrameLast(const IntPairs& indices,
   }
   for (const auto& roi : rois) {
     if (roi->scaleLevel() == ROIResizer::INVALID_LEVEL) {
-      assert(roi->probeScales.empty());
+      assert(roi->probeScalesTable[Device::GPU].empty());
       continue;
     }
-    for (auto probeScale : roi->probeScales) {
+    for (auto probeScale : roi->probeScalesTable[Device::GPU]) {
       std::unique_ptr<MergedROI> probeROI(new MergedROI({roi.get()}, probeScale, true));
       assert(0.0f < probeScale && probeScale <= 1.0f);
       probeROI->setPackInfo(locations[i], indices[i].first, executionType, roiSize);
-      roi->roisForProbing.push_back(probeROI.get());
-      probingROIs.push_back(std::move(probeROI));
+      roi->roisForProbingTable[Device::GPU].push_back(probeROI.get());
+      probingROIsTable[Device::GPU].push_back(std::move(probeROI));
       i++;
     }
   }
@@ -295,7 +299,7 @@ bool Frame::isReadyToMarry(int packedCanvasIndex) const {
     return !mergedROI->isPacked() || mergedROI->packedCanvasIndex() <= packedCanvasIndex;
   };
   bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIReady)
-      && std::all_of(probingROIs.begin(), probingROIs.end(), isROIReady);
+      && std::all_of(probingROIsTable.at(Device::GPU).begin(), probingROIsTable.at(Device::GPU).end(), isROIReady);
   bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
                                      [](auto& box) { return box->oid == INVALID_OID; });
   bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),
@@ -369,9 +373,9 @@ std::string Frame::str(time_us baseTime) const {
      << fid << DELIM
      << rois.size() << DELIM
      << mergedROIs.size() << DELIM
-     << probingROIs.size() << DELIM
+     << probingROIsTable.at(Device::GPU).size() << DELIM
      << boxes.size() << DELIM
-     << probingBoxes.size() << DELIM
+     << probingBoxesTable.at(Device::GPU).size() << DELIM
      << scheduleID << DELIM
      << PDExtractorID << DELIM
      << OFExtractorID << DELIM

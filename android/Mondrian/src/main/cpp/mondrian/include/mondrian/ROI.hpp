@@ -38,8 +38,8 @@ class ROI {
   std::map<Device, int> scaleLevelTable_;
 
  public:
-  std::vector<float> probeScales;
-  std::vector<MergedROI*> roisForProbing;
+  std::map<Device, std::vector<float>> probeScalesTable;
+  std::map<Device, std::vector<MergedROI*>> roisForProbingTable;
   MergedROI* mergedROI;
 
  private:

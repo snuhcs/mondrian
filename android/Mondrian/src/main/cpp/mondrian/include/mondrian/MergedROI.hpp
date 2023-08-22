@@ -47,7 +47,7 @@ class MergedROI {
   }
 
   BoundingBox* probingBox() const {
-    return probingBox_;
+    return probingBoxTable_.at(Device::GPU);
   }
 
   void setProbingBox(BoundingBox* box);
@@ -147,8 +147,8 @@ class MergedROI {
   int packedCanvasSize_;
 
   bool isProbing_;
-  BoundingBox* probingBox_;
-  BID probingBoxID_;
+  std::map<Device, BoundingBox*> probingBoxTable_;
+  std::map<Device, BID> probingBoxIDTable_;
 };
 
 } // namespace md

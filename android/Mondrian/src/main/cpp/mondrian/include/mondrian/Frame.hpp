@@ -30,9 +30,9 @@ class Frame {
   cv::Mat resizedGrayMat;
   std::vector<std::unique_ptr<ROI>> rois;
   std::vector<std::unique_ptr<MergedROI>> mergedROIs;
-  std::vector<std::unique_ptr<MergedROI>> probingROIs;
+  std::map<Device, std::vector<std::unique_ptr<MergedROI>>> probingROIsTable;
   std::vector<std::unique_ptr<BoundingBox>> boxes;
-  std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
+  std::map<Device, std::vector<std::unique_ptr<BoundingBox>>> probingBoxesTable;
 
   bool useInferenceResultForOF;
   bool isBoxesReady;

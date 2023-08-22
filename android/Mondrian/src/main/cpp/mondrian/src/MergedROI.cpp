@@ -9,10 +9,12 @@ MergedROI::MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isPr
     : rois_(rois), isProbing_(isProbing),
       frame_(frameOf(rois)), loc_(locOf(rois)),
       packedXY_(INVALID_XY), packedCanvasIndex_(-1), pid_(-1),
-      packedCanvasSize_(-1), probingBox_(nullptr), probingBoxID_(-1) {
+      packedCanvasSize_(-1) {
 
   for (Device device : Devices) {
     targetScaleTable_[device] = targetScale;
+    probingBoxTable_[device] = nullptr;
+    probingBoxIDTable_[device] = -1;
   }
 
 
@@ -183,13 +185,13 @@ std::string MergedROI::str() const {
      << packedCanvasIndex_ << DELIM
      << packedCanvasSize_ << DELIM
      << isProbing_ << DELIM
-     << probingBoxID_;
+     << probingBoxIDTable_.at(Device::GPU);
   return ss.str();
 }
 
 void MergedROI::setProbingBox(BoundingBox* box) {
-  probingBox_ = box;
-  probingBoxID_ = box != nullptr ? box->bid : -1;
+  probingBoxTable_[Device::GPU] = box;
+  probingBoxIDTable_[Device::GPU] = box != nullptr ? box->bid : -1;
 }
 
 } // namespace md

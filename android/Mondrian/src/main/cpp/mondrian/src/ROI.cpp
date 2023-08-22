@@ -90,8 +90,8 @@ std::string ROI::str() const {
      << features.str() << DELIM
      << targetScaleTable_.at(Device::GPU) << DELIM
      << scaleLevelTable_.at(Device::GPU) << DELIM
-     << probeScales.size() << DELIM
-     << roisForProbing.size() << DELIM
+     << probeScalesTable.at(Device::GPU).size() << DELIM
+     << roisForProbingTable.at(Device::GPU).size() << DELIM
      << mergedROI->str() << DELIM // TODO: Remove redundant mergedROI
      << boxID_;
   return ss.str();

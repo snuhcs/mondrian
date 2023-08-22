@@ -117,7 +117,7 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
           groupedMergedROIs[mergedROI->packedCanvasIndex()].insert(mergedROI.get());
         }
       }
-      for (auto& probeROI : frame->probingROIs) {
+      for (auto& probeROI : frame->probingROIsTable[Device::GPU]) {
         if (probeROI->isPacked()) {
           groupedMergedROIs[probeROI->packedCanvasIndex()].insert(probeROI.get());
         }

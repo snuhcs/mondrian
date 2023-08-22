@@ -104,12 +104,12 @@ int ROIResizer::predictLevelWithFeatures(const Features& features) const {
 }
 
 void ROIResizer::updateTable(ROI* roi) {
-  if (roi->roisForProbing.empty()) {
+  if (roi->roisForProbingTable[Device::GPU].empty()) {
     return;
   }
 
   std::map<float, MergedROI*> probingROIs;
-  for (MergedROI* probeROI : roi->roisForProbing) {
+  for (MergedROI* probeROI : roi->roisForProbingTable[Device::GPU]) {
     probingROIs[probeROI->targetScale()] = probeROI;
   }
 
