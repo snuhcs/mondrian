@@ -147,25 +147,38 @@ void ROIResizer::updateTable(ROI* roi) {
   calibrationTableTable_[Device::GPU][roi->oid] = {roi->scaleLevel(), newScale};
 }
 
-std::vector<float> ROIResizer::getProbingCandidates(float scale, int level, float area) const {
-  assert(0.0f <= scale && scale <= 1.0f);
-  std::vector<float> candidates;
-  for (int i = 0; i < config_.NUM_PROBE_STEPS; i++) {
-    if (config_.ONLY_SMALLER_PROBING) {
-      candidates.push_back(scale * (1 - (float) i * config_.PROBE_STEP_SIZE));
-    } else {
-      candidates.push_back(scale * (1 - (float) i * config_.PROBE_STEP_SIZE));
-      candidates.push_back(scale * (1 + (float) i * config_.PROBE_STEP_SIZE));
-    }
+std::map<Device, std::vector<float>> ROIResizer::getProbingCandidatesTable(std::map<Device,
+                                                                                    float> scaleTable, int level, float area) const {
+
+  for (auto it = scaleTable.begin(); it != scaleTable.end(); it++) {
+    Device device = it->first;
+    assert(0.0f <= scaleTable[device] && scaleTable[device] <= 1.0f);
   }
-  float lowerBound = level == 0 ? 1e-5f : calcTargetScale(level - 1, area);
-  float upperBound = 1.0f;
-  candidates.erase(std::remove_if(
-      candidates.begin(), candidates.end(),
-      [lowerBound, upperBound](float candidate) {
-        return candidate <= lowerBound || upperBound <= candidate;
-      }), candidates.end());
-  return candidates;
+
+  std::map<Device, std::vector<float>> candidatesTable;
+
+  for (auto it = candidatesTable.begin(); it != candidatesTable.end(); it++) {
+    Device device = it->first;
+    std::vector<float> candidates = candidatesTable[device];
+    for (int i = 0; i < config_.NUM_PROBE_STEPS; i++) {
+      if (config_.ONLY_SMALLER_PROBING) {
+        candidates.push_back(scaleTable[device] * (1 - (float) i * config_.PROBE_STEP_SIZE));
+      } else {
+        candidates.push_back(scaleTable[device] * (1 - (float) i * config_.PROBE_STEP_SIZE));
+        candidates.push_back(scaleTable[device] * (1 + (float) i * config_.PROBE_STEP_SIZE));
+      }
+    }
+    float lowerBound = level == 0 ? 1e-5f : calcTargetScale(level - 1, area);
+    float upperBound = 1.0f;
+    candidates.erase(std::remove_if(
+        candidates.begin(), candidates.end(),
+        [lowerBound, upperBound](float candidate) {
+          return candidate <= lowerBound || upperBound <= candidate;
+        }), candidates.end());
+    candidatesTable[device] = candidates;
+  }
+
+  return candidatesTable;
 }
 
 bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {

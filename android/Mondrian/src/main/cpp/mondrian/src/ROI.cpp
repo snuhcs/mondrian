@@ -70,7 +70,7 @@ std::string ROI::header() {
      << Rect::header("origLoc") << DELIM
      << Rect::header("paddedLoc") << DELIM
      << Features::header() << DELIM
-     << "targetScale" << DELIM
+     << "targetScaleTable" << DELIM
      << "scaleLevel" << DELIM
      << "numProbingScales" << DELIM
      << "numRoisForProbing" << DELIM

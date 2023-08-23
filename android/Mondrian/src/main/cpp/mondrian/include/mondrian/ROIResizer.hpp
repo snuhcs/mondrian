@@ -30,7 +30,7 @@ class ROIResizer {
 
   void updateTable(ROI* roi);
 
-  std::vector<float> getProbingCandidates(float scale, int level, float area) const;
+  std::map<Device, std::vector<float>> getProbingCandidatesTable(std::map<Device, float> scaleTable, int level, float area) const;
 
  private:
   class CircularBuffer {

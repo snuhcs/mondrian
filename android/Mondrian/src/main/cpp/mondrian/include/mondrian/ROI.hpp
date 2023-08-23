@@ -75,8 +75,8 @@ class ROI {
     return paddedLoc.area;
   }
 
-  float targetScale() const {
-    return targetScaleTable_.at(Device::GPU);
+  std::map<Device, float> targetScaleTable() const {
+    return targetScaleTable_;
   }
 
   int scaleLevel() const {

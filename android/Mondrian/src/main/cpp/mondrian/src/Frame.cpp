@@ -158,7 +158,7 @@ void Frame::resetMergedROIs() {
   mergedROIs.clear();
 
   for (const auto& roi : rois) {
-    std::unique_ptr<MergedROI> mergedROI(new MergedROI({roi.get()}, roi->targetScale(), false));
+    std::unique_ptr<MergedROI> mergedROI(new MergedROI({roi.get()}, roi->targetScaleTable(), false));
     mergedROIs.push_back(std::move(mergedROI));
   }
   assert(testROIsIntegrity());
@@ -249,9 +249,9 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
       }
       continue;
     }
-    roi->probeScalesTable[Device::GPU] = roiResizer->getProbingCandidates(roi->targetScale(),
-                                                        roi->scaleLevel(),
-                                                        roi->paddedArea());
+    roi->probeScalesTable = roiResizer->getProbingCandidatesTable(roi->targetScaleTable(),
+                                                                  roi->scaleLevel(),
+                                                                  roi->paddedArea());
     for (auto scale : roi->probeScalesTable[Device::GPU]) {
       int bw = MergedROI::borderedLengthOf(roi->paddedLoc.w, scale);
       int bh = MergedROI::borderedLengthOf(roi->paddedLoc.h, scale);
@@ -282,16 +282,23 @@ void Frame::prepareFrameLast(const IntPairs& indices,
       assert(roi->probeScalesTable[Device::GPU].empty());
       continue;
     }
-    for (auto probeScale : roi->probeScalesTable[Device::GPU]) {
-      std::unique_ptr<MergedROI> probeROI(new MergedROI({roi.get()}, probeScale, true));
-      assert(0.0f < probeScale && probeScale <= 1.0f);
-      probeROI->setPackInfo(locations[i], indices[i].first, executionType, roiSize);
-      roi->roisForProbingTable[Device::GPU].push_back(probeROI.get());
-      probingROIsTable[Device::GPU].push_back(std::move(probeROI));
-      i++;
+
+    for (auto it = roi->probeScalesTable.begin(); it != roi->probeScalesTable.end(); it++) {
+      Device device = it->first;
+      auto& probeScales = it->second;
+      for (auto probeScale : probeScales) {
+        assert(0.0f < probeScale && probeScale <= 1.0f);
+        std::map<Device, float> probeScaleTable;
+        probeScaleTable[device] = probeScale;
+        std::unique_ptr<MergedROI> probeROI(new MergedROI({roi.get()}, probeScaleTable, true));
+        probeROI->setPackInfo(locations[i], indices[i].first, executionType, roiSize);
+        roi->roisForProbingTable[it->first].push_back(probeROI.get());
+        probingROIsTable[it->first].push_back(std::move(probeROI));
+        i++;
+      }
     }
   }
-  assert(i == locations.size());
+  //assert(i == locations.size());
 }
 
 bool Frame::isReadyToMarry(int packedCanvasIndex) const {

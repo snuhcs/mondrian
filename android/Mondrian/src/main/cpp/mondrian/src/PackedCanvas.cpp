@@ -15,7 +15,7 @@ PackedCanvas::PackedCanvas(const std::set<MergedROI*>& mergedROIs,
   //       e.g. white for YOLOv4, gray for YOLOv5
   for (MergedROI* mergedROI : mergedROIs) {
     assert(mergedROI->isPacked());
-    cv::Mat borderMat = mergedROI->borderedMat();
+    cv::Mat borderMat = mergedROI->borderedMat(device);
     int bw = borderMat.cols;
     int bh = borderMat.rows;
     auto [packX, packY] = mergedROI->packedXY();

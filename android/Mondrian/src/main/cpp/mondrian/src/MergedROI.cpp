@@ -5,18 +5,21 @@
 
 namespace md {
 
-MergedROI::MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isProbing)
+MergedROI::MergedROI(const std::vector<ROI*>& rois, std::map<Device, float> targetScaleTable, bool isProbing)
     : rois_(rois), isProbing_(isProbing),
       frame_(frameOf(rois)), loc_(locOf(rois)),
       packedXY_(INVALID_XY), packedCanvasIndex_(-1), pid_(-1),
       packedCanvasSize_(-1) {
 
-  for (Device device : Devices) {
-    targetScaleTable_[device] = targetScale;
+  // for probing ROIs, targetScale for all devices should be the same
+  float targetScale = -1;
+
+  for (auto it = targetScaleTable.begin(); it != targetScaleTable.end(); it++) {
+    Device device = it->first;
+    targetScaleTable_[device] = targetScaleTable[device];
     probingBoxTable_[device] = nullptr;
     probingBoxIDTable_[device] = -1;
   }
-
 
   for (ROI* roi : rois) {
     roi->mergedROI = this;
@@ -52,8 +55,13 @@ std::unique_ptr<MergedROI> MergedROI::merge(const MergedROI* m0, const MergedROI
   std::vector<ROI*> newROIs;
   newROIs.insert(newROIs.end(), m0->rois_.begin(), m0->rois_.end());
   newROIs.insert(newROIs.end(), m1->rois_.begin(), m1->rois_.end());
-  float newScale = std::max(m0->targetScaleTable_.at(Device::GPU), m1->targetScaleTable_.at(Device::GPU));
-  return std::make_unique<MergedROI>(newROIs, newScale, false);
+  std::map<Device, float> newScaleTable;
+
+  for (auto it = m0->targetScaleTable_.begin(); it != m0->targetScaleTable_.end(); it++) {
+    Device device = it->first;
+    newScaleTable[device] = std::max(m0->targetScaleTable_.at(device), m1->targetScaleTable_.at(device));
+  }
+  return std::make_unique<MergedROI>(newROIs, newScaleTable, false);
 }
 
 void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize) {
@@ -75,17 +83,25 @@ void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, i
         const auto& mi = mergedROIs[i].get();
         const auto& mj = mergedROIs[j].get();
         merged = merge(mi, mj);
-        int bw = borderedLengthOf(merged->loc_.w, merged->targetScaleTable_.at(Device::GPU));
-        int bh = borderedLengthOf(merged->loc_.h, merged->targetScaleTable_.at(Device::GPU));
-        if (std::max(bw, bh) > maxSize) {
-          continue; // would be little more conservative for the general case
+
+        for (auto it = merged->targetScaleTable_.begin(); it != merged->targetScaleTable_.end(); it++) {
+          Device device = it->first;
+          int bw = borderedLengthOf(merged->loc_.w, merged->targetScaleTable_.at(device));
+          int bh = borderedLengthOf(merged->loc_.h, merged->targetScaleTable_.at(device));
+          if (std::max(bw, bh) > maxSize) {
+            continue; // would be little more conservative for the general case
+          }
         }
 
-        int newArea = merged->resizedArea();
-        int origArea = mi->resizedArea() + mj->resizedArea();
-        if (newArea >= origArea) {
-          continue;
+        for (auto it = merged->targetScaleTable_.begin(); it != merged->targetScaleTable_.end(); it++) {
+          Device device = it->first;
+          int newArea = merged->resizedArea(device);
+          int origArea = mi->resizedArea(device) + mj->resizedArea(device);
+          if (newArea >= origArea) {
+            continue;
+          }
         }
+
         updated = true;
         break;
       }
@@ -125,13 +141,13 @@ cv::Mat MergedROI::resizedMat() const {
   return rgbMat;
 }
 
-cv::Mat MergedROI::borderedMat() const {
+cv::Mat MergedROI::borderedMat(Device device) const {
   cv::Mat rgbMat = resizedMat();
   cv::copyMakeBorder(rgbMat, rgbMat,
                      BORDER, BORDER, BORDER, BORDER,
                      cv::BORDER_CONSTANT, BORDER_COLOR);
-  int bw = borderedLengthOf(loc_.w, targetScaleTable_.at(Device::GPU));
-  int bh = borderedLengthOf(loc_.h, targetScaleTable_.at(Device::GPU));
+  int bw = borderedLengthOf(loc_.w, targetScaleTable_.at(device));
+  int bh = borderedLengthOf(loc_.h, targetScaleTable_.at(device));
   assert(bw == rgbMat.cols && bh == rgbMat.rows);
   return rgbMat;
 }

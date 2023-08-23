@@ -16,7 +16,7 @@ class MergedROI {
   static inline const cv::Scalar BORDER_COLOR{255, 255, 255};
   static inline const IntPair INVALID_XY{-1, -1};
 
-  MergedROI(const std::vector<ROI*>& rois, float targetScale, bool isProbing);
+  MergedROI(const std::vector<ROI*>& rois, std::map<Device, float> targetScaleTable, bool isProbing);
 
   static std::unique_ptr<MergedROI> merge(const MergedROI* m0, const MergedROI* m1);
 
@@ -84,8 +84,8 @@ class MergedROI {
     return std::round(v);
   }
 
-  int resizedArea() const {
-    return resizedAreaOf(loc_.w, loc_.h, targetScaleTable_.at(Device::GPU));
+  int resizedArea(Device device) const {
+    return resizedAreaOf(loc_.w, loc_.h, targetScaleTable_.at(device));
   }
 
   static int resizedAreaOf(float width, float height, float scale) {
@@ -122,7 +122,7 @@ class MergedROI {
 
   cv::Mat resizedMat() const;
 
-  cv::Mat borderedMat() const;
+  cv::Mat borderedMat(Device device) const;
 
   void setPackInfo(IntPair xy, int packedCanvasIndex,
                    ExecutionType executionType, int roiSize);
