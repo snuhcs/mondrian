@@ -77,6 +77,11 @@ bool ROIResizer::isCalibrated(const OID oid) const {
 }
 
 int ROIResizer::getMaxVotedLevel(const OID oid, const Features& features) {
+  // XXX : not sure if this is appropriate.
+  if (prevPredictionBufferTable_.find(Device::GPU) == prevPredictionBufferTable_.end()) {
+    prevPredictionBufferTable_[Device::GPU] = std::map<OID, CircularBuffer>();
+  }
+
   auto record = prevPredictionBufferTable_[Device::GPU].find(oid);
   if (record == prevPredictionBufferTable_[Device::GPU].end()) {
     prevPredictionBufferTable_[Device::GPU][oid] = CircularBuffer(int(targetAreasTable_[Device::GPU].size()),
