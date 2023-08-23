@@ -8,13 +8,11 @@
     "execution_type": "mondrian",
     "log_boxes": true,
     "log_roi": true,
-    "log_merged_roi": true,
+    "log_merged_roi": false,
     "log_frame": true,
     "interpolation_thres": 0,
-    "full_frame_interval": 4,
-    "full_frame_size": 1024,
-    "full_device": "GPU",
-    "latency_slo_ms": 2000,
+    "full_frame_interval": 3,
+    "latency_slo_ms": 3000,
     "roi_size": 80,
     "roi_extractor": {
         "num_workers": 2,
@@ -50,19 +48,28 @@
         "type": "min_consecutive_drop"
     },
     "inference_engine": {
+        "full_device": "GPU",
+        "full_model": "yolov5l",
+        "full_dataset": "mta",
         "full_frame_size": 1024,
-        "input_sizes": [
-            640,
-            1280
-        ],
-        "devices": [
-            "GPU",
-            "DSP"
-        ],
+        "worker_configs": {
+            "GPU": {
+                "model": "yolov5m",
+                "dataset": "mta",
+                "input_sizes": [
+                    640,
+                    1280
+                ]
+            },
+            "DSP": {
+                "model": "yolov5m",
+                "dataset": "coco",
+                "input_sizes": [
+                    640
+                ]
+            }
+        },
         "draw_inference_result": true,
-        "dataset": "mta",
-        "model": "YOLO_V5",
-        "use_tiny": false,
         "conf_thres": 0.5,
         "iou_thres": 0.5,
         "profile_warmups": 3,

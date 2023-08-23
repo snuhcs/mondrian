@@ -117,8 +117,8 @@ void Mondrian::workSchedule() {
       fullFrameTarget = *streams.at(fullFrameVid).rbegin();
       inferenceEngine_->enqueue(
           /*rgbMat=*/fullFrameTarget->rgbMat(),
-          /*device=*/config_.FULL_DEVICE,
-          /*inputSize=*/config_.FULL_FRAME_SIZE,
+          /*device=*/config_.inferenceEngineConfig.FULL_DEVICE,
+          /*inputSize=*/config_.inferenceEngineConfig.FULL_FRAME_SIZE,
           /*isFullFrame=*/true,
           /*key=*/fullFrameTarget->getKey());
       LOGD("[Schedule %d] Full Frame vid=%d fid=%d", currID,
@@ -179,8 +179,8 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   Result result = inferenceEngine_->getResults(frame->getKey());
   LOGD("[Schedule %d] FULL Inference at %lld // vid=%d fid=%d",
        currID, NowMicros() - startTime_, frame->vid, frame->fid);
-  frame->inferenceFrameSize = config_.FULL_FRAME_SIZE;
-  frame->inferenceDevice = config_.FULL_DEVICE;
+  frame->inferenceFrameSize = config_.inferenceEngineConfig.FULL_FRAME_SIZE;
+  frame->inferenceDevice = config_.inferenceEngineConfig.FULL_DEVICE;
   frame->fullInferenceStartTime = result.detectionStart;
   frame->fullInferenceEndTime = result.detectionEnd;
   for (const BoundingBox& box : result.boxes) {
@@ -188,19 +188,17 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
     frame->boxes.push_back(std::make_unique<BoundingBox>(
         INVALID_OID, -1, box.loc, box.confidence, box.label, Origin::FULL_FRAME));
   }
-  patchReconstructor_->matchBoxesROIs(frame, true);
+  if (config_.EXECUTION_TYPE != ExecutionType::FRAME_WISE_INFERENCE) {
+    patchReconstructor_->matchBoxesROIs(frame, true);
 
-  for (auto& box : frame->boxes) {
-    assert(box->oid != INVALID_OID);
-  }
-  frame->isBoxesReady = true;
-  frame->endTime = NowMicros();
-  if (ROIExtractor_ != nullptr) {
+    for (auto& box : frame->boxes) {
+      assert(box->oid != INVALID_OID);
+    }
+    frame->isBoxesReady = true;
     ROIExtractor_->cv().notify_all();
   }
 
-  assert(std::all_of(frame->boxes.begin(), frame->boxes.end(),
-                     [](const std::unique_ptr<BoundingBox>& box) { return box->label == 0; }));
+  frame->endTime = NowMicros();
 
   std::unique_lock<std::mutex> resultLock(logMtx_);
   std::vector<BoundingBox> resultBoxes;
@@ -345,8 +343,8 @@ void Mondrian::enqueue(const VID vid, const cv::Mat& yuvMat) {
 void Mondrian::enqueueFrameWise(Frame* frame) {
   inferenceEngine_->enqueue(
       /*rgbMat=*/frame->rgbMat(),
-      /*device=*/config_.FULL_DEVICE,
-      /*inputSize=*/config_.FULL_FRAME_SIZE,
+      /*device=*/config_.inferenceEngineConfig.FULL_DEVICE,
+      /*inputSize=*/config_.inferenceEngineConfig.FULL_FRAME_SIZE,
       /*isFullFrame=*/true,
       /*key=*/frame->getKey());
   handleFullFrameResults(frame, frame->fid);
@@ -361,8 +359,8 @@ void Mondrian::enqueue(Frame* frame) {
     frame->useInferenceResultForOF = true;
     inferenceEngine_->enqueue(
         /*rgbMat=*/frame->rgbMat(),
-        /*device=*/config_.FULL_DEVICE,
-        /*inputSize=*/config_.FULL_FRAME_SIZE,
+        /*device=*/config_.inferenceEngineConfig.FULL_DEVICE,
+        /*inputSize=*/config_.inferenceEngineConfig.FULL_FRAME_SIZE,
         /*isFullFrame=*/true,
         /*key=*/frame->getKey());
     handleFullFrameResults(frame, -1);

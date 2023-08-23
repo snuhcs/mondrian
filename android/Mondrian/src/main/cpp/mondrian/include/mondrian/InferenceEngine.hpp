@@ -41,10 +41,7 @@ class InferenceEngine {
 
  private:
   template<typename T>
-  void addClassifiers(Device device,
-                      const InferenceEngineConfig& config,
-                      JNIEnv* env,
-                      jobject app);
+  void addWorker(Device device, JNIEnv* env, jobject app);
 
   const InferenceEngineConfig config_;
 

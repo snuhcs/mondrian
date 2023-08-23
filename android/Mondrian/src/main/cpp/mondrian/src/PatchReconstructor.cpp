@@ -124,10 +124,14 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   std::vector<BoundingBox*> unassignedBoxes;
 
   // prepare cost matrix. max is calculated to make it a minimization problem
-  std::vector<std::vector<float>> costMatrix(boxes.size());
+  std::vector<std::vector<float>> costMatrix;
+  int length = (int) std::max(boxes.size(), rois.size());
+  costMatrix.resize(length);
+  for (int i = 0; i < length; i++) {
+    costMatrix[i].resize(length);
+  }
   float max = 0;
   for (int i = 0; i < boxes.size(); i++) {
-    costMatrix[i].resize(rois.size());
     for (int j = 0; j < rois.size(); j++) {
       float iou = boxes[i]->loc.iou(rois[j]->paddedLoc);
       costMatrix[i][j] = iou;
@@ -136,8 +140,8 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
       }
     }
   }
-  for (int i = 0; i < boxes.size(); i++) {
-    for (int j = 0; j < rois.size(); j++) {
+  for (int i = 0; i < length; i++) {
+    for (int j = 0; j < length; j++) {
       costMatrix[i][j] = max - costMatrix[i][j];
     }
   }
@@ -147,8 +151,8 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   // -1 means that box is not assigned to any ROI
   HungarianAlgorithm::Solve(costMatrix, assignment);
 
-  for (unsigned int x = 0; x < costMatrix.size(); x++) {
-    if (assignment[x] == -1) {
+  for (unsigned int x = 0; x < boxes.size(); x++) {
+    if (assignment[x] == -1 || assignment[x] >= rois.size()) {
       unassignedBoxes.push_back(boxes[x]);
       continue;
     }

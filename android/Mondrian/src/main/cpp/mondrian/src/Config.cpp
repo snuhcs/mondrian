@@ -90,19 +90,30 @@ ROIPackerConfig parseROIPackerConfig(const Json::Value& json) {
   return config;
 }
 
+static std::map<Device, WorkerConfig> parseWorkerConfigs(const Json::Value& json) {
+  std::map<Device, WorkerConfig> workerConfigs;
+  for (auto it = json.begin(); it != json.end(); it++) {
+    Device device = deviceOf(it.key().asString());
+    const Json::Value& workerConfigJson = *it;
+    WorkerConfig workerConfig = {};
+    workerConfig.MODEL = parseString(workerConfigJson, "model");
+    workerConfig.DATASET = parseString(workerConfigJson, "dataset");
+    for (const auto& value : workerConfigJson["input_sizes"]) {
+      workerConfig.INPUT_SIZES.push_back(value.asInt());
+    }
+    workerConfigs[device] = workerConfig;
+  }
+  return workerConfigs;
+}
+
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   InferenceEngineConfig config = {};
+  config.FULL_DEVICE = deviceOf(parseString(json, "full_device"));
+  config.FULL_MODEL = parseString(json, "full_model");
+  config.FULL_DATASET = parseString(json, "full_dataset");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
-  for (const auto& inputSizeJson : json["input_sizes"]) {
-    config.INPUT_SIZES.insert(inputSizeJson.asInt());
-  }
-  for (const auto& deviceJson : json["devices"]) {
-    config.DEVICES.insert(deviceOf(deviceJson.asString()));
-  }
+  config.WORKER_CONFIGS = parseWorkerConfigs(json["worker_configs"]);
   config.DRAW_INFERENCE_RESULT = parseBool(json, "draw_inference_result");
-  config.DATASET = parseString(json, "dataset");
-  config.MODEL = parseString(json, "model");
-  config.USE_TINY = parseBool(json, "use_tiny");
   config.CONF_THRES = parseFloat(json, "conf_thres");
   config.IOU_THRES = parseFloat(json, "iou_thres");
   config.PROFILE_WARMUPS = parseInt(json, "profile_warmups");
@@ -133,8 +144,6 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.LOG_FRAME = parseBool(json, "log_frame");
   config.INTERPOLATION_THRES = parseFloat(json, "interpolation_thres");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
-  config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
-  config.FULL_DEVICE = deviceOf(parseString(json, "full_device"));
   config.LATENCY_SLO_MS = parseInt(json, "latency_slo_ms");
   config.ROI_SIZE = parseInt(json, "roi_size");
 
@@ -155,7 +164,6 @@ void MondrianConfig::test() const {
   } else {
     assert(FULL_FRAME_INTERVAL > 0);
   }
-  assert(FULL_FRAME_SIZE == inferenceEngineConfig.FULL_FRAME_SIZE);
 
   // ROIResizer
   if (roiResizerConfig.STATIC_AREA) {
@@ -163,9 +171,10 @@ void MondrianConfig::test() const {
     assert(roiResizerConfig.SCALE_SHIFT == 0.0f);
     assert(roiResizerConfig.STATIC_TARGET_AREA > 0);
   } else {
-    assert(inferenceEngineConfig.DATASET == roiResizerConfig.DATASET);
     assert(roiResizerConfig.NUM_PROBE_STEPS == 0 || roiResizerConfig.PROBE_STEP_SIZE > 0);
-    assert(EXECUTION_TYPE == ExecutionType::MONDRIAN || roiResizerConfig.NUM_PROBE_STEPS == 0);
+    assert(EXECUTION_TYPE == ExecutionType::MONDRIAN
+               || EXECUTION_TYPE == ExecutionType::FRAME_WISE_INFERENCE
+               || roiResizerConfig.NUM_PROBE_STEPS == 0);
   }
   if (EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE
       || EXECUTION_TYPE == ExecutionType::EMULATED_BATCH) {
@@ -173,20 +182,24 @@ void MondrianConfig::test() const {
   }
 
   // InferenceEngine
-  assert(datasets.find(inferenceEngineConfig.DATASET) != datasets.end());
-  assert(!inferenceEngineConfig.DEVICES.empty());
-  assert(!inferenceEngineConfig.INPUT_SIZES.empty());
-  if (EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE) {
-    assert(inferenceEngineConfig.INPUT_SIZES.size() == 1);
-    assert(ROI_SIZE == *inferenceEngineConfig.INPUT_SIZES.begin());
+  if (EXECUTION_TYPE != ExecutionType::FRAME_WISE_INFERENCE) {
+    for (const auto& [device, workerConfig] : inferenceEngineConfig.WORKER_CONFIGS) {
+      assert(!workerConfig.INPUT_SIZES.empty());
+    }
   }
-  assert(std::find(inferenceEngineConfig.DEVICES.begin(),
-                   inferenceEngineConfig.DEVICES.end(),
-                   FULL_DEVICE) != inferenceEngineConfig.DEVICES.end());
-  bool isDivisible = std::all_of(
-      inferenceEngineConfig.INPUT_SIZES.begin(), inferenceEngineConfig.INPUT_SIZES.end(),
-      [this](int input_size) { return input_size % ROI_SIZE == 0; });
-  assert(EXECUTION_TYPE != ExecutionType::EMULATED_BATCH || isDivisible);
+  if (EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE) {
+    for (const auto& [device, workerConfig] : inferenceEngineConfig.WORKER_CONFIGS) {
+      assert(workerConfig.INPUT_SIZES.size() == 1);
+      assert(ROI_SIZE == *workerConfig.INPUT_SIZES.begin());
+    }
+  }
+  if (EXECUTION_TYPE == ExecutionType::EMULATED_BATCH) {
+    for (const auto& [device, workerConfig] : inferenceEngineConfig.WORKER_CONFIGS) {
+      assert(std::all_of(
+          workerConfig.INPUT_SIZES.begin(), workerConfig.INPUT_SIZES.end(),
+          [this](int input_size) { return input_size % ROI_SIZE == 0; }));
+    }
+  }
 }
 
 void MondrianConfig::print() const {
@@ -198,8 +211,6 @@ void MondrianConfig::print() const {
   ss << "LOG_FRAME: " << LOG_FRAME << std::endl;
   ss << "INTERPOLATION_THRES: " << INTERPOLATION_THRES << std::endl;
   ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
-  ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
-  ss << "FULL_DEVICE: " << md::str(FULL_DEVICE) << std::endl;
   ss << "LATENCY_SLO_MS: " << LATENCY_SLO_MS << std::endl;
   ss << "ROI_SIZE: " << ROI_SIZE << std::endl;
   LOGD("%s", ss.str().c_str());
@@ -254,24 +265,27 @@ void ROIPackerConfig::print() const {
   LOGD("%s", ss.str().c_str());
 }
 
+std::string WorkerConfig::str() const {
+  std::stringstream ss;
+  ss << MODEL << " ";
+  ss << DATASET << " ";
+  for (int input_size : INPUT_SIZES) {
+    ss << input_size << " ";
+  }
+  return ss.str();
+}
+
 void InferenceEngineConfig::print() const {
   std::stringstream ss;
   ss << "========== InferenceEngineConfig ==========" << std::endl;
+  ss << "FULL_DEVICE: " << str(FULL_DEVICE) << std::endl;
+  ss << "FULL_MODEL: " << FULL_MODEL << std::endl;
+  ss << "FULL_DATASET: " << FULL_DATASET << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
-  ss << "INPUT_SIZES: ";
-  for (auto& inputSize : INPUT_SIZES) {
-    ss << inputSize << " ";
+  for (const auto& [device, workerConfig]: WORKER_CONFIGS) {
+    ss << "WORKER_CONFIGS [" << str(device) << "]: " << workerConfig.str() << std::endl;
   }
-  ss << std::endl;
-  ss << "DEVICES: ";
-  for (auto& device : DEVICES) {
-    ss << md::str(device) << " ";
-  }
-  ss << std::endl;
   ss << "DRAW_INFERENCE_RESULT: " << DRAW_INFERENCE_RESULT << std::endl;
-  ss << "DATASET: " << DATASET << std::endl;
-  ss << "MODEL: " << MODEL << std::endl;
-  ss << "USE_TINY: " << USE_TINY << std::endl;
   ss << "CONF_THRES: " << CONF_THRES << std::endl;
   ss << "IOU_THRES: " << IOU_THRES << std::endl;
   ss << "PROFILE_WARMUPS: " << PROFILE_WARMUPS << std::endl;

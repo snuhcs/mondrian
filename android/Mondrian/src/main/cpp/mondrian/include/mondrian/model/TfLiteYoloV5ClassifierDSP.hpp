@@ -10,9 +10,12 @@ namespace md {
 
 class TfLiteYoloV5ClassifierDSP : public Classifier {
  public:
-  TfLiteYoloV5ClassifierDSP(std::string dataset, int inputSize,
-                            float confThres, float iouThres,
-                            bool isTiny, bool forFullFrame);
+  TfLiteYoloV5ClassifierDSP(const std::string& modelName,
+                            const int inputSize,
+                            const bool forFullFrame,
+                            const std::string& dataset,
+                            const float confThres,
+                            const float iouThres);
 
  private:
   cv::Mat preprocess(const cv::Mat& rgbMat) const override;
