@@ -16,26 +16,23 @@
 
 namespace md {
 
-TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(std::string dataset, int inputSize,
-                                                     float confThres, float iouThres,
-                                                     bool isTiny, bool forFullFrame)
+TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(const std::string& modelName,
+                                                     const int inputSize,
+                                                     const bool forFullFrame,
+                                                     const std::string& dataset,
+                                                     const float confThres,
+                                                     const float iouThres)
     : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
                  confThres, iouThres) {
   std::stringstream ss;
   ss << "/data/local/tmp/models/";
-
-  if (dataset != "pretrained") {
-    ss << dataset << "-";
-    if (forFullFrame) {
-      ss << "full-";
-    } else {
-      ss << "pack-";
-    }
+  if (dataset != "coco") {
+    ss << dataset << "-"
+       << (forFullFrame ? "full" : "pack") << "-";
   }
-
-  // Note: currently not using isTiny. It's just placeholder.
-  ss << "yolov5" << (forFullFrame ? "l" : (isTiny ? "s" : "m")) << "-";
-  ss << inputSize << "-int8.tflite";
+  ss << modelName << "-"
+     << inputSize << "-"
+     << "int8.tflite";
 
   auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
   if (model == nullptr) {
