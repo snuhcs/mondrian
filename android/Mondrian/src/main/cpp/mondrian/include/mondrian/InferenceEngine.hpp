@@ -41,7 +41,7 @@ class InferenceEngine {
 
  private:
   template<typename T>
-  void addWorker(Device device, JNIEnv* env, jobject app);
+  void addWorker(Device device, int maxPackedCanvasSize, JNIEnv* env, jobject app);
 
   const InferenceEngineConfig config_;
 

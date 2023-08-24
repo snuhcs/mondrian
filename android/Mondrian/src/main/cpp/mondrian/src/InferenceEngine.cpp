@@ -13,11 +13,18 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  JNIEnv* env,
                                  jobject app)
     : config_(config) {
+  int maxPackedCanvasSize = -1;
+  for (const auto& [device, workerConfig] : config_.WORKER_CONFIGS) {
+    for (const auto& inputSize : workerConfig.INPUT_SIZES) {
+      maxPackedCanvasSize = std::max(maxPackedCanvasSize, inputSize);
+    }
+  }
+
   for (Device device : Devices) {
     if (device == Device::GPU) {
-      addWorker<TfLiteYoloV5Classifier>(device, env, app);
+      addWorker<TfLiteYoloV5Classifier>(device, maxPackedCanvasSize, env, app);
     } else if (device == Device::DSP) {
-      addWorker<TfLiteYoloV5ClassifierDSP>(device, env, app);
+      addWorker<TfLiteYoloV5ClassifierDSP>(device, maxPackedCanvasSize, env, app);
     } else {
       LOGE("%s device is not supported yet", str(device).c_str());
     }
@@ -26,6 +33,7 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
 
 template<typename T>
 void InferenceEngine::addWorker(Device device,
+                                int maxPackedCanvasSize,
                                 JNIEnv* env,
                                 jobject app) {
   std::map<std::pair<int, bool>, Classifier*> classifierMap;
@@ -60,7 +68,7 @@ void InferenceEngine::addWorker(Device device,
   }
 
   workers_[device] = std::make_unique<Worker>(
-      this, device, classifierMap, config_.DRAW_INFERENCE_RESULT, env, app);
+      this, device, classifierMap, config_.DRAW_INFERENCE_RESULT, maxPackedCanvasSize, env, app);
 }
 
 void InferenceEngine::profileLatency() const {

@@ -9,6 +9,7 @@ Worker::Worker(InferenceEngine* engine,
                Device device,
                std::map<std::pair<int, bool>, Classifier*> classifierMap,
                bool draw,
+               int maxPackedCanvasSize,
                JNIEnv* env,
                jobject app)
     : engine_(engine),
@@ -16,11 +17,11 @@ Worker::Worker(InferenceEngine* engine,
       classifierMap_(std::move(classifierMap)),
       estimatedEndTime_(NowMicros()),
       stop_(false),
+      draw_(draw),
+      maxPackedCanvasSize_(maxPackedCanvasSize),
       env_(env),
-      app_(reinterpret_cast<jobject>(env->NewGlobalRef(app))),
-      draw_(draw) {
+      app_(reinterpret_cast<jobject>(env->NewGlobalRef(app))) {
   if (draw) {
-    maxPackedCanvasSize_ = (*classifierMap_.rbegin()).first.first;
     env_->GetJavaVM(&jvm_);
     class_MondrianApp_ = reinterpret_cast<jclass>(env_->NewGlobalRef(env_->FindClass(
         "hcs/offloading/mondrian/MondrianApp")));
