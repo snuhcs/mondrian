@@ -95,6 +95,14 @@ class MergedROI {
     packedCanvasSize_ = packedCanvasSize;
   }
 
+  bool isInferenced() const {
+    return isInferenced_;
+  }
+
+  void setInferenced(bool isInferenced) {
+    isInferenced_ = isInferenced;
+  }
+
   static int toInt(float v) {
     return std::round(v);
   }
@@ -160,6 +168,7 @@ class MergedROI {
   IntPair packedXY_;
   int packedCanvasIndex_;
   int packedCanvasSize_;
+  bool isInferenced_;
   Device dispatchTargetDevice;
 
   bool isProbing_;

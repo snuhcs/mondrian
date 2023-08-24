@@ -33,7 +33,11 @@ class InferenceEngine {
 
   void enqueueResult(const Key key, const Result& result);
 
-  Result getResults(Key key);
+  Result getResult(Key key, bool isCheckedKey);
+
+  void waitForAnyResults();
+
+  bool isReady(Key key);
 
   LatencyTable latencyTable() const;
 

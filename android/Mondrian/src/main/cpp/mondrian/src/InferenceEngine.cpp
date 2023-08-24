@@ -85,11 +85,15 @@ void InferenceEngine::enqueue(const cv::Mat& rgbMat,
   workers_[device]->enqueue(rgbMat, inputSize, isFullFrame, key);
 }
 
-Result InferenceEngine::getResults(Key key) {
+Result InferenceEngine::getResult(Key key, bool isCheckedKey) {
   std::unique_lock<std::mutex> resultLock(resultMtx_);
-  resultCv_.wait(resultLock, [this, key]() {
-    return results_.find(key) != results_.end();
-  });
+  if (isCheckedKey) {
+    assert(results_.find(key) != results_.end());
+  } else {
+    resultCv_.wait(resultLock, [this, key]() {
+      return results_.find(key) != results_.end();
+    });
+  }
   auto result = results_.at(key);
   results_.erase(key);
   return result;
@@ -100,6 +104,18 @@ void InferenceEngine::enqueueResult(const Key key, const Result& result) {
   results_.emplace(key, result);
   resultLock.unlock();
   resultCv_.notify_all();
+}
+
+void InferenceEngine::waitForAnyResults() {
+  std::unique_lock<std::mutex> resultLock(resultMtx_);
+  resultCv_.wait(resultLock, [this]() {
+    return !results_.empty();
+  });
+}
+
+bool InferenceEngine::isReady(Key key) {
+  std::lock_guard<std::mutex> resultLock(resultMtx_);
+  return results_.find(key) != results_.end();
 }
 
 LatencyTable InferenceEngine::latencyTable() const {

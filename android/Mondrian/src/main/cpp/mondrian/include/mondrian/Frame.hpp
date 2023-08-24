@@ -99,7 +99,7 @@ class Frame {
                         int roiSize,
                         bool noDownsampling);
 
-  bool isReadyToMarry(Device device, int packedFrameIndex) const;
+  bool isReadyToMarry() const;
 
   bool readyForOFExtraction() const;
 

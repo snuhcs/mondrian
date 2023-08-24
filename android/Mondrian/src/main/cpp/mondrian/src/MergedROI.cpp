@@ -10,6 +10,7 @@ MergedROI::MergedROI(const std::vector<ROI*>& rois, std::map<Device, float> targ
       frame_(frameOf(rois)), loc_(locOf(rois)),
       packedXY_(INVALID_XY), packedCanvasIndex_(-1), pid_(-1),
       packedCanvasSize_(-1),
+      isInferenced_(false),
       dispatchTargetDevice(Device::INVALID)
       {
 

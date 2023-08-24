@@ -306,12 +306,19 @@ void Frame::prepareFrameLast(const IntPairs& indices,
   //assert(i == locations.size()); // XXX
 }
 
-bool Frame::isReadyToMarry(Device device, int packedCanvasIndex) const {
-  auto isROIReady = [&packedCanvasIndex, device](const std::unique_ptr<MergedROI>& mergedROI) {
-    return !mergedROI->isPacked() || (mergedROI->getTargetDevice() == device && mergedROI->packedCanvasIndex() <= packedCanvasIndex);
+bool Frame::isReadyToMarry() const {
+  // Check all of mergedROIs and probingROIs are ready
+  auto isReady = [](const std::unique_ptr<MergedROI>& mergedROI) -> bool {
+    return !mergedROI->isPacked() || mergedROI->isInferenced();
   };
-  bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIReady)
-      && std::all_of(probingROIsTable.at(Device::GPU).begin(), probingROIsTable.at(Device::GPU).end(), isROIReady);
+  bool isMergedROIsReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isReady);
+  bool isProbingROIsReady = true;
+  for (const auto& [device, probingROIs] : probingROIsTable) {
+    isProbingROIsReady &= std::all_of(probingROIs.begin(), probingROIs.end(), isReady);
+  }
+  bool isAllReady = isMergedROIsReady && isProbingROIsReady;
+
+  // Not to marry again
   bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
                                      [](auto& box) { return box->oid == INVALID_OID; });
   bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),
