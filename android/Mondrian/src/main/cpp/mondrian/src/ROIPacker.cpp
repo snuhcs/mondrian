@@ -119,8 +119,8 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
 
   // 4. Group MergedROIs by packed canvas index
   std::map<int, std::set<MergedROI*>> groupedMergedROIs;
-  for (const auto& [vid, frames] : streams) {
-    for (Frame* frame : frames) {
+  for (const auto& [vid, stream] : streams) {
+    for (Frame* frame : stream) {
       if (frame == fullFrameTarget) continue;
       for (auto& mergedROI : frame->mergedROIs) {
         if (mergedROI->isPacked()) {
