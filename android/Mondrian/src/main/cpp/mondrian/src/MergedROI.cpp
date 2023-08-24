@@ -139,16 +139,16 @@ cv::Mat MergedROI::mat() const {
   return extractRgbROIFromYuvMat(frame_->yuvMat, l, t, r, b);
 }
 
-cv::Mat MergedROI::resizedMat() const {
-  int rw = resizedLengthOf(loc_.w, targetScaleTable_.at(Device::GPU));
-  int rh = resizedLengthOf(loc_.h, targetScaleTable_.at(Device::GPU));
+cv::Mat MergedROI::resizedMat(Device device) const {
+  int rw = resizedLengthOf(loc_.w, targetScaleTable_.at(device));
+  int rh = resizedLengthOf(loc_.h, targetScaleTable_.at(device));
   cv::Mat rgbMat;
   cv::resize(mat(), rgbMat, cv::Size(rw, rh));
   return rgbMat;
 }
 
 cv::Mat MergedROI::borderedMat(Device device) const {
-  cv::Mat rgbMat = resizedMat();
+  cv::Mat rgbMat = resizedMat(device);
   cv::copyMakeBorder(rgbMat, rgbMat,
                      BORDER, BORDER, BORDER, BORDER,
                      cv::BORDER_CONSTANT, BORDER_COLOR);

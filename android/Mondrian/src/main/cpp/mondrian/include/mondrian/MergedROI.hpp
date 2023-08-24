@@ -131,7 +131,7 @@ class MergedROI {
 
   cv::Mat mat() const;
 
-  cv::Mat resizedMat() const;
+  cv::Mat resizedMat(Device device) const;
 
   cv::Mat borderedMat(Device device) const;
 
