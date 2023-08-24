@@ -44,8 +44,6 @@ struct ROIResizerConfig {
   float PROBE_CONF_THRES;
   float PROBE_IOU_THRES;
 
-  std::vector<Device> DEVICES;
-
   void print() const;
 };
 

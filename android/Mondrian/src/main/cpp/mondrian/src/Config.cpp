@@ -153,12 +153,6 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
   config.patchReconstructorConfig = parsePatchReconstructorConfig(json["patch_reconstructor"]);
 
-
-  for (auto& it : config.inferenceEngineConfig.WORKER_CONFIGS) {
-    Device device = it.first;
-    config.roiResizerConfig.DEVICES.push_back(device);
-  }
-
   return config;
 }
 

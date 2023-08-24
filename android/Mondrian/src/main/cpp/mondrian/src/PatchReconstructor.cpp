@@ -81,14 +81,16 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
     if (maxROI != nullptr && maxOverlap >= config_.BOX_FILTER_OVERLAP_THRES) {
       // filter overly large boxes from packed inference by PROBE_IOU_THRES
       if (maxROI->isProbing()) {
-        maxROI->frame()->probingBoxesTable[Device::GPU].push_back(std::make_unique<BoundingBox>(
+        std::unique_ptr<BoundingBox> probeBox(new BoundingBox(
             INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
             box.confidence, box.label, Origin::FULL_FRAME));
-        maxROI->setProbingBox(maxROI->frame()->probingBoxesTable[Device::GPU].rbegin()->get());
+        maxROI->setProbingBox(probeBox.get());
+        maxROI->frame()->probingBoxesTable[Device::GPU].push_back(std::move(probeBox));
       } else {
-        maxROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
+        std::unique_ptr<BoundingBox> newBox(new BoundingBox(
             INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
             box.confidence, box.label, Origin::INVALID));
+        maxROI->frame()->boxes.push_back(std::move(newBox));
       }
     }
   }
@@ -210,10 +212,11 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     }
   } else {
     assert(std::all_of(rois.begin(), rois.end(),
-                       [](const auto& roi) {
+                       [](const ROI* roi) {
                          bool ret = true;
                          for (Device device : Devices) {
-                           ret &= roi->roisForProbingTable[device].empty();
+                           ret &= roi->roisForProbingTable.find(device)
+                               == roi->roisForProbingTable.end();
                          }
                          return ret;
                        }));

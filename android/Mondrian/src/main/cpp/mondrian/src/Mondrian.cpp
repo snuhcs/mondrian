@@ -333,8 +333,9 @@ void Mondrian::log(const Frame* frame) {
     for (const auto& mergedROI : frame->mergedROIs) {
       loggerMergedROI_->logMergedROI(mergedROI.get());
     }
-    if (frame->probingROIsTable.find(Device::GPU) != frame->probingROIsTable.end()) {
-      for (const auto& probingROI : frame->probingROIsTable.at(Device::GPU)) {
+    for (const auto& [device, probingROIs] : frame->probingROIsTable) {
+      if (device == Device::DSP) continue;
+      for (const auto& probingROI: probingROIs) {
         loggerMergedROI_->logMergedROI(probingROI.get());
       }
     }
@@ -415,9 +416,7 @@ void Mondrian::workPostprocess() {
     auto& packedCanvasesTable = packingResult.packedCanvasesTable;
 
     // Enqueue packed canvases
-    for (auto& it : packedCanvasesTable) {
-      Device device = it.first;
-      auto& packedCanvases = it.second;
+    for (const auto& [device, packedCanvases] : packedCanvasesTable) {
       for (const auto& packedCanvas : packedCanvases) {
         assert(packedCanvas.device != Device::INVALID);
         inferenceEngine_->enqueue(

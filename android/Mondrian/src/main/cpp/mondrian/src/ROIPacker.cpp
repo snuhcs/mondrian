@@ -208,8 +208,8 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::packCanvases(const int cu
           groupedMergedROIsTable[mergedROI->targetDevice()][mergedROI->packedCanvasIndex()].insert(mergedROI.get());
         }
       }
-      for (Device device : Devices) {
-        for (auto& probeROI : frame->probingROIsTable[device]) {
+      for (const auto& [device, probeROIs]: frame->probingROIsTable) {
+        for (const auto& probeROI: probeROIs) {
           if (probeROI->isPacked()) {
             groupedMergedROIsTable[device][probeROI->packedCanvasIndex()].insert(probeROI.get());
           }

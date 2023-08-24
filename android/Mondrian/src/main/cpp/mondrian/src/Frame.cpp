@@ -119,13 +119,10 @@ void Frame::resizeROIs(ROIResizer* roiResizer) {
   for (auto& roi : rois) {
     if (roi->type() == ROIType::OF) {
       auto scaleLevelTable = roiResizer->getTargetScale(roi->oid,
-                                                       roi->features,
-                                                       roi->paddedArea());
-
-      for (auto& it : scaleLevelTable) {
-        Device device = it.first;
-        float scale = it.second.first;
-        int level = it.second.second;
+                                                        roi->features,
+                                                        roi->paddedArea());
+      for (const auto& [device, scaleAndLevel] : scaleLevelTable) {
+        const auto& [scale, level] = scaleAndLevel;
         assert(0.0f < scale && scale <= 1.0f);
         roi->scaleTo(scale, level, device);
       }
@@ -228,11 +225,9 @@ void Frame::sortMergedROIs() {
 
 void Frame::resetProbeROIs() {
   for (auto& roi : rois) {
-    for (Device device : Devices) {
-      roi->roisForProbingTable[device].clear();
-      probingROIsTable[device].clear();
-    }
+    roi->roisForProbingTable.clear();
   }
+  probingROIsTable.clear();
 }
 
 IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
@@ -260,10 +255,13 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
     roi->probeScalesTable = roiResizer->getProbingCandidatesTable(roi->targetScaleTable(),
                                                                   roi->scaleLevel(),
                                                                   roi->paddedArea());
-    for (auto scale : roi->probeScalesTable[Device::GPU]) {
-      int bw = MergedROI::borderedLengthOf(roi->paddedLoc.w, scale);
-      int bh = MergedROI::borderedLengthOf(roi->paddedLoc.h, scale);
-      boxWHs.emplace_back(bw, bh);
+    for (const auto& [device, probeScales] : roi->probeScalesTable) {
+      if (device == Device::DSP) continue; // TODO: Handle probing for DSP
+      for (auto probeScale : probeScales) {
+        int bw = MergedROI::borderedLengthOf(roi->paddedLoc.w, probeScale);
+        int bh = MergedROI::borderedLengthOf(roi->paddedLoc.h, probeScale);
+        boxWHs.emplace_back(bw, bh);
+      }
     }
   }
   return boxWHs;
@@ -293,6 +291,7 @@ void Frame::prepareFrameLast(const IntPairs& indices,
     }
 
     for (const auto& [device, probeScales] : roi->probeScalesTable) {
+      if (device == Device::DSP) continue;
       for (auto probeScale : probeScales) {
         if (packedROIIndex >= numPackedROIs) break;
         assert(0.0f < probeScale && probeScale <= 1.0f);
@@ -303,6 +302,7 @@ void Frame::prepareFrameLast(const IntPairs& indices,
                               indices[packedROIIndex].first,
                               executionType,
                               roiSize);
+        probeROI->setTargetDevice(device);
         roi->roisForProbingTable[device].push_back(probeROI.get());
         probingROIsTable[device].push_back(std::move(probeROI));
         packedROIIndex++;
@@ -398,9 +398,13 @@ std::string Frame::str(time_us baseTime) const {
      << fid << DELIM
       << rois.size() << DELIM
       << mergedROIs.size() << DELIM
-      << (probingROIsTable.find(Device::GPU) == probingROIsTable.end() ? 0 : probingROIsTable.at(Device::GPU).size()) << DELIM
+      << (probingROIsTable.find(Device::GPU) != probingROIsTable.end()
+          ? probingROIsTable.at(Device::GPU).size()
+          : 0) << DELIM
       << boxes.size() << DELIM
-      << (probingBoxesTable.find(Device::GPU) == probingBoxesTable.end() ? 0 : probingBoxesTable.at(Device::GPU).size()) << DELIM
+      << (probingBoxesTable.find(Device::GPU) != probingBoxesTable.end()
+          ? probingBoxesTable.at(Device::GPU).size()
+          : 0) << DELIM
       << scheduleID << DELIM
       << PDExtractorID << DELIM
       << OFExtractorID << DELIM
