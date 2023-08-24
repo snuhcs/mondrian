@@ -148,7 +148,7 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::packCanvases(const int cu
         float minCost = FLT_MAX;
         for (auto& it : averagedPerPixelCostTable) {
           Device device = it.first;
-          float cost = it.second;
+          float cost = it.second * float(mergedROI->resizedArea(device));
           if (cost < minCost) {
             minCost = cost;
             targetDevice = device;
