@@ -137,7 +137,8 @@ int ROIResizer::predictLevelWithFeatures(const Features& features, Device device
 }
 
 void ROIResizer::updateTable(ROI* roi, Device device) {
-  if (roi->roisForProbingTable[device].empty()) {
+  if (roi->roisForProbingTable.find(device) == roi->roisForProbingTable.end()
+      || roi->roisForProbingTable[device].empty()) {
     return;
   }
 
@@ -175,19 +176,15 @@ void ROIResizer::updateTable(ROI* roi, Device device) {
   calibrationTableTable_[device][roi->oid] = {roi->scaleLevel(), newScale};
 }
 
-std::map<Device, std::vector<float>> ROIResizer::getProbingCandidatesTable(std::map<Device,
-                                                                                    float> scaleTable, int level, float area) const {
+std::map<Device, std::vector<float>> ROIResizer::getProbingCandidatesTable(
+    std::map<Device, float> scaleTable, int level, float area) const {
 
-  for (auto it = scaleTable.begin(); it != scaleTable.end(); it++) {
-    Device device = it->first;
-    assert(0.0f <= scaleTable[device] && scaleTable[device] <= 1.0f);
+  for (const auto& [_, scale] : scaleTable) {
+    assert(0.0f <= scale && scale <= 1.0f);
   }
 
   std::map<Device, std::vector<float>> candidatesTable;
-
-  for (auto it = candidatesTable.begin(); it != candidatesTable.end(); it++) {
-    Device device = it->first;
-    std::vector<float> candidates = candidatesTable[device];
+  for (auto& [device, candidates] : candidatesTable) {
     for (int i = 0; i < config_.NUM_PROBE_STEPS; i++) {
       if (config_.ONLY_SMALLER_PROBING) {
         candidates.push_back(scaleTable[device] * (1 - (float) i * config_.PROBE_STEP_SIZE));
@@ -203,9 +200,7 @@ std::map<Device, std::vector<float>> ROIResizer::getProbingCandidatesTable(std::
         [lowerBound, upperBound](float candidate) {
           return candidate <= lowerBound || upperBound <= candidate;
         }), candidates.end());
-    candidatesTable[device] = candidates;
   }
-
   return candidatesTable;
 }
 

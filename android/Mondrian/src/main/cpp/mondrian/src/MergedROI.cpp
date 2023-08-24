@@ -5,32 +5,27 @@
 
 namespace md {
 
-MergedROI::MergedROI(const std::vector<ROI*>& rois, std::map<Device, float> targetScaleTable, bool isProbing)
-    : rois_(rois), isProbing_(isProbing),
-      frame_(frameOf(rois)), loc_(locOf(rois)),
-      packedXY_(INVALID_XY), packedCanvasIndex_(-1), pid_(-1),
+MergedROI::MergedROI(const std::vector<ROI*>& rois,
+                     const std::map<Device, float>& targetScaleTable,
+                     bool isProbing)
+    : rois_(rois),
+      isProbing_(isProbing),
+      frame_(frameOf(rois)),
+      loc_(locOf(rois)),
+      targetScaleTable_(targetScaleTable),
+      packedXY_(INVALID_XY),
+      packedCanvasIndex_(-1),
+      pid_(-1),
       packedCanvasSize_(-1),
       isInferenced_(false),
-      dispatchTargetDevice(Device::INVALID)
-      {
-
-  // for probing ROIs, targetScale for all devices should be the same
-  float targetScale = -1;
-
-  for (auto it = targetScaleTable.begin(); it != targetScaleTable.end(); it++) {
-    Device device = it->first;
-    targetScaleTable_[device] = targetScaleTable[device];
-    probingBoxTable_[device] = nullptr;
-    probingBoxIDTable_[device] = -1;
-  }
-
+      dispatchTargetDevice_(Device::INVALID) {
   for (ROI* roi : rois) {
     roi->mergedROI = this;
   }
 }
 
 void MergedROI::dispatchTo(Device device) {
-  dispatchTargetDevice = device;
+  dispatchTargetDevice_ = device;
 }
 
 Frame* MergedROI::frameOf(const std::vector<ROI*>& rois) {
@@ -159,8 +154,10 @@ cv::Mat MergedROI::borderedMat(Device device) const {
   return rgbMat;
 }
 
-void MergedROI::setPackInfo(IntPair xy, int packedCanvasIndex,
-                            ExecutionType executionType, int roiSize) {
+void MergedROI::setPackInfo(IntPair xy,
+                            int packedCanvasIndex,
+                            ExecutionType executionType,
+                            int roiSize) {
   if (executionType == ExecutionType::EMULATED_BATCH
       || executionType == ExecutionType::ROI_WISE_INFERENCE) {
     int bw = borderedLengthOf(loc_.w, targetScaleTable_.at(Device::GPU));
@@ -180,14 +177,17 @@ std::string MergedROI::header() {
   std::stringstream ss;
   ss << "mergedROIs" << DELIM
      << Rect::header("mergedLoc") << DELIM
-     << "mergedScale" << DELIM
+     << "mergedScale[GPU]" << DELIM
+     << "mergedScale[DSP]" << DELIM
      << "pid" << DELIM
      << "packedXY_x" << DELIM
      << "packedXY_y" << DELIM
      << "packedCanvasIndex" << DELIM
      << "packedCanvasSize" << DELIM
+     << "dispatchTargetDevice" << DELIM
      << "isProbing" << DELIM
-     << "probingBoxID";
+     << "probingBoxID[GPU]" << DELIM
+     << "probingBoxID[DSP]";
   return ss.str();
 }
 
@@ -201,14 +201,25 @@ std::string MergedROI::str() const {
   }
   ss << DELIM;
   ss << loc_.str() << DELIM
-     << targetScaleTable_.at(Device::GPU) << DELIM
+     << (targetScaleTable_.find(Device::GPU) != targetScaleTable_.end()
+         ? targetScaleTable_.at(Device::GPU)
+         : -1) << DELIM
+     << (targetScaleTable_.find(Device::DSP) != targetScaleTable_.end()
+         ? targetScaleTable_.at(Device::DSP)
+         : -1) << DELIM
      << pid_ << DELIM
      << packedXY_.first << DELIM
      << packedXY_.second << DELIM
      << packedCanvasIndex_ << DELIM
      << packedCanvasSize_ << DELIM
+     << ::md::str(dispatchTargetDevice_) << DELIM
      << isProbing_ << DELIM
-     << probingBoxIDTable_.at(Device::GPU);
+     << (probingBoxIDTable_.find(Device::GPU) != probingBoxIDTable_.end()
+         ? probingBoxIDTable_.at(Device::GPU)
+         : -1) << DELIM
+     << (probingBoxIDTable_.find(Device::DSP) != probingBoxIDTable_.end()
+         ? probingBoxIDTable_.at(Device::DSP)
+         : -1);
   return ss.str();
 }
 

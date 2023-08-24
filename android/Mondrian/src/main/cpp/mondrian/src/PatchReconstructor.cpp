@@ -13,7 +13,7 @@ namespace md {
 
 PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
                                        ROIResizer* roiResizer)
-    : mConfig(config), mROIResizer(roiResizer) {}
+    : config_(config), ROIResizer_(roiResizer) {}
 
 static Rect moveResizeROIPos(const MergedROI* mergedROI) {
   auto [rw, rh] = mergedROI->resizedMatWH();
@@ -78,7 +78,7 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
         maxROI = mergedROI;
       }
     }
-    if (maxROI != nullptr && maxOverlap >= mConfig.BOX_FILTER_OVERLAP_THRES) {
+    if (maxROI != nullptr && maxOverlap >= config_.BOX_FILTER_OVERLAP_THRES) {
       // filter overly large boxes from packed inference by PROBE_IOU_THRES
       if (maxROI->isProbing()) {
         maxROI->frame()->probingBoxesTable[Device::GPU].push_back(std::make_unique<BoundingBox>(
@@ -206,7 +206,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   testROIBoxConnection();
   if (frame->isLastFrame) {
     for (ROI* roi : rois) {
-      mROIResizer->updateTable(roi, roi->mergedROI->getTargetDevice());
+      ROIResizer_->updateTable(roi, roi->mergedROI->targetDevice());
     }
   } else {
     assert(std::all_of(rois.begin(), rois.end(),
@@ -222,7 +222,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
 }
 
 float PatchReconstructor::iouThres() const {
-  return mConfig.FRAME_BOXES_IOU_THRES;
+  return config_.FRAME_BOXES_IOU_THRES;
 }
 
 } // namespace md

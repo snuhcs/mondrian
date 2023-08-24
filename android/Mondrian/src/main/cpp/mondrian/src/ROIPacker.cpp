@@ -59,8 +59,7 @@ void ROIPacker::processLastFrame(Frame* lastFrame, std::map<Device,
     lastFrame->prepareFrameLast(indices,
                                 locations,
                                 executionType_,
-                                roiSize_,
-                                config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
+                                roiSize_);
   }
 }
 
@@ -77,7 +76,7 @@ void ROIPacker::processMergedROI(MergedROI* mergedROI, std::map<Device,
       freeRectsVec.erase(freeRectsVec.end() - 1);
     }
   } else {
-    Device idealTargetDevice = mergedROI->getTargetDevice();
+    Device idealTargetDevice = mergedROI->targetDevice();
     Device anotherDevice = Device::INVALID;
 
     for (auto& it : freeRectsVecTable) {
@@ -169,9 +168,9 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::packCanvases(const int cu
     for (Frame* frame : stream) {
       if (frame == fullFrameTarget) continue;
       for (auto& mergedROI : frame->mergedROIs) {
-        if (mergedROI->getTargetDevice() == Device::GPU) {
+        if (mergedROI->targetDevice() == Device::GPU) {
           gpuCount++;
-        } else if (mergedROI->getTargetDevice() == Device::DSP) {
+        } else if (mergedROI->targetDevice() == Device::DSP) {
           dspCount++;
         } else {
           assert(false);
@@ -206,7 +205,7 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::packCanvases(const int cu
       if (frame == fullFrameTarget) continue;
       for (auto& mergedROI : frame->mergedROIs) {
         if (mergedROI->isPacked()) {
-          groupedMergedROIsTable[mergedROI->getTargetDevice()][mergedROI->packedCanvasIndex()].insert(mergedROI.get());
+          groupedMergedROIsTable[mergedROI->targetDevice()][mergedROI->packedCanvasIndex()].insert(mergedROI.get());
         }
       }
       for (Device device : Devices) {

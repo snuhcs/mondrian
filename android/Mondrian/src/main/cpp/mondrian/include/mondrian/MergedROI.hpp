@@ -16,7 +16,9 @@ class MergedROI {
   static inline const cv::Scalar BORDER_COLOR{255, 255, 255};
   static inline const IntPair INVALID_XY{-1, -1};
 
-  MergedROI(const std::vector<ROI*>& rois, std::map<Device, float> targetScaleTable, bool isProbing);
+  MergedROI(const std::vector<ROI*>& rois,
+            const std::map<Device, float>& targetScaleTable,
+            bool isProbing);
 
   static std::unique_ptr<MergedROI> merge(const MergedROI* m0, const MergedROI* m1);
 
@@ -25,24 +27,26 @@ class MergedROI {
   void dispatchTo(Device device);
 
   bool isDispatched() const {
-    return dispatchTargetDevice != Device::INVALID;
+    return dispatchTargetDevice_ != Device::INVALID;
   }
 
   void setTargetDevice(Device device) {
-    dispatchTargetDevice = device;
+    dispatchTargetDevice_ = device;
   }
 
-  Device getTargetDevice() const {
-    return dispatchTargetDevice;
+  Device targetDevice() const {
+    return dispatchTargetDevice_;
   }
 
 
   float targetScale() const {
-    return targetScaleTable_.at(Device::GPU);
+    return targetScaleTable_.at(dispatchTargetDevice_);
   }
 
   void setTargetScale(float targetScale) {
-    targetScaleTable_[Device::GPU] = targetScale;
+    for (auto& [device, targetScale_] : targetScaleTable_) {
+      targetScale_ = targetScale;
+    }
   }
 
   bool isProbing() const {
@@ -147,8 +151,10 @@ class MergedROI {
 
   cv::Mat borderedMat(Device device) const;
 
-  void setPackInfo(IntPair xy, int packedCanvasIndex,
-                   ExecutionType executionType, int roiSize);
+  void setPackInfo(IntPair xy,
+                   int packedCanvasIndex,
+                   ExecutionType executionType,
+                   int roiSize);
 
   static std::string header();
 
@@ -169,7 +175,7 @@ class MergedROI {
   int packedCanvasIndex_;
   int packedCanvasSize_;
   bool isInferenced_;
-  Device dispatchTargetDevice;
+  Device dispatchTargetDevice_;
 
   bool isProbing_;
   std::map<Device, BoundingBox*> probingBoxTable_;
