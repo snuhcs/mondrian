@@ -28,6 +28,10 @@ class MergedROI {
     return dispatchTargetDevice != Device::INVALID;
   }
 
+  void setTargetDevice(Device device) {
+    dispatchTargetDevice = device;
+  }
+
   Device getTargetDevice() const {
     return dispatchTargetDevice;
   }

@@ -38,12 +38,6 @@ void ROIPacker::processLastFrame(Frame* lastFrame, std::vector<std::vector<IntRe
   } else { // MONDRIAN, EMULATED_BATCH
     auto [indices, locations] = ROIPacker::pack(freeRectsVec, frameBoxWHs);
     bool fullyPacked = indices.size() == frameBoxWHs.size();
-    int minPackedCanvasIndex = INT_MAX;
-    int maxPackedCanvasIndex = -1;
-    for (auto& [packedCanvasIndex, freeRectIndex] : indices) {
-      minPackedCanvasIndex = std::min(minPackedCanvasIndex, packedCanvasIndex);
-      maxPackedCanvasIndex = std::max(maxPackedCanvasIndex, packedCanvasIndex);
-    }
     /*
     LOGD("[Schedule %d] Last Packed Frame vid=%d fid=%d "
          "// %lu / %lu MergedROIs Packed into %d ~ %d PackedCanvas",

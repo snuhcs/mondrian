@@ -242,10 +242,10 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
   IntPairs boxWHs;
   for (const auto& mergedROI : mergedROIs) {
     // TODO: Make below two condition as single value(or function) of condition
-    float scale = mergedROI->targetScale();
     if (executionType == ExecutionType::MONDRIAN && noDownsampling) {
-      scale = 1.0f;
+      mergedROI->setTargetScale(1.0f);
     }
+    float scale = mergedROI->targetScale();
     auto [bw, bh] = mergedROI->borderedMatWH(scale);
     boxWHs.emplace_back(bw, bh);
   }
@@ -278,9 +278,6 @@ void Frame::prepareFrameLast(const IntPairs& indices,
   resetProbeROIs();
   int i = 0;
   for (const auto& mergedROI : mergedROIs) {
-    if (executionType == ExecutionType::MONDRIAN && noDownsampling) {
-      mergedROI->setTargetScale(1.0f);
-    }
     mergedROI->setPackInfo(locations[i], indices[i].first, executionType, roiSize);
     i++;
   }
@@ -305,7 +302,7 @@ void Frame::prepareFrameLast(const IntPairs& indices,
       }
     }
   }
-  //assert(i == locations.size());
+  //assert(i == locations.size()); // XXX
 }
 
 bool Frame::isReadyToMarry(int packedCanvasIndex) const {
