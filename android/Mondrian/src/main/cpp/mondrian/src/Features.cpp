@@ -21,7 +21,7 @@ OFFeatures::OFFeatures(const std::vector<Shift>& shifts,
 //  for (int i = 0; i < shifts.size(); i++) {
 //    ss << "(" << shifts[i].first << ", " << shifts[i].second << ", " << statuses[i] << ", " << errs[i] << ") ";
 //  }
-//  LOGD("XXX %s", ss.str().c_str());
+//  LOGD("%s", ss.str().c_str());
   assert(shifts.size() == errs.size() && errs.size() == statuses.size());
   bool allInvalid = std::all_of(statuses.begin(), statuses.end(),
                                 [](const uchar& status) { return status == 0; });

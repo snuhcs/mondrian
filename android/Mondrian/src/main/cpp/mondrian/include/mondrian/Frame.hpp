@@ -143,7 +143,7 @@ std::string str(const MultiStream& streams);
 struct PackingResult {
   MultiStream streams;
   Frame* fullFrameTarget;
-  std::vector<PackedCanvas> packedCanvases;
+  std::map<Device, std::vector<PackedCanvas>> packedCanvasesTable;
 };
 
 } // namespace md

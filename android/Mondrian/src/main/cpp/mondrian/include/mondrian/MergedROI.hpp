@@ -125,9 +125,9 @@ class MergedROI {
     return resizedLengthOf(edgeLength, scale) + 2 * BORDER;
   }
 
-  IntPair borderedMatWH(float scale = -1.0f) const {
+  IntPair borderedMatWH(Device device, float scale = -1.0f) const {
     if (scale == -1.0f) {
-      scale = targetScaleTable_.at(Device::GPU);
+      scale = targetScaleTable_.at(device);
     }
     return {borderedLengthOf(loc_.w, scale),
             borderedLengthOf(loc_.h, scale)};

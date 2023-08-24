@@ -242,11 +242,12 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
   IntPairs boxWHs;
   for (const auto& mergedROI : mergedROIs) {
     // TODO: Make below two condition as single value(or function) of condition
+    mergedROI->setTargetDevice(Device::GPU);
     if (executionType == ExecutionType::MONDRIAN && noDownsampling) {
       mergedROI->setTargetScale(1.0f);
     }
     float scale = mergedROI->targetScale();
-    auto [bw, bh] = mergedROI->borderedMatWH(scale);
+    auto [bw, bh] = mergedROI->borderedMatWH(Device::GPU, scale);
     boxWHs.emplace_back(bw, bh);
   }
   for (const auto& roi : rois) {

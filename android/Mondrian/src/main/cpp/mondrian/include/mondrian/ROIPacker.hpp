@@ -39,15 +39,17 @@ class ROIPacker {
             const int roiSize,
             ROIResizer* roiResizer);
 
-  std::vector<PackedCanvas> packCanvases(const int currID,
-                                         const MultiStream& streams,
-                                         const std::vector<InferenceInfo>& inferencePlan,
-                                         const Frame* fullFrameTarget);
+  std::map<Device, std::vector<PackedCanvas>> packCanvases(const int currID,
+                                                           const MultiStream& streams,
+                                                           const std::vector<InferenceInfo>& inferencePlan,
+                                                           const Frame* fullFrameTarget);
 
  private:
-  void processLastFrame(Frame* lastFrame, std::vector<std::vector<IntRect>>& freeRectsVec);
+  void processLastFrame(Frame* lastFrame, std::map<Device,
+                                                   std::vector<std::vector<IntRect>>>& freeRectsVecTable);
 
-  void processMergedROI(MergedROI* mergedROI, std::vector<std::vector<IntRect>>& freeRectsVec);
+  void processMergedROI(MergedROI* mergedROI, std::map<Device,
+                                                       std::vector<std::vector<IntRect>>>& freeRectsVecTable);
 
 
   std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,

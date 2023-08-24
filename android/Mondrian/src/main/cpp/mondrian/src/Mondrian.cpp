@@ -151,14 +151,14 @@ void Mondrian::workSchedule() {
     LOGD("[Schedule %d] InferencePlan %s", currID, str(inferencePlan).c_str());
 
     // Prepare Packed Canvases
-    std::vector<PackedCanvas> packedCanvases = ROIPacker_->packCanvases(
+    std::map<Device, std::vector<PackedCanvas>> packedCanvasesTable = ROIPacker_->packCanvases(
         /*currID=*/currID,
         /*streams=*/streams,
         /*inferencePlan=*/inferencePlan,
         /*fullFrameTarget=*/fullFrameTarget);
 
     std::unique_lock<std::mutex> packingResultsLock(packingResultsMtx_);
-    packingResults_.push({streams, fullFrameTarget, packedCanvases});
+    packingResults_.push({streams, fullFrameTarget, packedCanvasesTable});
     packingResultsLock.unlock();
     packingResultsCV_.notify_one();
 
@@ -209,67 +209,79 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   resultsCV_.notify_all();
 }
 
-void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanvases, int currID) {
+void Mondrian::handlePackedCanvasesResults(std::map<Device,
+                                                    std::vector<PackedCanvas>>& packedCanvasesTable, int currID) {
   // Get results of packed canvases sequentially
-  for (int i = 0; i < packedCanvases.size(); i++) {
-    Result result = inferenceEngine_->getResults(packedCanvases[i].getKey());
-    packedCanvases[i].packedMat.release();
-    const int inputSize = packedCanvases[i].packedCanvasSize;
-    LOGD("[Schedule %d] Pack Inference on %s at %lld // %s",
-         currID, str(result.device).c_str(), NowMicros() - startTime_,
-         str(packedCanvases[i].getPackedFrames()).c_str());
-    assert(result.device == packedCanvases[i].device);
-    for (Frame* frame : packedCanvases[i].getPackedFrames()) {
-      if (frame->deviceIfFullFrame == Device::INVALID) {
-        frame->inferenceFrameSize = inputSize;
-        frame->packedInferenceStartTime = result.detectionStart;
-        frame->packedInferenceEndTime = result.detectionEnd;
-      }
-    }
-    patchReconstructor_->assignBoxesToFrame(packedCanvases[i], result.boxes);
 
-    for (Frame* frame : packedCanvases[i].getPackedFrames()) {
-      if (frame->isReadyToMarry(i)) { // If all mergedROIs are packed and inferenced
-        // Match boxes with ROIs (per frame)
-        nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());
-        patchReconstructor_->matchBoxesROIs(frame, false);
-        frame->isBoxesReady = true;
+
+  for (auto& it : packedCanvasesTable) {
+    Device device = it.first;
+    auto& packedCanvases = it.second;
+    for (int i = 0; i < packedCanvases.size(); i++) {
+      Result result = inferenceEngine_->getResults(packedCanvases[i].getKey());
+      packedCanvases[i].packedMat.release();
+      const int inputSize = packedCanvases[i].packedCanvasSize;
+      LOGD("[Schedule %d] Pack Inference on %s at %lld // %s",
+           currID, str(result.device).c_str(), NowMicros() - startTime_,
+           str(packedCanvases[i].getPackedFrames()).c_str());
+      assert(result.device == packedCanvases[i].device);
+      for (Frame* frame : packedCanvases[i].getPackedFrames()) {
+        if (frame->deviceIfFullFrame == Device::INVALID) {
+          frame->inferenceFrameSize = inputSize;
+          frame->packedInferenceStartTime = result.detectionStart;
+          frame->packedInferenceEndTime = result.detectionEnd;
+        }
       }
+      patchReconstructor_->assignBoxesToFrame(packedCanvases[i], result.boxes);
+
+      for (Frame* frame : packedCanvases[i].getPackedFrames()) {
+        if (frame->isReadyToMarry(i)) { // If all mergedROIs are packed and inferenced
+          // Match boxes with ROIs (per frame)
+          nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());
+          patchReconstructor_->matchBoxesROIs(frame, false);
+          frame->isBoxesReady = true;
+        }
+      }
+      // Notify results of processed frames
+      ROIExtractor_->cv().notify_all();
     }
-    // Notify results of processed frames
-    ROIExtractor_->cv().notify_all();
   }
 }
 
-void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
+void Mondrian::handleROIWiseResults(std::map<Device, std::vector<PackedCanvas>>& packedCanvasesTable) {
   Stream inferenceFrames;
-  for (auto& packedCanvas : packedCanvases) {
-    Result result = inferenceEngine_->getResults(packedCanvas.getKey());
-    packedCanvas.packedMat.release();
-    assert(packedCanvas.packedROIs.size() == 1);
-    assert(result.device == packedCanvas.device);
-    auto [x, y] = (*packedCanvas.packedROIs.begin())->packedXY();
-    MergedROI* mergedROI = *packedCanvas.packedROIs.begin();
-    if (mergedROI->frame()->deviceIfFullFrame == Device::INVALID) {
-      mergedROI->frame()->inferenceFrameSize = packedCanvas.packedCanvasSize;
-      mergedROI->frame()->packedInferenceStartTime = result.detectionStart;
-      mergedROI->frame()->packedInferenceEndTime = result.detectionEnd;
-    }
-    inferenceFrames.insert(mergedROI->frame());
-    const float mergedScale = mergedROI->targetScale();
-    for (BoundingBox& b : result.boxes) {
-      float newL = std::max(0.0f, (b.loc.l - float(x)) / mergedScale + mergedROI->loc().l);
-      float newT = std::max(0.0f, (b.loc.t - float(y)) / mergedScale + mergedROI->loc().t);
-      float newR = std::max(0.0f, (b.loc.r - float(x)) / mergedScale + mergedROI->loc().l);
-      float newB = std::max(0.0f, (b.loc.b - float(y)) / mergedScale + mergedROI->loc().t);
-      assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
-      mergedROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
-          INVALID_OID,
-          packedCanvas.pid,
-          Rect(newL, newT, newR, newB),
-          b.confidence,
-          b.label,
-          Origin::FULL_FRAME));
+
+  for (auto& it : packedCanvasesTable) {
+    Device device = it.first;
+    auto& packedCanvases = it.second;
+    for (auto& packedCanvas : packedCanvases) {
+      Result result = inferenceEngine_->getResults(packedCanvas.getKey());
+      packedCanvas.packedMat.release();
+      assert(packedCanvas.packedROIs.size() == 1);
+      assert(result.device == packedCanvas.device);
+      auto [x, y] = (*packedCanvas.packedROIs.begin())->packedXY();
+      MergedROI* mergedROI = *packedCanvas.packedROIs.begin();
+      if (mergedROI->frame()->deviceIfFullFrame == Device::INVALID) {
+        mergedROI->frame()->inferenceFrameSize = packedCanvas.packedCanvasSize;
+        mergedROI->frame()->packedInferenceStartTime = result.detectionStart;
+        mergedROI->frame()->packedInferenceEndTime = result.detectionEnd;
+      }
+      inferenceFrames.insert(mergedROI->frame());
+      const float mergedScale = mergedROI->targetScale();
+      for (BoundingBox& b : result.boxes) {
+        float newL = std::max(0.0f, (b.loc.l - float(x)) / mergedScale + mergedROI->loc().l);
+        float newT = std::max(0.0f, (b.loc.t - float(y)) / mergedScale + mergedROI->loc().t);
+        float newR = std::max(0.0f, (b.loc.r - float(x)) / mergedScale + mergedROI->loc().l);
+        float newB = std::max(0.0f, (b.loc.b - float(y)) / mergedScale + mergedROI->loc().t);
+        assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
+        mergedROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
+            INVALID_OID,
+            packedCanvas.pid,
+            Rect(newL, newT, newR, newB),
+            b.confidence,
+            b.label,
+            Origin::FULL_FRAME));
+      }
     }
   }
 
@@ -382,17 +394,21 @@ void Mondrian::workPostprocess() {
 
     auto& streams = packingResult.streams;
     auto& fullFrameTarget = packingResult.fullFrameTarget;
-    auto& packedCanvases = packingResult.packedCanvases;
+    auto& packedCanvasesTable = packingResult.packedCanvasesTable;
 
     // Enqueue packed canvases
-    for (const auto& packedCanvas : packedCanvases) {
-      assert(packedCanvas.device != Device::INVALID);
-      inferenceEngine_->enqueue(
-          /*rgbMat=*/packedCanvas.packedMat,
-          /*device=*/packedCanvas.device,
-          /*inputSize=*/packedCanvas.packedCanvasSize,
-          /*isFullFrame=*/false,
-          /*key=*/packedCanvas.getKey());
+    for (auto& it : packedCanvasesTable) {
+      Device device = it.first;
+      auto& packedCanvases = it.second;
+      for (const auto& packedCanvas : packedCanvases) {
+        assert(packedCanvas.device != Device::INVALID);
+        inferenceEngine_->enqueue(
+            /*rgbMat=*/packedCanvas.packedMat,
+            /*device=*/packedCanvas.device,
+            /*inputSize=*/packedCanvas.packedCanvasSize,
+            /*isFullFrame=*/false,
+            /*key=*/packedCanvas.getKey());
+      }
     }
 
     // Handle full frame inference results
@@ -402,9 +418,9 @@ void Mondrian::workPostprocess() {
 
     // Handle packed canvases or ROI-wise inference results
     if (config_.EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE) {
-      handleROIWiseResults(packedCanvases);
+      handleROIWiseResults(packedCanvasesTable);
     } else {
-      handlePackedCanvasesResults(packedCanvases, currID);
+      handlePackedCanvasesResults(packedCanvasesTable, currID);
     }
 
     // Interpolate results
