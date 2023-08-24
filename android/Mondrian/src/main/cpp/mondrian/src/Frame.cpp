@@ -29,7 +29,7 @@ Frame::Frame(const VID vid, const FID fid, const cv::Mat& yuvMat,
       OFExtractorID(-1),
       isLastFrame(false),
       inferenceFrameSize(0),
-      inferenceDevice(Device::INVALID) {}
+      deviceIfFullFrame(Device::INVALID) {}
 
 cv::Mat Frame::rgbMat() const {
   cv::Mat rgbMat;
@@ -118,14 +118,21 @@ void Frame::assignPDROIIDs() {
 void Frame::resizeROIs(ROIResizer* roiResizer) {
   for (auto& roi : rois) {
     if (roi->type() == ROIType::OF) {
-      auto [scale, level] = roiResizer->getTargetScale(roi->oid,
+      auto scaleLevelTable = roiResizer->getTargetScale(roi->oid,
                                                        roi->features,
                                                        roi->paddedArea());
-      assert(0.0f < scale && scale <= 1.0f);
-      roi->scaleTo(scale, level, Device::GPU);
+
+      for (auto& it : scaleLevelTable) {
+        Device device = it.first;
+        float scale = it.second.first;
+        int level = it.second.second;
+        assert(0.0f < scale && scale <= 1.0f);
+        roi->scaleTo(scale, level, device);
+      }
     } else {
-      roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL, Device::GPU);
-      roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL, Device::DSP);
+      for (Device device : roiResizer->getDevices()) {
+        roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL, device);
+      }
     }
   }
 }
@@ -350,7 +357,7 @@ std::string Frame::header() {
      << "OFExtractorID" << DELIM
      << "numFeaturePoints" << DELIM
      << "inferenceFrameSize" << DELIM
-     << "inferenceDevice" << DELIM
+     << "deviceIfFullFrame" << DELIM
      << "enqueueTime" << DELIM
      << "fullInferenceStartTime" << DELIM
      << "fullInferenceEndTime" << DELIM
@@ -378,17 +385,17 @@ std::string Frame::str(time_us baseTime) const {
   std::stringstream ss;
   ss << vid << DELIM
      << fid << DELIM
-     << rois.size() << DELIM
-     << mergedROIs.size() << DELIM
-     << (probingROIsTable.find(Device::GPU) == probingROIsTable.end() ? 0 : probingROIsTable.at(Device::GPU).size()) << DELIM
-     << boxes.size() << DELIM
-     << (probingBoxesTable.find(Device::GPU) == probingBoxesTable.end() ? 0 : probingBoxesTable.at(Device::GPU).size()) << DELIM
-     << scheduleID << DELIM
-     << PDExtractorID << DELIM
-     << OFExtractorID << DELIM
-     << numFeaturePoints << DELIM
-     << inferenceFrameSize << DELIM
-     << ::md::str(inferenceDevice) << DELIM
+      << rois.size() << DELIM
+      << mergedROIs.size() << DELIM
+      << (probingROIsTable.find(Device::GPU) == probingROIsTable.end() ? 0 : probingROIsTable.at(Device::GPU).size()) << DELIM
+      << boxes.size() << DELIM
+      << (probingBoxesTable.find(Device::GPU) == probingBoxesTable.end() ? 0 : probingBoxesTable.at(Device::GPU).size()) << DELIM
+      << scheduleID << DELIM
+      << PDExtractorID << DELIM
+      << OFExtractorID << DELIM
+      << numFeaturePoints << DELIM
+      << inferenceFrameSize << DELIM
+      << ::md::str(deviceIfFullFrame) << DELIM
      << fromBaseTime(enqueueTime) << DELIM
      << fromBaseTime(fullInferenceStartTime) << DELIM
      << fromBaseTime(fullInferenceEndTime) << DELIM

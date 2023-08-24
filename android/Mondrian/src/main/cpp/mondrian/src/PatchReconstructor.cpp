@@ -206,11 +206,17 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   testROIBoxConnection();
   if (frame->isLastFrame) {
     for (ROI* roi : rois) {
-      mROIResizer->updateTable(roi);
+      mROIResizer->updateTable(roi, roi->mergedROI->getTargetDevice());
     }
   } else {
     assert(std::all_of(rois.begin(), rois.end(),
-                       [](const auto& roi) { return roi->roisForProbingTable[Device::GPU].empty(); }));
+                       [](const auto& roi) {
+                         bool ret = true;
+                         for (Device device : Devices) {
+                           ret &= roi->roisForProbingTable[device].empty();
+                         }
+                         return ret;
+                       }));
   }
   testROIBoxConnection();
 }

@@ -22,6 +22,17 @@ class MergedROI {
 
   static void mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize);
 
+  void dispatchTo(Device device);
+
+  bool isDispatched() const {
+    return dispatchTargetDevice != Device::INVALID;
+  }
+
+  Device getTargetDevice() const {
+    return dispatchTargetDevice;
+  }
+
+
   float targetScale() const {
     return targetScaleTable_.at(Device::GPU);
   }
@@ -145,6 +156,7 @@ class MergedROI {
   IntPair packedXY_;
   int packedCanvasIndex_;
   int packedCanvasSize_;
+  Device dispatchTargetDevice;
 
   bool isProbing_;
   std::map<Device, BoundingBox*> probingBoxTable_;

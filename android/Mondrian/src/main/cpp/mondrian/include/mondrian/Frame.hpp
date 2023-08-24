@@ -45,7 +45,7 @@ class Frame {
   int OFExtractorID;
   int numFeaturePoints;
   int inferenceFrameSize;
-  Device inferenceDevice;
+  Device deviceIfFullFrame; // else Device::INVALID
   const time_us enqueueTime;
   time_us fullInferenceStartTime = 0;
   time_us fullInferenceEndTime = 0;

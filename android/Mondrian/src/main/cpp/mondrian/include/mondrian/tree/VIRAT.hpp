@@ -3,8 +3,10 @@
 
 namespace md {
 
-int VIRAT(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float shiftStd,
+int VIRAT_FP16(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float shiftStd,
           float shiftNcc, float avgErr);
+int VIRAT_INT8(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float shiftStd,
+               float shiftNcc, float avgErr);
 
 } // namespace md
 

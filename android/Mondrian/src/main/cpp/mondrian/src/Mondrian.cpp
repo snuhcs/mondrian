@@ -180,7 +180,7 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   LOGD("[Schedule %d] FULL Inference at %lld // vid=%d fid=%d",
        currID, NowMicros() - startTime_, frame->vid, frame->fid);
   frame->inferenceFrameSize = config_.inferenceEngineConfig.FULL_FRAME_SIZE;
-  frame->inferenceDevice = config_.inferenceEngineConfig.FULL_DEVICE;
+  frame->deviceIfFullFrame = config_.inferenceEngineConfig.FULL_DEVICE;
   frame->fullInferenceStartTime = result.detectionStart;
   frame->fullInferenceEndTime = result.detectionEnd;
   for (const BoundingBox& box : result.boxes) {
@@ -220,9 +220,8 @@ void Mondrian::handlePackedCanvasesResults(std::vector<PackedCanvas>& packedCanv
          str(packedCanvases[i].getPackedFrames()).c_str());
     assert(result.device == packedCanvases[i].device);
     for (Frame* frame : packedCanvases[i].getPackedFrames()) {
-      if (frame->inferenceDevice == Device::INVALID) {
+      if (frame->deviceIfFullFrame == Device::INVALID) {
         frame->inferenceFrameSize = inputSize;
-        frame->inferenceDevice = result.device;
         frame->packedInferenceStartTime = result.detectionStart;
         frame->packedInferenceEndTime = result.detectionEnd;
       }
@@ -251,9 +250,8 @@ void Mondrian::handleROIWiseResults(std::vector<PackedCanvas>& packedCanvases) {
     assert(result.device == packedCanvas.device);
     auto [x, y] = (*packedCanvas.packedROIs.begin())->packedXY();
     MergedROI* mergedROI = *packedCanvas.packedROIs.begin();
-    if (mergedROI->frame()->inferenceDevice == Device::INVALID) {
+    if (mergedROI->frame()->deviceIfFullFrame == Device::INVALID) {
       mergedROI->frame()->inferenceFrameSize = packedCanvas.packedCanvasSize;
-      mergedROI->frame()->inferenceDevice = result.device;
       mergedROI->frame()->packedInferenceStartTime = result.detectionStart;
       mergedROI->frame()->packedInferenceEndTime = result.detectionEnd;
     }

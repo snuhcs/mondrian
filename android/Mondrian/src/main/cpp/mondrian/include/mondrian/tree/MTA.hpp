@@ -3,8 +3,10 @@
 
 namespace md {
 
-int MTA(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float shiftStd,
+int MTA_FP16(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float shiftStd,
         float shiftNcc, float avgErr);
+int MTA_INT8(float maxEdgeLength, float area, float xyRatio, float shiftAvg, float shiftStd,
+             float shiftNcc, float avgErr);
 
 } // namespace md
 

@@ -9,7 +9,9 @@ MergedROI::MergedROI(const std::vector<ROI*>& rois, std::map<Device, float> targ
     : rois_(rois), isProbing_(isProbing),
       frame_(frameOf(rois)), loc_(locOf(rois)),
       packedXY_(INVALID_XY), packedCanvasIndex_(-1), pid_(-1),
-      packedCanvasSize_(-1) {
+      packedCanvasSize_(-1),
+      dispatchTargetDevice(Device::INVALID)
+      {
 
   // for probing ROIs, targetScale for all devices should be the same
   float targetScale = -1;
@@ -24,6 +26,10 @@ MergedROI::MergedROI(const std::vector<ROI*>& rois, std::map<Device, float> targ
   for (ROI* roi : rois) {
     roi->mergedROI = this;
   }
+}
+
+void MergedROI::dispatchTo(Device device) {
+  dispatchTargetDevice = device;
 }
 
 Frame* MergedROI::frameOf(const std::vector<ROI*>& rois) {

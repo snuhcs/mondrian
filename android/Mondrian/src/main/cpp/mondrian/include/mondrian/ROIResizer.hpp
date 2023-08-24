@@ -24,13 +24,15 @@ class ROIResizer {
 
   ROIResizer(const ROIResizerConfig& config);
 
-  std::pair<float, int> getTargetScale(const OID oid,
-                                       const Features& features,
-                                       const float area);
+  std::map<Device, std::pair<float, int>> getTargetScale(const OID oid,
+                                                         const Features& features,
+                                                         const float area);
 
-  void updateTable(ROI* roi);
+  void updateTable(ROI* roi, Device device);
 
   std::map<Device, std::vector<float>> getProbingCandidatesTable(std::map<Device, float> scaleTable, int level, float area) const;
+
+  std::vector<Device> getDevices() const;
 
  private:
   class CircularBuffer {
@@ -51,18 +53,18 @@ class ROIResizer {
     std::vector<int> data_;
   };
 
-  float calcTargetScale(const int scaleLevel, const float originalArea) const;
+  float calcTargetScale(const int scaleLevel, const float originalArea, Device device) const;
 
-  bool isCalibrated(const OID oid) const;
+  bool isCalibrated(const OID oid, Device device) const;
 
-  int getMaxVotedLevel(const OID oid, const Features& features);
+  int getMaxVotedLevel(const OID oid, const Features& features, Device device);
 
-  int predictLevelWithFeatures(const Features& features) const;
+  int predictLevelWithFeatures(const Features& features, Device device) const;
 
   bool isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const;
 
-  static const std::map<std::string, Predictor> CANDIDATE_PREDICTORS;
-  static const std::map<std::string, std::vector<float>> AREA_LEVELS;
+  static const std::map<std::pair<Device, std::string>, Predictor> CANDIDATE_PREDICTORS;
+  static const std::map<std::pair<Device, std::string>, std::vector<float>> AREA_LEVELS;
 
   const ROIResizerConfig config_;
   std::map<Device, Predictor> predictorTable_;
