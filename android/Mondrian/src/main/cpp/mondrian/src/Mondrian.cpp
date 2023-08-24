@@ -235,7 +235,7 @@ void Mondrian::handlePackedCanvasesResults(std::map<Device,
       patchReconstructor_->assignBoxesToFrame(packedCanvases[i], result.boxes);
 
       for (Frame* frame : packedCanvases[i].getPackedFrames()) {
-        if (frame->isReadyToMarry(i)) { // If all mergedROIs are packed and inferenced
+        if (frame->isReadyToMarry(device, i)) { // If all mergedROIs are packed and inferenced
           // Match boxes with ROIs (per frame)
           nms(frame->boxes, NUM_LABELS, patchReconstructor_->iouThres());
           patchReconstructor_->matchBoxesROIs(frame, false);

@@ -136,6 +136,8 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::packCanvases(const int cu
   std::map<Device, float> averagedPerPixelCostTable;
   for (const auto& [device, totalPixels] : totalPixelsTable) {
     averagedPerPixelCostTable[device] = float(totalLatencyTable[device]) / float(totalPixels);
+    LOGD("XXX: [Schedule %d] averagedPerPixelCostTable[%d] = %f",
+         currID, device, averagedPerPixelCostTable[device]);
   }
 
   // 3. Find Ideal Dispatch for mergedROIs in the streams (assuming there won't be overflow in canvas)

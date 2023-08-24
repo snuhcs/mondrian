@@ -306,9 +306,9 @@ void Frame::prepareFrameLast(const IntPairs& indices,
   //assert(i == locations.size()); // XXX
 }
 
-bool Frame::isReadyToMarry(int packedCanvasIndex) const {
-  auto isROIReady = [&packedCanvasIndex](const std::unique_ptr<MergedROI>& mergedROI) {
-    return !mergedROI->isPacked() || mergedROI->packedCanvasIndex() <= packedCanvasIndex;
+bool Frame::isReadyToMarry(Device device, int packedCanvasIndex) const {
+  auto isROIReady = [&packedCanvasIndex, device](const std::unique_ptr<MergedROI>& mergedROI) {
+    return !mergedROI->isPacked() || (mergedROI->getTargetDevice() == device && mergedROI->packedCanvasIndex() <= packedCanvasIndex);
   };
   bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIReady)
       && std::all_of(probingROIsTable.at(Device::GPU).begin(), probingROIsTable.at(Device::GPU).end(), isROIReady);
