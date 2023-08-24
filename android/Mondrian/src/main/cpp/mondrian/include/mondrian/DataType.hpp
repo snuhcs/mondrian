@@ -39,7 +39,11 @@ enum class Device {
   DSP,
 };
 
-const std::array<Device, 2> Devices = {Device::GPU, Device::DSP};
+const std::array<Device, 2> DEVICES = {Device::GPU, Device::DSP};
+
+const Device LAST_FRAME_DEVICE = Device::GPU;
+
+const Device PROBING_DEVICE = Device::GPU;
 
 Device deviceOf(const std::string& deviceStr);
 

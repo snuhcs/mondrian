@@ -214,7 +214,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     assert(std::all_of(rois.begin(), rois.end(),
                        [](const ROI* roi) {
                          bool ret = true;
-                         for (Device device : Devices) {
+                         for (Device device : DEVICES) {
                            ret &= roi->roisForProbingTable.find(device)
                                == roi->roisForProbingTable.end();
                          }

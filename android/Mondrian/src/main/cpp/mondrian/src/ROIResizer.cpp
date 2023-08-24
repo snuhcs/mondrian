@@ -46,7 +46,7 @@ const std::map<std::pair<Device, std::string>,
     }}},
 };
 
-ROIResizer::ROIResizer(const ROIResizerConfig& config) : config_(config), DEVICES(supportDevices(config.DATASET)) {}
+ROIResizer::ROIResizer(const ROIResizerConfig& config) : config_(config) {}
 
 std::map<Device, std::pair<float, int>> ROIResizer::getTargetScale(const OID oid,
                                                                    const Features& features,
@@ -194,27 +194,12 @@ bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
       && box->confidence > config_.PROBE_CONF_THRES;
 }
 
-std::set<Device> ROIResizer::supportDevices(const std::string& dataset) {
-  std::set<Device> devices;
-  for (const auto& [deviceAndDataset, _] : PREDICTORS) {
-    const auto& [supportDevice, supportDataset] = deviceAndDataset;
-    if (supportDataset == dataset) {
-      devices.insert(supportDevice);
-    }
-  }
-  return devices;
-}
-
 std::vector<float> ROIResizer::areaLevelsOf(Device device) const {
   return PREDICTORS.at({device, config_.DATASET}).second;
 }
 
 Predictor ROIResizer::predictorOf(Device device) const {
   return PREDICTORS.at({device, config_.DATASET}).first;
-}
-
-std::set<Device> ROIResizer::getDevices() const {
-  return DEVICES;
 }
 
 ROIResizer::CircularBuffer::CircularBuffer(int numLevels, int capacity)

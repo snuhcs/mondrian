@@ -45,11 +45,13 @@ class ROIPacker {
                                                            const Frame* fullFrameTarget);
 
  private:
-  void processLastFrame(Frame* lastFrame, std::map<Device,
-                                                   std::vector<std::vector<IntRect>>>& freeRectsVecTable);
+  void processLastFrame(Frame* lastFrame,
+                        std::map<Device, std::vector<std::vector<IntRect>>>& freeRectsVecTable,
+                        std::map<Device, std::vector<InferenceInfo>>& inferencePlanTable);
 
-  void processMergedROI(MergedROI* mergedROI, std::map<Device,
-                                                       std::vector<std::vector<IntRect>>>& freeRectsVecTable);
+  void processMergedROI(MergedROI* mergedROI,
+                        std::map<Device, std::vector<std::vector<IntRect>>>& freeRectsVecTable,
+                        std::map<Device, std::vector<InferenceInfo>>& inferencePlanTable);
 
 
   std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,

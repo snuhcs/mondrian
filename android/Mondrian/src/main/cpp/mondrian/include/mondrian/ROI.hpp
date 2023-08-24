@@ -80,7 +80,7 @@ class ROI {
   }
 
   int scaleLevel() const {
-    return scaleLevelTable_.at(Device::GPU);
+    return scaleLevelTable_.at(PROBING_DEVICE);
   }
 
   ROIType type() const {

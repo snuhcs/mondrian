@@ -32,8 +32,6 @@ class ROIResizer {
 
   std::map<Device, std::vector<float>> getProbingCandidatesTable(std::map<Device, float> scaleTable, int level, float area) const;
 
-  std::set<Device> getDevices() const;
-
  private:
   class CircularBuffer {
    public:
@@ -63,8 +61,6 @@ class ROIResizer {
 
   bool isUsable(BoundingBox* targetBox, BoundingBox* baseBox) const;
 
-  static std::set<Device> supportDevices(const std::string& dataset);
-
   std::vector<float> areaLevelsOf(Device device) const;
 
   Predictor predictorOf(Device device) const;
@@ -73,7 +69,6 @@ class ROIResizer {
                         std::pair<Predictor, std::vector<float>>> PREDICTORS;
 
   const ROIResizerConfig config_;
-  const std::set<Device> DEVICES;
 
   // Save prev prediction to smooth the predicted size
   std::map<Device, std::map<OID, CircularBuffer>> prevPredictionBufferTable_;

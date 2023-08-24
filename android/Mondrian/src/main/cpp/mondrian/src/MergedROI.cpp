@@ -24,10 +24,6 @@ MergedROI::MergedROI(const std::vector<ROI*>& rois,
   }
 }
 
-void MergedROI::dispatchTo(Device device) {
-  dispatchTargetDevice_ = device;
-}
-
 Frame* MergedROI::frameOf(const std::vector<ROI*>& rois) {
   assert(!rois.empty());
   Frame* frame = rois[0]->frame;
@@ -59,9 +55,9 @@ std::unique_ptr<MergedROI> MergedROI::merge(const MergedROI* m0, const MergedROI
   newROIs.insert(newROIs.end(), m1->rois_.begin(), m1->rois_.end());
   std::map<Device, float> newScaleTable;
 
-  for (auto it = m0->targetScaleTable_.begin(); it != m0->targetScaleTable_.end(); it++) {
-    Device device = it->first;
-    newScaleTable[device] = std::max(m0->targetScaleTable_.at(device), m1->targetScaleTable_.at(device));
+  for (const auto& [device, _] : m0->targetScaleTable_) {
+    newScaleTable[device] = std::max(m0->targetScaleTable_.at(device),
+                                     m1->targetScaleTable_.at(device));
   }
   return std::make_unique<MergedROI>(newROIs, newScaleTable, false);
 }
@@ -76,6 +72,24 @@ void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, i
     }
   }
 
+  auto isMergeBenefit = [maxSize](const std::unique_ptr<MergedROI>& merged,
+                                  const MergedROI* mi,
+                                  const MergedROI* mj) -> bool {
+    for (const auto& [device, scale] : merged->targetScaleTable_) {
+      int bw = borderedLengthOf(merged->loc_.w, scale);
+      int bh = borderedLengthOf(merged->loc_.h, scale);
+      if (std::max(bw, bh) > maxSize) {
+        return false;
+      }
+      int newArea = merged->borderedArea(device);
+      int origArea = mi->borderedArea(device) + mj->borderedArea(device);
+      if (newArea > origArea) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   while (true) {
     int i, j;
     bool updated = false;
@@ -85,35 +99,14 @@ void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, i
         const auto& mi = mergedROIs[i].get();
         const auto& mj = mergedROIs[j].get();
         merged = merge(mi, mj);
-
-        for (auto it = merged->targetScaleTable_.begin(); it != merged->targetScaleTable_.end(); it++) {
-          Device device = it->first;
-          int bw = borderedLengthOf(merged->loc_.w, merged->targetScaleTable_.at(device));
-          int bh = borderedLengthOf(merged->loc_.h, merged->targetScaleTable_.at(device));
-          if (std::max(bw, bh) > maxSize) {
-            continue; // would be little more conservative for the general case
-          }
+        if (isMergeBenefit(merged, mi, mj)) {
+          updated = true;
+          break;
         }
-
-        for (auto it = merged->targetScaleTable_.begin(); it != merged->targetScaleTable_.end(); it++) {
-          Device device = it->first;
-          int newArea = merged->resizedArea(device);
-          int origArea = mi->resizedArea(device) + mj->resizedArea(device);
-          if (newArea >= origArea) {
-            continue;
-          }
-        }
-
-        updated = true;
-        break;
       }
-      if (updated) {
-        break;
-      }
+      if (updated) break;
     }
-    if (!updated) {
-      break;
-    }
+    if (!updated) break;
     assert(j > i);
     mergedROIs.push_back(std::move(merged));
     mergedROIs.erase(mergedROIs.begin() + j);
@@ -154,7 +147,8 @@ cv::Mat MergedROI::borderedMat(Device device) const {
   return rgbMat;
 }
 
-void MergedROI::setPackInfo(IntPair xy,
+void MergedROI::setPackInfo(Device device,
+                            IntPair xy,
                             int packedCanvasIndex,
                             ExecutionType executionType,
                             int roiSize) {
@@ -169,6 +163,7 @@ void MergedROI::setPackInfo(IntPair xy,
     xy.first += (roiSize - bw) / 2;
     xy.second += (roiSize - bh) / 2;
   }
+  dispatchTargetDevice_ = device;
   packedXY_ = xy;
   packedCanvasIndex_ = packedCanvasIndex;
 }

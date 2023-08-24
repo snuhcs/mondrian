@@ -36,7 +36,7 @@ ROI::ROI(const OID oid,
                 std::min((float) frame->width(), origLoc.r + padding),
                 std::min((float) frame->height(), origLoc.b + padding)});
 
-  for (Device device : Devices) {
+  for (Device device : DEVICES) {
     targetScaleTable_[device] = 1.0f; // TODO: Start with targetScale_(-1) and assert
     scaleLevelTable_[device] = ROIResizer::INVALID_LEVEL;
   }

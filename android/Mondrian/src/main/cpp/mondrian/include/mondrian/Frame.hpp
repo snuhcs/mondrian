@@ -96,7 +96,8 @@ class Frame {
   void prepareFrameLast(const IntPairs& indices,
                         const IntPairs& locations,
                         ExecutionType executionType,
-                        int roiSize);
+                        int roiSize,
+                        bool noDownsampling);
 
   bool isReadyToMarry() const;
 

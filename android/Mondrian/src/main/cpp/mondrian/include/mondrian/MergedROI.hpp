@@ -24,23 +24,24 @@ class MergedROI {
 
   static void mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize);
 
-  void dispatchTo(Device device);
-
-  bool isDispatched() const {
-    return dispatchTargetDevice_ != Device::INVALID;
-  }
-
-  void setTargetDevice(Device device) {
-    dispatchTargetDevice_ = device;
-  }
-
   Device targetDevice() const {
     return dispatchTargetDevice_;
   }
 
+  void setDevicePriority(const std::vector<Device>& devicePriority) {
+    devicePriority_ = devicePriority;
+  }
+
+  const std::vector<Device>& devicePriority() const {
+    return devicePriority_;
+  }
 
   float targetScale() const {
     return targetScaleTable_.at(dispatchTargetDevice_);
+  }
+
+  float targetScale(Device device) const {
+    return targetScaleTable_.at(device);
   }
 
   void setTargetScale(float targetScale) {
@@ -66,7 +67,7 @@ class MergedROI {
   }
 
   BoundingBox* probingBox() const {
-    return probingBoxTable_.at(Device::GPU);
+    return probingBoxTable_.at(PROBING_DEVICE);
   }
 
   void setProbingBox(BoundingBox* box);
@@ -91,10 +92,6 @@ class MergedROI {
     pid_ = pid;
   }
 
-  int packedCanvasSize() const {
-    return packedCanvasSize_;
-  }
-
   void setPackedCanvasSize(int packedCanvasSize) {
     packedCanvasSize_ = packedCanvasSize;
   }
@@ -111,38 +108,38 @@ class MergedROI {
     return std::round(v);
   }
 
-  int resizedArea(Device device) const {
-    return resizedAreaOf(loc_.w, loc_.h, targetScaleTable_.at(device));
+  int borderedArea(Device device) const {
+    return borderedAreaOf(loc_.w, loc_.h, targetScaleTable_.at(device));
   }
 
-  static int resizedAreaOf(float width, float height, float scale) {
-    int rw = resizedLengthOf(width, scale);
-    int rh = resizedLengthOf(height, scale);
-    return rw * rh;
+  static int borderedAreaOf(float width, float height, float scale) {
+    int bw = borderedLengthOf(width, scale);
+    int bh = borderedLengthOf(height, scale);
+    return bw * bh;
   }
 
   static int resizedLengthOf(float edgeLength, float scale) {
     return std::max(1, toInt(edgeLength * scale));
   }
 
-  IntPair resizedMatWH(float scale = -1.0f) const {
-    if (scale == -1.0f) {
-      scale = targetScaleTable_.at(Device::GPU);
-    }
-    return {resizedLengthOf(loc_.w, scale),
-            resizedLengthOf(loc_.h, scale)};
+  IntPair resizedMatWH() const {
+    return {resizedLengthOf(loc_.w, targetScale()),
+            resizedLengthOf(loc_.h, targetScale())};
   }
 
   static int borderedLengthOf(float edgeLength, float scale) {
     return resizedLengthOf(edgeLength, scale) + 2 * BORDER;
   }
 
-  IntPair borderedMatWH(Device device, float scale = -1.0f) const {
-    if (scale == -1.0f) {
-      scale = targetScaleTable_.at(device);
-    }
+  IntPair borderedMatWH(float scale) {
     return {borderedLengthOf(loc_.w, scale),
             borderedLengthOf(loc_.h, scale)};
+  }
+
+  IntPair borderedMatWH(Device device) const {
+    assert(device != Device::INVALID);
+    return {borderedLengthOf(loc_.w, targetScale(device)),
+            borderedLengthOf(loc_.h, targetScale(device))};
   }
 
   cv::Mat mat() const;
@@ -151,7 +148,8 @@ class MergedROI {
 
   cv::Mat borderedMat(Device device) const;
 
-  void setPackInfo(IntPair xy,
+  void setPackInfo(Device device,
+                   IntPair xy,
                    int packedCanvasIndex,
                    ExecutionType executionType,
                    int roiSize);
@@ -169,6 +167,7 @@ class MergedROI {
   const std::vector<ROI*> rois_;
   const Rect loc_;
   std::map<Device, float> targetScaleTable_;
+  std::vector<Device> devicePriority_;
 
   PID pid_;
   IntPair packedXY_;

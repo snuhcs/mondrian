@@ -20,7 +20,7 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
     }
   }
 
-  for (Device device : Devices) {
+  for (Device device : DEVICES) {
     if (device == Device::GPU) {
       addWorker<TfLiteYoloV5Classifier>(device, maxPackedCanvasSize, env, app);
     } else if (device == Device::DSP) {
