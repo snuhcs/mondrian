@@ -45,6 +45,11 @@ class ROIPacker {
                                          const Frame* fullFrameTarget);
 
  private:
+  void processLastFrame(Frame* lastFrame, std::vector<std::vector<IntRect>>& freeRectsVec);
+
+  void processMergedROI(MergedROI* mergedROI, std::vector<std::vector<IntRect>>& freeRectsVec);
+
+
   std::pair<IntPairs, IntPairs> pack(const std::vector<std::vector<IntRect>>& freeRectsVec,
                                      const IntPairs& boxWHs,
                                      bool backward = false) const;

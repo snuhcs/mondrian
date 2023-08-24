@@ -20,73 +20,13 @@ ROIPacker::ROIPacker(
       roiSize_(roiSize),
       roiResizer_(roiResizer) {}
 
-std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
-                                                  const MultiStream& streams,
-                                                  const std::vector<InferenceInfo>& inferencePlan,
-                                                  const Frame* fullFrameTarget) {
-  time_us startTime = NowMicros();
-
-  // Prepare free rects
-  std::vector<std::vector<IntRect>> freeRectsVec;
-  for (const auto& info : inferencePlan) {
-    freeRectsVec.push_back({{0, 0, info.size, info.size}});
-  }
-
-  // Pack last frames first
-  for (const auto& [vid, stream] : streams) {
-    Frame* lastFrame = *stream.rbegin();
-    if (lastFrame == fullFrameTarget) continue;
-    IntPairs boxesIfLast = lastFrame->boxesIfLast(
-        /*roiResizer=*/roiResizer_,
-        /*executionType=*/executionType_,
-        /*noDownsampling=*/config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
-    if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
-      for (auto& mergedROI : lastFrame->mergedROIs) {
-        if (!freeRectsVec.empty()) {
-          mergedROI->setPackInfo({0, 0},
-                                 (int) freeRectsVec.size() - 1,
-                                 executionType_,
-                                 roiSize_);
-          freeRectsVec.erase(freeRectsVec.end() - 1);
-        }
-      }
-    } else { // MONDRIAN, EMULATED_BATCH
-      auto [indices, locations] = ROIPacker::pack(freeRectsVec, boxesIfLast);
-      bool fullyPacked = indices.size() == boxesIfLast.size();
-      int minPackedCanvasIndex = (int) inferencePlan.size();
-      int maxPackedCanvasIndex = -1;
-      for (auto& [packedCanvasIndex, freeRectIndex] : indices) {
-        minPackedCanvasIndex = std::min(minPackedCanvasIndex, packedCanvasIndex);
-        maxPackedCanvasIndex = std::max(maxPackedCanvasIndex, packedCanvasIndex);
-      }
-      LOGD("[Schedule %d] Last Packed Frame vid=%d fid=%d "
-           "// %lu / %lu MergedROIs Packed into %d ~ %d PackedCanvas",
-           currID, lastFrame->vid, lastFrame->fid,
-           indices.size(), boxesIfLast.size(),
-           minPackedCanvasIndex, maxPackedCanvasIndex);
-      if (fullyPacked) {
-        ROIPacker::apply(freeRectsVec, boxesIfLast, indices);
-      } else {
-        indices.resize(boxesIfLast.size());
-        locations.resize(boxesIfLast.size());
-        ROIPacker::apply(freeRectsVec, boxesIfLast, indices);
-      }
-      lastFrame->prepareFrameLast(indices,
-                                  locations,
-                                  executionType_,
-                                  roiSize_,
-                                  config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
-    }
-  }
-  time_us packLastTime = NowMicros();
-
-  // Order MergedROIs except last frames
-  auto orderedMergedROIs = ROIPrioritizer::order(streams, config_.TYPE);
-  time_us orderOthersTime = NowMicros();
-
-  // Pack MergedROIs
-  for (MergedROI* mergedROI : orderedMergedROIs) {
-    if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
+void ROIPacker::processLastFrame(Frame* lastFrame, std::vector<std::vector<IntRect>>& freeRectsVec) {
+  IntPairs frameBoxWHs = lastFrame->boxesIfLast(
+      /*roiResizer=*/roiResizer_,
+      /*executionType=*/executionType_,
+      /*noDownsampling=*/config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
+  if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
+    for (auto& mergedROI : lastFrame->mergedROIs) {
       if (!freeRectsVec.empty()) {
         mergedROI->setPackInfo({0, 0},
                                (int) freeRectsVec.size() - 1,
@@ -94,20 +34,90 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
                                roiSize_);
         freeRectsVec.erase(freeRectsVec.end() - 1);
       }
-    } else {
-      auto [bw, bh] = mergedROI->borderedMatWH();
-      auto [indices, locations] = ROIPacker::pack(freeRectsVec, {{bw, bh}});
-      if (!indices.empty()) {
-        ROIPacker::apply(freeRectsVec, {{bw, bh}}, indices);
-        mergedROI->setPackInfo(locations[0],
-                               indices[0].first,
-                               executionType_,
-                               roiSize_);
-      }
     }
+  } else { // MONDRIAN, EMULATED_BATCH
+    auto [indices, locations] = ROIPacker::pack(freeRectsVec, frameBoxWHs);
+    bool fullyPacked = indices.size() == frameBoxWHs.size();
+    int minPackedCanvasIndex = INT_MAX;
+    int maxPackedCanvasIndex = -1;
+    for (auto& [packedCanvasIndex, freeRectIndex] : indices) {
+      minPackedCanvasIndex = std::min(minPackedCanvasIndex, packedCanvasIndex);
+      maxPackedCanvasIndex = std::max(maxPackedCanvasIndex, packedCanvasIndex);
+    }
+    /*
+    LOGD("[Schedule %d] Last Packed Frame vid=%d fid=%d "
+         "// %lu / %lu MergedROIs Packed into %d ~ %d PackedCanvas",
+         currID, lastFrame->vid, lastFrame->fid,
+         indices.size(), frameBoxWHs.size(),
+         minPackedCanvasIndex, maxPackedCanvasIndex);
+         */
+    if (fullyPacked) {
+      ROIPacker::apply(freeRectsVec, frameBoxWHs, indices);
+    } else {
+      indices.resize(frameBoxWHs.size());
+      locations.resize(frameBoxWHs.size());
+      ROIPacker::apply(freeRectsVec, frameBoxWHs, indices);
+    }
+    lastFrame->prepareFrameLast(indices,
+                                locations,
+                                executionType_,
+                                roiSize_,
+                                config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
+  }
+}
+
+void ROIPacker::processMergedROI(MergedROI* mergedROI, std::vector<std::vector<IntRect>>& freeRectsVec) {
+  if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
+    if (!freeRectsVec.empty()) {
+      mergedROI->setPackInfo({0, 0},
+                             (int) freeRectsVec.size() - 1,
+                             executionType_,
+                             roiSize_);
+      freeRectsVec.erase(freeRectsVec.end() - 1);
+    }
+  } else {
+    auto [bw, bh] = mergedROI->borderedMatWH();
+    auto [indices, locations] = ROIPacker::pack(freeRectsVec, {{bw, bh}});
+    if (!indices.empty()) {
+      ROIPacker::apply(freeRectsVec, {{bw, bh}}, indices);
+      mergedROI->setPackInfo(locations[0],
+                             indices[0].first,
+                             executionType_,
+                             roiSize_);
+    }
+  }
+}
+
+std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
+                                                  const MultiStream& streams,
+                                                  const std::vector<InferenceInfo>& inferencePlan,
+                                                  const Frame* fullFrameTarget) {
+  time_us startTime = NowMicros();
+
+  // 1. Prepare free rects
+  std::vector<std::vector<IntRect>> freeRectsVec;
+  for (const auto& info : inferencePlan) {
+    freeRectsVec.push_back({{0, 0, info.size, info.size}});
+  }
+
+
+  // 2. Pack last frames first
+  for (const auto& [vid, stream] : streams) {
+    Frame* lastFrame = *stream.rbegin();
+    if (lastFrame == fullFrameTarget) continue;
+    processLastFrame(lastFrame, freeRectsVec);
+  }
+  time_us packLastTime = NowMicros();
+
+  // 3. Pack MergedROIs from other frames
+  auto orderedMergedROIs = ROIPrioritizer::order(streams, config_.TYPE);
+  time_us orderOthersTime = NowMicros();
+  for (MergedROI* mergedROI : orderedMergedROIs) {
+    processMergedROI(mergedROI, freeRectsVec);
   }
   time_us packOthersTime = NowMicros();
 
+  // 4. Group MergedROIs by packed canvas index
   std::map<int, std::set<MergedROI*>> groupedMergedROIs;
   for (const auto& [vid, frames] : streams) {
     for (Frame* frame : frames) {
@@ -126,6 +136,7 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
   }
   time_us groupingTime = NowMicros();
 
+  // 5. Generate packed canvases
   std::vector<PackedCanvas> packedCanvases;
   for (auto& [packedCanvasIndex, mergedROIs] : groupedMergedROIs) {
     assert(packedCanvasIndex < inferencePlan.size());
@@ -136,6 +147,7 @@ std::vector<PackedCanvas> ROIPacker::packCanvases(const int currID,
   }
   time_us generatingTime = NowMicros();
 
+  // 6. Release Mats
   for (const auto& [vid, frames] : streams) {
     for (Frame* frame : frames) {
       if (frame == fullFrameTarget) continue;
