@@ -365,7 +365,8 @@ std::string Frame::header() {
      << "numProbingROIs[GPU]" << DELIM
      << "numProbingROIs[DSP]" << DELIM
      << "numBoxes" << DELIM
-     << "numProbingBoxes" << DELIM
+     << "numProbingBoxes[GPU]" << DELIM
+     << "numProbingBoxes[DSP]" << DELIM
      << "scheduleID" << DELIM
      << "PDExtractorID" << DELIM
      << "OFExtractorID" << DELIM
@@ -401,13 +402,11 @@ std::string Frame::str(time_us baseTime) const {
      << fid << DELIM
      << rois.size() << DELIM
      << mergedROIs.size() << DELIM
-     << (probingROIsTable.find(Device::GPU) != probingROIsTable.end()
-         ? probingROIsTable.at(Device::GPU).size()
-         : 0) << DELIM
+     << safeGetSize<std::unique_ptr<MergedROI>>(probingROIsTable, Device::GPU) << DELIM
+     << safeGetSize<std::unique_ptr<MergedROI>>(probingROIsTable, Device::DSP) << DELIM
      << boxes.size() << DELIM
-     << (probingBoxesTable.find(Device::DSP) != probingBoxesTable.end()
-         ? probingBoxesTable.at(Device::DSP).size()
-         : 0) << DELIM
+     << safeGetSize<std::unique_ptr<BoundingBox>>(probingBoxesTable, Device::GPU) << DELIM
+     << safeGetSize<std::unique_ptr<BoundingBox>>(probingBoxesTable, Device::DSP) << DELIM
      << scheduleID << DELIM
      << PDExtractorID << DELIM
      << OFExtractorID << DELIM

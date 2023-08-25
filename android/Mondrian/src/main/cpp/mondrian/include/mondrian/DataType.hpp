@@ -1,9 +1,10 @@
 #ifndef DATA_TYPE_HPP_
 #define DATA_TYPE_HPP_
 
+#include <array>
+#include <map>
 #include <sstream>
 #include <queue>
-#include <array>
 
 #include "mondrian/Time.hpp"
 
@@ -152,6 +153,25 @@ struct Rect {
 
   std::string str() const;
 };
+
+template<typename T>
+std::string safeGet(const std::map<Device, T>& m, Device device) {
+  if (m.find(device) != m.end()) {
+    return std::to_string(m.at(device));
+  } else {
+    return "-1";
+  }
+}
+
+template<typename T>
+std::string safeGetSize(const std::map<Device, std::vector<T>>& m,
+                        Device device) {
+  if (m.find(device) != m.end()) {
+    return std::to_string(m.at(device).size());
+  } else {
+    return "-1";
+  }
+}
 
 } // namespace md
 

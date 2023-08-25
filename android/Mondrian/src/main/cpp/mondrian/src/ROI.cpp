@@ -1,5 +1,6 @@
 #include "mondrian/ROI.hpp"
 
+#include "mondrian/DataType.hpp"
 #include "mondrian/Frame.hpp"
 #include "mondrian/ROIResizer.hpp"
 
@@ -83,25 +84,6 @@ std::string ROI::header() {
   return ss.str();
 }
 
-template <typename T>
-static std::string safeGet(const std::map<Device, T>& m, Device device) {
-  if (m.find(device) != m.end()) {
-    return std::to_string(m.at(device));
-  } else {
-    return "-1";
-  }
-}
-
-template<typename T>
-static std::string safeGet(const std::map<Device, std::vector<T>>& m,
-                           Device device) {
-  if (m.find(device) != m.end()) {
-    return std::to_string(m.at(device).size());
-  } else {
-    return "-1";
-  }
-}
-
 
 std::string ROI::str() const {
   std::stringstream ss;
@@ -116,10 +98,10 @@ std::string ROI::str() const {
      << safeGet<float>(targetScaleTable_, Device::DSP) << DELIM
      << safeGet<int>(scaleLevelTable_, Device::GPU) << DELIM
      << safeGet<int>(scaleLevelTable_, Device::DSP) << DELIM
-     << safeGet<float>(probeScalesTable, Device::GPU) << DELIM
-     << safeGet<float>(probeScalesTable, Device::DSP) << DELIM
-     << safeGet<MergedROI*>(roisForProbingTable, Device::GPU) << DELIM
-     << safeGet<MergedROI*>(roisForProbingTable, Device::DSP) << DELIM
+     << safeGetSize<float>(probeScalesTable, Device::GPU) << DELIM
+     << safeGetSize<float>(probeScalesTable, Device::DSP) << DELIM
+     << safeGetSize<MergedROI*>(roisForProbingTable, Device::GPU) << DELIM
+     << safeGetSize<MergedROI*>(roisForProbingTable, Device::DSP) << DELIM
      << mergedROI->str() << DELIM // TODO: Remove redundant mergedROI
      << boxID_;
   return ss.str();
