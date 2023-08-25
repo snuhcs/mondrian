@@ -393,6 +393,7 @@ void Mondrian::enqueue(Frame* frame) {
         /*isFullFrame=*/true,
         /*key=*/frame->getKey());
     handleFullFrameResults(frame, -1);
+    log(frame);
     return;
   } else {
     ROIExtractor_->enqueue(frame);
