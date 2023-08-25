@@ -70,14 +70,38 @@ std::string ROI::header() {
      << Rect::header("origLoc") << DELIM
      << Rect::header("paddedLoc") << DELIM
      << Features::header() << DELIM
-     << "targetScaleTable" << DELIM
-     << "scaleLevel" << DELIM
-     << "numProbingScales" << DELIM
-     << "numRoisForProbing" << DELIM
+     << "targetScale[GPU]" << DELIM
+     << "targetScale[DSP]" << DELIM
+     << "scaleLevel[GPU]" << DELIM
+     << "scaleLevel[DSP]" << DELIM
+     << "numProbingScales[GPU]" << DELIM
+     << "numProbingScales[DSP]" << DELIM
+     << "numRoisForProbing[GPU]" << DELIM
+     << "numRoisForProbing[DSP]" << DELIM
      << MergedROI::header() << DELIM
      << "boxID";
   return ss.str();
 }
+
+template <typename T>
+static std::string safeGet(const std::map<Device, T>& m, Device device) {
+  if (m.find(device) != m.end()) {
+    return std::to_string(m.at(device));
+  } else {
+    return "-1";
+  }
+}
+
+template<typename T>
+static std::string safeGet(const std::map<Device, std::vector<T>>& m,
+                           Device device) {
+  if (m.find(device) != m.end()) {
+    return std::to_string(m.at(device).size());
+  } else {
+    return "-1";
+  }
+}
+
 
 std::string ROI::str() const {
   std::stringstream ss;
@@ -88,10 +112,14 @@ std::string ROI::str() const {
      << origLoc.str() << DELIM
      << paddedLoc.str() << DELIM
      << features.str() << DELIM
-     << targetScaleTable_.at(Device::GPU) << DELIM
-     << scaleLevelTable_.at(Device::GPU) << DELIM
-     << (probeScalesTable.find(Device::GPU) == probeScalesTable.end() ? 0 : probeScalesTable.at(Device::GPU).size()) << DELIM
-     << (roisForProbingTable.find(Device::GPU) == roisForProbingTable.end() ? 0 : roisForProbingTable.at(Device::GPU).size()) << DELIM
+     << safeGet<float>(targetScaleTable_, Device::GPU) << DELIM
+     << safeGet<float>(targetScaleTable_, Device::DSP) << DELIM
+     << safeGet<int>(scaleLevelTable_, Device::GPU) << DELIM
+     << safeGet<int>(scaleLevelTable_, Device::DSP) << DELIM
+     << safeGet<float>(probeScalesTable, Device::GPU) << DELIM
+     << safeGet<float>(probeScalesTable, Device::DSP) << DELIM
+     << safeGet<MergedROI*>(roisForProbingTable, Device::GPU) << DELIM
+     << safeGet<MergedROI*>(roisForProbingTable, Device::DSP) << DELIM
      << mergedROI->str() << DELIM // TODO: Remove redundant mergedROI
      << boxID_;
   return ss.str();
