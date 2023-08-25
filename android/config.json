@@ -1,7 +1,7 @@
 {
     "video_configs": [
         {
-            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
+            "path": "/data/local/tmp/video/mta_test_cam_3_500.mp4",
             "fps": 30
         }
     ],
@@ -11,7 +11,7 @@
     "log_merged_roi": false,
     "log_frame": true,
     "interpolation_thres": 0,
-    "full_frame_interval": 3,
+    "full_frame_interval": 2,
     "latency_slo_ms": 3000,
     "roi_size": 80,
     "roi_extractor": {
@@ -59,13 +59,6 @@
                 "input_sizes": [
                     640,
                     1280
-                ]
-            },
-            "DSP": {
-                "model": "yolov5m",
-                "dataset": "coco",
-                "input_sizes": [
-                    640
                 ]
             }
         },
