@@ -73,7 +73,23 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   inferenceEngine_->profileLatency();
 
   // Start ROI extraction threads
-  ROIExtractor_ = std::make_unique<ROIExtractor>(config_.roiExtractorConfig, ROIResizer_.get());
+  int maxMergeSize = -1;
+  if (config_.EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE
+      || config_.EXECUTION_TYPE == ExecutionType::EMULATED_BATCH) {
+    maxMergeSize = config_.ROI_SIZE;
+  } else if (config_.EXECUTION_TYPE == ExecutionType::MONDRIAN) {
+    maxMergeSize = INT_MAX;
+    for (const auto& [device, workerConfig] : config_.inferenceEngineConfig.WORKER_CONFIGS) {
+      for (const int inputSize : workerConfig.INPUT_SIZES) {
+        maxMergeSize = std::min(maxMergeSize, inputSize);
+      }
+    }
+  }
+  ROIExtractor_ = std::make_unique<ROIExtractor>(config_.roiExtractorConfig,
+                                                 config_.EXECUTION_TYPE,
+                                                 maxMergeSize,
+                                                 config_.ROI_SIZE,
+                                                 ROIResizer_.get());
 
   // Start postprocessing thread
   postprocessThread_ = std::thread([this]() { workPostprocess(); });

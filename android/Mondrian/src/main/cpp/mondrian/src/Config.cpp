@@ -63,7 +63,6 @@ ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   config.PD_EAT_OVERLAP_THRES = parseFloat(json, "pd_eat_overlap_thres");
   config.PD_FILTER_OVERLAP_THRES = parseFloat(json, "pd_filter_overlap_thres");
   config.MERGE = parseBool(json, "merge");
-  config.MAX_MERGE_SIZE = parseInt(json, "max_merge_size");
   return config;
 }
 
@@ -173,9 +172,6 @@ void MondrianConfig::test() const {
     assert(roiResizerConfig.STATIC_TARGET_AREA > 0);
   } else {
     assert(roiResizerConfig.NUM_PROBE_STEPS == 0 || roiResizerConfig.PROBE_STEP_SIZE > 0);
-    assert(EXECUTION_TYPE == ExecutionType::MONDRIAN
-               || EXECUTION_TYPE == ExecutionType::FRAME_WISE_INFERENCE
-               || roiResizerConfig.NUM_PROBE_STEPS == 0);
   }
   if (EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE
       || EXECUTION_TYPE == ExecutionType::EMULATED_BATCH) {
@@ -238,7 +234,6 @@ void ROIExtractorConfig::print() const {
   ss << "PD_EAT_OVERLAP_THRES: " << PD_EAT_OVERLAP_THRES << std::endl;
   ss << "PD_FILTER_OVERLAP_THRES: " << PD_FILTER_OVERLAP_THRES << std::endl;
   ss << "MERGE: " << MERGE << std::endl;
-  ss << "MAX_MERGE_SIZE: " << MAX_MERGE_SIZE << std::endl;
   LOGD("%s", ss.str().c_str());
 }
 

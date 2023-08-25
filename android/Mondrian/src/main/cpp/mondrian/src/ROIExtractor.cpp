@@ -10,10 +10,15 @@
 
 namespace md {
 
-ROIExtractor::ROIExtractor(
-    const ROIExtractorConfig& config,
-    ROIResizer* roiResizer)
+ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
+                           const ExecutionType executionType,
+                           const int maxMergeSize,
+                           const int roiSize,
+                           ROIResizer* roiResizer)
     : config_(config),
+      executionType_(executionType),
+      maxMergeSize_(maxMergeSize),
+      roiSize_(roiSize),
       ROIResizer_(roiResizer),
       stop_(false) {
   threads_.reserve(config.NUM_WORKERS);
@@ -330,13 +335,13 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   currFrame->assignPDROIIDs();
 
   currFrame->resizeStartTime = NowMicros();
-  currFrame->resizeROIs(ROIResizer_);
+  currFrame->resizeROIs(ROIResizer_, executionType_, roiSize_);
   currFrame->resizeEndTime = NowMicros();
 
   currFrame->mergeROIStartTime = NowMicros();
   currFrame->resetMergedROIs();
   if (config_.MERGE) {
-    currFrame->mergeMergedROIs(config_.MAX_MERGE_SIZE);
+    currFrame->mergeMergedROIs(maxMergeSize_);
   }
   currFrame->sortMergedROIs();
   currFrame->mergeROIEndTime = NowMicros();
