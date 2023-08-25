@@ -1,9 +1,10 @@
 #ifndef DATA_TYPE_HPP_
 #define DATA_TYPE_HPP_
 
+#include <array>
+#include <map>
 #include <sstream>
 #include <queue>
-#include <array>
 
 #include "mondrian/Time.hpp"
 
@@ -39,7 +40,11 @@ enum class Device {
   DSP,
 };
 
-const std::array<Device, 2> Devices = {Device::GPU, Device::DSP};
+const std::array<Device, 2> DEVICES = {Device::GPU, Device::DSP};
+
+const Device LAST_FRAME_DEVICE = Device::GPU;
+
+const Device PROBING_DEVICE = Device::GPU;
 
 Device deviceOf(const std::string& deviceStr);
 
@@ -148,6 +153,25 @@ struct Rect {
 
   std::string str() const;
 };
+
+template<typename T>
+std::string safeGet(const std::map<Device, T>& m, Device device) {
+  if (m.find(device) != m.end()) {
+    return std::to_string(m.at(device));
+  } else {
+    return "-1";
+  }
+}
+
+template<typename T>
+std::string safeGetSize(const std::map<Device, std::vector<T>>& m,
+                        Device device) {
+  if (m.find(device) != m.end()) {
+    return std::to_string(m.at(device).size());
+  } else {
+    return "-1";
+  }
+}
 
 } // namespace md
 

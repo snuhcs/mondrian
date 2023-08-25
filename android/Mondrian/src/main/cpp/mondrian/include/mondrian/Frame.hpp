@@ -30,9 +30,9 @@ class Frame {
   cv::Mat resizedGrayMat;
   std::vector<std::unique_ptr<ROI>> rois;
   std::vector<std::unique_ptr<MergedROI>> mergedROIs;
-  std::vector<std::unique_ptr<MergedROI>> probingROIs;
+  std::map<Device, std::vector<std::unique_ptr<MergedROI>>> probingROIsTable;
   std::vector<std::unique_ptr<BoundingBox>> boxes;
-  std::vector<std::unique_ptr<BoundingBox>> probingBoxes;
+  std::map<Device, std::vector<std::unique_ptr<BoundingBox>>> probingBoxesTable;
 
   bool useInferenceResultForOF;
   bool isBoxesReady;
@@ -45,7 +45,7 @@ class Frame {
   int OFExtractorID;
   int numFeaturePoints;
   int inferenceFrameSize;
-  Device inferenceDevice;
+  Device deviceIfFullFrame; // else Device::INVALID
   const time_us enqueueTime;
   time_us fullInferenceStartTime = 0;
   time_us fullInferenceEndTime = 0;
@@ -99,7 +99,7 @@ class Frame {
                         int roiSize,
                         bool noDownsampling);
 
-  bool isReadyToMarry(int packedFrameIndex) const;
+  bool isReadyToMarry() const;
 
   bool readyForOFExtraction() const;
 
@@ -143,7 +143,7 @@ std::string str(const MultiStream& streams);
 struct PackingResult {
   MultiStream streams;
   Frame* fullFrameTarget;
-  std::vector<PackedCanvas> packedCanvases;
+  std::map<Device, std::vector<PackedCanvas>> packedCanvasesTable;
 };
 
 } // namespace md

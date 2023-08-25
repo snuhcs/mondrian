@@ -1,5 +1,6 @@
 #include "mondrian/ROI.hpp"
 
+#include "mondrian/DataType.hpp"
 #include "mondrian/Frame.hpp"
 #include "mondrian/ROIResizer.hpp"
 
@@ -36,7 +37,7 @@ ROI::ROI(const OID oid,
                 std::min((float) frame->width(), origLoc.r + padding),
                 std::min((float) frame->height(), origLoc.b + padding)});
 
-  for (Device device : Devices) {
+  for (Device device : DEVICES) {
     targetScaleTable_[device] = 1.0f; // TODO: Start with targetScale_(-1) and assert
     scaleLevelTable_[device] = ROIResizer::INVALID_LEVEL;
   }
@@ -54,11 +55,11 @@ void ROI::eatPD(const Rect& PDRect) {
   setPaddedLoc(Rect::merge(paddedLoc, PDRect));
 }
 
-void ROI::scaleTo(float newTargetScale, int newScaleLevel) {
+void ROI::scaleTo(float newTargetScale, int newScaleLevel, Device device) {
   assert(0.0f < newTargetScale);
   assert(newTargetScale <= 1.0f);
-  targetScaleTable_[Device::GPU] = newTargetScale;
-  scaleLevelTable_[Device::GPU] = newScaleLevel;
+  targetScaleTable_[device] = newTargetScale;
+  scaleLevelTable_[device] = newScaleLevel;
 }
 
 std::string ROI::header() {
@@ -70,14 +71,19 @@ std::string ROI::header() {
      << Rect::header("origLoc") << DELIM
      << Rect::header("paddedLoc") << DELIM
      << Features::header() << DELIM
-     << "targetScale" << DELIM
-     << "scaleLevel" << DELIM
-     << "numProbingScales" << DELIM
-     << "numRoisForProbing" << DELIM
+     << "targetScale[GPU]" << DELIM
+     << "targetScale[DSP]" << DELIM
+     << "scaleLevel[GPU]" << DELIM
+     << "scaleLevel[DSP]" << DELIM
+     << "numProbingScales[GPU]" << DELIM
+     << "numProbingScales[DSP]" << DELIM
+     << "numRoisForProbing[GPU]" << DELIM
+     << "numRoisForProbing[DSP]" << DELIM
      << MergedROI::header() << DELIM
      << "boxID";
   return ss.str();
 }
+
 
 std::string ROI::str() const {
   std::stringstream ss;
@@ -88,10 +94,14 @@ std::string ROI::str() const {
      << origLoc.str() << DELIM
      << paddedLoc.str() << DELIM
      << features.str() << DELIM
-     << targetScaleTable_.at(Device::GPU) << DELIM
-     << scaleLevelTable_.at(Device::GPU) << DELIM
-     << probeScales.size() << DELIM
-     << roisForProbing.size() << DELIM
+     << safeGet<float>(targetScaleTable_, Device::GPU) << DELIM
+     << safeGet<float>(targetScaleTable_, Device::DSP) << DELIM
+     << safeGet<int>(scaleLevelTable_, Device::GPU) << DELIM
+     << safeGet<int>(scaleLevelTable_, Device::DSP) << DELIM
+     << safeGetSize<float>(probeScalesTable, Device::GPU) << DELIM
+     << safeGetSize<float>(probeScalesTable, Device::DSP) << DELIM
+     << safeGetSize<MergedROI*>(roisForProbingTable, Device::GPU) << DELIM
+     << safeGetSize<MergedROI*>(roisForProbingTable, Device::DSP) << DELIM
      << mergedROI->str() << DELIM // TODO: Remove redundant mergedROI
      << boxID_;
   return ss.str();

@@ -13,7 +13,7 @@ namespace md {
 
 PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
                                        ROIResizer* roiResizer)
-    : mConfig(config), mROIResizer(roiResizer) {}
+    : config_(config), ROIResizer_(roiResizer) {}
 
 static Rect moveResizeROIPos(const MergedROI* mergedROI) {
   auto [rw, rh] = mergedROI->resizedMatWH();
@@ -78,17 +78,19 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
         maxROI = mergedROI;
       }
     }
-    if (maxROI != nullptr && maxOverlap >= mConfig.BOX_FILTER_OVERLAP_THRES) {
+    if (maxROI != nullptr && maxOverlap >= config_.BOX_FILTER_OVERLAP_THRES) {
       // filter overly large boxes from packed inference by PROBE_IOU_THRES
       if (maxROI->isProbing()) {
-        maxROI->frame()->probingBoxes.push_back(std::make_unique<BoundingBox>(
+        std::unique_ptr<BoundingBox> probeBox(new BoundingBox(
             INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
             box.confidence, box.label, Origin::FULL_FRAME));
-        maxROI->setProbingBox(maxROI->frame()->probingBoxes.rbegin()->get());
+        maxROI->setProbingBox(probeBox.get());
+        maxROI->frame()->probingBoxesTable[Device::GPU].push_back(std::move(probeBox));
       } else {
-        maxROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
+        std::unique_ptr<BoundingBox> newBox(new BoundingBox(
             INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
             box.confidence, box.label, Origin::INVALID));
+        maxROI->frame()->boxes.push_back(std::move(newBox));
       }
     }
   }
@@ -206,17 +208,24 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   testROIBoxConnection();
   if (frame->isLastFrame) {
     for (ROI* roi : rois) {
-      mROIResizer->updateTable(roi);
+      ROIResizer_->updateTable(roi, roi->mergedROI->targetDevice());
     }
   } else {
     assert(std::all_of(rois.begin(), rois.end(),
-                       [](const auto& roi) { return roi->roisForProbing.empty(); }));
+                       [](const ROI* roi) {
+                         bool ret = true;
+                         for (Device device : DEVICES) {
+                           ret &= roi->roisForProbingTable.find(device)
+                               == roi->roisForProbingTable.end();
+                         }
+                         return ret;
+                       }));
   }
   testROIBoxConnection();
 }
 
 float PatchReconstructor::iouThres() const {
-  return mConfig.FRAME_BOXES_IOU_THRES;
+  return config_.FRAME_BOXES_IOU_THRES;
 }
 
 } // namespace md

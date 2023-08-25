@@ -25,8 +25,8 @@ class PatchReconstructor {
   float iouThres() const;
 
  private:
-  PatchReconstructorConfig mConfig;
-  ROIResizer* mROIResizer;
+  PatchReconstructorConfig config_;
+  ROIResizer* ROIResizer_;
 };
 
 } // namespace md

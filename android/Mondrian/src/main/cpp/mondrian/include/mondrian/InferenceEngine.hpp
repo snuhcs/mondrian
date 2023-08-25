@@ -33,7 +33,11 @@ class InferenceEngine {
 
   void enqueueResult(const Key key, const Result& result);
 
-  Result getResults(Key key);
+  Result getResult(Key key, bool isCheckedKey);
+
+  void waitForAnyResults();
+
+  bool isReady(Key key);
 
   LatencyTable latencyTable() const;
 
@@ -41,7 +45,7 @@ class InferenceEngine {
 
  private:
   template<typename T>
-  void addWorker(Device device, JNIEnv* env, jobject app);
+  void addWorker(Device device, int maxPackedCanvasSize, JNIEnv* env, jobject app);
 
   const InferenceEngineConfig config_;
 

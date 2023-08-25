@@ -152,6 +152,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.roiPackerConfig = parseROIPackerConfig(json["roi_packer"]);
   config.inferenceEngineConfig = parseInferenceEngineConfig(json["inference_engine"]);
   config.patchReconstructorConfig = parsePatchReconstructorConfig(json["patch_reconstructor"]);
+
   return config;
 }
 

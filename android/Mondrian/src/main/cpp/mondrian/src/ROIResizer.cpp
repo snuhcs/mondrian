@@ -13,88 +13,106 @@ const int ROIResizer::STATIC_LEVEL = 0;
 
 const int ROIResizer::INVALID_LEVEL = -1;
 
-const std::map<std::string, Predictor> ROIResizer::CANDIDATE_PREDICTORS = {
-    {"virat", VIRAT},
-    {"mta", MTA},
-};
-
-const std::map<std::string, std::vector<float>> ROIResizer::AREA_LEVELS = {
-    {"virat", {
+const std::map<std::pair<Device, std::string>,
+               std::pair<Predictor, std::vector<float>>> ROIResizer::PREDICTORS = {
+    {{Device::GPU, "virat"}, {VIRAT_FP16, {
         333.913147627257,
         638.5106976744186,
         764.6907839189453,
         880.0315355329949,
         1e10
-    }},
-    {"mta", {
+    }}},
+    {{Device::GPU, "mta"}, {MTA_FP16, {
         368.62745098039215,
         459.33734939759046,
         558.7062937062936,
         848.4255998838352,
         1e10
-    }}
+    }}},
+    // TODO: Update dummy values to real values
+    {{Device::DSP, "virat"}, {VIRAT_INT8, {
+        333.913147627257,
+        638.5106976744186,
+        764.6907839189453,
+        880.0315355329949,
+        1e10
+    }}},
+    {{Device::DSP, "mta"}, {MTA_INT8, {
+        368.62745098039215,
+        459.33734939759046,
+        558.7062937062936,
+        848.4255998838352,
+        1e10
+    }}},
 };
 
-ROIResizer::ROIResizer(const ROIResizerConfig& config)
-    : config_(config),
-      predictor_(CANDIDATE_PREDICTORS.at(config.DATASET)),
-      targetAreas_(AREA_LEVELS.at(config.DATASET)) {}
+ROIResizer::ROIResizer(const ROIResizerConfig& config) : config_(config) {}
 
-std::pair<float, int> ROIResizer::getTargetScale(const OID oid,
-                                                 const Features& features,
-                                                 const float area) {
+std::map<Device, std::pair<float, int>> ROIResizer::getTargetScale(const OID oid,
+                                                                   const Features& features,
+                                                                   const float area) {
   assert(features.type == ROIType::OF && "PD ROI should not be resized");
   assert(features.width * features.height == area); // XXX
 
-  const int targetLevel = getMaxVotedLevel(oid, features);
-
-  float targetScale = calcTargetScale(targetLevel, area);;
-  if (isCalibrated(oid)) {
-    if (calibrationTable_.at(oid).first == targetLevel) {
-      // hit : use the calibrated scale
-      targetScale = calibrationTable_.at(oid).second;
-    } else {
-      // miss : invalidate the calibration
-      calibrationTable_.erase(oid);
+  std::map<Device, std::pair<float, int>> scaleLevelTable;
+  for (Device device : DEVICES) {
+    const int targetLevel = getMaxVotedLevel(oid, features, device);
+    float targetScale = calcTargetScale(targetLevel, area, device);
+    if (isCalibrated(oid, device)) {
+      if (calibrationTableTable_[device].at(oid).first == targetLevel) {
+        // hit : use the calibrated scale
+        targetScale = calibrationTableTable_[device].at(oid).second;
+      } else {
+        // miss : invalidate the calibration
+        calibrationTableTable_[device].erase(oid);
+      }
     }
+    scaleLevelTable[device] = {targetScale, targetLevel};
   }
 
-  return {targetScale, targetLevel};
+  return scaleLevelTable;
 }
 
-float ROIResizer::calcTargetScale(const int scaleLevel, const float originalArea) const {
-  float targetArea = config_.STATIC_AREA ? config_.STATIC_TARGET_AREA : targetAreas_.at(scaleLevel);
+float ROIResizer::calcTargetScale(const int scaleLevel,
+                                  const float originalArea,
+                                  Device device) const {
+  float targetArea = config_.STATIC_AREA ? config_.STATIC_TARGET_AREA
+                                         : areaLevelsOf(device).at(scaleLevel);
   targetArea += config_.AREA_SHIFT;
   float targetScale = std::sqrt(targetArea / originalArea);
   targetScale = std::min(1.0f, targetScale + config_.SCALE_SHIFT);
   return targetScale;
 }
 
-bool ROIResizer::isCalibrated(const OID oid) const {
-  return calibrationTable_.find(oid) != calibrationTable_.end();
+bool ROIResizer::isCalibrated(const OID oid, Device device) const {
+  return calibrationTableTable_.find(device) != calibrationTableTable_.end() &&
+      calibrationTableTable_.at(device).find(oid) != calibrationTableTable_.at(device).end();
 }
 
-int ROIResizer::getMaxVotedLevel(const OID oid, const Features& features) {
-  auto record = prevPredictionBuffer_.find(oid);
-  if (record == prevPredictionBuffer_.end()) {
-    prevPredictionBuffer_[oid] = CircularBuffer(int(targetAreas_.size()),
-                                               config_.VOTING_WINDOW_SIZE);
+int ROIResizer::getMaxVotedLevel(const OID oid, const Features& features, Device device) {
+  // XXX : not sure if this is appropriate.
+  if (prevPredictionBufferTable_.find(device) == prevPredictionBufferTable_.end()) {
+    prevPredictionBufferTable_[device] = std::map<OID, CircularBuffer>();
   }
-  prevPredictionBuffer_[oid].push(predictLevelWithFeatures(features));
-  int maxVotedLevel = prevPredictionBuffer_[oid].maxVote();
-  assert(0 <= maxVotedLevel && maxVotedLevel < targetAreas_.size() && "Index out of range");
+
+  int numLevels = (int) areaLevelsOf(device).size();
+  auto record = prevPredictionBufferTable_[device].find(oid);
+  if (record == prevPredictionBufferTable_[device].end()) {
+    prevPredictionBufferTable_[device][oid] = CircularBuffer(numLevels, config_.VOTING_WINDOW_SIZE);
+  }
+  prevPredictionBufferTable_[device][oid].push(predictLevelWithFeatures(features, device));
+  int maxVotedLevel = prevPredictionBufferTable_[device][oid].maxVote();
+  assert(0 <= maxVotedLevel && maxVotedLevel < numLevels && "Index out of range");
   return maxVotedLevel;
 }
 
-int ROIResizer::predictLevelWithFeatures(const Features& features) const {
-  if (config_.STATIC_AREA) {
-    return STATIC_LEVEL;
-  }
+int ROIResizer::predictLevelWithFeatures(const Features& features, Device device) const {
+  if (config_.STATIC_AREA) return STATIC_LEVEL;
   auto& [shiftAvgX, shiftAvgY] = features.ofFeatures.shiftAvg;
   auto& [shiftStdX, shiftStdY] = features.ofFeatures.shiftStd;
   float shiftAvg = shiftAvgX * shiftAvgX + shiftAvgY * shiftAvgY;
   float shiftStd = shiftStdX * shiftStdX + shiftStdY * shiftStdY;
-  return predictor_(
+  return predictorOf(device)(
       std::max(features.width, features.height),
       features.width * features.height,
       features.xyRatio,
@@ -103,18 +121,19 @@ int ROIResizer::predictLevelWithFeatures(const Features& features) const {
       features.ofFeatures.avgErr);
 }
 
-void ROIResizer::updateTable(ROI* roi) {
-  if (roi->roisForProbing.empty()) {
-    return;
-  }
+void ROIResizer::updateTable(ROI* roi, Device device) {
+  if (roi->roisForProbingTable.find(device) == roi->roisForProbingTable.end()) return;
+  if (roi->roisForProbingTable[device].empty()) return;
 
   std::map<float, MergedROI*> probingROIs;
-  for (MergedROI* probeROI : roi->roisForProbing) {
+  for (MergedROI* probeROI : roi->roisForProbingTable[device]) {
     probingROIs[probeROI->targetScale()] = probeROI;
   }
 
   // find the smallest target size with a usable box
-  float newScale = calcTargetScale(roi->scaleLevel(), roi->features.width * roi->features.height);
+  float newScale = calcTargetScale(roi->scaleLevel(),
+                                   roi->features.width * roi->features.height,
+                                   device);
   BoundingBox* largestProbeROIBox = probingROIs.rbegin()->second->probingBox();
   if (largestProbeROIBox != nullptr) {
     for (auto it = probingROIs.rbegin(); it != probingROIs.rend(); it++) {
@@ -137,28 +156,35 @@ void ROIResizer::updateTable(ROI* roi) {
     roi->setBox(copiedBox.get());
     roi->frame->boxes.push_back(std::move(copiedBox));
   }
-  calibrationTable_[roi->oid] = {roi->scaleLevel(), newScale};
+  calibrationTableTable_[device][roi->oid] = {roi->scaleLevel(), newScale};
 }
 
-std::vector<float> ROIResizer::getProbingCandidates(float scale, int level, float area) const {
-  assert(0.0f <= scale && scale <= 1.0f);
-  std::vector<float> candidates;
-  for (int i = 0; i < config_.NUM_PROBE_STEPS; i++) {
-    if (config_.ONLY_SMALLER_PROBING) {
-      candidates.push_back(scale * (1 - (float) i * config_.PROBE_STEP_SIZE));
-    } else {
-      candidates.push_back(scale * (1 - (float) i * config_.PROBE_STEP_SIZE));
-      candidates.push_back(scale * (1 + (float) i * config_.PROBE_STEP_SIZE));
-    }
+std::map<Device, std::vector<float>> ROIResizer::getProbingCandidatesTable(
+    std::map<Device, float> scaleTable, int level, float area) const {
+
+  for (const auto& [_, scale] : scaleTable) {
+    assert(0.0f <= scale && scale <= 1.0f);
   }
-  float lowerBound = level == 0 ? 1e-5f : calcTargetScale(level - 1, area);
-  float upperBound = 1.0f;
-  candidates.erase(std::remove_if(
-      candidates.begin(), candidates.end(),
-      [lowerBound, upperBound](float candidate) {
-        return candidate <= lowerBound || upperBound <= candidate;
-      }), candidates.end());
-  return candidates;
+
+  std::map<Device, std::vector<float>> candidatesTable;
+  for (auto& [device, candidates] : candidatesTable) {
+    for (int i = 0; i < config_.NUM_PROBE_STEPS; i++) {
+      if (config_.ONLY_SMALLER_PROBING) {
+        candidates.push_back(scaleTable[device] * (1 - (float) i * config_.PROBE_STEP_SIZE));
+      } else {
+        candidates.push_back(scaleTable[device] * (1 - (float) i * config_.PROBE_STEP_SIZE));
+        candidates.push_back(scaleTable[device] * (1 + (float) i * config_.PROBE_STEP_SIZE));
+      }
+    }
+    float lowerBound = level == 0 ? 1e-5f : calcTargetScale(level - 1, area, Device::INVALID);
+    float upperBound = 1.0f;
+    candidates.erase(std::remove_if(
+        candidates.begin(), candidates.end(),
+        [lowerBound, upperBound](float candidate) {
+          return candidate <= lowerBound || upperBound <= candidate;
+        }), candidates.end());
+  }
+  return candidatesTable;
 }
 
 bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
@@ -166,6 +192,14 @@ bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
       && box->label == referenceBox->label
       && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRES
       && box->confidence > config_.PROBE_CONF_THRES;
+}
+
+std::vector<float> ROIResizer::areaLevelsOf(Device device) const {
+  return PREDICTORS.at({device, config_.DATASET}).second;
+}
+
+Predictor ROIResizer::predictorOf(Device device) const {
+  return PREDICTORS.at({device, config_.DATASET}).first;
 }
 
 ROIResizer::CircularBuffer::CircularBuffer(int numLevels, int capacity)

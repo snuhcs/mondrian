@@ -29,7 +29,7 @@ Frame::Frame(const VID vid, const FID fid, const cv::Mat& yuvMat,
       OFExtractorID(-1),
       isLastFrame(false),
       inferenceFrameSize(0),
-      inferenceDevice(Device::INVALID) {}
+      deviceIfFullFrame(Device::INVALID) {}
 
 cv::Mat Frame::rgbMat() const {
   cv::Mat rgbMat;
@@ -118,13 +118,18 @@ void Frame::assignPDROIIDs() {
 void Frame::resizeROIs(ROIResizer* roiResizer) {
   for (auto& roi : rois) {
     if (roi->type() == ROIType::OF) {
-      auto [scale, level] = roiResizer->getTargetScale(roi->oid,
-                                                       roi->features,
-                                                       roi->paddedArea());
-      assert(0.0f < scale && scale <= 1.0f);
-      roi->scaleTo(scale, level);
+      auto scaleLevelTable = roiResizer->getTargetScale(roi->oid,
+                                                        roi->features,
+                                                        roi->paddedArea());
+      for (const auto& [device, scaleAndLevel] : scaleLevelTable) {
+        const auto& [scale, level] = scaleAndLevel;
+        assert(0.0f < scale && scale <= 1.0f);
+        roi->scaleTo(scale, level, device);
+      }
     } else {
-      roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL);
+      for (Device device : DEVICES) {
+        roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL, device);
+      }
     }
   }
 }
@@ -157,7 +162,8 @@ void Frame::resetMergedROIs() {
   mergedROIs.clear();
 
   for (const auto& roi : rois) {
-    std::unique_ptr<MergedROI> mergedROI(new MergedROI({roi.get()}, roi->targetScale(), false));
+    std::unique_ptr<MergedROI>
+        mergedROI(new MergedROI({roi.get()}, roi->targetScaleTable(), false));
     mergedROIs.push_back(std::move(mergedROI));
   }
   assert(testROIsIntegrity());
@@ -220,9 +226,9 @@ void Frame::sortMergedROIs() {
 
 void Frame::resetProbeROIs() {
   for (auto& roi : rois) {
-    roi->roisForProbing.clear();
-    probingROIs.clear();
+    roi->roisForProbingTable.clear();
   }
+  probingROIsTable.clear();
 }
 
 IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
@@ -232,7 +238,7 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
   IntPairs boxWHs;
   for (const auto& mergedROI : mergedROIs) {
     // TODO: Make below two condition as single value(or function) of condition
-    float scale = mergedROI->targetScale();
+    float scale = mergedROI->targetScale(LAST_FRAME_DEVICE);
     if (executionType == ExecutionType::MONDRIAN && noDownsampling) {
       scale = 1.0f;
     }
@@ -241,16 +247,19 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
   }
   for (const auto& roi : rois) {
     if (roi->scaleLevel() == ROIResizer::INVALID_LEVEL) {
-      roi->probeScales.clear();
+      roi->probeScalesTable.clear();
       continue;
     }
-    roi->probeScales = roiResizer->getProbingCandidates(roi->targetScale(),
-                                                        roi->scaleLevel(),
-                                                        roi->paddedArea());
-    for (auto scale : roi->probeScales) {
-      int bw = MergedROI::borderedLengthOf(roi->paddedLoc.w, scale);
-      int bh = MergedROI::borderedLengthOf(roi->paddedLoc.h, scale);
-      boxWHs.emplace_back(bw, bh);
+    roi->probeScalesTable = roiResizer->getProbingCandidatesTable(roi->targetScaleTable(),
+                                                                  roi->scaleLevel(),
+                                                                  roi->paddedArea());
+    for (const auto& [device, probeScales] : roi->probeScalesTable) {
+      if (device != PROBING_DEVICE) continue; // TODO: Handle probing for DSP
+      for (auto probeScale : probeScales) {
+        int bw = MergedROI::borderedLengthOf(roi->paddedLoc.w, probeScale);
+        int bh = MergedROI::borderedLengthOf(roi->paddedLoc.h, probeScale);
+        boxWHs.emplace_back(bw, bh);
+      }
     }
   }
   return boxWHs;
@@ -261,40 +270,63 @@ void Frame::prepareFrameLast(const IntPairs& indices,
                              ExecutionType executionType,
                              int roiSize,
                              bool noDownsampling) {
-  assert(indices.size() == locations.size());
+  int numPackedROIs = (int) indices.size();
+  assert(numPackedROIs == locations.size());
   isLastFrame = true;
   resetProbeROIs();
-  int i = 0;
+  int packedROIIndex = 0;
   for (const auto& mergedROI : mergedROIs) {
+    if (packedROIIndex >= numPackedROIs) break;
     if (executionType == ExecutionType::MONDRIAN && noDownsampling) {
       mergedROI->setTargetScale(1.0f);
     }
-    mergedROI->setPackInfo(locations[i], indices[i].first, executionType, roiSize);
-    i++;
+    mergedROI->setPackInfo(LAST_FRAME_DEVICE,
+                           locations[packedROIIndex],
+                           indices[packedROIIndex].first,
+                           executionType,
+                           roiSize);
+    packedROIIndex++;
   }
   for (const auto& roi : rois) {
     if (roi->scaleLevel() == ROIResizer::INVALID_LEVEL) {
-      assert(roi->probeScales.empty());
+      assert(roi->probeScalesTable.empty());
       continue;
     }
-    for (auto probeScale : roi->probeScales) {
-      std::unique_ptr<MergedROI> probeROI(new MergedROI({roi.get()}, probeScale, true));
-      assert(0.0f < probeScale && probeScale <= 1.0f);
-      probeROI->setPackInfo(locations[i], indices[i].first, executionType, roiSize);
-      roi->roisForProbing.push_back(probeROI.get());
-      probingROIs.push_back(std::move(probeROI));
-      i++;
+    for (const auto& [device, probeScales] : roi->probeScalesTable) {
+      if (device != PROBING_DEVICE) continue;
+      for (auto probeScale : probeScales) {
+        if (packedROIIndex >= numPackedROIs) break;
+        assert(0.0f < probeScale && probeScale <= 1.0f);
+        std::map<Device, float> probeScaleTable;
+        probeScaleTable[device] = probeScale;
+        std::unique_ptr<MergedROI> probeROI(new MergedROI({roi.get()}, probeScaleTable, true));
+        probeROI->setPackInfo(device,
+                              locations[packedROIIndex],
+                              indices[packedROIIndex].first,
+                              executionType,
+                              roiSize);
+        roi->roisForProbingTable[device].push_back(probeROI.get());
+        probingROIsTable[device].push_back(std::move(probeROI));
+        packedROIIndex++;
+      }
     }
   }
-  assert(i == locations.size());
+  assert(packedROIIndex == numPackedROIs);
 }
 
-bool Frame::isReadyToMarry(int packedCanvasIndex) const {
-  auto isROIReady = [&packedCanvasIndex](const std::unique_ptr<MergedROI>& mergedROI) {
-    return !mergedROI->isPacked() || mergedROI->packedCanvasIndex() <= packedCanvasIndex;
+bool Frame::isReadyToMarry() const {
+  // Check all of mergedROIs and probingROIs are ready
+  auto isReady = [](const std::unique_ptr<MergedROI>& mergedROI) -> bool {
+    return !mergedROI->isPacked() || mergedROI->isInferenced();
   };
-  bool isAllReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isROIReady)
-      && std::all_of(probingROIs.begin(), probingROIs.end(), isROIReady);
+  bool isMergedROIsReady = std::all_of(mergedROIs.begin(), mergedROIs.end(), isReady);
+  bool isProbingROIsReady = true;
+  for (const auto& [device, probingROIs] : probingROIsTable) {
+    isProbingROIsReady &= std::all_of(probingROIs.begin(), probingROIs.end(), isReady);
+  }
+  bool isAllReady = isMergedROIsReady && isProbingROIsReady;
+
+  // Not to marry again
   bool isAllUnassigned = std::all_of(boxes.begin(), boxes.end(),
                                      [](auto& box) { return box->oid == INVALID_OID; });
   bool isAllAssigned = std::all_of(boxes.begin(), boxes.end(),
@@ -330,15 +362,17 @@ std::string Frame::header() {
      << "fid" << DELIM
      << "numROIs" << DELIM
      << "numMergedROIs" << DELIM
-     << "numProbingROIs" << DELIM
+     << "numProbingROIs[GPU]" << DELIM
+     << "numProbingROIs[DSP]" << DELIM
      << "numBoxes" << DELIM
-     << "numProbingBoxes" << DELIM
+     << "numProbingBoxes[GPU]" << DELIM
+     << "numProbingBoxes[DSP]" << DELIM
      << "scheduleID" << DELIM
      << "PDExtractorID" << DELIM
      << "OFExtractorID" << DELIM
      << "numFeaturePoints" << DELIM
      << "inferenceFrameSize" << DELIM
-     << "inferenceDevice" << DELIM
+     << "deviceIfFullFrame" << DELIM
      << "enqueueTime" << DELIM
      << "fullInferenceStartTime" << DELIM
      << "fullInferenceEndTime" << DELIM
@@ -368,15 +402,17 @@ std::string Frame::str(time_us baseTime) const {
      << fid << DELIM
      << rois.size() << DELIM
      << mergedROIs.size() << DELIM
-     << probingROIs.size() << DELIM
+     << safeGetSize<std::unique_ptr<MergedROI>>(probingROIsTable, Device::GPU) << DELIM
+     << safeGetSize<std::unique_ptr<MergedROI>>(probingROIsTable, Device::DSP) << DELIM
      << boxes.size() << DELIM
-     << probingBoxes.size() << DELIM
+     << safeGetSize<std::unique_ptr<BoundingBox>>(probingBoxesTable, Device::GPU) << DELIM
+     << safeGetSize<std::unique_ptr<BoundingBox>>(probingBoxesTable, Device::DSP) << DELIM
      << scheduleID << DELIM
      << PDExtractorID << DELIM
      << OFExtractorID << DELIM
      << numFeaturePoints << DELIM
      << inferenceFrameSize << DELIM
-     << ::md::str(inferenceDevice) << DELIM
+     << ::md::str(deviceIfFullFrame) << DELIM
      << fromBaseTime(enqueueTime) << DELIM
      << fromBaseTime(fullInferenceStartTime) << DELIM
      << fromBaseTime(fullInferenceEndTime) << DELIM

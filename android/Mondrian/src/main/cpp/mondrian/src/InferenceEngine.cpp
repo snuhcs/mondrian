@@ -13,11 +13,18 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  JNIEnv* env,
                                  jobject app)
     : config_(config) {
-  for (Device device : Devices) {
+  int maxPackedCanvasSize = -1;
+  for (const auto& [device, workerConfig] : config_.WORKER_CONFIGS) {
+    for (const auto& inputSize : workerConfig.INPUT_SIZES) {
+      maxPackedCanvasSize = std::max(maxPackedCanvasSize, inputSize);
+    }
+  }
+
+  for (Device device : DEVICES) {
     if (device == Device::GPU) {
-      addWorker<TfLiteYoloV5Classifier>(device, env, app);
+      addWorker<TfLiteYoloV5Classifier>(device, maxPackedCanvasSize, env, app);
     } else if (device == Device::DSP) {
-      addWorker<TfLiteYoloV5ClassifierDSP>(device, env, app);
+      addWorker<TfLiteYoloV5ClassifierDSP>(device, maxPackedCanvasSize, env, app);
     } else {
       LOGE("%s device is not supported yet", str(device).c_str());
     }
@@ -26,6 +33,7 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
 
 template<typename T>
 void InferenceEngine::addWorker(Device device,
+                                int maxPackedCanvasSize,
                                 JNIEnv* env,
                                 jobject app) {
   std::map<std::pair<int, bool>, Classifier*> classifierMap;
@@ -60,7 +68,7 @@ void InferenceEngine::addWorker(Device device,
   }
 
   workers_[device] = std::make_unique<Worker>(
-      this, device, classifierMap, config_.DRAW_INFERENCE_RESULT, env, app);
+      this, device, classifierMap, config_.DRAW_INFERENCE_RESULT, maxPackedCanvasSize, env, app);
 }
 
 void InferenceEngine::profileLatency() const {
@@ -77,11 +85,15 @@ void InferenceEngine::enqueue(const cv::Mat& rgbMat,
   workers_[device]->enqueue(rgbMat, inputSize, isFullFrame, key);
 }
 
-Result InferenceEngine::getResults(Key key) {
+Result InferenceEngine::getResult(Key key, bool isCheckedKey) {
   std::unique_lock<std::mutex> resultLock(resultMtx_);
-  resultCv_.wait(resultLock, [this, key]() {
-    return results_.find(key) != results_.end();
-  });
+  if (isCheckedKey) {
+    assert(results_.find(key) != results_.end());
+  } else {
+    resultCv_.wait(resultLock, [this, key]() {
+      return results_.find(key) != results_.end();
+    });
+  }
   auto result = results_.at(key);
   results_.erase(key);
   return result;
@@ -92,6 +104,18 @@ void InferenceEngine::enqueueResult(const Key key, const Result& result) {
   results_.emplace(key, result);
   resultLock.unlock();
   resultCv_.notify_all();
+}
+
+void InferenceEngine::waitForAnyResults() {
+  std::unique_lock<std::mutex> resultLock(resultMtx_);
+  resultCv_.wait(resultLock, [this]() {
+    return !results_.empty();
+  });
+}
+
+bool InferenceEngine::isReady(Key key) {
+  std::lock_guard<std::mutex> resultLock(resultMtx_);
+  return results_.find(key) != results_.end();
 }
 
 LatencyTable InferenceEngine::latencyTable() const {

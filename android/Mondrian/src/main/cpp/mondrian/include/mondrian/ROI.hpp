@@ -38,8 +38,8 @@ class ROI {
   std::map<Device, int> scaleLevelTable_;
 
  public:
-  std::vector<float> probeScales;
-  std::vector<MergedROI*> roisForProbing;
+  std::map<Device, std::vector<float>> probeScalesTable;
+  std::map<Device, std::vector<MergedROI*>> roisForProbingTable;
   MergedROI* mergedROI;
 
  private:
@@ -75,12 +75,12 @@ class ROI {
     return paddedLoc.area;
   }
 
-  float targetScale() const {
-    return targetScaleTable_.at(Device::GPU);
+  std::map<Device, float> targetScaleTable() const {
+    return targetScaleTable_;
   }
 
   int scaleLevel() const {
-    return scaleLevelTable_.at(Device::GPU);
+    return scaleLevelTable_.at(PROBING_DEVICE);
   }
 
   ROIType type() const {
@@ -99,7 +99,7 @@ class ROI {
     return features.label;
   }
 
-  void scaleTo(float newTargetScale, int newScaleLevel);
+  void scaleTo(float newTargetScale, int newScaleLevel, Device device);
 
   static std::string header();
 

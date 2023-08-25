@@ -36,6 +36,7 @@ class Worker {
          Device device,
          std::map<std::pair<int, bool>, Classifier*> classifierMap,
          bool draw,
+         int maxPackedCanvasSize,
          JNIEnv* env,
          jobject app);
 
