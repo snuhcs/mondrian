@@ -73,7 +73,10 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   inferenceEngine_->profileLatency();
 
   // Start ROI extraction threads
-  ROIExtractor_ = std::make_unique<ROIExtractor>(config_.roiExtractorConfig, ROIResizer_.get());
+  ROIExtractor_ = std::make_unique<ROIExtractor>(config_.roiExtractorConfig,
+                                                 config_.EXECUTION_TYPE,
+                                                 config_.ROI_SIZE,
+                                                 ROIResizer_.get());
 
   // Start postprocessing thread
   postprocessThread_ = std::thread([this]() { workPostprocess(); });

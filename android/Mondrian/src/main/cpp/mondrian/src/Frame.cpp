@@ -115,8 +115,19 @@ void Frame::assignPDROIIDs() {
   }
 }
 
-void Frame::resizeROIs(ROIResizer* roiResizer) {
+void Frame::resizeROIs(ROIResizer* roiResizer,
+                       ExecutionType executionType,
+                       int roiSize) {
   for (auto& roi : rois) {
+    if (executionType == ExecutionType::EMULATED_BATCH
+        || executionType == ExecutionType::ROI_WISE_INFERENCE) {
+      float scale = std::min(1.0f, (float) (roiSize - 2 * MergedROI::BORDER) / roi->paddedLoc.maxWH);
+      for (const auto& device : DEVICES) {
+        roi->scaleTo(scale, ROIResizer::INVALID_LEVEL, device);
+      }
+      continue;
+    }
+
     if (roi->type() == ROIType::OF) {
       auto scaleLevelTable = roiResizer->getTargetScale(roi->oid,
                                                         roi->features,

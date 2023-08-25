@@ -79,7 +79,9 @@ class Frame {
 
   void assignPDROIIDs();
 
-  void resizeROIs(ROIResizer* roiResizer);
+  void resizeROIs(ROIResizer* roiResizer,
+                  ExecutionType executionType,
+                  int roiSize);
 
   void resetMergedROIs();
 

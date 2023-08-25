@@ -17,7 +17,10 @@ namespace md {
 
 class ROIExtractor {
  public:
-  ROIExtractor(const ROIExtractorConfig& config, ROIResizer* roiResizer);
+  ROIExtractor(const ROIExtractorConfig& config,
+               const ExecutionType executionType,
+               const int roiSize,
+               ROIResizer* roiResizer);
 
   ~ROIExtractor();
 
@@ -40,6 +43,8 @@ class ROIExtractor {
   bool stop_;
 
   const ROIExtractorConfig config_;
+  const ExecutionType executionType_;
+  const int roiSize_;
 
   ROIResizer* ROIResizer_;
 

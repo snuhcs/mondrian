@@ -10,10 +10,13 @@
 
 namespace md {
 
-ROIExtractor::ROIExtractor(
-    const ROIExtractorConfig& config,
-    ROIResizer* roiResizer)
+ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
+                           const ExecutionType executionType,
+                           const int roiSize,
+                           ROIResizer* roiResizer)
     : config_(config),
+      executionType_(executionType),
+      roiSize_(roiSize),
       ROIResizer_(roiResizer),
       stop_(false) {
   threads_.reserve(config.NUM_WORKERS);
@@ -330,7 +333,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   currFrame->assignPDROIIDs();
 
   currFrame->resizeStartTime = NowMicros();
-  currFrame->resizeROIs(ROIResizer_);
+  currFrame->resizeROIs(ROIResizer_, executionType_, roiSize_);
   currFrame->resizeEndTime = NowMicros();
 
   currFrame->mergeROIStartTime = NowMicros();

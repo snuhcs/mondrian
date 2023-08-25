@@ -166,6 +166,12 @@ void MondrianConfig::test() const {
     assert(FULL_FRAME_INTERVAL > 0);
   }
 
+  // ROIExtractor
+  if (EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE
+      || EXECUTION_TYPE == ExecutionType::EMULATED_BATCH) {
+    assert(roiExtractorConfig.MAX_MERGE_SIZE == ROI_SIZE);
+  }
+
   // ROIResizer
   if (roiResizerConfig.STATIC_AREA) {
     assert(roiResizerConfig.AREA_SHIFT == 0.0f);
@@ -173,9 +179,6 @@ void MondrianConfig::test() const {
     assert(roiResizerConfig.STATIC_TARGET_AREA > 0);
   } else {
     assert(roiResizerConfig.NUM_PROBE_STEPS == 0 || roiResizerConfig.PROBE_STEP_SIZE > 0);
-    assert(EXECUTION_TYPE == ExecutionType::MONDRIAN
-               || EXECUTION_TYPE == ExecutionType::FRAME_WISE_INFERENCE
-               || roiResizerConfig.NUM_PROBE_STEPS == 0);
   }
   if (EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE
       || EXECUTION_TYPE == ExecutionType::EMULATED_BATCH) {
