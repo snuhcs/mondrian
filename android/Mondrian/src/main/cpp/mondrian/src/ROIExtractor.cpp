@@ -12,10 +12,12 @@ namespace md {
 
 ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
                            const ExecutionType executionType,
+                           const int maxMergeSize,
                            const int roiSize,
                            ROIResizer* roiResizer)
     : config_(config),
       executionType_(executionType),
+      maxMergeSize_(maxMergeSize),
       roiSize_(roiSize),
       ROIResizer_(roiResizer),
       stop_(false) {
@@ -339,7 +341,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   currFrame->mergeROIStartTime = NowMicros();
   currFrame->resetMergedROIs();
   if (config_.MERGE) {
-    currFrame->mergeMergedROIs(config_.MAX_MERGE_SIZE);
+    currFrame->mergeMergedROIs(maxMergeSize_);
   }
   currFrame->sortMergedROIs();
   currFrame->mergeROIEndTime = NowMicros();

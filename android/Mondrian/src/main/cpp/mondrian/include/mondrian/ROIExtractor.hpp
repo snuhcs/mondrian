@@ -19,6 +19,7 @@ class ROIExtractor {
  public:
   ROIExtractor(const ROIExtractorConfig& config,
                const ExecutionType executionType,
+               const int maxMergeSize,
                const int roiSize,
                ROIResizer* roiResizer);
 
@@ -44,6 +45,7 @@ class ROIExtractor {
 
   const ROIExtractorConfig config_;
   const ExecutionType executionType_;
+  const int maxMergeSize_;
   const int roiSize_;
 
   ROIResizer* ROIResizer_;
