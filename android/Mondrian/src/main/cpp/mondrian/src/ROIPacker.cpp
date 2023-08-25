@@ -23,19 +23,19 @@ ROIPacker::ROIPacker(
 void ROIPacker::processLastFrame(
     Frame* lastFrame,
     std::map<Device, std::vector<std::vector<IntRect>>>& freeRectsVecTable,
-    std::map<Device, std::vector<InferenceInfo>>& inferencePlanTable) {
+    const std::map<Device, std::vector<InferenceInfo>>& inferencePlanTable) {
   if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
     std::vector<std::vector<IntRect>>& freeRectsVec = freeRectsVecTable.at(Device::INVALID);
-    std::vector<InferenceInfo>& inferencePlan = inferencePlanTable.at(Device::INVALID);
+    const std::vector<InferenceInfo>& inferencePlan = inferencePlanTable.at(Device::INVALID);
     for (int i = 0; i < lastFrame->mergedROIs.size(); i++) {
       auto& mergedROI = lastFrame->mergedROIs[i];
       assert(!freeRectsVec[i].empty());
+      freeRectsVec[i].clear();
       mergedROI->setPackInfo(inferencePlan[i].device,
                              {0, 0},
                              i,
                              executionType_,
                              roiSize_);
-      freeRectsVec[i].clear();
     }
   } else { // MONDRIAN, EMULATED_BATCH
     IntPairs frameBoxWHs = lastFrame->boxesIfLast(
@@ -43,8 +43,8 @@ void ROIPacker::processLastFrame(
         /*executionType=*/executionType_,
         /*noDownsampling=*/config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
 
-    std::vector<std::vector<IntRect>>
-        & freeRectsVecForLast = freeRectsVecTable.at(LAST_FRAME_DEVICE);
+    std::vector<std::vector<IntRect>>& freeRectsVecForLast =
+        freeRectsVecTable.at(LAST_FRAME_DEVICE);
     auto [indices, locations] = ROIPacker::pack(freeRectsVecForLast, frameBoxWHs);
     ROIPacker::apply(freeRectsVecForLast, frameBoxWHs, indices);
     lastFrame->prepareFrameLast(indices,
@@ -58,14 +58,15 @@ void ROIPacker::processLastFrame(
 void ROIPacker::processMergedROI(
     MergedROI* mergedROI,
     std::map<Device, std::vector<std::vector<IntRect>>>& freeRectsVecTable,
-    std::map<Device, std::vector<InferenceInfo>>& inferencePlanTable) {
+    const std::map<Device, std::vector<InferenceInfo>>& inferencePlanTable) {
   if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
     std::vector<std::vector<IntRect>>& freeRectsVec = freeRectsVecTable[Device::INVALID];
     auto it = std::find_if(freeRectsVec.begin(), freeRectsVec.end(),
                            [](const auto& rects) { return !rects.empty(); });
     if (it == freeRectsVec.end()) return;
     int index = (int) std::distance(freeRectsVec.begin(), it);
-    Device device = inferencePlanTable[Device::INVALID][index].device;
+    freeRectsVec[index].clear();
+    Device device = inferencePlanTable.at(Device::INVALID)[index].device;
     mergedROI->setPackInfo(device, {0, 0}, index, executionType_, roiSize_);
   } else {
     for (Device device : mergedROI->devicePriority()) {
@@ -197,12 +198,11 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::packCanvases(const int cu
   std::map<Device, std::vector<PackedCanvas>> packedCanvasesTable;
   for (auto& [device, groupedMergedROIs] : groupedMergedROIsTable) {
     for (auto& [packedCanvasIndex, mergedROIs] : groupedMergedROIs) {
-      assert(packedCanvasIndex < inferencePlanTable[device].size());
-      const auto& info = inferencePlanTable[device][packedCanvasIndex];
-      assert(device == info.device);
-      if (!mergedROIs.empty()) {
-        packedCanvasesTable[device].emplace_back(mergedROIs, info.size, device);
-      }
+      assert(!mergedROIs.empty());
+      int packedCanvasSize = executionType_ != ExecutionType::ROI_WISE_INFERENCE
+          ? inferencePlanTable[device][packedCanvasIndex].size
+          : inferencePlanTable[Device::INVALID][packedCanvasIndex].size;
+      packedCanvasesTable[device].emplace_back(mergedROIs, packedCanvasSize, device);
     }
   }
 

@@ -84,6 +84,10 @@ class MergedROI {
     return packedCanvasIndex_;
   }
 
+  int packedCanvasSize() const {
+    return packedCanvasSize_;
+  }
+
   PID pid() const {
     return pid_;
   }
