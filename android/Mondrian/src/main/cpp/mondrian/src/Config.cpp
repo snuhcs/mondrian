@@ -180,14 +180,16 @@ void MondrianConfig::test() const {
 
   // InferenceEngine
   if (EXECUTION_TYPE != ExecutionType::FRAME_WISE_INFERENCE) {
-    for (const auto& [device, workerConfig] : inferenceEngineConfig.WORKER_CONFIGS) {
-      assert(!workerConfig.INPUT_SIZES.empty());
-    }
+    assert(std::any_of(
+        inferenceEngineConfig.WORKER_CONFIGS.begin(), inferenceEngineConfig.WORKER_CONFIGS.end(),
+        [](const auto& pair) { return !pair.second.INPUT_SIZES.empty(); }));
   }
   if (EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE) {
     for (const auto& [device, workerConfig] : inferenceEngineConfig.WORKER_CONFIGS) {
-      assert(workerConfig.INPUT_SIZES.size() == 1);
-      assert(ROI_SIZE == *workerConfig.INPUT_SIZES.begin());
+      assert(workerConfig.INPUT_SIZES.size() <= 1);
+      if (!workerConfig.INPUT_SIZES.empty()) {
+        assert(ROI_SIZE == *workerConfig.INPUT_SIZES.begin());
+      }
     }
   }
   if (EXECUTION_TYPE == ExecutionType::EMULATED_BATCH) {
