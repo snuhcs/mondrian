@@ -115,8 +115,8 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::packCanvases(const int cu
   std::map<Device, float> avgPerPixelLatency;
   for (const auto& [device, totalPixels] : totalPixelsTable) {
     avgPerPixelLatency[device] = (float) totalLatencyTable[device] / (float) totalPixels;
-    LOGD("XXX: [Schedule %d] avgPerPixelLatency[%d] = %f",
-         currID, device, avgPerPixelLatency[device]);
+    LOGD("[Schedule %d] avgPerPixelLatency[%s] = %f",
+         currID, str(device).c_str(), avgPerPixelLatency[device]);
   }
 
   // 3. Find Dispatch Priority for mergedROIs in the streams (assuming there won't be overflow in canvas)
@@ -154,7 +154,7 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::packCanvases(const int cu
   for (const auto& [device, count] : counts) {
     ss << str(device) << "=" << count << " ";
   }
-  LOGD("XXX: [Schedule %d] # Dispatched MergedROIs: %s", currID, ss.str().c_str());
+  LOGD("[Schedule %d] # Dispatched: %s", currID, ss.str().c_str());
 
   // 4. Pack mergedROIs from last frames
   for (const auto& [vid, stream] : streams) {

@@ -52,7 +52,7 @@ std::map<Device, std::pair<float, int>> ROIResizer::getTargetScale(const OID oid
                                                                    const Features& features,
                                                                    const float area) {
   assert(features.type == ROIType::OF && "PD ROI should not be resized");
-  assert(features.width * features.height == area); // XXX
+  assert(features.width * features.height == area); // TODO: remove redundant argument
 
   std::map<Device, std::pair<float, int>> scaleLevelTable;
   for (Device device : DEVICES) {
@@ -90,7 +90,7 @@ bool ROIResizer::isCalibrated(const OID oid, Device device) const {
 }
 
 int ROIResizer::getMaxVotedLevel(const OID oid, const Features& features, Device device) {
-  // XXX : not sure if this is appropriate.
+  // TODO: not sure if this is appropriate.
   if (prevPredictionBufferTable_.find(device) == prevPredictionBufferTable_.end()) {
     prevPredictionBufferTable_[device] = std::map<OID, CircularBuffer>();
   }
