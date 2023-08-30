@@ -24,3 +24,28 @@
 4. Upload videos specified in `config.json`.
     * `adb push <host video path> <adb video path>`
 5. Run `Mondrian`.
+
+## Threads of the System
+1. Video load threads (`VideoLoader.thread`)
+  * JOB: Load video frame in yuv format
+  * Input: Video
+  * Output: ROIExtractor::PDWaiting_
+2. PD/OF extraction threads (`ROIExtractor::threads_`)
+  * JOB: Extract PD or OF + Postprocess (scale, merge, ...)
+  * PD extraction
+    * Input: ROIExtractor::PDWaiting_
+    * Output: ROIExtractor::OFWaiting_
+  * OF extraction
+    * Input: ROIExtractor::OFWaiting_
+    * Output: ROIExtractor::OFProcessed_
+3. Schedule triggering and packing thread (`Mondrian::scheduleThread_`)
+  * JOB: Get extracted frames and pack results
+  * Input: ROIExtractor::OFProcessed_
+  * Output: Mondrian::packingResults_
+4. Box reconstruction and interpolation thread (`Mondrian::postprocessThread_`)
+  * JOB: Box reconstruction and interpolatoin
+  * Input: Mondrian::packingResults_
+  * Output: Mondrian::results_
+5. Result logging thread (`Mondrian::logThread_`)
+  * Input: Mondrian::results_
+  * Output: Log files
