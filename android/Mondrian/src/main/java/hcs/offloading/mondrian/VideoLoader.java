@@ -1,6 +1,7 @@
 package hcs.offloading.mondrian;
 
 import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 
@@ -47,6 +48,8 @@ public class VideoLoader implements Runnable {
 
         extractor.selectTrack(videoTrackIndex);
         String mime = format.getString(MediaFormat.KEY_MIME);
+        format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
+                MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible);
         decoder = MediaCodec.createDecoderByType(mime);
         decoder.configure(format, null, null, 0);
         decoder.start();
