@@ -79,12 +79,6 @@ class Mondrian {
   int numIntervals_;
   bool stop_;
 
-  // Thread: Preprocessing
-  std::thread preprocessThread_;
-  std::mutex preprocessMtx_;
-  std::condition_variable preprocessCV_;
-  std::queue<Frame*> preprocessQueue_;
-
   // Thread: Postprocessing
   std::thread postprocessThread_;
   std::mutex packingResultsMtx_;
