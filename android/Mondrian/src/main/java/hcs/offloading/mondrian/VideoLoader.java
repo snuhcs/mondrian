@@ -85,7 +85,8 @@ public class VideoLoader implements Runnable {
     public void run() {
         boolean enqueueEnd = false;
         long intervalNs = (long) (1e9 / fps);
-        long prevNs = System.nanoTime();
+        int frameIndex = 0;
+        long firstFrameFinishedTimeNs = -1;
         while (true) {
             if (!enqueueEnd) {
                 enqueueEnd = enqueueStream(decoder, extractor);
@@ -104,13 +105,20 @@ public class VideoLoader implements Runnable {
             yuvMat.put(0, 0, yuvBytes);
             decoder.releaseOutputBuffer(outputIndex, false);
 
-            if (fps > 0) { // Wait for interval
-                long elapsedNs = System.nanoTime() - prevNs;
-                sleepFor(intervalNs - elapsedNs);
+            // Wait for interval
+            if (fps > 0 && frameIndex >= 2) {
+                assert firstFrameFinishedTimeNs != -1;
+                long requiredNs = firstFrameFinishedTimeNs + (frameIndex - 1) * intervalNs;
+                sleepFor(requiredNs - System.nanoTime());
             }
 
             callback.onFrame(vid, yuvMat);
-            prevNs = System.nanoTime();
+            if (frameIndex == 1) {
+                // Set start time = second frame finished time
+                // Second frame waits for the first frame inference
+                firstFrameFinishedTimeNs = System.nanoTime();
+            }
+            frameIndex++;
         }
     }
 
