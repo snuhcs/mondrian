@@ -7,6 +7,8 @@
 #include <map>
 #include <thread>
 
+#include "chrome_tracer/tracer.h"
+
 #include "mondrian/model/Classifier.hpp"
 
 namespace md {
@@ -38,7 +40,8 @@ class Worker {
          bool draw,
          int maxPackedCanvasSize,
          JNIEnv* env,
-         jobject app);
+         jobject app,
+         chrome_tracer::ChromeTracer* tracer);
 
   ~Worker();
 
@@ -90,6 +93,8 @@ class Worker {
   jmethodID ArrayList_add_;
   jclass class_BoundingBox_;
   jmethodID BoundingBox_init_;
+
+  chrome_tracer::ChromeTracer* tracer_;
 };
 
 } // namespace md

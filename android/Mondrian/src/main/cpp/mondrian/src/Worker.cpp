@@ -11,7 +11,8 @@ Worker::Worker(InferenceEngine* engine,
                bool draw,
                int maxPackedCanvasSize,
                JNIEnv* env,
-               jobject app)
+               jobject app,
+               chrome_tracer::ChromeTracer* tracer)
     : engine_(engine),
       device_(device),
       classifierMap_(std::move(classifierMap)),
@@ -20,7 +21,8 @@ Worker::Worker(InferenceEngine* engine,
       draw_(draw),
       maxPackedCanvasSize_(maxPackedCanvasSize),
       env_(env),
-      app_(reinterpret_cast<jobject>(env->NewGlobalRef(app))) {
+      app_(reinterpret_cast<jobject>(env->NewGlobalRef(app))),
+      tracer_(tracer) {
   if (draw) {
     env_->GetJavaVM(&jvm_);
     class_MondrianApp_ = reinterpret_cast<jclass>(env_->NewGlobalRef(env_->FindClass(
@@ -54,6 +56,12 @@ void Worker::work() {
     // Prepare input
     time_us start = NowMicros();
     Input input = std::move(inputs_.front());
+    int inputSize = input.size;
+    bool isFullFrame = input.full;
+    Key key = input.key;
+    int32_t handle = tracer_->BeginEvent(str(device_) + "Worker", "Inference(" +
+        std::to_string(inputSize) + "," + std::to_string(isFullFrame) + "," +
+        std::to_string(key.first) + "_" + std::to_string(key.second) + ")");
     inputs_.pop_front();
     lock.unlock();
 
@@ -69,6 +77,8 @@ void Worker::work() {
       drawInferenceResult(input.rgbMat, boxes, input.full);
     }
     time_us end = NowMicros();
+
+    tracer_->EndEvent(str(device_) + "Worker", handle);
 
     updateLatency(input.size, input.full, end - start);
     updateRemainingTime();

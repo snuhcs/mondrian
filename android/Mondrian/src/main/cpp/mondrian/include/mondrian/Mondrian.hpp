@@ -6,6 +6,7 @@
 #include <thread>
 #include <queue>
 
+#include "chrome_tracer/tracer.h"
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
@@ -94,6 +95,9 @@ class Mondrian {
   std::unique_ptr<Logger> loggerFrame_;
   std::unique_ptr<Logger> loggerROI_;
   std::unique_ptr<Logger> loggerMergedROI_;
+
+  // Tracer
+  std::unique_ptr<chrome_tracer::ChromeTracer> tracer_;
 };
 
 } // namespace md

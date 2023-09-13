@@ -11,8 +11,9 @@ namespace md {
 
 InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  JNIEnv* env,
-                                 jobject app)
-    : config_(config) {
+                                 jobject app,
+                                 chrome_tracer::ChromeTracer* tracer)
+    : config_(config), tracer_(tracer) {
   int maxPackedCanvasSize = -1;
   for (const auto& [device, workerConfig] : config_.WORKER_CONFIGS) {
     for (const auto& inputSize : workerConfig.INPUT_SIZES) {
@@ -67,8 +68,16 @@ void InferenceEngine::addWorker(Device device,
     }
   }
 
+  tracer_->AddStream(str(device) + "Worker");
   workers_[device] = std::make_unique<Worker>(
-      this, device, classifierMap, config_.DRAW_INFERENCE_RESULT, maxPackedCanvasSize, env, app);
+      this,
+      device,
+      classifierMap,
+      config_.DRAW_INFERENCE_RESULT,
+      maxPackedCanvasSize,
+      env,
+      app,
+      tracer_);
 }
 
 void InferenceEngine::profileLatency() const {

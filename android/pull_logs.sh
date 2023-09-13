@@ -9,6 +9,8 @@ adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/
 r2=$?
 adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/frame.csv > $base/frame.csv
 r3=$?
+adb shell run-as hcs.offloading.mondrian cat /data/data/hcs.offloading.mondrian/trace.json > $base/trace.json
+r4=$?
 
 mkdir -p $base/$dir
 mv $base/config.json $base/$dir/config.json
@@ -28,9 +30,14 @@ then
     mv $base/frame.csv $base/$dir/frame.csv
 fi
 
-if [ $r1 -eq 0 ] || [ $r2 -eq 0 ] || [ $r3 -eq 0 ]
+if [ $r4 -eq 0 ]
 then
-    echo "status : boxes.csv $r1 | roi.csv $r2 | frame.csv $r3"
+    mv $base/trace.json $base/$dir/trace.json
+fi
+
+if [ $r1 -eq 0 ] || [ $r2 -eq 0 ] || [ $r3 -eq 0 ] || [ $r4 -eq 0 ]
+then
+    echo "status : boxes.csv $r1 | roi.csv $r2 | frame.csv $r3 | trace.json $r4"
     echo "saved at $base/$dir"
 fi
 

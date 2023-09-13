@@ -4,9 +4,12 @@
 #include <numeric>
 #include <set>
 #include <utility>
+#include <fstream>
+#include <string>
 
 #include "mondrian/Log.hpp"
 #include "mondrian/Utils.hpp"
+#include "chrome_tracer/tracer.h"
 
 namespace md {
 
@@ -14,12 +17,14 @@ ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
                            const ExecutionType executionType,
                            const int maxMergeSize,
                            const int roiSize,
-                           ROIResizer* roiResizer)
+                           ROIResizer* roiResizer,
+                           chrome_tracer::ChromeTracer* tracer)
     : config_(config),
       executionType_(executionType),
       maxMergeSize_(maxMergeSize),
       roiSize_(roiSize),
       ROIResizer_(roiResizer),
+      tracer_(tracer),
       stop_(false) {
   PDThread_ = std::thread([this]() { workPD(); });
   OFThread_ = std::thread([this]() { workOF(); });
@@ -82,10 +87,17 @@ void ROIExtractor::workPD() {
     PDWaiting_.erase(frame);
     PDLock.unlock();
 
+    std::string streamName = "ROIExtractorPD";
+    std::string eventName = "PD" + std::to_string(frame->fid);
+    int32_t handle = tracer_->BeginEvent(streamName, eventName);
+
     processPD(frame);
 
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFWaiting_.insert(frame);
+
+    tracer_->EndEvent(streamName, handle);
+
     OFLock.unlock();
     OFCv_.notify_one();
   }
@@ -103,6 +115,10 @@ void ROIExtractor::workOF() {
     OFWaiting_.erase(frame);
     OFProcessing_.insert(frame);
     OFLock.unlock();
+
+    std::string streamName = "ROIExtractorOF";
+    std::string eventName = "OF" + std::to_string(frame->fid);
+    int32_t handle = tracer_->BeginEvent(streamName, eventName);
 
     processOF(frame);
 
@@ -135,6 +151,8 @@ void ROIExtractor::workOF() {
        << " Resize=" << frame->resizeEndTime - frame->resizeStartTime
        << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
     LOGD("%s", ss.str().c_str());
+
+    tracer_->EndEvent(streamName, handle);
 
     OFLock.unlock();
     OFCv_.notify_one();
