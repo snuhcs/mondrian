@@ -119,10 +119,13 @@ void ROIExtractor::workOF() {
     std::string streamName = "ROIExtractorOF";
     std::string eventName = "OF" + std::to_string(frame->fid);
     int32_t handle = tracer_->BeginEvent(streamName, eventName);
+    time_us prepareTime = NowMicros();
 
     processOF(frame);
 
+    time_us processTime = NowMicros();
     OFLock.lock();
+    time_us lockTime = NowMicros();
     OFProcessing_.erase(frame);
     if (!frame->reprocessOF) {
       // Common case
@@ -143,13 +146,18 @@ void ROIExtractor::workOF() {
        << " #Features=" << frame->numFeaturePoints
        << " PDQ=" << PDWaiting_.size()
        << " OFQ=" << OFWaiting_.size()
-       << " RQ=" << std::accumulate(
-        OFProcessed_.begin(), OFProcessed_.end(), 0,
-        [](int sum, const auto& pair) { return sum + pair.second.size(); })
+       << " RQ=" << std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
+                                    [](int sum, const auto& pair) {
+                                      return sum + pair.second.size();
+                                    })
        << " Total=" << endTime - startTime
+       << " Prep=" << prepareTime - startTime
        << " Ext=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime
+       << " Filter=" << frame->resizeStartTime - frame->opticalFlowROIProcessEndTime
        << " Resize=" << frame->resizeEndTime - frame->resizeStartTime
-       << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
+       << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime
+       << " Lock=" << lockTime - processTime
+       << " Put=" << endTime - lockTime;
     LOGD("%s", ss.str().c_str());
 
     tracer_->EndEvent(streamName, handle);
