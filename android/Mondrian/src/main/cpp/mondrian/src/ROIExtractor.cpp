@@ -21,29 +21,31 @@ ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
       roiSize_(roiSize),
       ROIResizer_(roiResizer),
       stop_(false) {
-  threads_.reserve(config.NUM_WORKERS);
-  for (int extractorId = 0; extractorId < config.NUM_WORKERS; extractorId++) {
-    threads_.emplace_back([this, extractorId]() { work(extractorId); });
-  }
+  PDThread_ = std::thread([this]() { workPD(); });
+  OFThread_ = std::thread([this]() { workOF(); });
 }
 
 ROIExtractor::~ROIExtractor() {
   stop_ = true;
-  cv_.notify_all();
-  for (auto& thread : threads_) {
-    thread.join();
-  }
+  OFCv_.notify_all();
+  OFThread_.join();
+  PDCv_.notify_all();
+  PDThread_.join();
 }
 
 void ROIExtractor::enqueue(Frame* frame) {
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(PDMtx_);
   PDWaiting_.insert(frame);
-  cv_.notify_all();
+  PDCv_.notify_one();
+}
+
+void ROIExtractor::notify() {
+  OFCv_.notify_all();
 }
 
 MultiStream ROIExtractor::collectFrames(int currID) {
-  std::unique_lock<std::mutex> lock(mtx_);
-  cv_.wait(lock, [this]() { return OFProcessing_.empty(); });
+  std::unique_lock<std::mutex> OFLock(OFMtx_);
+  OFCv_.wait(OFLock, [this]() { return OFProcessing_.empty(); });
 
   for (Frame* frame : OFProcessing_) {
     frame->resetOFROIExtraction();
@@ -60,7 +62,7 @@ MultiStream ROIExtractor::collectFrames(int currID) {
 
   MultiStream streams = std::move(OFProcessed_);
   OFProcessed_.clear();
-  cv_.notify_all();
+  OFCv_.notify_all();
 
   LOGD("[Schedule %d] Collect Frames "
        "// OFWaiting=%lu OFProcessing=%lu OFWaiting.front()=%d",
@@ -71,121 +73,71 @@ MultiStream ROIExtractor::collectFrames(int currID) {
   return streams;
 }
 
-void ROIExtractor::work(int extractorId) {
-  auto getPDJob = [this]() {
-    if (!PDWaiting_.empty()) {
-      return *PDWaiting_.begin();
-    } else {
-      return (Frame*) nullptr;
-    }
-  };
-  auto getOFJob = [this, &extractorId]() {
-    bool ofFrameExists = !OFWaiting_.empty();
-    bool readyForOFExtraction = ofFrameExists && (*OFWaiting_.begin())->readyForOFExtraction();
-//    if (ofFrameExists && !readyForOFExtraction) {
-//      LOGD("[ROIExtractor %d] OF frame exists but not ready for OF extraction "
-//           "// fid=%d, useInfResult=%d",
-//           extractorId,
-//           (*OFWaiting_.begin())->fid,
-//           (*OFWaiting_.begin())->prevFrame->useInferenceResultForOF);
-//    }
-    if (ofFrameExists && readyForOFExtraction) {
-      return *OFWaiting_.begin();
-    } else {
-      return (Frame*) nullptr;
-    }
-  };
-
-  while (true) {
-    bool pd = false;
-    Frame* frame = nullptr;
-
-    std::unique_lock<std::mutex> lock(mtx_);
-    cv_.wait(lock, [this, &pd, &frame, &getPDJob, &getOFJob]() {
-      if (stop_) return true;
-      frame = getOFJob();
-      if (frame != nullptr) {
-        pd = false;
-        return true;
-      }
-      frame = getPDJob();
-      if (frame != nullptr) {
-        pd = true;
-        return true;
-      }
-      return false;
-    });
-
+void ROIExtractor::workPD() {
+  while (!stop_) {
+    std::unique_lock<std::mutex> PDLock(PDMtx_);
+    PDCv_.wait(PDLock, [this]() { return stop_ || !PDWaiting_.empty(); });
     if (stop_) return;
+    Frame* frame = *PDWaiting_.begin();
+    PDWaiting_.erase(frame);
+    PDLock.unlock();
 
+    processPD(frame);
+
+    std::unique_lock<std::mutex> OFLock(OFMtx_);
+    OFWaiting_.insert(frame);
+    OFLock.unlock();
+    OFCv_.notify_one();
+  }
+}
+
+void ROIExtractor::workOF() {
+  while (true) {
+    std::unique_lock<std::mutex> OFLock(OFMtx_);
+    OFCv_.wait(OFLock, [this]() {
+      return stop_ || (!OFWaiting_.empty() && (*OFWaiting_.begin())->readyForOFExtraction());
+    });
+    if (stop_) return;
     time_us startTime = NowMicros();
-    if (pd) {
-      PDWaiting_.erase(frame);
-      PDProcessing_.insert(frame);
-    } else {
-      OFWaiting_.erase(frame);
-      OFProcessing_.insert(frame);
-    }
-    lock.unlock();
-    time_us gettingTime = NowMicros();
+    Frame* frame = *OFWaiting_.begin();
+    OFWaiting_.erase(frame);
+    OFProcessing_.insert(frame);
+    OFLock.unlock();
 
-    if (pd) {
-      frame->PDExtractorID = extractorId;
-      processPD(frame);
-    } else {
-      frame->OFExtractorID = extractorId;
-      processOF(frame);
-    }
-    time_us processingTime = NowMicros();
+    processOF(frame);
 
-    lock.lock();
-    time_us lockingTime = NowMicros();
-    if (pd) {
-      PDProcessing_.erase(frame);
+    OFLock.lock();
+    OFProcessing_.erase(frame);
+    if (!frame->reprocessOF) {
+      // Common case
+      OFProcessed_[frame->vid].insert(frame);
+      frame->isROIsReady = true;
+    } else {
+      // When scheduling is triggered while OF processing
+      frame->resetOFROIExtraction();
       OFWaiting_.insert(frame);
-    } else {
-      OFProcessing_.erase(frame);
-      if (!frame->reprocessOF) {
-        // Common case
-        OFProcessed_[frame->vid].insert(frame);
-        frame->isROIsReady = true;
-      } else {
-        // When scheduling is triggered while OF processing
-        frame->resetOFROIExtraction();
-        OFWaiting_.insert(frame);
-      }
     }
     time_us endTime = NowMicros();
 
     std::stringstream ss;
-    ss << "[ROIExtractor " << extractorId << "] "
-       << (pd ? " PD" : " OF")
+    ss << "[OF ROIExtractor]"
        << " (" << frame->vid << ", " << frame->fid << ")"
-       << " #=" << std::count_if(frame->rois.begin(), frame->rois.end(),
-                                 [pd](auto& roi) {
-                                   return roi->type() == (pd ? ROIType::PD : ROIType::OF);
-                                 })
+       << " #ROIs=" << std::count_if(frame->rois.begin(), frame->rois.end(),
+                                     [](auto& roi) { return roi->type() == ROIType::OF; })
+       << " #Features=" << frame->numFeaturePoints
        << " PDQ=" << PDWaiting_.size()
        << " OFQ=" << OFWaiting_.size()
-       << " RQ=" << std::accumulate(OFProcessed_.begin(), OFProcessed_.end(), 0,
-                                    [](int sum, const auto& pair) {
-                                      return sum + pair.second.size();
-                                    })
-       << " total=" << endTime - startTime
-       << " getting=" << gettingTime - startTime
-       << " processing=" << processingTime - gettingTime
-       << " locking=" << lockingTime - processingTime
-       << " putting=" << endTime - lockingTime;
-    if (!pd) {
-      ss << " #Features=" << frame->numFeaturePoints
-         << " ext=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime
-         << " resize=" << frame->resizeEndTime - frame->resizeStartTime
-         << " merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
-    }
+       << " RQ=" << std::accumulate(
+        OFProcessed_.begin(), OFProcessed_.end(), 0,
+        [](int sum, const auto& pair) { return sum + pair.second.size(); })
+       << " Total=" << endTime - startTime
+       << " Ext=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime
+       << " Resize=" << frame->resizeEndTime - frame->resizeStartTime
+       << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
     LOGD("%s", ss.str().c_str());
 
-    lock.unlock();
-    cv_.notify_one();
+    OFLock.unlock();
+    OFCv_.notify_one();
   }
 }
 

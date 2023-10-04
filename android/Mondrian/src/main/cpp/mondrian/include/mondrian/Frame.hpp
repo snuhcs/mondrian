@@ -41,8 +41,6 @@ class Frame {
   bool isLastFrame;
 
   int scheduleID;
-  int PDExtractorID;
-  int OFExtractorID;
   int numFeaturePoints;
   int inferenceFrameSize;
   Device deviceIfFullFrame; // else Device::INVALID
