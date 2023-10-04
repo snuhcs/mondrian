@@ -11,6 +11,7 @@ desktop.ini
 frame.csv
 roi.csv
 boxes.csv
+trace.json
 logs/
 tags
 
