@@ -30,8 +30,10 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
       planningTime_(0),
       numIntervals_(0),
       stop_(false),
-      ROIResizer_(new ROIResizer(config.roiResizerConfig)),
-      inferenceEngine_(new InferenceEngine(config.inferenceEngineConfig, env, app)) {
+      ROIResizer_(new ROIResizer(config.roiResizerConfig)) {
+  tracer_ = std::make_unique<chrome_tracer::ChromeTracer>();
+  inferenceEngine_ = std::make_unique<InferenceEngine>(
+      config.inferenceEngineConfig, env, app, tracer_.get());
   ROIPacker_ = std::make_unique<ROIPacker>(
       config.roiPackerConfig, config.EXECUTION_TYPE, config.ROI_SIZE, ROIResizer_.get());
   patchReconstructor_ = std::make_unique<PatchReconstructor>(
@@ -64,6 +66,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   }
 
   // Start logging thread
+  tracer_->AddStream(logThreadTag);
   logThread_ = std::thread([this]() { workLog(); });
 
   // If frame-wise inference, skip ROI extraction and scheduling
@@ -89,12 +92,15 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
                                                  config_.EXECUTION_TYPE,
                                                  maxMergeSize,
                                                  config_.ROI_SIZE,
-                                                 ROIResizer_.get());
+                                                 ROIResizer_.get(),
+                                                 tracer_.get());
 
   // Start postprocessing thread
+  tracer_->AddStream(postprocessThreadTag);
   postprocessThread_ = std::thread([this]() { workPostprocess(); });
 
   // Start scheduling thread
+  tracer_->AddStream(scheduleThreadTag);
   scheduleThread_ = std::thread([this]() { workSchedule(); });
 }
 
@@ -118,6 +124,8 @@ void Mondrian::workSchedule() {
   while (!stop_) {
     time_us scheduleStart = NowMicros();
     int currID = numIntervals_++;
+    int32_t handle = tracer_->BeginEvent(scheduleThreadTag,
+                                         "schedule(" + std::to_string(currID) + ")");
     LOGD("[Schedule %d] ========== Start at %lld ==========", currID, NowMicros() - startTime_);
 
     // Getting PackedFrames
@@ -129,6 +137,9 @@ void Mondrian::workSchedule() {
     int fullFrameVid = (currID + 1) % config_.FULL_FRAME_INTERVAL == 0
                        ? ((currID + 1) / config_.FULL_FRAME_INTERVAL) % numVideos_
                        : -1;
+    tracer_->EndEvent(scheduleThreadTag, handle);
+    handle = tracer_->BeginEvent(scheduleThreadTag,
+                                 "fullFrameHandling(" + std::to_string(currID) + ")");
     if (streams.find(fullFrameVid) != streams.end()) {
       fullFrameTarget = *streams.at(fullFrameVid).rbegin();
       inferenceEngine_->enqueue(
@@ -142,8 +153,11 @@ void Mondrian::workSchedule() {
     } else {
       LOGD("[Schedule %d] NO Full Frame", currID);
     }
+    tracer_->EndEvent(scheduleThreadTag, handle);
 
     // Inference planning
+    handle = tracer_->BeginEvent(scheduleThreadTag,
+                                 "inferencePlanning(" + std::to_string(currID) + ")");
     LatencyTable latencyTable = inferenceEngine_->latencyTable();
     std::map<Device, time_us> remainingTimes = inferenceEngine_->remainingTimes();
 
@@ -165,14 +179,19 @@ void Mondrian::workSchedule() {
          planningTime_,
          str(latencyTable).c_str());
     LOGD("[Schedule %d] InferencePlan %s", currID, str(inferencePlan).c_str());
+    tracer_->EndEvent(scheduleThreadTag, handle);
 
     // Prepare Packed Canvases
+    handle = tracer_->BeginEvent(scheduleThreadTag, "packCanvases(" + std::to_string(currID) + ")");
     std::map<Device, std::vector<PackedCanvas>> packedCanvasesTable = ROIPacker_->packCanvases(
         /*currID=*/currID,
         /*streams=*/streams,
         /*inferencePlan=*/inferencePlan,
         /*fullFrameTarget=*/fullFrameTarget);
+    tracer_->EndEvent(scheduleThreadTag, handle);
 
+    handle = tracer_->BeginEvent(scheduleThreadTag,
+                                 "packingResultsLock(" + std::to_string(currID) + ")");
     std::unique_lock<std::mutex> packingResultsLock(packingResultsMtx_);
     packingResults_.push({streams, fullFrameTarget, packedCanvasesTable});
     packingResultsLock.unlock();
@@ -182,6 +201,7 @@ void Mondrian::workSchedule() {
     planningTime_ = (7 * (planEnd - planStart) + 3 * planningTime_) / 10;
 
     LOGD("[Schedule %d] ========== End   at %lld ==========", currID, NowMicros() - startTime_);
+    tracer_->EndEvent(scheduleThreadTag, handle);
 
     // Wait for scheduling interval
     time_us sleepTime = scheduleInterval_ - (NowMicros() - scheduleStart);
@@ -248,7 +268,8 @@ void Mondrian::handlePackedCanvasesResults(
       packedCanvasesTable.begin(), packedCanvasesTable.end(), 0,
       [](int sum, const auto& it) { return sum + it.second.size(); });
   for (int numReadyCanvases = 0; numReadyCanvases < numTotalCanvases; numReadyCanvases++) {
-    const auto& [device, canvasIndex] = getReadyPackedCanvas(packedCanvasesTable, inferenceEngine_.get());
+    const auto& [device, canvasIndex] = getReadyPackedCanvas(packedCanvasesTable,
+                                                             inferenceEngine_.get());
     PackedCanvas& packedCanvas = packedCanvasesTable[device][canvasIndex];
     Result result = inferenceEngine_->getResult(packedCanvas.getKey(), /*isCheckedKey=*/true);
     packedCanvas.packedMat.release();
@@ -282,13 +303,15 @@ void Mondrian::handlePackedCanvasesResults(
   }
 }
 
-void Mondrian::handleROIWiseResults(std::map<Device, std::vector<PackedCanvas>>& packedCanvasesTable) {
+void Mondrian::handleROIWiseResults(
+    std::map<Device, std::vector<PackedCanvas>>& packedCanvasesTable) {
   Stream inferenceFrames;
   int numTotalCanvases = std::accumulate(
       packedCanvasesTable.begin(), packedCanvasesTable.end(), 0,
       [](int sum, const auto& it) { return sum + it.second.size(); });
   for (int numReadyCanvases = 0; numReadyCanvases < numTotalCanvases; numReadyCanvases++) {
-    const auto& [device, canvasIndex] = getReadyPackedCanvas(packedCanvasesTable, inferenceEngine_.get());
+    const auto& [device, canvasIndex] = getReadyPackedCanvas(packedCanvasesTable,
+                                                             inferenceEngine_.get());
     PackedCanvas& packedCanvas = packedCanvasesTable[device][canvasIndex];
     Result result = inferenceEngine_->getResult(packedCanvas.getKey(), /*isCheckedKey=*/true);
     packedCanvas.packedMat.release();
@@ -351,7 +374,7 @@ void Mondrian::log(const Frame* frame) {
     }
     for (const auto& [device, probingROIs] : frame->probingROIsTable) {
       if (device == Device::DSP) continue;
-      for (const auto& probingROI: probingROIs) {
+      for (const auto& probingROI : probingROIs) {
         loggerMergedROI_->logMergedROI(probingROI.get());
       }
     }
@@ -424,6 +447,8 @@ void Mondrian::workPostprocess() {
     packingResultsCV_.wait(packingResultsLock, [this]() {
       return !packingResults_.empty() || stop_;
     });
+    int32_t handle = tracer_->BeginEvent(postprocessThreadTag,
+                                         "postprocess" + std::to_string(currID));
     PackingResult packingResult = std::move(packingResults_.front());
     packingResults_.pop();
     packingResultsLock.unlock();
@@ -486,10 +511,11 @@ void Mondrian::workPostprocess() {
         if (frame == fullFrameTarget) continue;
         std::vector<BoundingBox> boxes;
         std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
-                        [](const std::unique_ptr<BoundingBox>& box) { return *box; });
+                       [](const std::unique_ptr<BoundingBox>& box) { return *box; });
         results_[frame->vid][frame->fid] = {frame->endTime, std::move(boxes)};
       }
     }
+    tracer_->EndEvent(postprocessThreadTag, handle);
     resultLock.unlock();
     resultsCV_.notify_all();
 
@@ -505,6 +531,7 @@ void Mondrian::workLog() {
       return stop_ || std::any_of(results_.begin(), results_.end(),
                                   [](const auto& it) { return !it.second.empty(); });
     });
+    int32_t handle = tracer_->BeginEvent(logThreadTag, "log");
     for (const auto& [vid, frameResults] : results_) {
       for (const auto& [fid, endTimeBoxes] : frameResults) {
         const auto& [endTime, boxes] = endTimeBoxes;
@@ -514,6 +541,14 @@ void Mondrian::workLog() {
            vid, frameResults.begin()->first, frameResults.rbegin()->first);
     }
     results_.clear();
+    tracer_->EndEvent(logThreadTag, handle);
+    auto [valid, unfinishedEvent] = tracer_->Validate();
+    if (valid) {
+      tracer_->Dump("foo");
+      LOGD("XXX: dump at log!");
+    } else {
+      LOGD("XXX: invalid event at log!: %s", unfinishedEvent.c_str());
+    }
     resultLock.unlock();
     resultsCV_.notify_all();
   }

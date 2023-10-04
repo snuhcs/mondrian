@@ -6,6 +6,7 @@
 #include <map>
 #include <queue>
 
+#include "chrome_tracer/tracer.h"
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
@@ -21,7 +22,10 @@ std::string str(const std::map<Device, time_us>& remainingTimes);
 
 class InferenceEngine {
  public:
-  InferenceEngine(const InferenceEngineConfig& config, JNIEnv* env, jobject app);
+  InferenceEngine(const InferenceEngineConfig& config,
+                  JNIEnv* env,
+                  jobject app,
+                  chrome_tracer::ChromeTracer* tracer);
 
   void profileLatency() const;
 
@@ -55,6 +59,8 @@ class InferenceEngine {
   std::mutex resultMtx_;
   std::condition_variable resultCv_;
   std::map<Key, Result> results_;
+
+  chrome_tracer::ChromeTracer* tracer_;
 };
 
 } // namespace md

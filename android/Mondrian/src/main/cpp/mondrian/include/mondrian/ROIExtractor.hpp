@@ -7,6 +7,7 @@
 #include <thread>
 #include <utility>
 
+#include "chrome_tracer/tracer.h"
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
@@ -21,7 +22,8 @@ class ROIExtractor {
                const ExecutionType executionType,
                const int maxMergeSize,
                const int roiSize,
-               ROIResizer* roiResizer);
+               ROIResizer* roiResizer,
+               chrome_tracer::ChromeTracer* tracer);
 
   ~ROIExtractor();
 
@@ -60,6 +62,8 @@ class ROIExtractor {
   Stream OFWaiting_;
   Stream OFProcessing_;
   MultiStream OFProcessed_;
+
+  chrome_tracer::ChromeTracer* tracer_;
 };
 
 } // namespace md

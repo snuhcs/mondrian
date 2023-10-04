@@ -17,6 +17,7 @@ add_library(
     jsoncpp
     SHARED
     third_party/lib/jsoncpp.cpp
+    third_party/lib/tracer.cc
 )
 
 find_library(

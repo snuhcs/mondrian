@@ -6,6 +6,7 @@
 #include <thread>
 #include <queue>
 
+#include "chrome_tracer/tracer.h"
 #include "opencv2/core/mat.hpp"
 
 #include "mondrian/Config.hpp"
@@ -73,6 +74,7 @@ class Mondrian {
   std::condition_variable startCV_;
 
   // Thread: Scheduling
+  const std::string scheduleThreadTag = "scheduleThread";
   std::thread scheduleThread_;
   const time_us scheduleInterval_;
   time_us planningTime_;
@@ -80,12 +82,14 @@ class Mondrian {
   bool stop_;
 
   // Thread: Postprocessing
+  const std::string postprocessThreadTag = "postprocessThread";
   std::thread postprocessThread_;
   std::mutex packingResultsMtx_;
   std::condition_variable packingResultsCV_;
   std::queue<PackingResult> packingResults_;
 
   // Thread : Logging
+  const std::string logThreadTag = "logThread";
   std::thread logThread_;
   std::mutex logMtx_;
   std::condition_variable resultsCV_;
@@ -94,6 +98,9 @@ class Mondrian {
   std::unique_ptr<Logger> loggerFrame_;
   std::unique_ptr<Logger> loggerROI_;
   std::unique_ptr<Logger> loggerMergedROI_;
+
+  // Tracer
+  std::unique_ptr<chrome_tracer::ChromeTracer> tracer_;
 };
 
 } // namespace md
