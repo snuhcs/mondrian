@@ -2,7 +2,6 @@
 #define ROI_EXTRACTOR_HPP_
 
 #include <list>
-#include <queue>
 #include <set>
 #include <thread>
 #include <utility>
@@ -31,7 +30,7 @@ class ROIExtractor {
 
   void notify();
 
-  MultiStream collectFrames(int currID);
+  std::list<Frame*> collectFrames(int currID);
 
  private:
   void workPD();
@@ -43,6 +42,8 @@ class ROIExtractor {
   void processOF(Frame* currFrame) const;
 
   bool stop_;
+  bool isOFProcessing_;
+  bool collecting_;
 
   const ROIExtractorConfig config_;
   const ExecutionType executionType_;
@@ -51,17 +52,18 @@ class ROIExtractor {
 
   ROIResizer* ROIResizer_;
 
+  const std::string ROIExtractorPDTag_ = "ROIExtractorPD";
   std::thread PDThread_;
   std::mutex PDMtx_;
   std::condition_variable PDCv_;
-  Stream PDWaiting_;
+  std::list<Frame*> PDWaiting_;
 
+  const std::string ROIExtractorOFTag_ = "ROIExtractorOF";
   std::thread OFThread_;
   std::mutex OFMtx_;
   std::condition_variable OFCv_;
-  Stream OFWaiting_;
-  Stream OFProcessing_;
-  MultiStream OFProcessed_;
+  std::list<Frame*> OFWaiting_;
+  std::list<Frame*> OFProcessed_;
 
   chrome_tracer::ChromeTracer* tracer_;
 };
