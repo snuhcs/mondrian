@@ -74,6 +74,7 @@ class Mondrian {
   std::condition_variable startCV_;
 
   // Thread: Scheduling
+  const std::string scheduleThreadTag = "scheduleThread";
   std::thread scheduleThread_;
   const time_us scheduleInterval_;
   time_us planningTime_;
@@ -81,12 +82,14 @@ class Mondrian {
   bool stop_;
 
   // Thread: Postprocessing
+  const std::string postprocessThreadTag = "postprocessThread";
   std::thread postprocessThread_;
   std::mutex packingResultsMtx_;
   std::condition_variable packingResultsCV_;
   std::queue<PackingResult> packingResults_;
 
   // Thread : Logging
+  const std::string logThreadTag = "logThread";
   std::thread logThread_;
   std::mutex logMtx_;
   std::condition_variable resultsCV_;

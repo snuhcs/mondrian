@@ -66,7 +66,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   }
 
   // Start logging thread
-  tracer_->AddStream("logThread");
+  tracer_->AddStream(logThreadTag);
   logThread_ = std::thread([this]() { workLog(); });
 
   // If frame-wise inference, skip ROI extraction and scheduling
@@ -96,11 +96,11 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
                                                  tracer_.get());
 
   // Start postprocessing thread
-  tracer_->AddStream("postprocessThread");
+  tracer_->AddStream(postprocessThreadTag);
   postprocessThread_ = std::thread([this]() { workPostprocess(); });
 
   // Start scheduling thread
-  tracer_->AddStream("scheduleThread");
+  tracer_->AddStream(scheduleThreadTag);
   scheduleThread_ = std::thread([this]() { workSchedule(); });
 }
 
@@ -124,7 +124,7 @@ void Mondrian::workSchedule() {
   while (!stop_) {
     time_us scheduleStart = NowMicros();
     int currID = numIntervals_++;
-    int32_t handle = tracer_->BeginEvent("scheduleThread",
+    int32_t handle = tracer_->BeginEvent(scheduleThreadTag,
                                          "schedule(" + std::to_string(currID) + ")");
     LOGD("[Schedule %d] ========== Start at %lld ==========", currID, NowMicros() - startTime_);
 
@@ -137,8 +137,8 @@ void Mondrian::workSchedule() {
     int fullFrameVid = (currID + 1) % config_.FULL_FRAME_INTERVAL == 0
                        ? ((currID + 1) / config_.FULL_FRAME_INTERVAL) % numVideos_
                        : -1;
-    tracer_->EndEvent("scheduleThread", handle);
-    handle = tracer_->BeginEvent("scheduleThread",
+    tracer_->EndEvent(scheduleThreadTag, handle);
+    handle = tracer_->BeginEvent(scheduleThreadTag,
                                  "fullFrameHandling(" + std::to_string(currID) + ")");
     if (streams.find(fullFrameVid) != streams.end()) {
       fullFrameTarget = *streams.at(fullFrameVid).rbegin();
@@ -153,10 +153,10 @@ void Mondrian::workSchedule() {
     } else {
       LOGD("[Schedule %d] NO Full Frame", currID);
     }
-    tracer_->EndEvent("scheduleThread", handle);
+    tracer_->EndEvent(scheduleThreadTag, handle);
 
     // Inference planning
-    handle = tracer_->BeginEvent("scheduleThread",
+    handle = tracer_->BeginEvent(scheduleThreadTag,
                                  "inferencePlanning(" + std::to_string(currID) + ")");
     LatencyTable latencyTable = inferenceEngine_->latencyTable();
     std::map<Device, time_us> remainingTimes = inferenceEngine_->remainingTimes();
@@ -179,18 +179,18 @@ void Mondrian::workSchedule() {
          planningTime_,
          str(latencyTable).c_str());
     LOGD("[Schedule %d] InferencePlan %s", currID, str(inferencePlan).c_str());
-    tracer_->EndEvent("scheduleThread", handle);
+    tracer_->EndEvent(scheduleThreadTag, handle);
 
     // Prepare Packed Canvases
-    handle = tracer_->BeginEvent("scheduleThread", "packCanvases(" + std::to_string(currID) + ")");
+    handle = tracer_->BeginEvent(scheduleThreadTag, "packCanvases(" + std::to_string(currID) + ")");
     std::map<Device, std::vector<PackedCanvas>> packedCanvasesTable = ROIPacker_->packCanvases(
         /*currID=*/currID,
         /*streams=*/streams,
         /*inferencePlan=*/inferencePlan,
         /*fullFrameTarget=*/fullFrameTarget);
-    tracer_->EndEvent("scheduleThread", handle);
+    tracer_->EndEvent(scheduleThreadTag, handle);
 
-    handle = tracer_->BeginEvent("scheduleThread",
+    handle = tracer_->BeginEvent(scheduleThreadTag,
                                  "packingResultsLock(" + std::to_string(currID) + ")");
     std::unique_lock<std::mutex> packingResultsLock(packingResultsMtx_);
     packingResults_.push({streams, fullFrameTarget, packedCanvasesTable});
@@ -201,7 +201,7 @@ void Mondrian::workSchedule() {
     planningTime_ = (7 * (planEnd - planStart) + 3 * planningTime_) / 10;
 
     LOGD("[Schedule %d] ========== End   at %lld ==========", currID, NowMicros() - startTime_);
-    tracer_->EndEvent("scheduleThread", handle);
+    tracer_->EndEvent(scheduleThreadTag, handle);
 
     // Wait for scheduling interval
     time_us sleepTime = scheduleInterval_ - (NowMicros() - scheduleStart);
@@ -447,7 +447,7 @@ void Mondrian::workPostprocess() {
     packingResultsCV_.wait(packingResultsLock, [this]() {
       return !packingResults_.empty() || stop_;
     });
-    int32_t handle = tracer_->BeginEvent("postprocessThread",
+    int32_t handle = tracer_->BeginEvent(postprocessThreadTag,
                                          "postprocess" + std::to_string(currID));
     PackingResult packingResult = std::move(packingResults_.front());
     packingResults_.pop();
@@ -515,7 +515,7 @@ void Mondrian::workPostprocess() {
         results_[frame->vid][frame->fid] = {frame->endTime, std::move(boxes)};
       }
     }
-    tracer_->EndEvent("postprocessThread", handle);
+    tracer_->EndEvent(postprocessThreadTag, handle);
     resultLock.unlock();
     resultsCV_.notify_all();
 
@@ -531,7 +531,7 @@ void Mondrian::workLog() {
       return stop_ || std::any_of(results_.begin(), results_.end(),
                                   [](const auto& it) { return !it.second.empty(); });
     });
-    int32_t handle = tracer_->BeginEvent("logThread", "log");
+    int32_t handle = tracer_->BeginEvent(logThreadTag, "log");
     for (const auto& [vid, frameResults] : results_) {
       for (const auto& [fid, endTimeBoxes] : frameResults) {
         const auto& [endTime, boxes] = endTimeBoxes;
@@ -541,7 +541,7 @@ void Mondrian::workLog() {
            vid, frameResults.begin()->first, frameResults.rbegin()->first);
     }
     results_.clear();
-    tracer_->EndEvent("logThread", handle);
+    tracer_->EndEvent(logThreadTag, handle);
     auto [valid, unfinishedEvent] = tracer_->Validate();
     if (valid) {
       tracer_->Dump("foo");

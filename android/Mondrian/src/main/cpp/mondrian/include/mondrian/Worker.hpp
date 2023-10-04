@@ -94,6 +94,7 @@ class Worker {
   jclass class_BoundingBox_;
   jmethodID BoundingBox_init_;
 
+  const std::string tag_;
   chrome_tracer::ChromeTracer* tracer_;
 };
 

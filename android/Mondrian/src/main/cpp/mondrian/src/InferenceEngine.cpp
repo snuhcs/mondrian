@@ -68,7 +68,6 @@ void InferenceEngine::addWorker(Device device,
     }
   }
 
-  tracer_->AddStream(str(device) + "Worker");
   workers_[device] = std::make_unique<Worker>(
       this,
       device,

@@ -22,7 +22,8 @@ Worker::Worker(InferenceEngine* engine,
       maxPackedCanvasSize_(maxPackedCanvasSize),
       env_(env),
       app_(reinterpret_cast<jobject>(env->NewGlobalRef(app))),
-      tracer_(tracer) {
+      tracer_(tracer),
+      tag_(str(device_) + " Worker") {
   if (draw) {
     env_->GetJavaVM(&jvm_);
     class_MondrianApp_ = reinterpret_cast<jclass>(env_->NewGlobalRef(env_->FindClass(
@@ -38,6 +39,7 @@ Worker::Worker(InferenceEngine* engine,
     BoundingBox_init_ = env_->GetMethodID(class_BoundingBox_, "<init>", "(IIIIFI)V");
   }
 
+  tracer_->AddStream(tag_);
   thread_ = std::thread([this]() { work(); });
 }
 
@@ -59,9 +61,10 @@ void Worker::work() {
     int inputSize = input.size;
     bool isFullFrame = input.full;
     Key key = input.key;
-    int32_t handle = tracer_->BeginEvent(str(device_) + "Worker", "Inference(" +
+    std::string event = "Inference(" +
         std::to_string(inputSize) + "," + std::to_string(isFullFrame) + "," +
-        std::to_string(key.first) + "_" + std::to_string(key.second) + ")");
+        std::to_string(key.first) + "_" + std::to_string(key.second) + ")";
+    int32_t handle = tracer_->BeginEvent(tag_, event);
     inputs_.pop_front();
     lock.unlock();
 
@@ -78,7 +81,7 @@ void Worker::work() {
     }
     time_us end = NowMicros();
 
-    tracer_->EndEvent(str(device_) + "Worker", handle);
+    tracer_->EndEvent(tag_, handle);
 
     updateLatency(input.size, input.full, end - start);
     updateRemainingTime();
