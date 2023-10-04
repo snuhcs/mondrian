@@ -211,7 +211,7 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
       assert(box->oid != INVALID_OID);
     }
     frame->isBoxesReady = true;
-    ROIExtractor_->cv().notify_all();
+    ROIExtractor_->notify();
   }
 
   frame->endTime = NowMicros();
@@ -278,7 +278,7 @@ void Mondrian::handlePackedCanvasesResults(
       }
     }
     // Notify results of processed frames
-    ROIExtractor_->cv().notify_all();
+    ROIExtractor_->notify();
   }
 }
 
@@ -477,7 +477,7 @@ void Mondrian::workPostprocess() {
         frame->endTime = NowMicros();
       }
     }
-    ROIExtractor_->cv().notify_all();
+    ROIExtractor_->notify();
 
     // Update results for system output
     std::unique_lock<std::mutex> resultLock(logMtx_);

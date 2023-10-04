@@ -52,7 +52,6 @@ static std::string parseString(const Json::Value& json, const std::string& key) 
 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   ROIExtractorConfig config = {};
-  config.NUM_WORKERS = parseInt(json, "num_workers");
   auto extraction_size = parseInts(json, "extraction_size", 2);
   config.EXTRACTION_SIZE = cv::Size(extraction_size[0], extraction_size[1]);
   config.PD_INTERVAL = parseInt(json, "pd_interval");
@@ -224,7 +223,6 @@ void MondrianConfig::print() const {
 void ROIExtractorConfig::print() const {
   std::stringstream ss;
   ss << "========== ROIExtractorConfig ==========" << std::endl;
-  ss << "NUM_WORKERS: " << NUM_WORKERS << std::endl;
   ss << "EXTRACTION_SIZE: ["
      << EXTRACTION_SIZE.width << ", "
      << EXTRACTION_SIZE.height << "]" << std::endl;

@@ -27,20 +27,19 @@ class ROIExtractor {
 
   void enqueue(Frame* frame);
 
+  void notify();
+
   MultiStream collectFrames(int currID);
 
-  std::condition_variable& cv() {
-    return cv_;
-  }
-
  private:
-  void work(int extractorId);
+  void workPD();
+
+  void workOF();
 
   void processPD(Frame* currFrame) const;
 
   void processOF(Frame* currFrame) const;
 
-  std::vector<std::thread> threads_;
   bool stop_;
 
   const ROIExtractorConfig config_;
@@ -50,10 +49,14 @@ class ROIExtractor {
 
   ROIResizer* ROIResizer_;
 
-  std::mutex mtx_;
-  std::condition_variable cv_;
+  std::thread PDThread_;
+  std::mutex PDMtx_;
+  std::condition_variable PDCv_;
   Stream PDWaiting_;
-  Stream PDProcessing_;
+
+  std::thread OFThread_;
+  std::mutex OFMtx_;
+  std::condition_variable OFCv_;
   Stream OFWaiting_;
   Stream OFProcessing_;
   MultiStream OFProcessed_;

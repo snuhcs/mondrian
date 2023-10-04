@@ -30,22 +30,22 @@
   * JOB: Load video frame in yuv format
   * Input: Video
   * Output: ROIExtractor::PDWaiting_
-2. PD/OF extraction threads (`ROIExtractor::threads_`)
-  * JOB: Extract PD or OF + Postprocess (scale, merge, ...)
-  * PD extraction
-    * Input: ROIExtractor::PDWaiting_
-    * Output: ROIExtractor::OFWaiting_
-  * OF extraction
-    * Input: ROIExtractor::OFWaiting_
-    * Output: ROIExtractor::OFProcessed_
-3. Schedule triggering and packing thread (`Mondrian::scheduleThread_`)
+2. PD extraction thread (`ROIExtractor::PDThread_`)
+  * JOB: Extract PD ROIs
+  * Input: ROIExtractor::PDWaiting_
+  * Output: ROIExtractor::OFWaiting_
+3. OF extraction thread (`ROIExtractor::OFThread_`)
+  * JOB: Extract OF and Postprocess (scale, merge, ...)
+  * Input: ROIExtractor::OFWaiting_
+  * Output: ROIExtractor::OFProcessed_
+4. Schedule triggering and packing thread (`Mondrian::scheduleThread_`)
   * JOB: Get extracted frames and pack results
   * Input: ROIExtractor::OFProcessed_
   * Output: Mondrian::packingResults_
-4. Box reconstruction and interpolation thread (`Mondrian::postprocessThread_`)
+5. Box reconstruction and interpolation thread (`Mondrian::postprocessThread_`)
   * JOB: Box reconstruction and interpolatoin
   * Input: Mondrian::packingResults_
   * Output: Mondrian::results_
-5. Result logging thread (`Mondrian::logThread_`)
+6. Result logging thread (`Mondrian::logThread_`)
   * Input: Mondrian::results_
   * Output: Log files

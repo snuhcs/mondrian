@@ -25,8 +25,6 @@ Frame::Frame(const VID vid, const FID fid, const cv::Mat& yuvMat,
       isBoxesReady(false),
       isROIsReady(false),
       numFeaturePoints(-1),
-      PDExtractorID(-1),
-      OFExtractorID(-1),
       isLastFrame(false),
       inferenceFrameSize(0),
       deviceIfFullFrame(Device::INVALID) {}
@@ -379,8 +377,6 @@ std::string Frame::header() {
      << "numProbingBoxes[GPU]" << DELIM
      << "numProbingBoxes[DSP]" << DELIM
      << "scheduleID" << DELIM
-     << "PDExtractorID" << DELIM
-     << "OFExtractorID" << DELIM
      << "numFeaturePoints" << DELIM
      << "inferenceFrameSize" << DELIM
      << "deviceIfFullFrame" << DELIM
@@ -419,8 +415,6 @@ std::string Frame::str(time_us baseTime) const {
      << safeGetSize<std::unique_ptr<BoundingBox>>(probingBoxesTable, Device::GPU) << DELIM
      << safeGetSize<std::unique_ptr<BoundingBox>>(probingBoxesTable, Device::DSP) << DELIM
      << scheduleID << DELIM
-     << PDExtractorID << DELIM
-     << OFExtractorID << DELIM
      << numFeaturePoints << DELIM
      << inferenceFrameSize << DELIM
      << ::md::str(deviceIfFullFrame) << DELIM

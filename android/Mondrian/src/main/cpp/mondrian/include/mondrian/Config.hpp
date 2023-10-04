@@ -13,7 +13,6 @@
 namespace md {
 
 struct ROIExtractorConfig {
-  int NUM_WORKERS;
   cv::Size EXTRACTION_SIZE;
   int PD_INTERVAL;
   float MIN_PD_ROI_SIZE;
