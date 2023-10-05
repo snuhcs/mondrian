@@ -35,17 +35,21 @@
   * Input: ROIExtractor::PDWaiting_
   * Output: ROIExtractor::OFWaiting_
 3. OF extraction thread (`ROIExtractor::OFThread_`)
-  * JOB: Extract OF and Postprocess (scale, merge, ...)
+  * JOB: Extract OF
   * Input: ROIExtractor::OFWaiting_
-  * Output: ROIExtractor::OFProcessed_
-4. Schedule triggering and packing thread (`Mondrian::scheduleThread_`)
+  * Output: ROIExtractor::PostprocessWaiting_
+4. ROI Postprocessing thread (`ROIExtractor::PostprocessThread_`)
+  * JOB: Filter, Scale, Merge
+  * Input: ROIExtractor::PostprocessWaiting_
+  * Output: ROIExtractor::Processed_
+5. Schedule triggering and packing thread (`Mondrian::scheduleThread_`)
   * JOB: Get extracted frames and pack results
-  * Input: ROIExtractor::OFProcessed_
+  * Input: ROIExtractor::Processed_
   * Output: Mondrian::packingResults_
-5. Box reconstruction and interpolation thread (`Mondrian::postprocessThread_`)
+6. Box reconstruction and interpolation thread (`Mondrian::postprocessThread_`)
   * JOB: Box reconstruction and interpolatoin
   * Input: Mondrian::packingResults_
   * Output: Mondrian::results_
-6. Result logging thread (`Mondrian::logThread_`)
+7. Result logging thread (`Mondrian::logThread_`)
   * Input: Mondrian::results_
   * Output: Log files

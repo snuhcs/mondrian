@@ -47,10 +47,12 @@ class Frame {
   const time_us enqueueTime;
   time_us fullInferenceStartTime = 0;
   time_us fullInferenceEndTime = 0;
-  time_us opticalFlowROIProcessStartTime = 0;
-  time_us opticalFlowROIProcessEndTime = 0;
   time_us pixelDiffROIProcessStartTime = 0;
   time_us pixelDiffROIProcessEndTime = 0;
+  time_us opticalFlowROIProcessStartTime = 0;
+  time_us opticalFlowROIProcessEndTime = 0;
+  time_us filterStartTime = 0;
+  time_us filterEndTime = 0;
   time_us resizeStartTime = 0;
   time_us resizeEndTime = 0;
   time_us mergeROIStartTime = 0;

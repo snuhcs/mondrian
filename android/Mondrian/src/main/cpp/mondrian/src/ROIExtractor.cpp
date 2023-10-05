@@ -32,13 +32,16 @@ ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
       collecting_(false) {
   tracer_->AddStream(ROIExtractorPDTag_);
   tracer_->AddStream(ROIExtractorOFTag_);
+  tracer_->AddStream(ROIExtractorPostprocessTag_);
   PDThread_ = std::thread([this]() { workPD(); });
   OFThread_ = std::thread([this]() { workOF(); });
+  PostprocessThread_ = std::thread([this]() { workPostprocess(); });
 }
 
 ROIExtractor::~ROIExtractor() {
   stop_ = true;
   OFCv_.notify_all();
+  PostprocessThread_.join();
   OFThread_.join();
   PDCv_.notify_all();
   PDThread_.join();
@@ -58,18 +61,20 @@ std::list<Frame*> ROIExtractor::collectFrames(int currID) {
   collecting_ = true;
 
   std::unique_lock<std::mutex> OFLock(OFMtx_);
-  OFCv_.wait(OFLock, [this]() { return !isOFProcessing_; });
+  OFCv_.wait(OFLock, [this]() {
+    return !isOFProcessing_ && !isPostprocessing_ && PostprocessWaiting_.empty();
+  });
 
   time_us scheduledTime = NowMicros();
-  for (auto& frame : OFProcessed_) {
+  for (auto& frame : Processed_) {
     frame->scheduledTime = scheduledTime;
     frame->scheduleID = currID;
     frame->useInferenceResultForOF = true;
   }
 
-  std::list<Frame*> stream = std::move(OFProcessed_);
-  while (!OFProcessed_.empty()) {
-    OFProcessed_.pop_front();
+  std::list<Frame*> stream = std::move(Processed_);
+  while (!Processed_.empty()) {
+    Processed_.pop_front();
   }
   collecting_ = false;
   OFCv_.notify_all();
@@ -110,7 +115,7 @@ void ROIExtractor::workOF() {
 //  CPU_SET(3, &set);
 //  assert(sched_setaffinity(0, sizeof(cpu_set_t), &set) == 0);
 
-  while (true) {
+  while (!stop_) {
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFCv_.wait(OFLock, [this]() {
       if (stop_) return true;
@@ -131,44 +136,68 @@ void ROIExtractor::workOF() {
 
     processOF(frame);
 
-    time_us processTime = NowMicros();
     OFLock.lock();
-    time_us lockTime = NowMicros();
     isOFProcessing_ = false;
-    if (!frame->reprocessOF) {
-      // Common case
-      OFProcessed_.push_back(frame);
-      frame->isROIsReady = true;
-    } else {
-      // When scheduling is triggered while OF processing
-      frame->resetOFROIExtraction();
-      OFWaiting_.push_back(frame);
-    }
-    time_us endTime = NowMicros();
+    PostprocessWaiting_.push_back(frame);
 
     std::stringstream ss;
-    ss << "[OF ROIExtractor]"
-       << " (" << frame->vid << ", " << frame->fid << ")"
+    ss << "[ROIExtractor]"
+       << " OF         "
+       << " [" << frame->vid << ", " << frame->fid << "]"
        << " #ROIs=" << std::count_if(frame->rois.begin(), frame->rois.end(),
                                      [](auto& roi) { return roi->type() == ROIType::OF; })
        << " #Features=" << frame->numFeaturePoints
-       << " PDQ=" << PDWaiting_.size()
        << " OFQ=" << OFWaiting_.size()
-       << " RQ=" << OFProcessed_.size()
-       << " Total=" << endTime - startTime
+       << " PQ=" << PostprocessWaiting_.size()
+       << " RQ=" << Processed_.size()
        << " Prep=" << prepareTime - startTime
-       << " Ext=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime
-       << " Filter=" << frame->resizeStartTime - frame->opticalFlowROIProcessEndTime
-       << " Resize=" << frame->resizeEndTime - frame->resizeStartTime
-       << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime
-       << " Lock=" << lockTime - processTime
-       << " Put=" << endTime - lockTime;
-    LOGD("%s", ss.str().c_str());
-
-    tracer_->EndEvent(ROIExtractorOFTag_, handle);
-
+       << " Ext=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime;
     OFLock.unlock();
     OFCv_.notify_one();
+
+    LOGD("%s", ss.str().c_str());
+    tracer_->EndEvent(ROIExtractorOFTag_, handle);
+  }
+}
+
+void ROIExtractor::workPostprocess() {
+  while (!stop_) {
+    std::unique_lock<std::mutex> OFLock(OFMtx_);
+    OFCv_.wait(OFLock, [this]() { return stop_ || !PostprocessWaiting_.empty(); });
+    if (stop_) return;
+    Frame* frame = PostprocessWaiting_.front();
+    PostprocessWaiting_.pop_front();
+    isPostprocessing_ = true;
+    OFLock.unlock();
+
+    std::string eventName = "ROIPostprocess" + std::to_string(frame->fid);
+    int32_t handle = tracer_->BeginEvent(ROIExtractorPostprocessTag_, eventName);
+
+    postprocess(frame);
+
+    OFLock.lock();
+    Processed_.push_back(frame);
+    frame->isROIsReady = true;
+    isPostprocessing_ = false;
+
+    std::stringstream ss;
+    ss << "[ROIExtractor]"
+       << " Postprocess"
+       << " [" << frame->vid << ", " << frame->fid << "]"
+       << " #ROIs=" << std::count_if(frame->rois.begin(), frame->rois.end(),
+                                     [](auto& roi) { return roi->type() == ROIType::OF; })
+       << " #Features=" << frame->numFeaturePoints
+       << " OFQ=" << OFWaiting_.size()
+       << " PQ=" << PostprocessWaiting_.size()
+       << " RQ=" << Processed_.size()
+       << " Filter=" << frame->filterEndTime - frame->filterStartTime
+       << " Resize=" << frame->resizeEndTime - frame->resizeStartTime
+       << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
+    OFLock.unlock();
+    OFCv_.notify_all();
+
+    LOGD("%s", ss.str().c_str());
+    tracer_->EndEvent(ROIExtractorPostprocessTag_, handle);
   }
 }
 
@@ -312,10 +341,14 @@ void ROIExtractor::processOF(Frame* currFrame) const {
         /*padding=*/config_.OF_ROI_PADDING));
   }
   currFrame->opticalFlowROIProcessEndTime = NowMicros();
+}
 
+void ROIExtractor::postprocess(md::Frame* currFrame) const {
+  currFrame->filterStartTime = NowMicros();
   currFrame->eatPDROIs(config_.PD_EAT_OVERLAP_THRES);
   currFrame->filterPDROIs(config_.PD_FILTER_OVERLAP_THRES);
   currFrame->assignPDROIIDs();
+  currFrame->filterEndTime = NowMicros();
 
   currFrame->resizeStartTime = NowMicros();
   currFrame->resizeROIs(ROIResizer_, executionType_, roiSize_);

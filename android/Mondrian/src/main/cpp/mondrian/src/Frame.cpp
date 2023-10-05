@@ -20,7 +20,6 @@ Frame::Frame(const VID vid, const FID fid, const cv::Mat& yuvMat,
       height_(0),
       prevFrame(prevFrame),
       useInferenceResultForOF(false),
-      reprocessOF(false),
       enqueueTime(enqueueTime),
       isBoxesReady(false),
       isROIsReady(false),
@@ -361,7 +360,6 @@ void Frame::resetOFROIExtraction() {
     roi->mergedROI = nullptr;
   });
   useInferenceResultForOF = false;
-  reprocessOF = false;
   isROIsReady = false;
 }
 
@@ -387,6 +385,8 @@ std::string Frame::header() {
      << "pixelDiffROIProcessEndTime" << DELIM
      << "opticalFlowROIProcessStartTime" << DELIM
      << "opticalFlowROIProcessEndTime" << DELIM
+     << "filterStartTime" << DELIM
+     << "filterEndTime" << DELIM
      << "resizeStartTime" << DELIM
      << "resizeEndTime" << DELIM
      << "mergeROIStartTime" << DELIM
@@ -425,6 +425,8 @@ std::string Frame::str(time_us baseTime) const {
      << fromBaseTime(pixelDiffROIProcessEndTime) << DELIM
      << fromBaseTime(opticalFlowROIProcessStartTime) << DELIM
      << fromBaseTime(opticalFlowROIProcessEndTime) << DELIM
+     << fromBaseTime(filterStartTime) << DELIM
+     << fromBaseTime(filterEndTime) << DELIM
      << fromBaseTime(resizeStartTime) << DELIM
      << fromBaseTime(resizeEndTime) << DELIM
      << fromBaseTime(mergeROIStartTime) << DELIM

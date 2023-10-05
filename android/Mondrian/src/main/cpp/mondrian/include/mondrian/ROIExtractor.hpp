@@ -37,12 +37,17 @@ class ROIExtractor {
 
   void workOF();
 
+  void workPostprocess();
+
   void processPD(Frame* currFrame) const;
 
   void processOF(Frame* currFrame) const;
 
+  void postprocess(Frame* currFrame) const;
+
   bool stop_;
   bool isOFProcessing_;
+  bool isPostprocessing_;
   bool collecting_;
 
   const ROIExtractorConfig config_;
@@ -63,7 +68,11 @@ class ROIExtractor {
   std::mutex OFMtx_;
   std::condition_variable OFCv_;
   std::list<Frame*> OFWaiting_;
-  std::list<Frame*> OFProcessed_;
+
+  const std::string ROIExtractorPostprocessTag_ = "ROIExtractorPostprocess";
+  std::thread PostprocessThread_;
+  std::list<Frame*> PostprocessWaiting_;
+  std::list<Frame*> Processed_;
 
   chrome_tracer::ChromeTracer* tracer_;
 };
