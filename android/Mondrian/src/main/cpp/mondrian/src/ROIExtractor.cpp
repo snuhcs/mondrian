@@ -73,12 +73,6 @@ std::list<Frame*> ROIExtractor::collectFrames(int currID) {
   }
   collecting_ = false;
   OFCv_.notify_all();
-
-  LOGD("[Schedule %d] Collect Frames "
-       "// OFWaiting=%lu OFWaiting.front()=%d",
-       currID,
-       OFWaiting_.size(),
-       OFWaiting_.empty() ? -1 : OFWaiting_.front()->fid);
   return stream;
 }
 

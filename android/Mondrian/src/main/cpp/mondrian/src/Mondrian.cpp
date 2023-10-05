@@ -130,6 +130,7 @@ void Mondrian::workSchedule() {
 
     // Getting PackedFrames
     // XXX TODO: ROIExtractors for each video
+    time_us collectStart = NowMicros();
     std::list<Frame*> stream = ROIExtractor_->collectFrames(currID);
     MultiStream streams;
     while (!stream.empty()) {
@@ -137,7 +138,11 @@ void Mondrian::workSchedule() {
       stream.pop_front();
       streams[frame->vid].insert(frame);
     }
-    LOGD("[Schedule %d] Collect Frames // %s", currID, str(streams).c_str());
+    time_us collectEnd = NowMicros();
+    LOGD("[Schedule %d] Collect Frames %lld us // %s",
+         currID,
+         collectEnd - collectStart,
+         str(streams).c_str());
 
     // Prepare & Enqueue Full frame
     Frame* fullFrameTarget = nullptr;
