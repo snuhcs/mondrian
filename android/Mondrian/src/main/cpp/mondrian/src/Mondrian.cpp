@@ -481,6 +481,8 @@ void Mondrian::enqueue(Frame* frame) {
 }
 
 void Mondrian::workPostprocess() {
+  time_us firstCollectTime = -1;
+  size_t numFrames = 0;
   int scheduleID = 0;
   while (!stop_) {
     int currID = scheduleID++;
@@ -497,6 +499,17 @@ void Mondrian::workPostprocess() {
     auto& streams = packingResult.streams;
     auto& fullFrameTarget = packingResult.fullFrameTarget;
     auto& packedCanvasesTable = packingResult.packedCanvasesTable;
+
+    if (currID == 0) {
+      firstCollectTime = NowMicros();
+    } else if (currID > 0) {
+      numFrames += std::accumulate(streams.begin(), streams.end(), 0,
+                                   [](int sum, const auto& pair) {
+                                     return sum + pair.second.size();
+                                   });
+      double fps = (double) numFrames * 1e6 / (double) (NowMicros() - firstCollectTime);
+      LOGD("XXX Postprocess %d FPS: %f", currID, fps);
+    }
 
     // Enqueue packed canvases
     for (const auto& [device, packedCanvases] : packedCanvasesTable) {
@@ -575,6 +588,8 @@ void Mondrian::workPostprocess() {
 }
 
 void Mondrian::workLog() {
+  time_us firstCollectTime = -1;
+  size_t numFrames = 0;
   while (!stop_) {
     std::unique_lock<std::mutex> resultLock(logMtx_);
     resultsCV_.wait(resultLock, [this]() {
@@ -590,6 +605,18 @@ void Mondrian::workLog() {
       LOGD("[Logger] vid=%d %d ~ %d frames logged",
            vid, frameResults.begin()->first, frameResults.rbegin()->first);
     }
+
+    if (firstCollectTime == -1) {
+      firstCollectTime = NowMicros();
+    } else {
+      numFrames += std::accumulate(results_.begin(), results_.end(), 0,
+                                   [](int sum, const auto& pair) {
+                                     return sum + pair.second.size();
+                                   });
+      double fps = (double) numFrames * 1e6 / (double) (NowMicros() - firstCollectTime);
+      LOGD("XXX Log FPS: %f", fps);
+    }
+
     results_.clear();
     tracer_->EndEvent(logThreadTag, handle);
     tracer_->tryDump("/data/data/hcs.offloading.mondrian/trace.json");
