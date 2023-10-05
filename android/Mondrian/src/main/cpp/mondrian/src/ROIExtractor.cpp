@@ -102,13 +102,13 @@ void ROIExtractor::workPD() {
 
 void ROIExtractor::workOF() {
 
-  cpu_set_t set;
-  CPU_ZERO(&set);
-  CPU_SET(0, &set);
-  CPU_SET(1, &set);
-  CPU_SET(2, &set);
-  CPU_SET(3, &set);
-  assert(sched_setaffinity(0, sizeof(cpu_set_t), &set) == 0);
+//  cpu_set_t set;
+//  CPU_ZERO(&set);
+//  CPU_SET(0, &set);
+//  CPU_SET(1, &set);
+//  CPU_SET(2, &set);
+//  CPU_SET(3, &set);
+//  assert(sched_setaffinity(0, sizeof(cpu_set_t), &set) == 0);
 
   while (true) {
     std::unique_lock<std::mutex> OFLock(OFMtx_);
