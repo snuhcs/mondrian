@@ -577,13 +577,7 @@ void Mondrian::workLog() {
     }
     results_.clear();
     tracer_->EndEvent(logThreadTag, handle);
-    auto [valid, unfinishedEvent] = tracer_->Validate();
-    if (valid) {
-      tracer_->Dump("foo");
-      LOGD("XXX: dump at log!");
-    } else {
-      LOGD("XXX: invalid event at log!: %s", unfinishedEvent.c_str());
-    }
+    tracer_->tryDump("/data/data/hcs.offloading.mondrian/trace.json");
     resultLock.unlock();
     resultsCV_.notify_all();
   }

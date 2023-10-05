@@ -180,7 +180,6 @@ void ChromeTracer::EndEvent(std::string stream, int32_t handle,
 }
 
 std::pair<bool, std::string> ChromeTracer::Validate() const {
-  std::lock_guard<std::mutex> lock(lock_);
   for (auto const& stream : event_table_) {
     for (auto const& events : stream.second) {
       if (events.second.GetStatus() == Event::EventStatus::Running) {
@@ -193,13 +192,13 @@ std::pair<bool, std::string> ChromeTracer::Validate() const {
 }
 
 // Returns the json string.
-std::string ChromeTracer::Dump() const {
-  if (!Validate().first) {
-    std::cerr << "There is unfinished event." << std::endl;
-    assert(false);
-  }
-
+std::pair<bool, std::string> ChromeTracer::Dump() const {
   std::lock_guard<std::mutex> lock(lock_);
+  auto[valid, event_name] = Validate();
+  if (!valid) {
+    std::cerr << "There is unfinished event." << std::endl;
+    return {false, event_name};
+  }
 
   std::map<std::string, int> stream_tid_map;
   int i = 1;
@@ -260,23 +259,24 @@ std::string ChromeTracer::Dump() const {
 
   result += "}";
 
-  return result;
+  return {true, result};
 }
 
 // Dump the json string to the file path.
-void ChromeTracer::Dump(std::string path) const {
-  const char* logPath = "/data/data/hcs.offloading.mondrian/trace.json";
+bool ChromeTracer::tryDump(const std::string& logPath) const {
+  auto [valid, log] = Dump();
+  if (!valid) return false;
+
   std::ofstream logFile;
-  std::remove(logPath);
+  std::remove(logPath.c_str());
   logFile = std::ofstream(logPath, std::ofstream::app);
   if (!logFile.is_open()) {
-    abort();
+    return false;
   }
-  logFile << Dump();
+  logFile << log;
   logFile.close();
+  return true;
 }
-
-std::string ChromeTracer::Summary() const { return ""; }
 
 void ChromeTracer::Clear() {
   for (auto& stream : event_table_) {

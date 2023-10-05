@@ -25,10 +25,8 @@ class ChromeTracer {
   void EndEvent(std::string stream, int32_t handle, std::string args = "");
 
   std::pair<bool, std::string> Validate() const;
-
-  std::string Dump() const;
-  void Dump(std::string path) const;
-  std::string Summary() const;
+  std::pair<bool, std::string> Dump() const;
+  bool tryDump(const std::string& logPath) const;
 
   void Clear();
 
