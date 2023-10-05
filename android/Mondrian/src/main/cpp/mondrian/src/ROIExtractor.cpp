@@ -136,6 +136,7 @@ void ROIExtractor::workOF() {
     processOF(frame);
 
     OFLock.lock();
+    frame->isROIsReady = true;
     isOFProcessing_ = false;
     PostprocessWaiting_.push_back(frame);
     size_t numOFWaiting = OFWaiting_.size();
@@ -148,7 +149,8 @@ void ROIExtractor::workOF() {
        << " [" << frame->vid << ", " << frame->fid << "]"
        << " OFQ=" << numOFWaiting
        << " Prep=" << prepareTime - startTime
-       << " Ext=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime;
+       << " Ext=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime
+       << " Filter=" << frame->filterEndTime - frame->filterStartTime;
     LOGD("%s", ss.str().c_str());
     tracer_->EndEvent(ROIExtractorOFTag_, handle);
   }
@@ -171,7 +173,6 @@ void ROIExtractor::workPostprocess() {
 
     OFLock.lock();
     Processed_.push_back(frame);
-    frame->isROIsReady = true;
     isPostprocessing_ = false;
     size_t numOFWaiting = OFWaiting_.size();
     OFLock.unlock();
@@ -185,7 +186,6 @@ void ROIExtractor::workPostprocess() {
        << " #ROIs=" << std::count_if(frame->rois.begin(), frame->rois.end(),
                                      [](auto& roi) { return roi->type() == ROIType::OF; })
        << " #Features=" << frame->numFeaturePoints
-       << " Filter=" << frame->filterEndTime - frame->filterStartTime
        << " Resize=" << frame->resizeEndTime - frame->resizeStartTime
        << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
     LOGD("%s", ss.str().c_str());
@@ -333,15 +333,15 @@ void ROIExtractor::processOF(Frame* currFrame) const {
         /*padding=*/config_.OF_ROI_PADDING));
   }
   currFrame->opticalFlowROIProcessEndTime = NowMicros();
-}
 
-void ROIExtractor::postprocess(md::Frame* currFrame) const {
   currFrame->filterStartTime = NowMicros();
   currFrame->eatPDROIs(config_.PD_EAT_OVERLAP_THRES);
   currFrame->filterPDROIs(config_.PD_FILTER_OVERLAP_THRES);
   currFrame->assignPDROIIDs();
   currFrame->filterEndTime = NowMicros();
+}
 
+void ROIExtractor::postprocess(md::Frame* currFrame) const {
   currFrame->resizeStartTime = NowMicros();
   currFrame->resizeROIs(ROIResizer_, executionType_, roiSize_);
   currFrame->resizeEndTime = NowMicros();

@@ -35,11 +35,11 @@
   * Input: ROIExtractor::PDWaiting_
   * Output: ROIExtractor::OFWaiting_
 3. OF extraction thread (`ROIExtractor::OFThread_`)
-  * JOB: Extract OF
+  * JOB: Extract OF and Filter PD
   * Input: ROIExtractor::OFWaiting_
   * Output: ROIExtractor::PostprocessWaiting_
 4. ROI Postprocessing thread (`ROIExtractor::PostprocessThread_`)
-  * JOB: Filter, Scale, Merge
+  * JOB: Scale, Merge
   * Input: ROIExtractor::PostprocessWaiting_
   * Output: ROIExtractor::Processed_
 5. Schedule triggering and packing thread (`Mondrian::scheduleThread_`)
