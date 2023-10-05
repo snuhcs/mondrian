@@ -555,10 +555,7 @@ void Mondrian::workPostprocess() {
     tracer_->EndEvent(postprocessThreadTag, handle);
 
     // Release used frames
-    handle = tracer_->BeginEvent(postprocessThreadTag,
-                                 "postprocess" + std::to_string(currID) + " release");
     releaseFrames(streams);
-    tracer_->EndEvent(postprocessThreadTag, handle);
   }
 }
 
