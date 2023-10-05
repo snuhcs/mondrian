@@ -97,11 +97,10 @@ void ROIExtractor::workPD() {
 
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFWaiting_.push_back(frame);
-
-    tracer_->EndEvent(ROIExtractorPDTag_, handle);
-
     OFLock.unlock();
     OFCv_.notify_one();
+
+    tracer_->EndEvent(ROIExtractorPDTag_, handle);
   }
 }
 
@@ -139,22 +138,17 @@ void ROIExtractor::workOF() {
     OFLock.lock();
     isOFProcessing_ = false;
     PostprocessWaiting_.push_back(frame);
+    size_t numOFWaiting = OFWaiting_.size();
+    OFLock.unlock();
+    OFCv_.notify_one();
 
     std::stringstream ss;
     ss << "[ROIExtractor]"
        << " OF         "
        << " [" << frame->vid << ", " << frame->fid << "]"
-       << " #ROIs=" << std::count_if(frame->rois.begin(), frame->rois.end(),
-                                     [](auto& roi) { return roi->type() == ROIType::OF; })
-       << " #Features=" << frame->numFeaturePoints
-       << " OFQ=" << OFWaiting_.size()
-       << " PQ=" << PostprocessWaiting_.size()
-       << " RQ=" << Processed_.size()
+       << " OFQ=" << numOFWaiting
        << " Prep=" << prepareTime - startTime
        << " Ext=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime;
-    OFLock.unlock();
-    OFCv_.notify_one();
-
     LOGD("%s", ss.str().c_str());
     tracer_->EndEvent(ROIExtractorOFTag_, handle);
   }
@@ -179,23 +173,21 @@ void ROIExtractor::workPostprocess() {
     Processed_.push_back(frame);
     frame->isROIsReady = true;
     isPostprocessing_ = false;
+    size_t numOFWaiting = OFWaiting_.size();
+    OFLock.unlock();
+    OFCv_.notify_all();
 
     std::stringstream ss;
     ss << "[ROIExtractor]"
        << " Postprocess"
        << " [" << frame->vid << ", " << frame->fid << "]"
+       << " OFQ=" << numOFWaiting
        << " #ROIs=" << std::count_if(frame->rois.begin(), frame->rois.end(),
                                      [](auto& roi) { return roi->type() == ROIType::OF; })
        << " #Features=" << frame->numFeaturePoints
-       << " OFQ=" << OFWaiting_.size()
-       << " PQ=" << PostprocessWaiting_.size()
-       << " RQ=" << Processed_.size()
        << " Filter=" << frame->filterEndTime - frame->filterStartTime
        << " Resize=" << frame->resizeEndTime - frame->resizeStartTime
        << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
-    OFLock.unlock();
-    OFCv_.notify_all();
-
     LOGD("%s", ss.str().c_str());
     tracer_->EndEvent(ROIExtractorPostprocessTag_, handle);
   }
