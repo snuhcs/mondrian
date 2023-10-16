@@ -68,7 +68,8 @@ TfLiteYoloV5ClassifierDSP::TfLiteYoloV5ClassifierDSP(const std::string& modelNam
              && inputTensorDims->data[3] == 3);
   auto* outputTensorDims = interpreter->tensor(outputTensorIndices[0])->dims;
   assert(outputTensorDims->size == 3 && outputTensorDims->data[0] == 1
-             && outputTensorDims->data[1] == outputSize && outputTensorDims->data[2] == 85);
+             && outputTensorDims->data[1] == outputSize
+             && outputTensorDims->data[2] == OUTPUT_ELEMS);
 
   TfLiteTensor* inputTensor = interpreter->tensor(inputTensorIndices[0]);
   TfLiteTensor* outputTensor = interpreter->tensor(outputTensorIndices[0]);
@@ -132,18 +133,19 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::postprocess(int width, int h
     uint8_t maxConfidenceQuant = 0;
     int maxLabel = -1;
     for (int label = 0; label < numLabels; label++) {
-      uint8_t confidenceQuant = outputs[i * 85 + 5 + label];
+      uint8_t confidenceQuant = outputs[i * OUTPUT_ELEMS + 5 + label];
       if (maxConfidenceQuant < confidenceQuant) {
         maxConfidenceQuant = confidenceQuant;
         maxLabel = label;
       }
     }
-    float maxConfidence = dequantize(maxConfidenceQuant) * dequantize(outputs[i * 85 + 4]);
+    float maxConfidence = dequantize(maxConfidenceQuant)
+        * dequantize(outputs[i * OUTPUT_ELEMS + 4]);
     if (maxLabel == 0 && maxConfidence > confThres) {
-      Rect rect = reconstructBox((float) dequantize(outputs[i * 85 + 0]),
-                                 (float) dequantize(outputs[i * 85 + 1]),
-                                 (float) dequantize(outputs[i * 85 + 2]),
-                                 (float) dequantize(outputs[i * 85 + 3]),
+      Rect rect = reconstructBox((float) dequantize(outputs[i * OUTPUT_ELEMS + 0]),
+                                 (float) dequantize(outputs[i * OUTPUT_ELEMS + 1]),
+                                 (float) dequantize(outputs[i * OUTPUT_ELEMS + 2]),
+                                 (float) dequantize(outputs[i * OUTPUT_ELEMS + 3]),
                                  (float) width, (float) height);
       if (rect.l <= rect.r && rect.t <= rect.b) {
         boxes.emplace_back(INVALID_OID, -1, rect, maxConfidence, maxLabel, Origin::INVALID);
