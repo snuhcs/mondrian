@@ -15,8 +15,8 @@ Logger::Logger(const char* logPath) : baseTime(NowMicros()) {
     LOGE("Logger %s remove failed", logPath);
   }
 
-  logFile = std::ofstream(logPath, std::ofstream::app);
-  if (logFile.is_open()) {
+  logFile_ = std::ofstream(logPath, std::ofstream::app);
+  if (logFile_.is_open()) {
     LOGD("Logger %s create success", logPath);
   } else {
     LOGE("Logger %s create failed", logPath);
@@ -24,60 +24,60 @@ Logger::Logger(const char* logPath) : baseTime(NowMicros()) {
 }
 
 Logger::~Logger() {
-  if (logFile.is_open()) {
-    logFile.close();
+  if (logFile_.is_open()) {
+    logFile_.close();
   }
 }
 
 void Logger::logFrameHeader() {
-  if (!logFile.is_open()) return;
+  if (!logFile_.is_open()) return;
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << Frame::header() << '\n';
-  logFile.flush();
+  logFile_ << Frame::header() << '\n';
+  logFile_.flush();
 }
 
 void Logger::logROIHeader() {
-  if (!logFile.is_open()) return;
+  if (!logFile_.is_open()) return;
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << ROI::header() << '\n';
-  logFile.flush();
+  logFile_ << ROI::header() << '\n';
+  logFile_.flush();
 }
 
 void Logger::logBoxesHeader() {
-  if (!logFile.is_open()) return;
+  if (!logFile_.is_open()) return;
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << "vid" << DELIM
-          << "fid" << DELIM
-          << BoundingBox::header() << '\n';
-  logFile.flush();
+  logFile_ << "vid" << DELIM
+           << "fid" << DELIM
+           << BoundingBox::header() << '\n';
+  logFile_.flush();
 }
 
 void Logger::logFrame(const Frame* frame) {
-  if (!logFile.is_open() || frame == nullptr) return;
+  if (!logFile_.is_open() || frame == nullptr) return;
   std::lock_guard<std::mutex> lock(mtx);
-  logFile << frame->str(baseTime) << '\n';
+  logFile_ << frame->str(baseTime) << '\n';
 }
 
 void Logger::logROI(const ROI* roi) {
-  if (!logFile.is_open() || roi == nullptr) return;
+  if (!logFile_.is_open() || roi == nullptr) return;
   std::lock_guard<std::mutex> logLock(mtx);
-  logFile << roi->str() << '\n';
+  logFile_ << roi->str() << '\n';
 }
 
 void Logger::logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes) {
-  if (!logFile.is_open()) return;
+  if (!logFile_.is_open()) return;
   std::lock_guard<std::mutex> lock(mtx);
   for (const auto& box : boxes) {
-    logFile << vid << DELIM
-            << fid << DELIM
-            << box.str() << '\n';
+    logFile_ << vid << DELIM
+             << fid << DELIM
+             << box.str() << '\n';
   }
 }
 
 void Logger::flush() {
-  if (!logFile.is_open()) return;
+  if (!logFile_.is_open()) return;
   std::lock_guard<std::mutex> lock(mtx);
-  logFile.flush();
+  logFile_.flush();
 }
 
 } // namespace md

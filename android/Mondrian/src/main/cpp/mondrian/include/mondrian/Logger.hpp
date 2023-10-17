@@ -33,7 +33,7 @@ class Logger {
   void flush();
 
  private:
-  std::ofstream logFile;
+  std::ofstream logFile_;
   std::mutex mtx;
 
   time_us baseTime;
