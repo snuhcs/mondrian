@@ -119,9 +119,9 @@ std::pair<bool, std::string> ChromeTracer::Validate() const {
 }
 
 // Returns the json string.
-std::pair<bool, std::string> ChromeTracer::Dump(const bool validate) const {
+std::pair<bool, std::string> ChromeTracer::Dump(const bool do_validate) const {
   std::lock_guard<std::mutex> lock(mtx_);
-  if (validate) {
+  if (do_validate) {
     const auto& [valid, event_name] = Validate();
     if (!valid) {
       std::cerr << "There is unfinished event." << std::endl;
@@ -159,9 +159,7 @@ std::pair<bool, std::string> ChromeTracer::Dump(const bool validate) const {
   // 3. Duration event per events
   for (const auto& [stream, events] : event_table_) {
     for (const auto& [_, event] : events) {
-      if (validate) {
-        assert(event.GetStatus() == Event::EventStatus::Finished);
-      } else if (event.GetStatus() == Event::EventStatus::Finished) {
+      if (event.GetStatus() == Event::EventStatus::Finished) {
         auto dur_events = GenerateDurationEvent(
             event.name, pid_, stream_tid_map[stream],
             std::make_pair(event.start, event.end), anchor_,

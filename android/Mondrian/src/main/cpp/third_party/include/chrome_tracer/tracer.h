@@ -23,8 +23,8 @@ class ChromeTracer {
                 const int& handle,
                 const std::string& args = "");
 
-  std::pair<bool, std::string> Dump(const bool validate = false) const;
-  bool DumpToFile(const std::string& logPath, const bool validate = false) const;
+  std::pair<bool, std::string> Dump(const bool do_validate = false) const;
+  bool DumpToFile(const std::string& logPath, const bool do_validate = false) const;
 
   void Clear();
 
