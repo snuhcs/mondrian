@@ -56,14 +56,12 @@ void Logger::logFrame(const Frame* frame) {
   if (!logFile.is_open() || frame == nullptr) return;
   std::lock_guard<std::mutex> lock(mtx);
   logFile << frame->str(baseTime) << '\n';
-  logFile.flush();
 }
 
 void Logger::logROI(const ROI* roi) {
   if (!logFile.is_open() || roi == nullptr) return;
   std::lock_guard<std::mutex> logLock(mtx);
   logFile << roi->str() << '\n';
-  logFile.flush();
 }
 
 void Logger::logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes) {
@@ -74,6 +72,11 @@ void Logger::logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes) {
             << fid << DELIM
             << box.str() << '\n';
   }
+}
+
+void Logger::flush() {
+  if (!logFile.is_open()) return;
+  std::lock_guard<std::mutex> lock(mtx);
   logFile.flush();
 }
 

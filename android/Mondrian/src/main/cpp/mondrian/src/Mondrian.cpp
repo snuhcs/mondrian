@@ -397,23 +397,32 @@ void Mondrian::handleROIWiseResults(
 void Mondrian::releaseFrames(const MultiStream& streams) {
   for (const auto& [vid, stream] : streams) {
     if (stream.empty()) continue;
-    for (Frame* frame : stream) {
-      log(frame);
-    }
     int lastFrameIndex = (*stream.rbegin())->fid;
     frameBuffers_.at(vid)->free(lastFrameIndex - config_.roiExtractorConfig.PD_INTERVAL);
   }
 }
 
-void Mondrian::log(const Frame* frame) {
+void Mondrian::logFrame(const Frame* frame, const bool flush) {
   if (loggerFrame_) {
     loggerFrame_->logFrame(frame);
+    if (flush) loggerFrame_->flush();
   }
   if (loggerROI_) {
     for (const auto& roi : frame->rois) {
       loggerROI_->logROI(roi.get());
     }
+    if (flush) loggerROI_->flush();
   }
+}
+
+void Mondrian::logFrames(const MultiStream& streams) {
+  for (const auto& [vid, stream] : streams) {
+    for (const auto& frame : stream) {
+      logFrame(frame, /*flush=*/false);
+    }
+  }
+  if (loggerFrame_) loggerFrame_->flush();
+  if (loggerROI_) loggerROI_->flush();
 }
 
 void Mondrian::enqueue(const VID vid, const cv::Mat& yuvMat) {
@@ -451,7 +460,7 @@ void Mondrian::enqueueFrameWise(Frame* frame) {
       /*isFullFrame=*/true,
       /*key=*/frame->getKey());
   handleFullFrameResults(frame, frame->fid);
-  log(frame);
+  logFrame(frame, /*flush=*/true);
   std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
   frameBuffers_.at(frame->vid)->free(frame->fid);
 }
@@ -467,7 +476,7 @@ void Mondrian::enqueue(Frame* frame) {
         /*isFullFrame=*/true,
         /*key=*/frame->getKey());
     handleFullFrameResults(frame, -1);
-    log(frame);
+    logFrame(frame, /*flush=*/true);
     return;
   } else {
     ROIExtractor_->enqueue(frame);
@@ -561,6 +570,7 @@ void Mondrian::workPostprocess() {
     tracer_->EndEvent(postprocessThreadTag, handle);
 
     // Release used frames
+    logFrames(streams);
     releaseFrames(streams);
   }
 }

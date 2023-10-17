@@ -30,6 +30,8 @@ class Logger {
 
   void logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes);
 
+  void flush();
+
  private:
   std::ofstream logFile;
   std::mutex mtx;
