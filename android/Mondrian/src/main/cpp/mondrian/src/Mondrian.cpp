@@ -66,7 +66,6 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   }
 
   // Start logging thread
-  tracer_->AddStream(logThreadTag);
   logThread_ = std::thread([this]() { workLog(); });
 
   // If frame-wise inference, skip ROI extraction and scheduling
@@ -96,11 +95,9 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
                                                  tracer_.get());
 
   // Start postprocessing thread
-  tracer_->AddStream(postprocessThreadTag);
   postprocessThread_ = std::thread([this]() { workPostprocess(); });
 
   // Start scheduling thread
-  tracer_->AddStream(scheduleThreadTag);
   scheduleThread_ = std::thread([this]() { workSchedule(); });
 }
 

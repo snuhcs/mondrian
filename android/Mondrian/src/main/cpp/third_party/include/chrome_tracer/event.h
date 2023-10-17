@@ -19,10 +19,7 @@ struct Event {
   }
 
   void Finish() {
-    if (status_ != EventStatus::Running) {
-      std::cerr << "Cannot finish the event not running";
-      abort();
-    }
+    assert(status_ == EventStatus::Running);
     end = std::chrono::system_clock::now();
     status_ = EventStatus::Finished;
   }

@@ -39,7 +39,6 @@ Worker::Worker(InferenceEngine* engine,
     BoundingBox_init_ = env_->GetMethodID(class_BoundingBox_, "<init>", "(IIIIFI)V");
   }
 
-  tracer_->AddStream(tag_);
   thread_ = std::thread([this]() { work(); });
 }
 

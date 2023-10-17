@@ -10,27 +10,24 @@ namespace chrome_tracer {
 
 namespace {
 
-std::string GenerateInstantEvent(
-    std::string name, size_t pid, int tid,
-    std::chrono::system_clock::time_point timestamp,
-    std::chrono::system_clock::time_point anchor) {
+std::string GenerateInstantEvent(const std::string& name, int pid, int tid,
+                                 std::chrono::system_clock::time_point timestamp,
+                                 std::chrono::system_clock::time_point anchor) {
+  int ts = std::chrono::duration_cast<std::chrono::microseconds>(timestamp - anchor).count();
   std::string result = "{";
   result += "\"name\": \"" + name + "\", ";
   result += "\"ph\": \"i\", ";
-  result +=
-      "\"ts\": " +
-      std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(
-                         timestamp - anchor)
-                         .count()) +
-      ", ";
+  result += "\"ts\": " + std::to_string(ts) + ", ";
   result += "\"tid\": " + std::to_string(tid) + ", ";
   result += "\"pid\": " + std::to_string(pid);
   result += "}";
   return result;
 }
 
-std::string GenerateProcessMetaEvent(std::string name, std::string meta_name,
-                                     size_t pid, int tid) {
+std::string GenerateProcessMetaEvent(const std::string& name,
+                                     const std::string& meta_name,
+                                     int pid,
+                                     int tid) {
   std::string result = "{";
   result += "\"name\": \"" + meta_name + "\", ";
   result += "\"ph\": \"M\", ";
@@ -43,40 +40,32 @@ std::string GenerateProcessMetaEvent(std::string name, std::string meta_name,
   return result;
 }
 
-std::string GenerateBeginEvent(std::string name, size_t pid, int tid,
+std::string GenerateBeginEvent(const std::string& name, int pid, int tid,
                                std::chrono::system_clock::time_point timestamp,
                                std::chrono::system_clock::time_point anchor) {
+  int ts = std::chrono::duration_cast<std::chrono::microseconds>(timestamp - anchor).count();
   std::string result = "{";
   result += "\"name\": \"" + name + "\", ";
   result += "\"ph\": \"B\", ";
-  result +=
-      "\"ts\": " +
-      std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(
-                         timestamp - anchor)
-                         .count()) +
-      ", ";
+  result += "\"ts\": " + std::to_string(ts) + ", ";
   result += "\"tid\": " + std::to_string(tid) + ", ";
   result += "\"pid\": " + std::to_string(pid);
   result += "}";
   return result;
 }
 
-std::string GenerateEndEvent(std::string name, size_t pid, int tid,
+std::string GenerateEndEvent(const std::string& name, int pid, int tid,
                              std::chrono::system_clock::time_point timestamp,
                              std::chrono::system_clock::time_point anchor,
-                             std::string args) {
+                             const std::string& args) {
+  int ts = std::chrono::duration_cast<std::chrono::microseconds>(timestamp - anchor).count();
   std::string result = "{";
   result += "\"name\": \"" + name + "\", ";
   result += "\"ph\": \"E\", ";
-  result +=
-      "\"ts\": " +
-      std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(
-                         timestamp - anchor)
-                         .count()) +
-      ", ";
+  result += "\"ts\": " + std::to_string(ts) + ", ";
   result += "\"tid\": " + std::to_string(tid) + ", ";
   result += "\"pid\": " + std::to_string(pid);
-  if (args != "") {
+  if (!args.empty()) {
     result += ", \"args\": " + args;
   }
   result += "}";
@@ -84,87 +73,37 @@ std::string GenerateEndEvent(std::string name, size_t pid, int tid,
 }
 
 std::pair<std::string, std::string> GenerateDurationEvent(
-    std::string name, size_t pid, int tid,
+    const std::string& name, int pid, int tid,
     std::pair<std::chrono::system_clock::time_point,
               std::chrono::system_clock::time_point>
-        duration,
+    duration,
     std::chrono::system_clock::time_point anchor, std::string args) {
-  return std::make_pair(
-      GenerateBeginEvent(name, pid, tid, duration.first, anchor),
-      GenerateEndEvent(name, pid, tid, duration.second, anchor, args));
+  return {GenerateBeginEvent(name, pid, tid, duration.first, anchor),
+          GenerateEndEvent(name, pid, tid, duration.second, anchor, args)};
 }
 
 }  // anonymous namespace
 
-ChromeTracer::ChromeTracer()
+ChromeTracer::ChromeTracer(const std::string& name)
     : anchor_(std::chrono::system_clock::now()),
       count_(0),
-      pid_(GetNextPId()) {}
+      name_(name),
+      pid_(pid_counter_++) {}
 
-ChromeTracer::ChromeTracer(std::string name) : ChromeTracer() {
-  this->name_ = name;
-}
-
-bool ChromeTracer::HasStream(std::string stream) {
-  std::lock_guard<std::mutex> lock(lock_);
-  if (event_table_.find(stream) == event_table_.end()) {
-    return false;
-  }
-  return true;
-}
-void ChromeTracer::AddStream(std::string stream) {
-  if (HasStream(stream)) {
-    std::cerr << "The given stream already exists." << std::endl;
-    abort();
-  }
-
-  std::lock_guard<std::mutex> lock(lock_);
-  if (!event_table_.emplace(stream, std::map<int32_t, Event>()).second) {
-    std::cerr << "Failed to add a stream.";
-    abort();
-  }
-}
-
-bool ChromeTracer::HasEvent(std::string stream, int32_t handle) {
-  if (!HasStream(stream)) {
-    std::cerr << "The given stream does not exists." << std::endl;
-    abort();
-  }
-
-  std::lock_guard<std::mutex> lock(lock_);
-  auto& events = event_table_[stream];
-  if (events.find(handle) == events.end()) {
-    return false;
-  }
-  return true;
-}
-
-int32_t ChromeTracer::BeginEvent(std::string stream, std::string name) {
-  std::lock_guard<std::mutex> lock(lock_);
-
-  auto& events = event_table_[stream];
-  if (!events.emplace(count_, Event(name)).second) {
-    std::cerr << "Failed to start an event." << std::endl;
-    abort();
-  }
+int ChromeTracer::BeginEvent(const std::string& stream,
+                             const std::string& name) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  event_table_[stream].insert({count_, Event(name)});
   return count_++;
 }
 
-void ChromeTracer::EndEvent(std::string stream, int32_t handle,
-                            std::string args) {
-  if (!HasEvent(stream, handle)) {
-    std::cerr << "The given event does not exists." << std::endl;
-    abort();
-  }
-
-  std::lock_guard<std::mutex> lock(lock_);
-  auto events = event_table_.find(stream)->second;
-  auto new_event = events.find(handle)->second;
-  new_event.args = args;
-  new_event.Finish();
-  events.erase(handle);
-  events.emplace(handle, new_event);
-  event_table_[stream] = events;
+void ChromeTracer::EndEvent(const std::string& stream,
+                            const int& handle,
+                            const std::string& args) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  auto& event = event_table_.at(stream).at(handle);
+  event.args = args;
+  event.Finish();
 }
 
 std::pair<bool, std::string> ChromeTracer::Validate() const {
@@ -172,18 +111,18 @@ std::pair<bool, std::string> ChromeTracer::Validate() const {
     for (const auto& [_, event] : events) {
       if (event.GetStatus() == Event::EventStatus::Running) {
         std::cerr << stream << " " << event.name;
-        return std::make_pair(false, event.name);
+        return {false, event.name};
       }
     }
   }
-  return std::make_pair(true, "");
+  return {true, ""};
 }
 
 // Returns the json string.
 std::pair<bool, std::string> ChromeTracer::Dump(const bool validate) const {
-  std::lock_guard<std::mutex> lock(lock_);
+  std::lock_guard<std::mutex> lock(mtx_);
   if (validate) {
-    auto [valid, event_name] = Validate();
+    const auto& [valid, event_name] = Validate();
     if (!valid) {
       std::cerr << "There is unfinished event." << std::endl;
       return {false, event_name};
@@ -259,15 +198,8 @@ bool ChromeTracer::DumpToFile(const std::string& logPath,
 }
 
 void ChromeTracer::Clear() {
-  for (auto& stream : event_table_) {
-    stream.second.clear();
-  }
+  event_table_.clear();
   anchor_ = std::chrono::system_clock::now();
-}
-
-size_t ChromeTracer::GetNextPId() {
-  static size_t pid = 0;
-  return pid++;
 }
 
 }  // namespace chrome_tracer

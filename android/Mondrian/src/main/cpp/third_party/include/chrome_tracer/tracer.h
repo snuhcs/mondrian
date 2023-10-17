@@ -1,6 +1,7 @@
 #ifndef CHROME_TRACER_TRACER_H_
 #define CHROME_TRACER_TRACER_H_
 
+#include <atomic>
 #include <chrono>
 #include <map>
 #include <mutex>
@@ -13,13 +14,14 @@ namespace chrome_tracer {
 
 class ChromeTracer {
  public:
-  ChromeTracer();
-  ChromeTracer(std::string name);
+  ChromeTracer(const std::string& name = "");
 
-  void AddStream(std::string stream);
+  int BeginEvent(const std::string& stream,
+                 const std::string& event);
 
-  int32_t BeginEvent(std::string stream, std::string event);
-  void EndEvent(std::string stream, int32_t handle, std::string args = "");
+  void EndEvent(const std::string& stream,
+                const int& handle,
+                const std::string& args = "");
 
   std::pair<bool, std::string> Dump(const bool validate = false) const;
   bool DumpToFile(const std::string& logPath, const bool validate = false) const;
@@ -28,18 +30,16 @@ class ChromeTracer {
 
  private:
   std::pair<bool, std::string> Validate() const;
-  bool HasEvent(std::string stream, int32_t handle);
-  bool HasStream(std::string stream);
 
-  static size_t GetNextPId();
-  std::string name_;
-  std::map<std::string, std::map<int32_t, Event>> event_table_;
+  std::map<std::string, std::map<int, Event>> event_table_;
   std::chrono::system_clock::time_point anchor_;
 
-  size_t count_;
-  const size_t pid_;
+  int count_;
+  const std::string name_;
+  const int pid_;
+  inline static std::atomic_int pid_counter_ = 0;
 
-  mutable std::mutex lock_;
+  mutable std::mutex mtx_;
 };
 
 }  // namespace chrome_tracer

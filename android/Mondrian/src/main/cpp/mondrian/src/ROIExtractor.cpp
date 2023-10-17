@@ -30,9 +30,6 @@ ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
       stop_(false),
       isOFProcessing_(false),
       collecting_(false) {
-  tracer_->AddStream(ROIExtractorPDTag_);
-  tracer_->AddStream(ROIExtractorOFTag_);
-  tracer_->AddStream(ROIExtractorPostprocessTag_);
   PDThread_ = std::thread([this]() { workPD(); });
   OFThread_ = std::thread([this]() { workOF(); });
   PostprocessThread_ = std::thread([this]() { workPostprocess(); });
