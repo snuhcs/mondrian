@@ -125,8 +125,8 @@ void Mondrian::workSchedule() {
   while (!stop_) {
     time_us scheduleStart = NowMicros();
     int currID = numIntervals_++;
-    int32_t handle = tracer_->BeginEvent(scheduleThreadTag,
-                                         "schedule(" + std::to_string(currID) + ")");
+    int handle = tracer_->BeginEvent(scheduleThreadTag,
+                                     "schedule(" + std::to_string(currID) + ")");
     LOGD("[Schedule %d] ========== Start at %lld ==========", currID, NowMicros() - startTime_);
 
     // Getting PackedFrames
@@ -215,7 +215,20 @@ void Mondrian::workSchedule() {
     tracer_->EndEvent(scheduleThreadTag, handle);
 
     handle = tracer_->BeginEvent(scheduleThreadTag,
-                                 "packingResultsLock(" + std::to_string(currID) + ")");
+                                 "enqueueAndLock(" + std::to_string(currID) + ")");
+    // Enqueue packed canvases
+    for (const auto& [device, packedCanvases] : packedCanvasesTable) {
+      for (const auto& packedCanvas : packedCanvases) {
+        assert(packedCanvas.device != Device::INVALID);
+        inferenceEngine_->enqueue(
+            /*rgbMat=*/packedCanvas.packedMat,
+            /*device=*/packedCanvas.device,
+            /*inputSize=*/packedCanvas.packedCanvasSize,
+            /*isFullFrame=*/false,
+            /*key=*/packedCanvas.getKey());
+      }
+    }
+    // Pass to postprocess thread
     std::unique_lock<std::mutex> packingResultsLock(packingResultsMtx_);
     packingResults_.push({streams, fullFrameTarget, packedCanvasesTable});
     packingResultsLock.unlock();
@@ -240,8 +253,8 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   LOGD("[Schedule %d] FULL Inference at %lld // vid=%d fid=%d",
        currID, NowMicros() - startTime_, frame->vid, frame->fid);
 
-  int32_t handle = tracer_->BeginEvent(postprocessThreadTag,
-                                       "postprocess" + std::to_string(currID) + " full");
+  int handle = tracer_->BeginEvent(postprocessThreadTag,
+                                   "postprocess" + std::to_string(currID) + " full");
 
   frame->inferenceFrameSize = config_.inferenceEngineConfig.FULL_FRAME_SIZE;
   frame->deviceIfFullFrame = config_.inferenceEngineConfig.FULL_DEVICE;
@@ -302,7 +315,7 @@ void Mondrian::handlePackedCanvasesResults(
                                                              inferenceEngine_.get());
     PackedCanvas& packedCanvas = packedCanvasesTable[device][canvasIndex];
     Result result = inferenceEngine_->getResult(packedCanvas.getKey(), /*isCheckedKey=*/true);
-    int32_t handle = tracer_->BeginEvent(
+    int handle = tracer_->BeginEvent(
         postprocessThreadTag,
         "postprocess" + std::to_string(currID) + " pack" + std::to_string(packedCanvas.pid));
     packedCanvas.packedMat.release();
@@ -348,7 +361,7 @@ void Mondrian::handleROIWiseResults(
                                                              inferenceEngine_.get());
     PackedCanvas& packedCanvas = packedCanvasesTable[device][canvasIndex];
     Result result = inferenceEngine_->getResult(packedCanvas.getKey(), /*isCheckedKey=*/true);
-    int32_t handle = tracer_->BeginEvent(
+    int handle = tracer_->BeginEvent(
         postprocessThreadTag,
         "postprocess" + std::to_string(currID) + " pack" + std::to_string(packedCanvas.pid));
     packedCanvas.packedMat.release();
@@ -487,8 +500,6 @@ void Mondrian::workPostprocess() {
     packingResultsCV_.wait(packingResultsLock, [this]() {
       return !packingResults_.empty() || stop_;
     });
-    int32_t handle = tracer_->BeginEvent(
-        postprocessThreadTag, "postprocess" + std::to_string(currID) + " enqueue");
     PackingResult packingResult = std::move(packingResults_.front());
     packingResults_.pop();
     packingResultsLock.unlock();
@@ -508,20 +519,6 @@ void Mondrian::workPostprocess() {
       LOGD("XXX Postprocess %d FPS: %f", currID, fps);
     }
 
-    // Enqueue packed canvases
-    for (const auto& [device, packedCanvases] : packedCanvasesTable) {
-      for (const auto& packedCanvas : packedCanvases) {
-        assert(packedCanvas.device != Device::INVALID);
-        inferenceEngine_->enqueue(
-            /*rgbMat=*/packedCanvas.packedMat,
-            /*device=*/packedCanvas.device,
-            /*inputSize=*/packedCanvas.packedCanvasSize,
-            /*isFullFrame=*/false,
-            /*key=*/packedCanvas.getKey());
-      }
-    }
-    tracer_->EndEvent(postprocessThreadTag, handle);
-
     // Handle full frame inference results
     if (fullFrameTarget != nullptr) {
       handleFullFrameResults(fullFrameTarget, currID);
@@ -535,8 +532,8 @@ void Mondrian::workPostprocess() {
     }
 
     // Interpolate results
-    handle = tracer_->BeginEvent(postprocessThreadTag,
-                                 "postprocess" + std::to_string(currID) + " interp");
+    int handle = tracer_->BeginEvent(postprocessThreadTag,
+                                     "postprocess" + std::to_string(currID) + " interp");
     Interpolator::interpolate(streams, config_.INTERPOLATION_THRES);
     tracer_->EndEvent(postprocessThreadTag, handle);
 
@@ -593,7 +590,7 @@ void Mondrian::workLog() {
       return stop_ || std::any_of(results_.begin(), results_.end(),
                                   [](const auto& it) { return !it.second.empty(); });
     });
-    int32_t handle = tracer_->BeginEvent(logThreadTag, "log");
+    int handle = tracer_->BeginEvent(logThreadTag, "log");
     for (const auto& [vid, frameResults] : results_) {
       for (const auto& [fid, endTimeBoxes] : frameResults) {
         const auto& [endTime, boxes] = endTimeBoxes;
@@ -618,7 +615,7 @@ void Mondrian::workLog() {
     tracer_->EndEvent(logThreadTag, handle);
     bool success = tracer_->DumpToFile(
         /*logPath=*/"/data/data/hcs.offloading.mondrian/trace.json",
-        /*validate=*/false);
+        /*do_validate=*/false);
     assert(success);
     resultLock.unlock();
     resultsCV_.notify_all();
