@@ -36,24 +36,10 @@ void Logger::logFrameHeader() {
   logFile.flush();
 }
 
-void Logger::logFrame(const Frame* frame) {
-  if (!logFile.is_open() || frame == nullptr) return;
-  std::lock_guard<std::mutex> lock(mtx);
-  logFile << frame->str(baseTime) << '\n';
-  logFile.flush();
-}
-
 void Logger::logROIHeader() {
   if (!logFile.is_open()) return;
   std::lock_guard<std::mutex> lock(mtx);
   logFile << ROI::header() << '\n';
-  logFile.flush();
-}
-
-void Logger::logROI(const ROI* roi) {
-  if (!logFile.is_open() || roi == nullptr) return;
-  std::lock_guard<std::mutex> logLock(mtx);
-  logFile << roi->str() << '\n';
   logFile.flush();
 }
 
@@ -63,6 +49,20 @@ void Logger::logBoxesHeader() {
   logFile << "vid" << DELIM
           << "fid" << DELIM
           << BoundingBox::header() << '\n';
+  logFile.flush();
+}
+
+void Logger::logFrame(const Frame* frame) {
+  if (!logFile.is_open() || frame == nullptr) return;
+  std::lock_guard<std::mutex> lock(mtx);
+  logFile << frame->str(baseTime) << '\n';
+  logFile.flush();
+}
+
+void Logger::logROI(const ROI* roi) {
+  if (!logFile.is_open() || roi == nullptr) return;
+  std::lock_guard<std::mutex> logLock(mtx);
+  logFile << roi->str() << '\n';
   logFile.flush();
 }
 

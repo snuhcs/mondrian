@@ -20,13 +20,13 @@ class Logger {
 
   void logFrameHeader();
 
-  void logFrame(const Frame* frame);
-
   void logROIHeader();
 
-  void logROI(const ROI* roi);
-
   void logBoxesHeader();
+
+  void logFrame(const Frame* frame);
+
+  void logROI(const ROI* roi);
 
   void logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes);
 
