@@ -57,20 +57,6 @@ void Logger::logROI(const ROI* roi) {
   logFile.flush();
 }
 
-void Logger::logMergedROIHeader() {
-  if (!logFile.is_open()) return;
-  std::lock_guard<std::mutex> logLock(mtx);
-  logFile << MergedROI::header() << '\n';
-  logFile.flush();
-}
-
-void Logger::logMergedROI(const MergedROI* mergedROI) {
-  if (!logFile.is_open() || mergedROI == nullptr) return;
-  std::lock_guard<std::mutex> logLock(mtx);
-  logFile << mergedROI->str() << '\n';
-  logFile.flush();
-}
-
 void Logger::logBoxesHeader() {
   if (!logFile.is_open()) return;
   std::lock_guard<std::mutex> lock(mtx);

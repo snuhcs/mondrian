@@ -26,10 +26,6 @@ class Logger {
 
   void logROI(const ROI* roi);
 
-  void logMergedROIHeader();
-
-  void logMergedROI(const MergedROI* mergedROI);
-
   void logBoxesHeader();
 
   void logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes);

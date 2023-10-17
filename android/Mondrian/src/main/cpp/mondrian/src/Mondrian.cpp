@@ -50,11 +50,6 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
     loggerROI_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/roi.csv");
     loggerROI_->logROIHeader();
   }
-  if (config.LOG_MERGED_ROI) {
-    loggerMergedROI_ = std::make_unique<Logger>(
-        "/data/data/hcs.offloading.mondrian/merged_roi.csv");
-    loggerMergedROI_->logMergedROIHeader();
-  }
   if (config.LOG_BOXES) {
     loggerBoxes_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
     loggerBoxes_->logBoxesHeader();
@@ -417,17 +412,6 @@ void Mondrian::log(const Frame* frame) {
   if (loggerROI_) {
     for (const auto& roi : frame->rois) {
       loggerROI_->logROI(roi.get());
-    }
-  }
-  if (loggerMergedROI_) {
-    for (const auto& mergedROI : frame->mergedROIs) {
-      loggerMergedROI_->logMergedROI(mergedROI.get());
-    }
-    for (const auto& [device, probingROIs] : frame->probingROIsTable) {
-      if (device == Device::DSP) continue;
-      for (const auto& probingROI : probingROIs) {
-        loggerMergedROI_->logMergedROI(probingROI.get());
-      }
     }
   }
 }

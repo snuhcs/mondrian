@@ -88,7 +88,6 @@ struct MondrianConfig {
   bool LOG_BOXES;
   bool LOG_FRAME;
   bool LOG_ROI;
-  bool LOG_MERGED_ROI;
   float INTERPOLATION_THRES;
   int FULL_FRAME_INTERVAL;
   int LATENCY_SLO_MS;
