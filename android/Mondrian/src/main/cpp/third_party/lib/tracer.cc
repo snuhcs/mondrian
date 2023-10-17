@@ -11,7 +11,7 @@ namespace chrome_tracer {
 namespace {
 
 std::string GenerateInstantEvent(
-    std::string name, int pid, int tid,
+    std::string name, size_t pid, int tid,
     std::chrono::system_clock::time_point timestamp,
     std::chrono::system_clock::time_point anchor) {
   std::string result = "{";
@@ -30,7 +30,7 @@ std::string GenerateInstantEvent(
 }
 
 std::string GenerateProcessMetaEvent(std::string name, std::string meta_name,
-                                     int pid, int tid) {
+                                     size_t pid, int tid) {
   std::string result = "{";
   result += "\"name\": \"" + meta_name + "\", ";
   result += "\"ph\": \"M\", ";
@@ -43,7 +43,7 @@ std::string GenerateProcessMetaEvent(std::string name, std::string meta_name,
   return result;
 }
 
-std::string GenerateBeginEvent(std::string name, int pid, int tid,
+std::string GenerateBeginEvent(std::string name, size_t pid, int tid,
                                std::chrono::system_clock::time_point timestamp,
                                std::chrono::system_clock::time_point anchor) {
   std::string result = "{";
@@ -61,7 +61,7 @@ std::string GenerateBeginEvent(std::string name, int pid, int tid,
   return result;
 }
 
-std::string GenerateEndEvent(std::string name, int pid, int tid,
+std::string GenerateEndEvent(std::string name, size_t pid, int tid,
                              std::chrono::system_clock::time_point timestamp,
                              std::chrono::system_clock::time_point anchor,
                              std::string args) {
@@ -84,7 +84,7 @@ std::string GenerateEndEvent(std::string name, int pid, int tid,
 }
 
 std::pair<std::string, std::string> GenerateDurationEvent(
-    std::string name, int pid, int tid,
+    std::string name, size_t pid, int tid,
     std::pair<std::chrono::system_clock::time_point,
               std::chrono::system_clock::time_point>
         duration,
@@ -139,18 +139,6 @@ bool ChromeTracer::HasEvent(std::string stream, int32_t handle) {
   return true;
 }
 
-void ChromeTracer::MarkEvent(std::string stream, std::string name) {
-  std::lock_guard<std::mutex> lock(lock_);
-
-  auto& events = event_table_[stream];
-  if (!events.emplace(count_, Event(name, Event::EventStatus::Instantanous))
-           .second) {
-    std::cerr << "Failed to start an event." << std::endl;
-    abort();
-  }
-  count_++;
-}
-
 int32_t ChromeTracer::BeginEvent(std::string stream, std::string name) {
   std::lock_guard<std::mutex> lock(lock_);
 
@@ -180,11 +168,11 @@ void ChromeTracer::EndEvent(std::string stream, int32_t handle,
 }
 
 std::pair<bool, std::string> ChromeTracer::Validate() const {
-  for (auto const& stream : event_table_) {
-    for (auto const& events : stream.second) {
-      if (events.second.GetStatus() == Event::EventStatus::Running) {
-        std::cerr << stream.first << " " << events.second.name;
-        return std::make_pair(false, events.second.name);
+  for (const auto& [stream, events] : event_table_) {
+    for (const auto& [_, event] : events) {
+      if (event.GetStatus() == Event::EventStatus::Running) {
+        std::cerr << stream << " " << event.name;
+        return std::make_pair(false, event.name);
       }
     }
   }
@@ -192,30 +180,31 @@ std::pair<bool, std::string> ChromeTracer::Validate() const {
 }
 
 // Returns the json string.
-std::pair<bool, std::string> ChromeTracer::Dump() const {
+std::pair<bool, std::string> ChromeTracer::Dump(const bool validate) const {
   std::lock_guard<std::mutex> lock(lock_);
-  auto[valid, event_name] = Validate();
-  if (!valid) {
-    std::cerr << "There is unfinished event." << std::endl;
-    return {false, event_name};
+  if (validate) {
+    auto [valid, event_name] = Validate();
+    if (!valid) {
+      std::cerr << "There is unfinished event." << std::endl;
+      return {false, event_name};
+    }
   }
 
   std::map<std::string, int> stream_tid_map;
   int i = 1;
-  for (auto stream_name : event_table_) {
-    stream_tid_map[stream_name.first] = i;
+  for (const auto& [stream, events] : event_table_) {
+    stream_tid_map[stream] = i;
     i++;
   }
 
   std::string result = "{";
   std::string trace_events = "[";
   // 1. Start event per stream
-  for (auto const& stream : event_table_) {
-    std::string stream_name = stream.first;
+  for (const auto& [stream, events] : event_table_) {
     trace_events +=
-        GenerateInstantEvent("Start", pid_, stream_tid_map[stream_name],
+        GenerateInstantEvent("Start", pid_, stream_tid_map[stream],
                              anchor_, anchor_) +
-        ",";
+            ",";
   }
 
   // 2. Metadata event per process and thread (stream)
@@ -225,31 +214,21 @@ std::pair<bool, std::string> ChromeTracer::Dump() const {
     std::string stream_name = stream.first;
     trace_events += GenerateProcessMetaEvent(stream_name, "thread_name", pid_,
                                              stream_tid_map[stream_name]) +
-                    ",";
+        ",";
   }
 
   // 3. Duration event per events
-  for (auto const& stream : event_table_) {
-    for (auto const& event : stream.second) {
-      switch (event.second.GetStatus()) {
-        case Event::EventStatus::Finished: {
-          auto dur_events = GenerateDurationEvent(
-              event.second.name, pid_, stream_tid_map[stream.first],
-              std::make_pair(event.second.start, event.second.end), anchor_,
-              event.second.args);
-          trace_events += dur_events.first + ",";
-          trace_events += dur_events.second + ",";
-        } break;
-        case Event::EventStatus::Instantanous: {
-          auto inst_event = GenerateInstantEvent(event.second.name, pid_,
-                                                 stream_tid_map[stream.first],
-                                                 event.second.start, anchor_);
-          trace_events += inst_event + ",";
-        } break;
-        default: {
-          std::cerr << "Invalid event state.";
-          abort();
-        }
+  for (const auto& [stream, events] : event_table_) {
+    for (const auto& [_, event] : events) {
+      if (validate) {
+        assert(event.GetStatus() == Event::EventStatus::Finished);
+      } else if (event.GetStatus() == Event::EventStatus::Finished) {
+        auto dur_events = GenerateDurationEvent(
+            event.name, pid_, stream_tid_map[stream],
+            std::make_pair(event.start, event.end), anchor_,
+            event.args);
+        trace_events += dur_events.first + ",";
+        trace_events += dur_events.second + ",";
       }
     }
   }
@@ -263,8 +242,9 @@ std::pair<bool, std::string> ChromeTracer::Dump() const {
 }
 
 // Dump the json string to the file path.
-bool ChromeTracer::tryDump(const std::string& logPath) const {
-  auto [valid, log] = Dump();
+bool ChromeTracer::DumpToFile(const std::string& logPath,
+                              const bool validate) const {
+  auto [valid, log] = Dump(validate);
   if (!valid) return false;
 
   std::ofstream logFile;

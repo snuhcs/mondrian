@@ -619,7 +619,10 @@ void Mondrian::workLog() {
 
     results_.clear();
     tracer_->EndEvent(logThreadTag, handle);
-    tracer_->tryDump("/data/data/hcs.offloading.mondrian/trace.json");
+    bool success = tracer_->DumpToFile(
+        /*logPath=*/"/data/data/hcs.offloading.mondrian/trace.json",
+        /*validate=*/false);
+    assert(success);
     resultLock.unlock();
     resultsCV_.notify_all();
   }

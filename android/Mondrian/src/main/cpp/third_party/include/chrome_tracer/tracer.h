@@ -16,21 +16,21 @@ class ChromeTracer {
   ChromeTracer();
   ChromeTracer(std::string name);
 
-  bool HasStream(std::string stream);
   void AddStream(std::string stream);
 
-  bool HasEvent(std::string stream, int32_t handle);
-  void MarkEvent(std::string stream, std::string event);
   int32_t BeginEvent(std::string stream, std::string event);
   void EndEvent(std::string stream, int32_t handle, std::string args = "");
 
-  std::pair<bool, std::string> Validate() const;
-  std::pair<bool, std::string> Dump() const;
-  bool tryDump(const std::string& logPath) const;
+  std::pair<bool, std::string> Dump(const bool validate = false) const;
+  bool DumpToFile(const std::string& logPath, const bool validate = false) const;
 
   void Clear();
 
  private:
+  std::pair<bool, std::string> Validate() const;
+  bool HasEvent(std::string stream, int32_t handle);
+  bool HasStream(std::string stream);
+
   static size_t GetNextPId();
   std::string name_;
   std::map<std::string, std::map<int32_t, Event>> event_table_;
