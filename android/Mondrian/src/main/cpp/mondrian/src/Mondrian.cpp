@@ -114,9 +114,6 @@ void Mondrian::workSchedule() {
   }
   std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval_));
 
-  time_us firstCollectTime = -1;
-  size_t numFrames = 0;
-
   while (!stop_) {
     time_us scheduleStart = NowMicros();
     int currID = numIntervals_++;
@@ -125,7 +122,7 @@ void Mondrian::workSchedule() {
     LOGD("[Schedule %d] ========== Start at %lld ==========", currID, NowMicros() - startTime_);
 
     // Getting PackedFrames
-    // XXX TODO: ROIExtractors for each video
+    // TODO: ROIExtractors for each video
     time_us collectStart = NowMicros();
     std::list<Frame*> stream = ROIExtractor_->collectFrames(currID);
     MultiStream streams;
@@ -139,17 +136,6 @@ void Mondrian::workSchedule() {
          currID,
          collectEnd - collectStart,
          str(streams).c_str());
-
-    if (currID == 0) {
-      firstCollectTime = NowMicros();
-    } else if (currID > 0) {
-      numFrames += std::accumulate(streams.begin(), streams.end(), 0,
-                                   [](int sum, const auto& pair) {
-                                     return sum + pair.second.size();
-                                   });
-      double fps = (double) numFrames * 1e6 / (double) (NowMicros() - firstCollectTime);
-      LOGD("XXX Collect %d FPS: %f", currID, fps);
-    }
 
     // Prepare & Enqueue Full frame
     Frame* fullFrameTarget = nullptr;
@@ -500,8 +486,6 @@ void Mondrian::enqueue(Frame* frame) {
 }
 
 void Mondrian::workPostprocess() {
-  time_us firstCollectTime = -1;
-  size_t numFrames = 0;
   int scheduleID = 0;
   while (!stop_) {
     int currID = scheduleID++;
@@ -516,17 +500,6 @@ void Mondrian::workPostprocess() {
     auto& streams = packingResult.streams;
     auto& fullFrameTarget = packingResult.fullFrameTarget;
     auto& packedCanvasesTable = packingResult.packedCanvasesTable;
-
-    if (currID == 0) {
-      firstCollectTime = NowMicros();
-    } else if (currID > 0) {
-      numFrames += std::accumulate(streams.begin(), streams.end(), 0,
-                                   [](int sum, const auto& pair) {
-                                     return sum + pair.second.size();
-                                   });
-      double fps = (double) numFrames * 1e6 / (double) (NowMicros() - firstCollectTime);
-      LOGD("XXX Postprocess %d FPS: %f", currID, fps);
-    }
 
     // Handle full frame inference results
     if (fullFrameTarget != nullptr) {

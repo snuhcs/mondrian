@@ -79,7 +79,6 @@ std::list<Frame*> ROIExtractor::collectFrames(int currID) {
 }
 
 void ROIExtractor::workPD() {
-  time_us secondStartTime = -1;
   while (!stop_) {
     std::unique_lock<std::mutex> PDLock(PDMtx_);
     PDCv_.wait(PDLock, [this]() { return stop_ || !PDWaiting_.empty(); });
@@ -88,16 +87,10 @@ void ROIExtractor::workPD() {
     PDWaiting_.pop_front();
     PDLock.unlock();
 
-    std::string eventName = "PD" + std::to_string(frame->fid);
-    int32_t handle = tracer_->BeginEvent(ROIExtractorPDTag_, eventName);
+    int32_t handle = tracer_->BeginEvent(ROIExtractorPDTag_,
+                                         "PD" + std::to_string(frame->fid));
 
     processPD(frame);
-    if (frame->fid == 2) {
-      secondStartTime = NowMicros();
-    } else if (frame->fid > 2) {
-      double fps = (double) (frame->fid - 2) * 1e6 / (double) (NowMicros() - secondStartTime);
-      LOGD("XXX PD %d FPS: %f", frame->fid, fps);
-    }
 
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFWaiting_.push_back(frame);
@@ -118,7 +111,6 @@ void ROIExtractor::workOF() {
 //  CPU_SET(3, &set);
 //  assert(sched_setaffinity(0, sizeof(cpu_set_t), &set) == 0);
 
-  time_us secondStartTime = -1;
   while (!stop_) {
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFCv_.wait(OFLock, [this]() {
@@ -134,17 +126,11 @@ void ROIExtractor::workOF() {
     isOFProcessing_ = true;
     OFLock.unlock();
 
-    std::string eventName = "OF" + std::to_string(frame->fid);
-    int32_t handle = tracer_->BeginEvent(ROIExtractorOFTag_, eventName);
+    int32_t handle = tracer_->BeginEvent(ROIExtractorOFTag_,
+                                         "OF" + std::to_string(frame->fid));
     time_us prepareTime = NowMicros();
 
     processOF(frame);
-    if (frame->fid == 2) {
-      secondStartTime = NowMicros();
-    } else if (frame->fid > 2) {
-      double fps = (double) (frame->fid - 2) * 1e6 / (double) (NowMicros() - secondStartTime);
-      LOGD("XXX OF %d FPS: %f", frame->fid, fps);
-    }
 
     OFLock.lock();
     frame->isROIsReady = true;
@@ -168,7 +154,6 @@ void ROIExtractor::workOF() {
 }
 
 void ROIExtractor::workPostprocess() {
-  time_us secondStartTime = -1;
   while (!stop_) {
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFCv_.wait(OFLock, [this]() { return stop_ || !PostprocessWaiting_.empty(); });
@@ -178,16 +163,10 @@ void ROIExtractor::workPostprocess() {
     isPostprocessing_ = true;
     OFLock.unlock();
 
-    std::string eventName = "ROIPostprocess" + std::to_string(frame->fid);
-    int32_t handle = tracer_->BeginEvent(ROIExtractorPostprocessTag_, eventName);
+    int32_t handle = tracer_->BeginEvent(ROIExtractorPostprocessTag_,
+                                         "ROIPostprocess" + std::to_string(frame->fid));
 
     postprocess(frame);
-    if (frame->fid == 2) {
-      secondStartTime = NowMicros();
-    } else if (frame->fid > 2) {
-      double fps = (double) (frame->fid - 2) * 1e6 / (double) (NowMicros() - secondStartTime);
-      LOGD("XXX Pp %d FPS: %f", frame->fid, fps);
-    }
 
     OFLock.lock();
     Processed_.push_back(frame);
