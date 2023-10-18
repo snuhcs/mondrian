@@ -3,8 +3,8 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <list>
 #include <mutex>
-#include <queue>
 
 #include "opencv2/core/mat.hpp"
 
@@ -20,13 +20,15 @@ class FrameBuffer {
 
   Frame* enqueue(const cv::Mat& yuvMat);
 
+  void freeMats(int tailIndex);
+
   void free(int tailIndex);
 
  private:
   const VID vid;
 
   int frameCount;
-  std::queue<std::unique_ptr<Frame>> frames;
+  std::list<std::unique_ptr<Frame>> frames;
   std::mutex mtx;
 };
 

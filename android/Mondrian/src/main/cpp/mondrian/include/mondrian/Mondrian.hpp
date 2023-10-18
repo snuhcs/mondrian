@@ -49,6 +49,8 @@ class Mondrian {
 
   void handleROIWiseResults(std::map<Device, std::vector<PackedCanvas>>& packedCanvasesTable, int currID);
 
+  void freeMats(const MultiStream& frames);
+
   void releaseFrames(const MultiStream& frames);
 
   void logFrame(const Frame* frame);

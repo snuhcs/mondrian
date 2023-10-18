@@ -13,14 +13,25 @@ Frame* FrameBuffer::enqueue(const cv::Mat& yuvMat) {
   FID fid = frameCount++;
   Frame* prevFrame = frames.empty() ? nullptr : frames.back().get();
   auto currFrame = std::make_unique<Frame>(vid, fid, yuvMat, prevFrame, NowMicros());
-  frames.push(std::move(currFrame));
+  frames.push_back(std::move(currFrame));
   return frames.back().get();
+}
+
+void FrameBuffer::freeMats(int tailIndex) {
+  std::lock_guard<std::mutex> lock(mtx);
+  for (auto& frame : frames) {
+    if (!frame->released && frame->fid <= tailIndex) {
+      frame->released = true;
+      frame->yuvMat.release();
+      frame->resizedGrayMat.release();
+    }
+  }
 }
 
 void FrameBuffer::free(int tailIndex) {
   std::lock_guard<std::mutex> lock(mtx);
   while (!frames.empty() && frames.front()->fid <= tailIndex) {
-    frames.pop();
+    frames.pop_front();
   }
 }
 

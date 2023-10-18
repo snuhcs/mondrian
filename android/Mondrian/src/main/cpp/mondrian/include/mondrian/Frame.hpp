@@ -26,6 +26,7 @@ class Frame {
   const VID vid;
   const FID fid;
   const Frame* prevFrame;
+  bool released;
   cv::Mat yuvMat;
   cv::Mat resizedGrayMat;
   std::vector<std::unique_ptr<ROI>> rois;

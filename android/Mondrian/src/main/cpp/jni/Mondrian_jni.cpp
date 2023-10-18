@@ -36,12 +36,6 @@ Java_hcs_offloading_mondrian_MondrianApp_close(JNIEnv* env, jobject thiz, jlong 
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_hcs_offloading_mondrian_Utils_schedSetAffinityPrimary(JNIEnv* env, jclass clazz) {
-  return md::sched_setaffinity_primary();
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL
 Java_hcs_offloading_mondrian_Utils_schedSetAffinityBig(JNIEnv* env, jclass clazz) {
   return md::sched_setaffinity_big();
 }

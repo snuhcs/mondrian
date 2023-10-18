@@ -31,15 +31,15 @@ ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
       isOFProcessing_(false),
       collecting_(false) {
   PDThread_ = std::thread([this]() {
-//    assert(sched_setaffinity_little());
+    assert(sched_setaffinity_big_or_primary());
     workPD();
   });
   OFThread_ = std::thread([this]() {
-//    assert(sched_setaffinity_big_or_primary());
+    assert(sched_setaffinity_big_or_primary());
     workOF();
   });
   PostprocessThread_ = std::thread([this]() {
-//    assert(sched_setaffinity_big_or_primary());
+    assert(sched_setaffinity_big_or_primary());
     workPostprocess();
   });
 }

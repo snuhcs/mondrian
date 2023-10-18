@@ -41,7 +41,7 @@ Worker::Worker(InferenceEngine* engine,
   }
 
   thread_ = std::thread([this]() {
-//    assert(sched_setaffinity_little());
+    assert(sched_setaffinity_little());
     work();
   });
 }

@@ -62,7 +62,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
 
   // Start logging thread
   logThread_ = std::thread([this]() {
-//    assert(sched_setaffinity_little());
+    assert(sched_setaffinity_little());
     workLog();
   });
 
@@ -94,13 +94,13 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
 
   // Start postprocessing thread
   postprocessThread_ = std::thread([this]() {
-//    assert(sched_setaffinity_little());
+    assert(sched_setaffinity_little());
     workPostprocess();
   });
 
   // Start scheduling thread
   scheduleThread_ = std::thread([this]() {
-//    assert(sched_setaffinity_little());
+    assert(sched_setaffinity_big_or_primary());
     workSchedule();
   });
 }
@@ -380,6 +380,14 @@ void Mondrian::handleROIWiseResults(
   }
 }
 
+void Mondrian::freeMats(const MultiStream& streams) {
+  for (const auto& [vid, stream] : streams) {
+    if (stream.empty()) continue;
+    int lastFrameIndex = (*stream.rbegin())->fid;
+    frameBuffers_.at(vid)->freeMats(lastFrameIndex - config_.roiExtractorConfig.PD_INTERVAL);
+  }
+}
+
 void Mondrian::releaseFrames(const MultiStream& streams) {
   for (const auto& [vid, stream] : streams) {
     if (stream.empty()) continue;
@@ -548,6 +556,9 @@ void Mondrian::workPostprocess() {
       }
     }
     ROIExtractor_->notify();
+
+    // Free Mats
+    freeMats(streams);
 
     // Update results for system output
     std::unique_lock<std::mutex> resultLock(logMtx_);
