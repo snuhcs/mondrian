@@ -2,6 +2,7 @@
 
 #include "mondrian/InferenceEngine.hpp"
 #include "mondrian/Log.hpp"
+#include "mondrian/Utils.hpp"
 
 namespace md {
 
@@ -39,7 +40,10 @@ Worker::Worker(InferenceEngine* engine,
     BoundingBox_init_ = env_->GetMethodID(class_BoundingBox_, "<init>", "(IIIIFI)V");
   }
 
-  thread_ = std::thread([this]() { work(); });
+  thread_ = std::thread([this]() {
+//    assert(sched_setaffinity_little());
+    work();
+  });
 }
 
 Worker::~Worker() {

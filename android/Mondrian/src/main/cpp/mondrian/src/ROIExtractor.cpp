@@ -30,9 +30,18 @@ ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
       stop_(false),
       isOFProcessing_(false),
       collecting_(false) {
-  PDThread_ = std::thread([this]() { workPD(); });
-  OFThread_ = std::thread([this]() { workOF(); });
-  PostprocessThread_ = std::thread([this]() { workPostprocess(); });
+  PDThread_ = std::thread([this]() {
+//    assert(sched_setaffinity_little());
+    workPD();
+  });
+  OFThread_ = std::thread([this]() {
+//    assert(sched_setaffinity_big_or_primary());
+    workOF();
+  });
+  PostprocessThread_ = std::thread([this]() {
+//    assert(sched_setaffinity_big_or_primary());
+    workPostprocess();
+  });
 }
 
 ROIExtractor::~ROIExtractor() {
@@ -102,15 +111,6 @@ void ROIExtractor::workPD() {
 }
 
 void ROIExtractor::workOF() {
-
-//  cpu_set_t set;
-//  CPU_ZERO(&set);
-//  CPU_SET(0, &set);
-//  CPU_SET(1, &set);
-//  CPU_SET(2, &set);
-//  CPU_SET(3, &set);
-//  assert(sched_setaffinity(0, sizeof(cpu_set_t), &set) == 0);
-
   while (!stop_) {
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFCv_.wait(OFLock, [this]() {

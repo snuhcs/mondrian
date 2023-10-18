@@ -1,5 +1,7 @@
 #include "mondrian/Utils.hpp"
 
+#include <sched.h>
+
 #include <map>
 #include <set>
 
@@ -232,6 +234,38 @@ void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
       boxes.erase(boxes.begin() + i);
     }
   }
+}
+
+bool sched_setaffinity_big() {
+  cpu_set_t set;
+  CPU_ZERO(&set);
+  CPU_SET(6, &set);
+  CPU_SET(5, &set);
+  CPU_SET(4, &set);
+  int return_code = sched_setaffinity(0, sizeof(cpu_set_t), &set);
+  return return_code == 0;
+}
+
+bool sched_setaffinity_big_or_primary() {
+  cpu_set_t set;
+  CPU_ZERO(&set);
+  CPU_SET(7, &set);
+  CPU_SET(6, &set);
+  CPU_SET(5, &set);
+  CPU_SET(4, &set);
+  int return_code = sched_setaffinity(0, sizeof(cpu_set_t), &set);
+  return return_code == 0;
+}
+
+bool sched_setaffinity_little() {
+  cpu_set_t set;
+  CPU_ZERO(&set);
+  CPU_SET(3, &set);
+  CPU_SET(2, &set);
+  CPU_SET(1, &set);
+  CPU_SET(0, &set);
+  int return_code = sched_setaffinity(0, sizeof(cpu_set_t), &set);
+  return return_code == 0;
 }
 
 } // namespace md

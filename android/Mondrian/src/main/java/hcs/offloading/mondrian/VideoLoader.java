@@ -83,6 +83,7 @@ public class VideoLoader implements Runnable {
 
     @Override
     public void run() {
+//        assert(Utils.schedSetAffinityLittle());
         boolean enqueueEnd = false;
         long intervalNs = (long) (1e9 / fps);
         int frameIndex = 0;

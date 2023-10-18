@@ -8,6 +8,7 @@
 
 #include "mondrian/Config.hpp"
 #include "mondrian/Mondrian.hpp"
+#include "mondrian/Utils.hpp"
 
 extern "C"
 JNIEXPORT jlong JNICALL
@@ -31,4 +32,28 @@ JNIEXPORT void JNICALL
 Java_hcs_offloading_mondrian_MondrianApp_close(JNIEnv* env, jobject thiz, jlong handle) {
   auto* mondrian = (md::Mondrian*) handle;
   delete mondrian;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_hcs_offloading_mondrian_Utils_schedSetAffinityPrimary(JNIEnv* env, jclass clazz) {
+  return md::sched_setaffinity_primary();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_hcs_offloading_mondrian_Utils_schedSetAffinityBig(JNIEnv* env, jclass clazz) {
+  return md::sched_setaffinity_big();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_hcs_offloading_mondrian_Utils_schedSetAffinityBigOrPrimary(JNIEnv* env, jclass clazz) {
+  return md::sched_setaffinity_big_or_primary();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_hcs_offloading_mondrian_Utils_schedSetAffinityLittle(JNIEnv* env, jclass clazz) {
+  return md::sched_setaffinity_little();
 }

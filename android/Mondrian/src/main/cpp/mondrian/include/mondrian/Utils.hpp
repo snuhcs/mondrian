@@ -35,6 +35,14 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
 void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
          const int numLabels, const float iouThres);
 
+bool sched_setaffinity_primary();
+
+bool sched_setaffinity_big();
+
+bool sched_setaffinity_big_or_primary();
+
+bool sched_setaffinity_little();
+
 } // namespace md
 
 #endif // UTILS_HPP_
