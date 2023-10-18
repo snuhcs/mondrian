@@ -95,7 +95,7 @@ class Mondrian {
   std::thread logThread_;
   std::mutex logMtx_;
   std::condition_variable resultsCV_;
-  std::map<VID, std::map<FID, std::pair<time_us, std::vector<BoundingBox>>>> results_;
+  std::list<MultiStream> results_;
   std::unique_ptr<Logger> loggerBoxes_;
   std::unique_ptr<Logger> loggerFrame_;
   std::unique_ptr<Logger> loggerROI_;

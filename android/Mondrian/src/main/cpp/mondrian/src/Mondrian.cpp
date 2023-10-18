@@ -271,15 +271,6 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   }
 
   frame->endTime = NowMicros();
-
-  std::unique_lock<std::mutex> resultLock(logMtx_);
-  std::vector<BoundingBox> resultBoxes;
-  std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(resultBoxes),
-                 [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-  results_[frame->vid][frame->fid] = {frame->endTime, std::move(resultBoxes)};
-  resultLock.unlock();
-  resultsCV_.notify_all();
-
   tracer_->EndEvent(postprocessThreadTag, handle);
 }
 
@@ -410,18 +401,21 @@ void Mondrian::logFrame(const Frame* frame) {
   }
   if (loggerROI_) {
     std::lock_guard<std::mutex> lock(loggerROI_->mtx());
-    for (const auto& roi : frame->rois) {
-      loggerROI_->logROI(roi.get());
-    }
+    loggerROI_->logROIs(frame);
     loggerROI_->flush();
+  }
+  if (loggerBoxes_) {
+    std::lock_guard<std::mutex> lock(loggerBoxes_->mtx());
+    loggerBoxes_->logBoxes(frame);
+    loggerBoxes_->flush();
   }
 }
 
 void Mondrian::logFrames(const MultiStream& streams) {
   if (loggerFrame_) {
     std::lock_guard<std::mutex> lock(loggerFrame_->mtx());
-  for (const auto& [vid, stream] : streams) {
-    for (const auto& frame : stream) {
+    for (const auto& [vid, stream] : streams) {
+      for (const auto& frame : stream) {
         loggerFrame_->logFrame(frame);
       }
     }
@@ -431,12 +425,19 @@ void Mondrian::logFrames(const MultiStream& streams) {
     std::lock_guard<std::mutex> lock(loggerROI_->mtx());
     for (const auto& [vid, stream] : streams) {
       for (const auto& frame : stream) {
-        for (const auto& roi : frame->rois) {
-          loggerROI_->logROI(roi.get());
-        }
+        loggerROI_->logROIs(frame);
       }
     }
     loggerROI_->flush();
+  }
+  if (loggerBoxes_) {
+    std::lock_guard<std::mutex> lock(loggerBoxes_->mtx());
+    for (const auto& [vid, stream] : streams) {
+      for (const auto& frame : stream) {
+        loggerBoxes_->logBoxes(frame);
+      }
+    }
+    loggerBoxes_->flush();
   }
 }
 
@@ -565,69 +566,33 @@ void Mondrian::workPostprocess() {
       }
     }
     ROIExtractor_->notify();
-    tracer_->EndEvent(postprocessThreadTag, handle);
 
     // Update results for system output
-    handle = tracer_->BeginEvent(postprocessThreadTag,
-                                 "postprocess" + std::to_string(currID) + " put");
     std::unique_lock<std::mutex> resultLock(logMtx_);
-    for (const auto& it : streams) {
-      for (Frame* frame : it.second) {
-        if (frame == fullFrameTarget) continue;
-        std::vector<BoundingBox> boxes;
-        std::transform(frame->boxes.begin(), frame->boxes.end(), std::back_inserter(boxes),
-                       [](const std::unique_ptr<BoundingBox>& box) { return *box; });
-        results_[frame->vid][frame->fid] = {frame->endTime, std::move(boxes)};
-      }
-    }
+    results_.push_back(streams);
     resultLock.unlock();
     resultsCV_.notify_all();
     tracer_->EndEvent(postprocessThreadTag, handle);
-
-    // Release used frames
-    logFrames(streams);
-    releaseFrames(streams);
   }
 }
 
 void Mondrian::workLog() {
-  time_us firstCollectTime = -1;
-  size_t numFrames = 0;
   while (!stop_) {
     std::unique_lock<std::mutex> resultLock(logMtx_);
-    resultsCV_.wait(resultLock, [this]() {
-      return stop_ || std::any_of(results_.begin(), results_.end(),
-                                  [](const auto& it) { return !it.second.empty(); });
-    });
+    resultsCV_.wait(resultLock, [this]() { return stop_ || !results_.empty(); });
+    MultiStream streams = std::move(results_.front());
+    results_.pop_front();
+    resultLock.unlock();
+    resultsCV_.notify_all();
+
     int handle = tracer_->BeginEvent(logThreadTag, "log");
-    for (const auto& [vid, frameResults] : results_) {
-      for (const auto& [fid, endTimeBoxes] : frameResults) {
-        const auto& [endTime, boxes] = endTimeBoxes;
-        loggerBoxes_->logBoxes(vid, fid, boxes);
-      }
-      LOGD("[Logger] vid=%d %d ~ %d frames logged",
-           vid, frameResults.begin()->first, frameResults.rbegin()->first);
-    }
-
-    if (firstCollectTime == -1) {
-      firstCollectTime = NowMicros();
-    } else {
-      numFrames += std::accumulate(results_.begin(), results_.end(), 0,
-                                   [](int sum, const auto& pair) {
-                                     return sum + pair.second.size();
-                                   });
-      double fps = (double) numFrames * 1e6 / (double) (NowMicros() - firstCollectTime);
-      LOGD("XXX Log FPS: %f", fps);
-    }
-
-    results_.clear();
-    tracer_->EndEvent(logThreadTag, handle);
+    logFrames(streams);
+    releaseFrames(streams);
     bool success = tracer_->DumpToFile(
         /*logPath=*/"/data/data/hcs.offloading.mondrian/trace.json",
         /*do_validate=*/false);
     assert(success);
-    resultLock.unlock();
-    resultsCV_.notify_all();
+    tracer_->EndEvent(logThreadTag, handle);
   }
 }
 

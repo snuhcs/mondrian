@@ -57,17 +57,19 @@ void Logger::logFrame(const Frame* frame) {
   logFile_ << frame->str(baseTime) << '\n';
 }
 
-void Logger::logROI(const ROI* roi) {
-  if (!logFile_.is_open() || roi == nullptr) return;
-  logFile_ << roi->str() << '\n';
+void Logger::logROIs(const Frame* frame) {
+  if (!logFile_.is_open() || frame == nullptr) return;
+  for (const auto& roi : frame->rois) {
+    logFile_ << roi->str() << '\n';
+  }
 }
 
-void Logger::logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes) {
-  if (!logFile_.is_open()) return;
-  for (const auto& box : boxes) {
-    logFile_ << vid << DELIM
-             << fid << DELIM
-             << box.str() << '\n';
+void Logger::logBoxes(const Frame* frame) {
+  if (!logFile_.is_open() || frame == nullptr) return;
+  for (const auto& box : frame->boxes) {
+    logFile_ << frame->vid << DELIM
+             << frame->fid << DELIM
+             << box->str() << '\n';
   }
 }
 

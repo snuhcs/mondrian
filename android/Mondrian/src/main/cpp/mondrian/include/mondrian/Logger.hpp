@@ -26,9 +26,9 @@ class Logger {
 
   void logFrame(const Frame* frame);
 
-  void logROI(const ROI* roi);
+  void logROIs(const Frame* frame);
 
-  void logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes);
+  void logBoxes(const Frame* frame);
 
   void flush();
 
