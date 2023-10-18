@@ -32,9 +32,11 @@ class Logger {
 
   void flush();
 
+  std::mutex& mtx() { return mtx_; }
+
  private:
   std::ofstream logFile_;
-  std::mutex mtx;
+  std::mutex mtx_;
 
   time_us baseTime;
 };

@@ -51,7 +51,7 @@ class Mondrian {
 
   void releaseFrames(const MultiStream& frames);
 
-  void logFrame(const Frame* frame, const bool flush);
+  void logFrame(const Frame* frame);
 
   void logFrames(const MultiStream& streams);
 

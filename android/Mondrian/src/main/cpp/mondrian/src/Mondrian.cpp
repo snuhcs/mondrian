@@ -402,27 +402,42 @@ void Mondrian::releaseFrames(const MultiStream& streams) {
   }
 }
 
-void Mondrian::logFrame(const Frame* frame, const bool flush) {
+void Mondrian::logFrame(const Frame* frame) {
   if (loggerFrame_) {
+    std::lock_guard<std::mutex> lock(loggerFrame_->mtx());
     loggerFrame_->logFrame(frame);
-    if (flush) loggerFrame_->flush();
+    loggerFrame_->flush();
   }
   if (loggerROI_) {
+    std::lock_guard<std::mutex> lock(loggerROI_->mtx());
     for (const auto& roi : frame->rois) {
       loggerROI_->logROI(roi.get());
     }
-    if (flush) loggerROI_->flush();
+    loggerROI_->flush();
   }
 }
 
 void Mondrian::logFrames(const MultiStream& streams) {
+  if (loggerFrame_) {
+    std::lock_guard<std::mutex> lock(loggerFrame_->mtx());
   for (const auto& [vid, stream] : streams) {
     for (const auto& frame : stream) {
-      logFrame(frame, /*flush=*/false);
+        loggerFrame_->logFrame(frame);
+      }
     }
+    loggerFrame_->flush();
   }
-  if (loggerFrame_) loggerFrame_->flush();
-  if (loggerROI_) loggerROI_->flush();
+  if (loggerROI_) {
+    std::lock_guard<std::mutex> lock(loggerROI_->mtx());
+    for (const auto& [vid, stream] : streams) {
+      for (const auto& frame : stream) {
+        for (const auto& roi : frame->rois) {
+          loggerROI_->logROI(roi.get());
+        }
+      }
+    }
+    loggerROI_->flush();
+  }
 }
 
 void Mondrian::enqueue(const VID vid, const cv::Mat& yuvMat) {
@@ -460,7 +475,7 @@ void Mondrian::enqueueFrameWise(Frame* frame) {
       /*isFullFrame=*/true,
       /*key=*/frame->getKey());
   handleFullFrameResults(frame, frame->fid);
-  logFrame(frame, /*flush=*/true);
+  logFrame(frame);
   std::lock_guard<std::mutex> framesLock(frameBuffersMtx_);
   frameBuffers_.at(frame->vid)->free(frame->fid);
 }
@@ -476,7 +491,7 @@ void Mondrian::enqueue(Frame* frame) {
         /*isFullFrame=*/true,
         /*key=*/frame->getKey());
     handleFullFrameResults(frame, -1);
-    logFrame(frame, /*flush=*/true);
+    logFrame(frame);
     return;
   } else {
     ROIExtractor_->enqueue(frame);
