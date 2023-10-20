@@ -169,7 +169,6 @@ void ROIExtractor::workPostprocess() {
     OFLock.lock();
     Processed_.push_back(frame);
     isPostprocessing_ = false;
-    size_t numOFWaiting = OFWaiting_.size();
     OFLock.unlock();
     OFCv_.notify_all();
 
@@ -177,7 +176,6 @@ void ROIExtractor::workPostprocess() {
     ss << "[ROIExtractor]"
        << " Postprocess"
        << " [" << frame->vid << ", " << frame->fid << "]"
-       << " OFQ=" << numOFWaiting
        << " #ROIs=" << std::count_if(frame->rois.begin(), frame->rois.end(),
                                      [](auto& roi) { return roi->type() == ROIType::OF; })
        << " #Features=" << frame->numFeaturePoints
