@@ -118,32 +118,36 @@ void ROIExtractor::workOF() {
           && OFWaiting_.front()->readyForOFExtraction();
     });
     if (stop_) return;
-    Frame* frame = OFWaiting_.front();
-    OFWaiting_.pop_front();
+    std::list<Frame*> frames = std::move(OFWaiting_);
+    OFWaiting_.clear();
     isOFProcessing_ = true;
     OFLock.unlock();
 
-    int32_t handle = tracer_->BeginEvent(ROIExtractorOFTag_,
-                                         "OF" + std::to_string(frame->fid));
-    processOF(frame);
-    tracer_->EndEvent(ROIExtractorOFTag_, handle);
+    for (auto& frame : frames) {
+      int32_t handle = tracer_->BeginEvent(ROIExtractorOFTag_,
+                                           "OF" + std::to_string(frame->fid));
+      processOF(frame);
+      tracer_->EndEvent(ROIExtractorOFTag_, handle);
 
-    OFLock.lock();
-    frame->isROIsReady = true;
+      OFLock.lock();
+      frame->isROIsReady = true;
+      PostprocessWaiting_.push_back(frame);
+      size_t numOFWaiting = OFWaiting_.size() + frames.back()->fid - frame->fid;
+      OFLock.unlock();
+      OFCv_.notify_all();
+
+      std::stringstream ss;
+      ss << "[ROIExtractor]"
+         << " OF         "
+         << " [" << frame->vid << ", " << frame->fid << "]"
+         << " OFQ=" << numOFWaiting
+         << " Track=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime
+         << " Filter=" << frame->filterEndTime - frame->filterStartTime;
+      LOGD("%s", ss.str().c_str());
+    }
+
     isOFProcessing_ = false;
-    PostprocessWaiting_.push_back(frame);
-    size_t numOFWaiting = OFWaiting_.size();
-    OFLock.unlock();
     OFCv_.notify_all();
-
-    std::stringstream ss;
-    ss << "[ROIExtractor]"
-       << " OF         "
-       << " [" << frame->vid << ", " << frame->fid << "]"
-       << " OFQ=" << numOFWaiting
-       << " Track=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime
-       << " Filter=" << frame->filterEndTime - frame->filterStartTime;
-    LOGD("%s", ss.str().c_str());
   }
 }
 
