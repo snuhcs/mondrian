@@ -4,14 +4,13 @@
 
 namespace md {
 
-void Interpolator::interpolate(MultiStream& frames, float thres) {
+void Interpolator::interpolate(MultiStream& frames, int thres) {
   for (const auto& [vid, aStreamFrames] : frames) {
     std::set<OID> roiIds = getObjectIDs(aStreamFrames);
     for (auto oid : roiIds) {
       std::vector<ROI*> rois = getROIStream(aStreamFrames, oid);
       std::vector<int> validIndices = findValidROIIndices(rois);
-      if (validIndices.empty() ||
-          float(validIndices.size()) / float(rois.size()) < thres) {
+      if (validIndices.empty() || validIndices.size() < thres) {
         continue;
       }
       extrapolateLeft(rois, validIndices.at(0));

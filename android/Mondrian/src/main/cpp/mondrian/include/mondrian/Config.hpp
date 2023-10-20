@@ -89,7 +89,7 @@ struct MondrianConfig {
   bool LOG_BOXES;
   bool LOG_FRAME;
   bool LOG_ROI;
-  float INTERPOLATION_THRES;
+  int INTERPOLATION_THRES;
   int FULL_FRAME_INTERVAL;
   int LATENCY_SLO_MS;
   int ROI_SIZE; // Used for Emulated Batch or ROI-wise Inference

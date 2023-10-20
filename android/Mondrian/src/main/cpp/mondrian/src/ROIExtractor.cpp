@@ -176,6 +176,7 @@ void ROIExtractor::workPostprocess() {
     ss << "[ROIExtractor]"
        << " Postprocess"
        << " [" << frame->vid << ", " << frame->fid << "]"
+       << "       "
        << " #ROIs=" << std::count_if(frame->rois.begin(), frame->rois.end(),
                                      [](auto& roi) { return roi->type() == ROIType::OF; })
        << " #Features=" << frame->numFeaturePoints

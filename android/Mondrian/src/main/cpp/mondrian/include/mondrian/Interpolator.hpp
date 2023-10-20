@@ -7,7 +7,7 @@ namespace md {
 
 class Interpolator {
  public:
-  static void interpolate(MultiStream& frames, float thres);
+  static void interpolate(MultiStream& frames, int thres);
 
  private:
   static std::set<OID> getObjectIDs(const Stream& frames);
