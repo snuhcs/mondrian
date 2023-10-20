@@ -98,15 +98,13 @@ void ROIExtractor::workPD() {
 
     int32_t handle = tracer_->BeginEvent(ROIExtractorPDTag_,
                                          "PD" + std::to_string(frame->fid));
-
     processPD(frame);
+    tracer_->EndEvent(ROIExtractorPDTag_, handle);
 
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFWaiting_.push_back(frame);
     OFLock.unlock();
     OFCv_.notify_all();
-
-    tracer_->EndEvent(ROIExtractorPDTag_, handle);
   }
 }
 
@@ -120,7 +118,6 @@ void ROIExtractor::workOF() {
           && OFWaiting_.front()->readyForOFExtraction();
     });
     if (stop_) return;
-    time_us startTime = NowMicros();
     Frame* frame = OFWaiting_.front();
     OFWaiting_.pop_front();
     isOFProcessing_ = true;
@@ -128,9 +125,8 @@ void ROIExtractor::workOF() {
 
     int32_t handle = tracer_->BeginEvent(ROIExtractorOFTag_,
                                          "OF" + std::to_string(frame->fid));
-    time_us prepareTime = NowMicros();
-
     processOF(frame);
+    tracer_->EndEvent(ROIExtractorOFTag_, handle);
 
     OFLock.lock();
     frame->isROIsReady = true;
@@ -145,11 +141,9 @@ void ROIExtractor::workOF() {
        << " OF         "
        << " [" << frame->vid << ", " << frame->fid << "]"
        << " OFQ=" << numOFWaiting
-       << " Prep=" << prepareTime - startTime
-       << " Ext=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime
+       << " Track=" << frame->opticalFlowROIProcessEndTime - frame->opticalFlowROIProcessStartTime
        << " Filter=" << frame->filterEndTime - frame->filterStartTime;
     LOGD("%s", ss.str().c_str());
-    tracer_->EndEvent(ROIExtractorOFTag_, handle);
   }
 }
 
@@ -165,8 +159,8 @@ void ROIExtractor::workPostprocess() {
 
     int32_t handle = tracer_->BeginEvent(ROIExtractorPostprocessTag_,
                                          "ROIPostprocess" + std::to_string(frame->fid));
-
     postprocess(frame);
+    tracer_->EndEvent(ROIExtractorPostprocessTag_, handle);
 
     OFLock.lock();
     Processed_.push_back(frame);
@@ -186,7 +180,6 @@ void ROIExtractor::workPostprocess() {
        << " Resize=" << frame->resizeEndTime - frame->resizeStartTime
        << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
     LOGD("%s", ss.str().c_str());
-    tracer_->EndEvent(ROIExtractorPostprocessTag_, handle);
   }
 }
 
