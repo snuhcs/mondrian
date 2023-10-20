@@ -104,7 +104,7 @@ void ROIExtractor::workPD() {
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFWaiting_.push_back(frame);
     OFLock.unlock();
-    OFCv_.notify_one();
+    OFCv_.notify_all();
 
     tracer_->EndEvent(ROIExtractorPDTag_, handle);
   }
@@ -138,7 +138,7 @@ void ROIExtractor::workOF() {
     PostprocessWaiting_.push_back(frame);
     size_t numOFWaiting = OFWaiting_.size();
     OFLock.unlock();
-    OFCv_.notify_one();
+    OFCv_.notify_all();
 
     std::stringstream ss;
     ss << "[ROIExtractor]"
