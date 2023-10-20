@@ -581,12 +581,16 @@ void Mondrian::workLog() {
     int handle = tracer_->BeginEvent(logThreadTag, "log");
     logFrames(streams);
     releaseFrames(streams);
-    bool success = tracer_->DumpToFile(
-        /*logPath=*/"/data/data/hcs.offloading.mondrian/trace.json",
-        /*do_validate=*/false);
-    assert(success);
     tracer_->EndEvent(logThreadTag, handle);
   }
+}
+
+void Mondrian::dumpLogs() const {
+  LOGD("[Mondrian] Dumping logs");
+  bool success = tracer_->DumpToFile(
+      /*logPath=*/"/data/data/hcs.offloading.mondrian/trace.json",
+      /*do_validate=*/false);
+  assert(success);
 }
 
 } // namespace md

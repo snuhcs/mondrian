@@ -28,6 +28,8 @@ public class VideoLoader implements Runnable {
 
     public interface Callback {
         void onFrame(int vid, Mat yuvMat);
+
+        void onVideoEnd();
     }
 
     public VideoLoader(int vid, String videoPath, int fps, Callback callback) throws IOException {
@@ -121,6 +123,8 @@ public class VideoLoader implements Runnable {
             }
             frameIndex++;
         }
+        sleepFor(5000); // Wait 5s for processing end
+        callback.onVideoEnd();
     }
 
     private static boolean enqueueStream(MediaCodec decoder, MediaExtractor extractor) {

@@ -62,6 +62,11 @@ public class MondrianApp implements VideoLoader.Callback {
         enqueue(handle, vid, yuvMat.getNativeObjAddr());
     }
 
+    @Override
+    public void onVideoEnd() {
+        dumpLogs(handle);
+    }
+
     public void close() {
         for (VideoLoader videoLoader : videoLoaders) {
             videoLoader.close();
@@ -107,6 +112,8 @@ public class MondrianApp implements VideoLoader.Callback {
     private native long createHandle(int numVideos);
 
     private native void enqueue(long handle, int vid, long yuvMatAddr);
+
+    private native void dumpLogs(long handle);
 
     private native void close(long handle);
 }

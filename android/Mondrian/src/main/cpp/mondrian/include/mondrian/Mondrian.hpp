@@ -32,6 +32,8 @@ class Mondrian {
 
   void enqueue(const VID vid, const cv::Mat& yuvMat);
 
+  void dumpLogs() const;
+
  private:
   void enqueue(Frame* frame);
 
