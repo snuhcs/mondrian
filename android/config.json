@@ -59,7 +59,7 @@
                 ]
             }
         },
-        "draw_inference_result": true,
+        "draw_inference_result": false,
         "conf_thres": 0.5,
         "iou_thres": 0.5,
         "profile_warmups": 3,
