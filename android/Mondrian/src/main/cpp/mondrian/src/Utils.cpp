@@ -94,6 +94,7 @@ std::vector<Rect> extractPD(const cv::Mat& prevGrayMat, const cv::Mat& nextGrayM
 std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
                                           const cv::Mat& nextGrayMat,
                                           const std::vector<Rect>& prevRects,
+                                          bool useCenter,
                                           int* numFeaturePoints) {
   assert(prevGrayMat.size() == nextGrayMat.size());
 
@@ -105,20 +106,21 @@ std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
     int r = std::min((int) prevRect.r, prevGrayMat.cols);
     int b = std::min((int) prevRect.b, prevGrayMat.rows);
     std::vector<cv::Point2f> aRectPoints;
-    cv::goodFeaturesToTrack(prevGrayMat(cv::Rect(l, t, r - l, b - t)), aRectPoints,
-        /*maxCorners=*/50,
-        /*qualityLevel=*/0.01,
-        /*minDistance=*/5.0,
-        /*mask=*/cv::Mat(),
-        /*blockSize=*/3,
-        /*useHarrisDetector=*/false,
-        /*k=*/0.03);
-    if (!aRectPoints.empty()) { // Add offset to corner prevPoints.
+    if (!useCenter) { // Add offset to corner prevPoints.
+      cv::goodFeaturesToTrack(prevGrayMat(cv::Rect(l, t, r - l, b - t)), aRectPoints,
+          /*maxCorners=*/50,
+          /*qualityLevel=*/0.01,
+          /*minDistance=*/5.0,
+          /*mask=*/cv::Mat(),
+          /*blockSize=*/3,
+          /*useHarrisDetector=*/false,
+          /*k=*/0.03);
       std::for_each(aRectPoints.begin(), aRectPoints.end(), [l, t](cv::Point2f& p) {
         p.x += (float) l;
         p.y += (float) t;
       });
-    } else { // Use center point if no corners are found.
+    }
+    if (aRectPoints.empty()) { // Use center point if no corners are found.
       aRectPoints.emplace_back((prevRect.l + prevRect.r) / 2,
                                (prevRect.t + prevRect.b) / 2);
     }

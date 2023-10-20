@@ -292,6 +292,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
       prevFrame->resizedGrayMat,
       currFrame->resizedGrayMat,
       scaledPrevRects,
+      config_.OF_TRACK_CENTER,
       &currFrame->numFeaturePoints);
   assert(trackingResults.size() == prevBoxes.size());
 
