@@ -10,8 +10,8 @@
     "log_roi": true,
     "log_frame": true,
     "interpolation_thres": 0.3,
-    "full_frame_interval": 3,
-    "latency_slo_ms": 3000,
+    "full_frame_interval": 1,
+    "latency_slo_ms": 4000,
     "roi_size": 128,
     "roi_extractor": {
         "extraction_size": [
