@@ -171,16 +171,14 @@ void Frame::resetMergedROIs() {
   mergedROIs.clear();
 
   for (const auto& roi : rois) {
-    std::unique_ptr<MergedROI>
-        mergedROI(new MergedROI({roi.get()}, roi->targetScaleTable(), false));
-    mergedROIs.push_back(std::move(mergedROI));
+    mergedROIs.emplace_back(new MergedROI(roi.get(), false));
   }
   assert(testROIsIntegrity());
 }
 
 void Frame::mergeMergedROIs(int maxSize) {
   assert(testROIsIntegrity());
-
+  
   std::vector<int> root(mergedROIs.size());
   std::iota(root.begin(), root.end(), 0);
 
@@ -306,9 +304,8 @@ void Frame::prepareFrameLast(const IntPairs& indices,
       for (auto probeScale : probeScales) {
         if (packedROIIndex >= numPackedROIs) break;
         assert(0.0f < probeScale && probeScale <= 1.0f);
-        std::map<Device, float> probeScaleTable;
-        probeScaleTable[device] = probeScale;
-        std::unique_ptr<MergedROI> probeROI(new MergedROI({roi.get()}, probeScaleTable, true));
+        std::unique_ptr<MergedROI> probeROI(new MergedROI(roi.get(), true));
+        probeROI->setTargetScale(probeScale);
         probeROI->setPackInfo(device,
                               locations[packedROIIndex],
                               indices[packedROIIndex].first,

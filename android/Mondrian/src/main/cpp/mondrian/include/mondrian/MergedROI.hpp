@@ -16,11 +16,9 @@ class MergedROI {
   static inline const cv::Scalar BORDER_COLOR{255, 255, 255};
   static inline const IntPair INVALID_XY{-1, -1};
 
-  MergedROI(const std::vector<ROI*>& rois,
-            const std::map<Device, float>& targetScaleTable,
-            bool isProbing);
+  MergedROI(ROI* roi, bool isProbing);
 
-  static std::unique_ptr<MergedROI> merge(const MergedROI* m0, const MergedROI* m1);
+  MergedROI(const std::vector<MergedROI*>& mergedROIs);
 
   static void mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize);
 
@@ -42,6 +40,10 @@ class MergedROI {
 
   float targetScale(Device device) const {
     return targetScaleTable_.at(device);
+  }
+
+  const std::map<Device, float>& targetScaleTable() const {
+    return targetScaleTable_;
   }
 
   void setTargetScale(float targetScale) {
@@ -163,10 +165,6 @@ class MergedROI {
   std::string str() const;
 
  private:
-  static Frame* frameOf(const std::vector<ROI*>& rois);
-
-  static Rect locOf(const std::vector<ROI*>& rois);
-
   Frame* const frame_;
   const std::vector<ROI*> rois_;
   const Rect loc_;
