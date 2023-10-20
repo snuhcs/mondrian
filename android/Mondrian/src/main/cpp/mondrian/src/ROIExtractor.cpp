@@ -156,33 +156,37 @@ void ROIExtractor::workPostprocess() {
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFCv_.wait(OFLock, [this]() { return stop_ || !PostprocessWaiting_.empty(); });
     if (stop_) return;
-    Frame* frame = PostprocessWaiting_.front();
-    PostprocessWaiting_.pop_front();
+    std::list<Frame*> frames = std::move(PostprocessWaiting_);
+    PostprocessWaiting_.clear();
     isPostprocessing_ = true;
     OFLock.unlock();
 
-    int32_t handle = tracer_->BeginEvent(ROIExtractorPostprocessTag_,
-                                         "ROIPostprocess" + std::to_string(frame->fid));
-    postprocess(frame);
-    tracer_->EndEvent(ROIExtractorPostprocessTag_, handle);
+    for (auto& frame : frames) {
+      int32_t handle = tracer_->BeginEvent(ROIExtractorPostprocessTag_,
+                                           "ROIPostprocess" + std::to_string(frame->fid));
+      postprocess(frame);
+      tracer_->EndEvent(ROIExtractorPostprocessTag_, handle);
 
-    OFLock.lock();
-    Processed_.push_back(frame);
+      OFLock.lock();
+      Processed_.push_back(frame);
+      OFLock.unlock();
+      OFCv_.notify_all();
+
+      std::stringstream ss;
+      ss << "[ROIExtractor]"
+         << " Postprocess"
+         << " [" << frame->vid << ", " << frame->fid << "]"
+         << "       "
+         << " #ROIs=" << std::count_if(frame->rois.begin(), frame->rois.end(),
+                                       [](auto& roi) { return roi->type() == ROIType::OF; })
+         << " #Features=" << frame->numFeaturePoints
+         << " Resize=" << frame->resizeEndTime - frame->resizeStartTime
+         << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
+      LOGD("%s", ss.str().c_str());
+    }
+
     isPostprocessing_ = false;
-    OFLock.unlock();
     OFCv_.notify_all();
-
-    std::stringstream ss;
-    ss << "[ROIExtractor]"
-       << " Postprocess"
-       << " [" << frame->vid << ", " << frame->fid << "]"
-       << "       "
-       << " #ROIs=" << std::count_if(frame->rois.begin(), frame->rois.end(),
-                                     [](auto& roi) { return roi->type() == ROIType::OF; })
-       << " #Features=" << frame->numFeaturePoints
-       << " Resize=" << frame->resizeEndTime - frame->resizeStartTime
-       << " Merge=" << frame->mergeROIEndTime - frame->mergeROIStartTime;
-    LOGD("%s", ss.str().c_str());
   }
 }
 
