@@ -153,21 +153,19 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   // -1 means that box is not assigned to any ROI
   HungarianAlgorithm::Solve(costMatrix, assignment);
 
-  for (unsigned int x = 0; x < boxes.size(); x++) {
-    if (assignment[x] == -1 || assignment[x] >= rois.size()) {
-      unassignedBoxes.push_back(boxes[x]);
+  for (unsigned int i = 0; i < boxes.size(); i++) {
+    if (assignment[i] == -1 || assignment[i] >= rois.size()) {
+      unassignedBoxes.push_back(boxes[i]);
       continue;
     }
-
-    ROI* srcROI = rois[assignment[x]];
-
-    boxes[x]->oid = srcROI->oid;
-    boxes[x]->setSrcROI(srcROI);
+    ROI* srcROI = rois[assignment[i]];
+    boxes[i]->oid = srcROI->oid;
+    boxes[i]->setSrcROI(srcROI);
     if (!isFullFrame) {
-      boxes[x]->origin = srcROI->origin();
+      boxes[i]->origin = srcROI->origin();
     }
-    srcROI->setBox(boxes[x]);
-    srcROI->setLabel(boxes[x]->label);
+    srcROI->setBox(boxes[i]);
+    srcROI->setLabel(boxes[i]->label);
   }
 
   // 2. Handle unassigned boxes
