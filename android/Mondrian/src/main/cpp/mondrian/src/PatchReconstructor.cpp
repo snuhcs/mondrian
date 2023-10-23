@@ -154,7 +154,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   HungarianAlgorithm::Solve(costMatrix, assignment);
 
   for (unsigned int i = 0; i < boxes.size(); i++) {
-    if (assignment[i] == -1 || assignment[i] >= rois.size()) {
+    if (costMatrix[i][assignment[i]] == max) {
       unassignedBoxes.push_back(boxes[i]);
       continue;
     }
@@ -189,6 +189,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     for (BoundingBox* box : boxes) {
       assert(box->oid != INVALID_OID);
       if (box->srcROI() != nullptr) {
+        assert(box->loc.intersection(box->srcROI()->paddedLoc) > 0);
         assert(box->srcROI()->box() == box);
         assert(box->srcROI()->label() == box->label);
         assert(box->srcROI()->oid == box->oid);
@@ -197,6 +198,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     for (auto& roi : rois) {
       assert(roi->oid != INVALID_OID);
       if (roi->box() != nullptr) {
+        assert(roi->paddedLoc.intersection(roi->box()->loc) > 0);
         assert(roi->box()->oid == roi->oid);
       }
     }
