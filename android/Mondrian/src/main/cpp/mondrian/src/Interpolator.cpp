@@ -89,19 +89,26 @@ void Interpolator::extrapolateRight(std::vector<ROI*> rois, int idx) {
 }
 
 void Interpolator::interpolateBetween(std::vector<ROI*> rois, int leftIdx, int rightIdx) {
-  std::pair<float, float> totalShift = sumMotionVectors(rois, leftIdx, rightIdx);
-  std::pair<float, float> boxShift = getBoxShift(rois, leftIdx, rightIdx);
-
   assert(rois.at(leftIdx)->box() != nullptr);
   assert(rois.at(rightIdx)->box() != nullptr);
+  std::pair<float, float> totalShift = sumMotionVectors(rois, leftIdx, rightIdx);
+  std::pair<float, float> boxShift = getBoxShift(rois, leftIdx, rightIdx);
+  bool isCorrectMatch = (totalShift.first > 0) == (boxShift.first > 0)
+      && (totalShift.second > 0) == (boxShift.second > 0)
+      && std::abs(totalShift.first) * 5 > std::abs(boxShift.first)
+      && std::abs(totalShift.second) * 5 > std::abs(boxShift.second);
+  std::pair<float, float> roiBoxMoveRatio =
+      isCorrectMatch ? std::make_pair(boxShift.first / totalShift.first,
+                                      boxShift.second / totalShift.second)
+                     : std::make_pair(1.0f, 1.0f);
   for (int i = leftIdx + 1; i < rightIdx; i++) {
     ROI* prevROI = rois.at(i - 1);
     ROI* currROI = rois.at(i);
     std::pair<float, float> prevCenter = prevROI->box()->loc.center();
     std::pair<float, float> currShift = currROI->features.ofFeatures.shiftAvg;
     std::pair<float, float> currCenter = {
-        prevCenter.first + currShift.first * boxShift.first / totalShift.first,
-        prevCenter.second + currShift.second * boxShift.second / totalShift.second};
+        prevCenter.first + currShift.first * roiBoxMoveRatio.first,
+        prevCenter.second + currShift.second * roiBoxMoveRatio.second};
     BoundingBox* prevBox = prevROI->box();
     assert(prevBox->oid == prevROI->oid);
     addBoxWithRefBox(currROI, prevBox, currCenter);
