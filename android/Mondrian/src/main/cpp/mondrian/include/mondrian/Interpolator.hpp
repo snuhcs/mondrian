@@ -26,8 +26,8 @@ class Interpolator {
 
   static void interpolateBetween(std::vector<ROI*> childROIs, int leftIdx, int rightIdx);
 
-  static void addBoxWithPrevInfo(ROI* currROI, const BoundingBox* prevBox,
-                                 const std::pair<float, float>& newCenter);
+  static void addBoxWithRefBox(ROI* currROI, const BoundingBox* refBox,
+                               const std::pair<float, float>& newCenter);
 };
 
 } // namespace md
