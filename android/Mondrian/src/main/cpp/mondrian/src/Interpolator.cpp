@@ -147,8 +147,8 @@ void Interpolator::addBoxWithRefBox(ROI* currROI, const BoundingBox* refBox,
   assert(0 <= newL && 0 <= newT);
   assert(newL <= newR && newT <= newB);
   Rect newBox(newL, newT, newR, newB);
-  currROI->frame->boxes.push_back(std::make_unique<BoundingBox>(
-      refBox->oid, -1, newBox, refBox->confidence, refBox->label, Origin::INTERPOLATE));
+  currROI->frame->boxes.emplace_back(new BoundingBox(
+      refBox->oid, -1, newBox, refBox->confidence, refBox->label, BoxOrigin::INTERPOLATE));
 
   BoundingBox* box = currROI->frame->boxes.back().get();
   assert(box->oid == refBox->oid);

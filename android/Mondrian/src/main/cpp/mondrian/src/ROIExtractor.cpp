@@ -226,7 +226,6 @@ void ROIExtractor::processPD(Frame* currFrame) const {
           /*frame=*/currFrame,
           /*origLoc=*/pdRect,
           /*type=*/ROIType::PD,
-          /*origin=*/Origin::PD,
           /*label=*/-1,
           /*ofFeatures=*/OFFeatures(),
           /*confidence=*/ROI::INVALID_CONF,
@@ -235,6 +234,15 @@ void ROIExtractor::processPD(Frame* currFrame) const {
   }
   currFrame->pixelDiffROIProcessEndTime = NowMicros();
 }
+
+struct PrevBox {
+  PrevBox(const Rect& loc, OID oid, float confidence, int label)
+      : loc(loc), oid(oid), confidence(confidence), label(label) {}
+  Rect loc;
+  OID oid;
+  float confidence;
+  int label;
+};
 
 void ROIExtractor::processOF(Frame* currFrame) const {
   assert(std::all_of(currFrame->rois.begin(), currFrame->rois.end(),
@@ -246,34 +254,26 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   float hRatio = (float) currFrame->resizedGrayMat.rows / (float) currFrame->height();
 
   // Prepare prevBoxes to track
-  std::vector<BoundingBox> prevBoxes;
+  std::vector<PrevBox> prevBoxes;
   const Frame* prevFrame = currFrame->prevFrame;
   if (prevFrame->useInferenceResultForOF) {
     for (const auto& box : prevFrame->boxes) {
       if (box->confidence < config_.OF_CONF_THRES) continue;
       Rect clippedLoc = box->loc.clip(imageSize);
       if (clippedLoc.minWH < 1) continue;
-      BoundingBox prevBox(
-          /*oid=*/box->oid,
-          /*pid=*/-1,
+      prevBoxes.emplace_back(
           /*loc=*/clippedLoc,
+          /*oid=*/box->oid,
           /*confidence=*/box->confidence,
-          /*label=*/box->label,
-          /*origin=*/Origin::FULL_FRAME);
-      prevBox.setSrcROI(box->srcROI());
-      prevBoxes.push_back(prevBox);
+          /*label=*/box->label);
     }
   } else {
     for (auto& roi : currFrame->prevFrame->rois) {
-      BoundingBox prevBox(
-          /*oid=*/roi->oid,
-          /*pid=*/-1,
+      prevBoxes.emplace_back(
           /*loc=*/roi->origLoc,
+          /*oid=*/roi->oid,
           /*confidence=*/1,
-          /*label=*/roi->label(),
-          /*origin=*/roi->origin());
-      prevBox.setSrcROI(roi.get());
-      prevBoxes.push_back(prevBox);
+          /*label=*/roi->label());
     }
   }
 
@@ -281,7 +281,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   std::vector<Rect> scaledPrevRects;
   std::transform(
       prevBoxes.begin(), prevBoxes.end(), std::back_inserter(scaledPrevRects),
-      [wRatio, hRatio](const BoundingBox& box) -> Rect {
+      [wRatio, hRatio](const PrevBox& box) -> Rect {
         return {box.loc.l * wRatio,
                 box.loc.t * hRatio,
                 box.loc.r * wRatio,
@@ -312,22 +312,21 @@ void ROIExtractor::processOF(Frame* currFrame) const {
       _shifts.emplace_back(x / wRatio, y / hRatio);
     }
     OFFeatures ofFeatures(_shifts, trackingResult.statuses, trackingResult.errors);
-    const BoundingBox& box = prevBoxes[i];
+    const PrevBox& prevBox = prevBoxes[i];
     auto [shiftX, shiftY] = ofFeatures.shiftAvg;
-    Rect currLoc = Rect(box.loc.l + shiftX,
-                        box.loc.t + shiftY,
-                        box.loc.r + shiftX,
-                        box.loc.b + shiftY).clip(imageSize);
+    Rect currLoc = Rect(prevBox.loc.l + shiftX,
+                        prevBox.loc.t + shiftY,
+                        prevBox.loc.r + shiftX,
+                        prevBox.loc.b + shiftY).clip(imageSize);
     if (currLoc.minWH < 1) continue;
     currFrame->rois.emplace_back(new ROI(
-        /*oid=*/box.oid,
+        /*oid=*/prevBox.oid,
         /*frame=*/currFrame,
         /*origLoc=*/currLoc,
         /*type=*/ROIType::OF,
-        /*origin=*/box.origin,
-        /*label=*/box.label,
+        /*label=*/prevBox.label,
         /*ofFeatures=*/ofFeatures,
-        /*confidence=*/box.confidence,
+        /*confidence=*/prevBox.confidence,
         /*padding=*/config_.OF_ROI_PADDING));
   }
   currFrame->opticalFlowROIProcessEndTime = NowMicros();

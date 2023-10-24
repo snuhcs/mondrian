@@ -128,7 +128,7 @@ std::vector<BoundingBox> TfLiteYoloV5Classifier::postprocess(int width, int heig
                                  (float) outputs[i * OUTPUT_ELEMS + 3],
                                  (float) width, (float) height);
       if (rect.l <= rect.r && rect.t <= rect.b) {
-        boxes.emplace_back(INVALID_OID, -1, rect, maxConfidence, maxLabel, Origin::INVALID);
+        boxes.emplace_back(INVALID_OID, -1, rect, maxConfidence, maxLabel, BoxOrigin::INVALID);
       }
     }
   }

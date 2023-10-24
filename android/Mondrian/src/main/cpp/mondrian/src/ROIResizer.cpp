@@ -150,7 +150,7 @@ void ROIResizer::updateTable(ROI* roi, Device device) {
   if (roi->box() == nullptr && largestProbeROIBox != nullptr) {
     auto copiedBox = std::make_unique<BoundingBox>(
         roi->oid, largestProbeROIBox->pid, largestProbeROIBox->loc, largestProbeROIBox->confidence,
-        largestProbeROIBox->label, roi->origin());
+        largestProbeROIBox->label, largestProbeROIBox->origin);
     copiedBox->setSrcROI(roi);
     roi->setLabel(copiedBox->label);
     roi->setBox(copiedBox.get());

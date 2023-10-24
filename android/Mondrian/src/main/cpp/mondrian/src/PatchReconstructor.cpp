@@ -83,13 +83,13 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
       if (maxROI->isProbing()) {
         std::unique_ptr<BoundingBox> probeBox(new BoundingBox(
             INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
-            box.confidence, box.label, Origin::FULL_FRAME));
+            box.confidence, box.label, BoxOrigin::PACKED_CANVAS));
         maxROI->setProbingBox(probeBox.get());
         maxROI->frame()->probingBoxesTable[Device::GPU].push_back(std::move(probeBox));
       } else {
         std::unique_ptr<BoundingBox> newBox(new BoundingBox(
             INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
-            box.confidence, box.label, Origin::INVALID));
+            box.confidence, box.label, BoxOrigin::PACKED_CANVAS));
         maxROI->frame()->boxes.push_back(std::move(newBox));
       }
     }
@@ -162,9 +162,6 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     ROI* srcROI = rois[assignment[i]];
     boxes[i]->oid = srcROI->oid;
     boxes[i]->setSrcROI(srcROI);
-    if (!isFullFrame) {
-      boxes[i]->origin = srcROI->origin();
-    }
     srcROI->setBox(boxes[i]);
     srcROI->setLabel(boxes[i]->label);
   }
@@ -177,9 +174,9 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
       assert(oid < endOID);
       box->oid = oid++;
       if (isFullFrame) {
-        box->origin = Origin::NEW_FULL_FRAME;
+        box->origin = BoxOrigin::NEW_FULL_FRAME;
       } else {
-        box->origin = Origin::NEW_PACKED_CANVAS;
+        box->origin = BoxOrigin::NEW_PACKED_CANVAS;
       }
       assert(box->srcROI() == nullptr);
     }

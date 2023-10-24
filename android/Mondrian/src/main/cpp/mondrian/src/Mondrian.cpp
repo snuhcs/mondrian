@@ -252,8 +252,8 @@ void Mondrian::handleFullFrameResults(Frame* frame, int currID) {
   frame->fullInferenceEndTime = result.detectionEnd;
   for (const BoundingBox& box : result.boxes) {
     auto& loc = box.loc;
-    frame->boxes.push_back(std::make_unique<BoundingBox>(
-        INVALID_OID, -1, box.loc, box.confidence, box.label, Origin::FULL_FRAME));
+    frame->boxes.emplace_back(new BoundingBox(
+        INVALID_OID, -1, box.loc, box.confidence, box.label, BoxOrigin::FULL_FRAME));
   }
   if (config_.EXECUTION_TYPE != ExecutionType::FRAME_WISE_INFERENCE) {
     patchReconstructor_->matchBoxesROIs(frame, true);
@@ -363,13 +363,13 @@ void Mondrian::handleROIWiseResults(
       float newR = std::max(0.0f, (b.loc.r - float(x)) / mergedScale + mergedROI->loc().l);
       float newB = std::max(0.0f, (b.loc.b - float(y)) / mergedScale + mergedROI->loc().t);
       assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
-      mergedROI->frame()->boxes.push_back(std::make_unique<BoundingBox>(
+      mergedROI->frame()->boxes.emplace_back(new BoundingBox(
           INVALID_OID,
           packedCanvas.pid,
           Rect(newL, newT, newR, newB),
           b.confidence,
           b.label,
-          Origin::FULL_FRAME));
+          BoxOrigin::PACKED_CANVAS));
     }
     tracer_->EndEvent(postprocessThreadTag, handle);
   }

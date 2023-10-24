@@ -61,19 +61,18 @@ ExecutionType executionTypeOf(const std::string& executionTypeStr);
 
 std::string str(const ExecutionType& executionType);
 
-enum class Origin {
+enum class BoxOrigin {
   INVALID = 0,       // null value for initialization
-  FULL_FRAME,        // (Box) matched Box from full frame_
-  PACKED_CANVAS,     // (ROI, Box) OF ROI from bounding box, Box from those ROIs
-  PD,                // (ROI, Box) PD ROI, OF ROI originated from PD ROI, Box from those ROIs
-  INTERPOLATE,       // (Box) interpolated Box
-  NEW_FULL_FRAME,    // (Box) unmatched Box from full frame_
-  NEW_PACKED_CANVAS, // (Box) unmatched Box from packed canvas
+  FULL_FRAME,        // Box from full frame
+  NEW_FULL_FRAME,    // New box from full frame
+  PACKED_CANVAS,     // Box from packed canvas
+  NEW_PACKED_CANVAS, // New Box from packed canvas
+  INTERPOLATE,       // Box from interpolation
 };
 
-Origin originOf(const std::string& originStr);
+BoxOrigin boxOriginOf(const std::string& boxOriginStr);
 
-std::string str(const Origin& origin);
+std::string str(const BoxOrigin& boxOrigin);
 
 enum class ROIPackerType {
   MIN_CONSECUTIVE_DROP = 1,
