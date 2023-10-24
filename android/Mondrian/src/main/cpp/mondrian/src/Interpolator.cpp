@@ -13,14 +13,14 @@ void Interpolator::interpolate(MultiStream& frames, int thres) {
       if (validIndices.empty() || validIndices.size() < thres) {
         continue;
       }
-      extrapolateLeft(rois, validIndices.at(0));
+      extrapolateLeft(rois, validIndices.front());
       for (int i = 0; i < validIndices.size() - 1; i++) {
         int leftIdx = validIndices.at(i);
         int rightIdx = validIndices.at(i + 1);
         if (rightIdx - leftIdx == 1) continue;
         interpolateBetween(rois, leftIdx, rightIdx);
       }
-      extrapolateRight(rois, validIndices.at(validIndices.size() - 1));
+      extrapolateRight(rois, validIndices.back());
     }
   }
 }
@@ -67,8 +67,8 @@ void Interpolator::extrapolateLeft(std::vector<ROI*> rois, int idx) {
   for (int current = idx - 1; current >= 0; current--) {
     ROI* currROI = rois.at(current);
     std::pair<float, float> shift = prevROI->features.ofFeatures.shiftAvg;
-    std::pair<float, float> newCenter = std::make_pair(prevCenter.first - shift.first,
-                                                       prevCenter.second - shift.second);
+    std::pair<float, float> newCenter = {prevCenter.first - shift.first,
+                                         prevCenter.second - shift.second};
     BoundingBox* prevBox = prevROI->box();
     assert(prevBox->oid == prevROI->oid);
     addBoxWithPrevInfo(currROI, prevBox, newCenter);
@@ -87,8 +87,8 @@ void Interpolator::extrapolateRight(std::vector<ROI*> rois, int idx) {
   for (int current = idx + 1; current < rois.size(); current++) {
     ROI* currROI = rois.at(current);
     std::pair<float, float> shift = currROI->features.ofFeatures.shiftAvg;
-    std::pair<float, float> newCenter = std::make_pair(prevCenter.first + shift.first,
-                                                       prevCenter.second + shift.second);
+    std::pair<float, float> newCenter = {prevCenter.first + shift.first,
+                                         prevCenter.second + shift.second};
     BoundingBox* prevBox = prevROI->box();
     assert(prevBox->oid == prevROI->oid);
     addBoxWithPrevInfo(currROI, prevBox, newCenter);
@@ -110,9 +110,9 @@ void Interpolator::interpolateBetween(std::vector<ROI*> rois, int leftIdx, int r
   for (int current = leftIdx + 1; current < rightIdx; current++) {
     ROI* currROI = rois.at(current);
     std::pair<float, float> shift = currROI->features.ofFeatures.shiftAvg;
-    std::pair<float, float> newCenter = std::make_pair(
+    std::pair<float, float> newCenter = {
         prevCenter.first + shift.first * (float) boxShift.first / totalShift.first,
-        prevCenter.second + shift.second * (float) boxShift.second / totalShift.second);
+        prevCenter.second + shift.second * (float) boxShift.second / totalShift.second};
     BoundingBox* prevBox = prevROI->box();
     assert(prevBox->oid == prevROI->oid);
     addBoxWithPrevInfo(currROI, prevBox, {newCenter.first, newCenter.second});
@@ -130,7 +130,7 @@ std::pair<float, float> Interpolator::sumMotionVectors(std::vector<ROI*> rois,
     xShift += rois.at(i)->features.ofFeatures.shiftAvg.first;
     yShift += rois.at(i)->features.ofFeatures.shiftAvg.second;
   }
-  return std::make_pair(xShift, yShift);
+  return {xShift, yShift};
 }
 
 std::pair<float, float> Interpolator::getBoxShift(std::vector<ROI*> rois, int start, int end) {
@@ -138,7 +138,7 @@ std::pair<float, float> Interpolator::getBoxShift(std::vector<ROI*> rois, int st
   std::pair<float, float> c1 = box1->loc.center();
   BoundingBox* box2 = rois.at(end)->box();
   std::pair<float, float> c2 = box2->loc.center();
-  return std::make_pair(c2.first - c1.first, c2.second - c1.second);
+  return {c2.first - c1.first, c2.second - c1.second};
 }
 
 void Interpolator::addBoxWithPrevInfo(ROI* currROI, const BoundingBox* prevBox,
