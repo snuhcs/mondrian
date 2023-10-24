@@ -29,8 +29,8 @@
         "merge": true
     },
     "roi_resizer": {
-        "static_area": true,
-        "static_target_area": 10000000.0,
+        "static_area": false,
+        "static_target_area": 0.0,
         "dataset": "mta",
         "voting_window_size": 5,
         "area_shift": 0.0,
