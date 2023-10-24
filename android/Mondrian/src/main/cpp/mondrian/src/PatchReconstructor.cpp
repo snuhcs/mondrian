@@ -135,8 +135,9 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   float max = 0;
   for (int i = 0; i < boxes.size(); i++) {
     for (int j = 0; j < rois.size(); j++) {
-      float iou = boxes[i]->loc.iou(rois[j]->paddedLoc);
-      costMatrix[i][j] = iou;
+      float iou = boxes[i]->loc.iou(rois[j]->origLoc);
+      float overlap = boxes[i]->loc.intersection(rois[j]->paddedLoc) / boxes[i]->loc.area;
+      costMatrix[i][j] = iou * overlap;
       if (iou > max) {
         max = iou;
       }
