@@ -138,7 +138,7 @@ std::pair<float, float> Interpolator::getBoxShift(std::vector<ROI*> rois, int st
   std::pair<float, float> c1 = box1->loc.center();
   BoundingBox* box2 = rois.at(end)->box();
   std::pair<float, float> c2 = box2->loc.center();
-  return std::make_pair(c2.first - c1.first, c2.second - c2.second);
+  return std::make_pair(c2.first - c1.first, c2.second - c1.second);
 }
 
 void Interpolator::addBoxWithPrevInfo(ROI* currROI, const BoundingBox* prevBox,
