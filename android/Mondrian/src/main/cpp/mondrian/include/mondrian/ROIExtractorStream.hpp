@@ -11,11 +11,12 @@
 
 #include "mondrian/Config.hpp"
 #include "mondrian/Frame.hpp"
+#include "mondrian/ROIExtractor.hpp"
 #include "mondrian/ROIResizer.hpp"
 
 namespace md {
 
-class ROIExtractorStream {
+class ROIExtractorStream : public ROIExtractor {
  public:
   ROIExtractorStream(const ROIExtractorConfig& config,
                      const ExecutionType executionType,
@@ -26,11 +27,11 @@ class ROIExtractorStream {
 
   ~ROIExtractorStream();
 
-  void enqueue(Frame* frame);
+  void enqueue(Frame* frame) override;
 
-  void notify();
+  void notify() override;
 
-  std::list<Frame*> collectFrames(int currID);
+  std::list<Frame*> collectFrames(int currID) override;
 
  private:
   void workPD();
