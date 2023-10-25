@@ -19,7 +19,7 @@ class FrameBuffer;
 class InferenceEngine;
 class Logger;
 class PackedCanvas;
-class ROIExtractor;
+class ROIExtractorStream;
 class ROIPacker;
 class ROIResizer;
 class PatchReconstructor;
@@ -67,7 +67,7 @@ class Mondrian {
   std::map<int, std::unique_ptr<FrameBuffer>> frameBuffers_;
 
   // Components
-  std::unique_ptr<ROIExtractor> ROIExtractor_;
+  std::unique_ptr<ROIExtractorStream> ROIExtractor_;
   std::unique_ptr<ROIResizer> ROIResizer_;
   std::unique_ptr<ROIPacker> ROIPacker_;
   std::unique_ptr<InferenceEngine> inferenceEngine_;

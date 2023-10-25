@@ -1,5 +1,5 @@
-#ifndef ROI_EXTRACTOR_HPP_
-#define ROI_EXTRACTOR_HPP_
+#ifndef ROI_EXTRACTOR_STREAM_HPP_
+#define ROI_EXTRACTOR_STREAM_HPP_
 
 #include <list>
 #include <set>
@@ -15,16 +15,16 @@
 
 namespace md {
 
-class ROIExtractor {
+class ROIExtractorStream {
  public:
-  ROIExtractor(const ROIExtractorConfig& config,
-               const ExecutionType executionType,
-               const int maxMergeSize,
-               const int roiSize,
-               ROIResizer* roiResizer,
-               chrome_tracer::ChromeTracer* tracer);
+  ROIExtractorStream(const ROIExtractorConfig& config,
+                     const ExecutionType executionType,
+                     const int maxMergeSize,
+                     const int roiSize,
+                     ROIResizer* roiResizer,
+                     chrome_tracer::ChromeTracer* tracer);
 
-  ~ROIExtractor();
+  ~ROIExtractorStream();
 
   void enqueue(Frame* frame);
 
@@ -79,4 +79,4 @@ class ROIExtractor {
 
 } // namespace md
 
-#endif // ROI_EXTRACTOR_HPP_
+#endif // ROI_EXTRACTOR_STREAM_HPP_

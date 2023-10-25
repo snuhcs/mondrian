@@ -1,4 +1,4 @@
-#include "mondrian/ROIExtractor.hpp"
+#include "mondrian/ROIExtractorStream.hpp"
 
 #include <sched.h>
 
@@ -15,12 +15,12 @@
 
 namespace md {
 
-ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
-                           const ExecutionType executionType,
-                           const int maxMergeSize,
-                           const int roiSize,
-                           ROIResizer* roiResizer,
-                           chrome_tracer::ChromeTracer* tracer)
+ROIExtractorStream::ROIExtractorStream(const ROIExtractorConfig& config,
+                                       const ExecutionType executionType,
+                                       const int maxMergeSize,
+                                       const int roiSize,
+                                       ROIResizer* roiResizer,
+                                       chrome_tracer::ChromeTracer* tracer)
     : config_(config),
       executionType_(executionType),
       maxMergeSize_(maxMergeSize),
@@ -44,7 +44,7 @@ ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
   });
 }
 
-ROIExtractor::~ROIExtractor() {
+ROIExtractorStream::~ROIExtractorStream() {
   stop_ = true;
   OFCv_.notify_all();
   PostprocessThread_.join();
@@ -53,17 +53,17 @@ ROIExtractor::~ROIExtractor() {
   PDThread_.join();
 }
 
-void ROIExtractor::enqueue(Frame* frame) {
+void ROIExtractorStream::enqueue(Frame* frame) {
   std::lock_guard<std::mutex> lock(PDMtx_);
   PDWaiting_.push_back(frame);
   PDCv_.notify_one();
 }
 
-void ROIExtractor::notify() {
+void ROIExtractorStream::notify() {
   OFCv_.notify_all();
 }
 
-std::list<Frame*> ROIExtractor::collectFrames(int currID) {
+std::list<Frame*> ROIExtractorStream::collectFrames(int currID) {
   collecting_ = true;
 
   std::unique_lock<std::mutex> OFLock(OFMtx_);
@@ -87,7 +87,7 @@ std::list<Frame*> ROIExtractor::collectFrames(int currID) {
   return stream;
 }
 
-void ROIExtractor::workPD() {
+void ROIExtractorStream::workPD() {
   while (!stop_) {
     std::unique_lock<std::mutex> PDLock(PDMtx_);
     PDCv_.wait(PDLock, [this]() { return stop_ || !PDWaiting_.empty(); });
@@ -108,7 +108,7 @@ void ROIExtractor::workPD() {
   }
 }
 
-void ROIExtractor::workOF() {
+void ROIExtractorStream::workOF() {
   while (!stop_) {
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFCv_.wait(OFLock, [this]() {
@@ -151,7 +151,7 @@ void ROIExtractor::workOF() {
   }
 }
 
-void ROIExtractor::workPostprocess() {
+void ROIExtractorStream::workPostprocess() {
   while (!stop_) {
     std::unique_lock<std::mutex> OFLock(OFMtx_);
     OFCv_.wait(OFLock, [this]() { return stop_ || !PostprocessWaiting_.empty(); });
@@ -190,7 +190,7 @@ void ROIExtractor::workPostprocess() {
   }
 }
 
-void ROIExtractor::processPD(Frame* currFrame) const {
+void ROIExtractorStream::processPD(Frame* currFrame) const {
   assert(currFrame->rois.empty());
   currFrame->pixelDiffROIProcessStartTime = NowMicros();
 
@@ -244,7 +244,7 @@ struct PrevBox {
   int label;
 };
 
-void ROIExtractor::processOF(Frame* currFrame) const {
+void ROIExtractorStream::processOF(Frame* currFrame) const {
   assert(std::all_of(currFrame->rois.begin(), currFrame->rois.end(),
                      [](auto& roi) { return roi->type() == ROIType::PD; }));
   currFrame->opticalFlowROIProcessStartTime = NowMicros();
@@ -338,7 +338,7 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   currFrame->filterEndTime = NowMicros();
 }
 
-void ROIExtractor::postprocess(md::Frame* currFrame) const {
+void ROIExtractorStream::postprocess(md::Frame* currFrame) const {
   currFrame->resizeStartTime = NowMicros();
   currFrame->resizeROIs(ROIResizer_, executionType_, roiSize_);
   currFrame->resizeEndTime = NowMicros();

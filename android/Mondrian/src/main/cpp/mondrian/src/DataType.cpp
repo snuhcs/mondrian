@@ -3,7 +3,7 @@
 #include <sstream>
 
 #include "mondrian/Frame.hpp"
-#include "mondrian/ROIExtractor.hpp"
+#include "mondrian/ROIExtractorStream.hpp"
 #include "mondrian/Log.hpp"
 
 namespace md {
