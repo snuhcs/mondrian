@@ -133,12 +133,10 @@ void Mondrian::workSchedule() {
     // Getting PackedFrames
     // TODO: ROIExtractors for each video
     time_us collectStart = NowMicros();
-    std::list<Frame*> stream = ROIExtractor_->collectFrames(currID);
+    Stream stream = ROIExtractor_->collectFrames(currID);
     MultiStream streams;
-    while (!stream.empty()) {
-      Frame* frame = stream.front();
-      stream.pop_front();
-      streams[frame->vid].insert(frame);
+    for (Frame* frame : stream) {
+      streams[frame->vid].push_back(frame);
     }
     time_us collectEnd = NowMicros();
     LOGD("[Schedule %d] Collect Frames %lld us // %s",
@@ -333,7 +331,7 @@ void Mondrian::handlePackedCanvasesResults(
 
 void Mondrian::handleROIWiseResults(
     std::map<Device, std::vector<PackedCanvas>>& packedCanvasesTable, int currID) {
-  Stream inferenceFrames;
+  FrameSet inferenceFrames;
   int numTotalCanvases = std::accumulate(
       packedCanvasesTable.begin(), packedCanvasesTable.end(), 0,
       [](int sum, const auto& it) { return sum + it.second.size(); });

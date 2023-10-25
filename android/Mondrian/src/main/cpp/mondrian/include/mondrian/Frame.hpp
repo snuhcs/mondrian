@@ -1,7 +1,7 @@
 #ifndef FRAME_HPP_
 #define FRAME_HPP_
 
-#include <set>
+#include <list>
 
 #include "opencv2/core/mat.hpp"
 
@@ -136,7 +136,8 @@ struct FrameComp {
   }
 };
 
-using Stream = std::set<Frame*, FrameComp>;
+using FrameSet = std::set<Frame*, FrameComp>;
+using Stream = std::list<Frame*>;
 using MultiStream = std::map<int, Stream>;
 
 std::string str(const Stream& stream);

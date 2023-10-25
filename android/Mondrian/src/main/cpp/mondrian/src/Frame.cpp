@@ -459,7 +459,7 @@ std::string str(const MultiStream& streams) {
 std::string str(const Stream& stream) {
   MultiStream streams;
   for (const auto& frame : stream) {
-    streams[frame->vid].insert(frame);
+    streams[frame->vid].push_back(frame);
   }
   return str(streams);
 }

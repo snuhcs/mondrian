@@ -35,10 +35,11 @@ PackedCanvas::PackedCanvas(const std::set<MergedROI*>& mergedROIs,
 }
 
 Stream PackedCanvas::getPackedFrames() const {
-  Stream packedFrames;
+  FrameSet packedFrameSet;
   for (MergedROI* mergedROI : packedROIs) {
-    packedFrames.insert(mergedROI->frame());
+    packedFrameSet.insert(mergedROI->frame());
   }
+  Stream packedFrames(packedFrameSet.begin(), packedFrameSet.end());
   return packedFrames;
 }
 
