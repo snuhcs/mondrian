@@ -109,8 +109,9 @@ void ROIExtractorStream::workPD() {
     PDWaiting_[longestVID].pop_front();
     PDLock.unlock();
 
-    int32_t handle = tracer_->BeginEvent(ROIExtractorPDTag_,
-                                         "PD" + std::to_string(frame->fid));
+    int32_t handle = tracer_->BeginEvent(
+        ROIExtractorPDTag_,
+        "PD" + std::to_string(frame->vid) + "|" + std::to_string(frame->fid));
     processPD(frame);
     tracer_->EndEvent(ROIExtractorPDTag_, handle);
 
@@ -135,10 +136,14 @@ void ROIExtractorStream::workOF() {
     });
     if (stop_) return;
     MultiStream frames;
-    for (auto& [vid, stream] : OFWaiting_) {
+    for (auto it = OFWaiting_.begin(); it != OFWaiting_.end();) {
+      VID vid = it->first;
+      Stream& stream = it->second;
       if (!stream.empty() && stream.front()->readyForOFExtraction()) {
         frames[vid] = std::move(stream);
-        stream.clear();
+        it = OFWaiting_.erase(it);
+      } else {
+        it++;
       }
     }
     isOFProcessing_ = true;
@@ -151,8 +156,9 @@ void ROIExtractorStream::workOF() {
         });
     for (auto& [vid, stream] : frames) {
       for (auto& frame : stream) {
-        int32_t handle = tracer_->BeginEvent(ROIExtractorOFTag_,
-                                             "OF" + std::to_string(frame->fid));
+        int32_t handle = tracer_->BeginEvent(
+            ROIExtractorOFTag_,
+            "OF" + std::to_string(frame->vid) + "|" + std::to_string(frame->fid));
         processOF(frame);
         tracer_->EndEvent(ROIExtractorOFTag_, handle);
 
@@ -204,8 +210,9 @@ void ROIExtractorStream::workPostprocess() {
 
     for (auto& [vid, stream] : frames) {
       for (auto& frame : stream) {
-        int32_t handle = tracer_->BeginEvent(ROIExtractorPostprocessTag_,
-                                             "ROIPostprocess" + std::to_string(frame->fid));
+        int32_t handle = tracer_->BeginEvent(
+            ROIExtractorPostprocessTag_,
+            "ROIPostprocess" + std::to_string(frame->vid) + "|" + std::to_string(frame->fid));
         postprocess(frame);
         tracer_->EndEvent(ROIExtractorPostprocessTag_, handle);
 
