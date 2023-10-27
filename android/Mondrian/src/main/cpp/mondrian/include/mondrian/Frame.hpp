@@ -138,7 +138,7 @@ struct FrameComp {
 
 using FrameSet = std::set<Frame*, FrameComp>;
 using Stream = std::list<Frame*>;
-using MultiStream = std::map<int, Stream>;
+using MultiStream = std::map<VID, Stream>;
 
 std::string str(const Stream& stream);
 
