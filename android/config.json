@@ -2,7 +2,19 @@
     "video_configs": [
         {
             "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
-            "fps": 60
+            "fps": 15
+        },
+        {
+            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
+            "fps": 15
+        },
+        {
+            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
+            "fps": 15
+        },
+        {
+            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
+            "fps": 15
         }
     ],
     "execution_type": "mondrian",
