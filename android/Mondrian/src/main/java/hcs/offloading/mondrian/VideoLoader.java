@@ -17,7 +17,8 @@ public class VideoLoader implements Runnable {
 
     private final Thread thread;
     private final Callback callback;
-    private final int vid;
+    private final int startVid;
+    private final int numStreams;
     private final int fps;
 
     private final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
@@ -32,8 +33,9 @@ public class VideoLoader implements Runnable {
         void onVideoEnd();
     }
 
-    public VideoLoader(int vid, String videoPath, int fps, Callback callback) throws IOException {
-        this.vid = vid;
+    public VideoLoader(int startVid, int numStreams, String videoPath, int fps, Callback callback) throws IOException {
+        this.startVid = startVid;
+        this.numStreams = numStreams;
         this.fps = fps;
         this.callback = callback;
 
@@ -57,6 +59,9 @@ public class VideoLoader implements Runnable {
         decoder.start();
 
         thread = new Thread(this);
+    }
+
+    public void start() {
         thread.start();
     }
 
@@ -115,7 +120,9 @@ public class VideoLoader implements Runnable {
                 sleepFor(requiredNs - System.nanoTime());
             }
 
-            callback.onFrame(vid, yuvMat);
+            for (int vid = startVid; vid < startVid + numStreams; vid++) {
+                callback.onFrame(vid, yuvMat);
+            }
             if (frameIndex == 1) {
                 // Set start time = second frame finished time
                 // Second frame waits for the first frame inference
