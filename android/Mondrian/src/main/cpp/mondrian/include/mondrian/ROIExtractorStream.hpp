@@ -31,7 +31,7 @@ class ROIExtractorStream : public ROIExtractor {
 
   void notify() override;
 
-  Stream collectFrames(int currID) override;
+  MultiStream collectFrames(int currID) override;
 
  private:
   void workPD();
@@ -62,18 +62,18 @@ class ROIExtractorStream : public ROIExtractor {
   std::thread PDThread_;
   std::mutex PDMtx_;
   std::condition_variable PDCv_;
-  Stream PDWaiting_;
+  MultiStream PDWaiting_;
 
   const std::string ROIExtractorOFTag_ = "ROIExtractorOF";
   std::thread OFThread_;
   std::mutex OFMtx_;
   std::condition_variable OFCv_;
-  Stream OFWaiting_;
+  MultiStream OFWaiting_;
 
   const std::string ROIExtractorPostprocessTag_ = "ROIExtractorPostprocess";
   std::thread PostprocessThread_;
-  Stream PostprocessWaiting_;
-  Stream Processed_;
+  MultiStream PostprocessWaiting_;
+  MultiStream Processed_;
 
   chrome_tracer::ChromeTracer* tracer_;
 };

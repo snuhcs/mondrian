@@ -18,7 +18,7 @@ class ROIExtractor {
 
   virtual void notify() = 0;
 
-  virtual std::list<Frame*> collectFrames(int currID) = 0;
+  virtual MultiStream collectFrames(int currID) = 0;
 };
 
 } // namespace md

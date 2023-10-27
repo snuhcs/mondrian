@@ -133,11 +133,7 @@ void Mondrian::workSchedule() {
     // Getting PackedFrames
     // TODO: ROIExtractors for each video
     time_us collectStart = NowMicros();
-    Stream stream = ROIExtractor_->collectFrames(currID);
-    MultiStream streams;
-    for (Frame* frame : stream) {
-      streams[frame->vid].push_back(frame);
-    }
+    MultiStream streams = ROIExtractor_->collectFrames(currID);
     time_us collectEnd = NowMicros();
     LOGD("[Schedule %d] Collect Frames %lld us // %s",
          currID,
