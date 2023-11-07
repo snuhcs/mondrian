@@ -57,6 +57,7 @@ ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   config.PD_INTERVAL = parseInt(json, "pd_interval");
   config.MIN_PD_ROI_SIZE = parseFloat(json, "min_pd_roi_size");
   config.MAX_PD_ROI_SIZE = parseFloat(json, "max_pd_roi_size");
+  config.OF_TRACK_CENTER = parseBool(json, "of_track_center");
   config.OF_CONF_THRES = parseFloat(json, "of_conf_thres");
   config.OF_ROI_PADDING = parseFloat(json, "of_roi_padding");
   config.PD_EAT_OVERLAP_THRES = parseFloat(json, "pd_eat_overlap_thres");
@@ -138,9 +139,8 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.EXECUTION_TYPE = executionTypeOf(parseString(json, "execution_type"));
   config.LOG_BOXES = parseBool(json, "log_boxes");
   config.LOG_ROI = parseBool(json, "log_roi");
-  config.LOG_MERGED_ROI = parseBool(json, "log_merged_roi");
   config.LOG_FRAME = parseBool(json, "log_frame");
-  config.INTERPOLATION_THRES = parseFloat(json, "interpolation_thres");
+  config.INTERPOLATION_THRES = parseInt(json, "interpolation_thres");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
   config.LATENCY_SLO_MS = parseInt(json, "latency_slo_ms");
   config.ROI_SIZE = parseInt(json, "roi_size");
@@ -229,6 +229,7 @@ void ROIExtractorConfig::print() const {
   ss << "PD_INTERVAL: " << PD_INTERVAL << std::endl;
   ss << "MIN_PD_ROI_SIZE: " << MIN_PD_ROI_SIZE << std::endl;
   ss << "MAX_PD_ROI_SIZE: " << MAX_PD_ROI_SIZE << std::endl;
+  ss << "OF_TRACK_CENTER: " << OF_TRACK_CENTER << std::endl;
   ss << "OF_CONF_THRES: " << OF_CONF_THRES << std::endl;
   ss << "OF_ROI_PADDING: " << OF_ROI_PADDING << std::endl;
   ss << "PD_EAT_OVERLAP_THRES: " << PD_EAT_OVERLAP_THRES << std::endl;

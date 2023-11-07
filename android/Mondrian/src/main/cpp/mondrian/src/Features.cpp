@@ -147,7 +147,6 @@ std::string Features::header() {
      << "height" << DELIM
      << "label" << DELIM
      << "type" << DELIM
-     << "origin" << DELIM
      << "xyRatio" << DELIM
      << "confidence" << DELIM
      << "shiftAvgX" << DELIM
@@ -165,7 +164,6 @@ std::string Features::str() const {
      << height << DELIM
      << COCO_LABELS[label] << DELIM
      << ::md::str(type) << DELIM
-     << ::md::str(origin) << DELIM
      << xyRatio << DELIM
      << confidence << DELIM
      << ofFeatures.shiftAvg.first << DELIM

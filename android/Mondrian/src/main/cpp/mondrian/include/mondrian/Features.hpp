@@ -46,7 +46,6 @@ struct Features {
   float height;
   int label;
   ROIType type;
-  Origin origin;
   float xyRatio;
   float confidence;
   OFFeatures ofFeatures;

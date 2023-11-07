@@ -15,12 +15,12 @@ Frame::Frame(const VID vid, const FID fid, const cv::Mat& yuvMat,
     : vid(vid),
       fid(fid),
       scheduleID(-1),
+      released(false),
       yuvMat(yuvMat),
       width_(0),
       height_(0),
       prevFrame(prevFrame),
       useInferenceResultForOF(false),
-      reprocessOF(false),
       enqueueTime(enqueueTime),
       isBoxesReady(false),
       isROIsReady(false),
@@ -171,16 +171,14 @@ void Frame::resetMergedROIs() {
   mergedROIs.clear();
 
   for (const auto& roi : rois) {
-    std::unique_ptr<MergedROI>
-        mergedROI(new MergedROI({roi.get()}, roi->targetScaleTable(), false));
-    mergedROIs.push_back(std::move(mergedROI));
+    mergedROIs.emplace_back(new MergedROI(roi.get(), false));
   }
   assert(testROIsIntegrity());
 }
 
 void Frame::mergeMergedROIs(int maxSize) {
   assert(testROIsIntegrity());
-
+  
   std::vector<int> root(mergedROIs.size());
   std::iota(root.begin(), root.end(), 0);
 
@@ -306,9 +304,8 @@ void Frame::prepareFrameLast(const IntPairs& indices,
       for (auto probeScale : probeScales) {
         if (packedROIIndex >= numPackedROIs) break;
         assert(0.0f < probeScale && probeScale <= 1.0f);
-        std::map<Device, float> probeScaleTable;
-        probeScaleTable[device] = probeScale;
-        std::unique_ptr<MergedROI> probeROI(new MergedROI({roi.get()}, probeScaleTable, true));
+        std::unique_ptr<MergedROI> probeROI(new MergedROI(roi.get(), true));
+        probeROI->setTargetScale(probeScale);
         probeROI->setPackInfo(device,
                               locations[packedROIIndex],
                               indices[packedROIIndex].first,
@@ -361,7 +358,6 @@ void Frame::resetOFROIExtraction() {
     roi->mergedROI = nullptr;
   });
   useInferenceResultForOF = false;
-  reprocessOF = false;
   isROIsReady = false;
 }
 
@@ -387,6 +383,8 @@ std::string Frame::header() {
      << "pixelDiffROIProcessEndTime" << DELIM
      << "opticalFlowROIProcessStartTime" << DELIM
      << "opticalFlowROIProcessEndTime" << DELIM
+     << "filterStartTime" << DELIM
+     << "filterEndTime" << DELIM
      << "resizeStartTime" << DELIM
      << "resizeEndTime" << DELIM
      << "mergeROIStartTime" << DELIM
@@ -425,6 +423,8 @@ std::string Frame::str(time_us baseTime) const {
      << fromBaseTime(pixelDiffROIProcessEndTime) << DELIM
      << fromBaseTime(opticalFlowROIProcessStartTime) << DELIM
      << fromBaseTime(opticalFlowROIProcessEndTime) << DELIM
+     << fromBaseTime(filterStartTime) << DELIM
+     << fromBaseTime(filterEndTime) << DELIM
      << fromBaseTime(resizeStartTime) << DELIM
      << fromBaseTime(resizeEndTime) << DELIM
      << fromBaseTime(mergeROIStartTime) << DELIM
@@ -459,7 +459,7 @@ std::string str(const MultiStream& streams) {
 std::string str(const Stream& stream) {
   MultiStream streams;
   for (const auto& frame : stream) {
-    streams[frame->vid].insert(frame);
+    streams[frame->vid].push_back(frame);
   }
   return str(streams);
 }

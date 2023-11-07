@@ -1,17 +1,17 @@
 {
     "video_configs": [
         {
-            "path": "/data/local/tmp/video/mta_test_cam_3_500.mp4",
-            "fps": 30
+            "num_streams": 4,
+            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
+            "fps": 15
         }
     ],
     "execution_type": "mondrian",
     "log_boxes": true,
     "log_roi": true,
-    "log_merged_roi": false,
     "log_frame": true,
-    "interpolation_thres": 0,
-    "full_frame_interval": 2,
+    "interpolation_thres": 1,
+    "full_frame_interval": 1,
     "latency_slo_ms": 4000,
     "roi_size": 128,
     "roi_extractor": {
@@ -22,6 +22,7 @@
         "pd_interval": 5,
         "min_pd_roi_size": 5.0,
         "max_pd_roi_size": 206.0,
+        "of_track_center": true,
         "of_conf_thres": 0.0,
         "of_roi_padding": 20.0,
         "pd_eat_overlap_thres": 0.5,
@@ -35,7 +36,7 @@
         "voting_window_size": 5,
         "area_shift": 0.0,
         "scale_shift": 0.0,
-        "num_probe_steps": 5,
+        "num_probe_steps": 0,
         "only_smaller_probing": true,
         "probe_step_size": 0.1,
         "probe_conf_thres": 0.0,
@@ -55,12 +56,11 @@
                 "model": "yolov5m",
                 "dataset": "mta",
                 "input_sizes": [
-                    640,
-                    1280
+                    640
                 ]
             }
         },
-        "draw_inference_result": true,
+        "draw_inference_result": false,
         "conf_thres": 0.5,
         "iou_thres": 0.5,
         "profile_warmups": 3,

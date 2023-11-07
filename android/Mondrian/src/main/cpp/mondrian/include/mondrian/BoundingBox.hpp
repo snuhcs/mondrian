@@ -19,7 +19,7 @@ struct BoundingBox {
   Rect loc;
   float confidence;
   int label;
-  Origin origin;
+  BoxOrigin origin;
   OID choiceOfBox;
 
   BoundingBox(OID oid,
@@ -27,7 +27,7 @@ struct BoundingBox {
               const Rect& loc,
               const float confidence,
               int label,
-              Origin origin);
+              BoxOrigin origin);
 
   void setSrcROI(ROI* roi);
 

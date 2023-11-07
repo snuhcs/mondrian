@@ -9,7 +9,7 @@ BoundingBox::BoundingBox(OID oid,
                          const Rect& loc,
                          const float confidence,
                          int label,
-                         Origin origin)
+                         BoxOrigin origin)
     : bid(BoundingBox::nextBID_++),
       oid(oid),
       pid(pid),

@@ -20,23 +20,23 @@ class Logger {
 
   void logFrameHeader();
 
-  void logFrame(const Frame* frame);
-
   void logROIHeader();
-
-  void logROI(const ROI* roi);
-
-  void logMergedROIHeader();
-
-  void logMergedROI(const MergedROI* mergedROI);
 
   void logBoxesHeader();
 
-  void logBoxes(VID vid, FID fid, const std::vector<BoundingBox>& boxes);
+  void logFrame(const Frame* frame);
+
+  void logROIs(const Frame* frame);
+
+  void logBoxes(const Frame* frame);
+
+  void flush();
+
+  std::mutex& mtx() { return mtx_; }
 
  private:
-  std::ofstream logFile;
-  std::mutex mtx;
+  std::ofstream logFile_;
+  std::mutex mtx_;
 
   time_us baseTime;
 };

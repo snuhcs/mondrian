@@ -1,65 +1,72 @@
 #include "mondrian/MergedROI.hpp"
 
+#include <numeric>
+
 #include "mondrian/Frame.hpp"
 #include "mondrian/Utils.hpp"
 
 namespace md {
 
-MergedROI::MergedROI(const std::vector<ROI*>& rois,
-                     const std::map<Device, float>& targetScaleTable,
-                     bool isProbing)
-    : rois_(rois),
+MergedROI::MergedROI(ROI* roi, bool isProbing)
+    : rois_({roi}),
       isProbing_(isProbing),
-      frame_(frameOf(rois)),
-      loc_(locOf(rois)),
-      targetScaleTable_(targetScaleTable),
+      frame_(roi->frame),
+      loc_(roi->paddedLoc),
+      targetScaleTable_(roi->targetScaleTable()),
       packedXY_(INVALID_XY),
       packedCanvasIndex_(-1),
       pid_(-1),
       packedCanvasSize_(-1),
       isInferenced_(false),
       dispatchTargetDevice_(Device::INVALID) {
-  for (ROI* roi : rois) {
+  roi->mergedROI = this;
+}
+
+static std::vector<ROI*> roisOf(const std::vector<MergedROI*>& mergedROIs) {
+  std::vector<ROI*> rois;
+  for (const auto& mergedROI : mergedROIs) {
+    rois.insert(rois.end(), mergedROI->rois().begin(), mergedROI->rois().end());
+  }
+  return rois;
+}
+
+static Rect locOf(const std::vector<MergedROI*>& mergedROIs) {
+  Rect loc = mergedROIs[0]->loc();
+  for (int i = 1; i < mergedROIs.size(); i++) {
+    loc = Rect::merge(loc, mergedROIs[i]->loc());
+  }
+  return loc;
+}
+
+static std::map<Device, float> targetScaleTableOf(const std::vector<MergedROI*>& mergedROIs) {
+  std::map<Device, float> targetScaleTable;
+  for (const auto& mergedROI : mergedROIs) {
+    for (const auto& [device, scale] : mergedROI->targetScaleTable()) {
+      targetScaleTable[device] = std::max(targetScaleTable[device], scale);
+    }
+  }
+  return targetScaleTable;
+}
+
+MergedROI::MergedROI(const std::vector<MergedROI*>& mergedROIs)
+    : rois_(roisOf(mergedROIs)),
+      isProbing_(mergedROIs[0]->isProbing()),
+      frame_(mergedROIs[0]->frame()),
+      loc_(locOf(mergedROIs)),
+      targetScaleTable_(targetScaleTableOf(mergedROIs)),
+      packedXY_(INVALID_XY),
+      packedCanvasIndex_(-1),
+      pid_(-1),
+      packedCanvasSize_(-1),
+      isInferenced_(false),
+      dispatchTargetDevice_(Device::INVALID) {
+  for (const auto& roi : rois_) {
     roi->mergedROI = this;
   }
-}
-
-Frame* MergedROI::frameOf(const std::vector<ROI*>& rois) {
-  assert(!rois.empty());
-  Frame* frame = rois[0]->frame;
-  for (int i = 1; i < rois.size(); i++) {
-    assert(frame == rois[i]->frame);
+  for (const auto& mergedROI : mergedROIs) {
+    assert(mergedROI->frame() == frame_);
+    assert(mergedROI->isProbing() == isProbing_);
   }
-  return frame;
-}
-
-Rect MergedROI::locOf(const std::vector<ROI*>& rois) {
-  assert(!rois.empty());
-  float newL = rois[0]->paddedLoc.l;
-  float newT = rois[0]->paddedLoc.t;
-  float newR = rois[0]->paddedLoc.r;
-  float newB = rois[0]->paddedLoc.b;
-  for (int i = 1; i < rois.size(); i++) {
-    newL = std::min(newL, rois[i]->paddedLoc.l);
-    newT = std::min(newT, rois[i]->paddedLoc.t);
-    newR = std::max(newR, rois[i]->paddedLoc.r);
-    newB = std::max(newB, rois[i]->paddedLoc.b);
-  }
-  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
-  return {newL, newT, newR, newB};
-}
-
-std::unique_ptr<MergedROI> MergedROI::merge(const MergedROI* m0, const MergedROI* m1) {
-  std::vector<ROI*> newROIs;
-  newROIs.insert(newROIs.end(), m0->rois_.begin(), m0->rois_.end());
-  newROIs.insert(newROIs.end(), m1->rois_.begin(), m1->rois_.end());
-  std::map<Device, float> newScaleTable;
-
-  for (const auto& [device, _] : m0->targetScaleTable_) {
-    newScaleTable[device] = std::max(m0->targetScaleTable_.at(device),
-                                     m1->targetScaleTable_.at(device));
-  }
-  return std::make_unique<MergedROI>(newROIs, newScaleTable, false);
 }
 
 void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, int maxSize) {
@@ -72,45 +79,58 @@ void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, i
     }
   }
 
-  auto isMergeBenefit = [maxSize](const std::unique_ptr<MergedROI>& merged,
-                                  const MergedROI* mi,
-                                  const MergedROI* mj) -> bool {
-    for (const auto& [device, scale] : merged->targetScaleTable_) {
-      int bw = borderedLengthOf(merged->loc_.w, scale);
-      int bh = borderedLengthOf(merged->loc_.h, scale);
-      if (std::max(bw, bh) > maxSize) {
-        return false;
-      }
-      int newArea = merged->borderedArea(device);
-      int origArea = mi->borderedArea(device) + mj->borderedArea(device);
-      if (newArea > origArea) {
-        return false;
-      }
-    }
-    return true;
+  auto isMergeBenefit = [maxSize](MergedROI* mi, MergedROI* mj) -> bool {
+    MergedROI merged(std::vector<MergedROI*>{mi, mj});
+    return std::all_of(
+        merged.targetScaleTable_.begin(),
+        merged.targetScaleTable_.end(),
+        [&merged, &mi, &mj, maxSize](const auto& deviceAndScale) -> bool {
+          const auto& [device, scale] = deviceAndScale;
+          int bw = borderedLengthOf(merged.loc_.w, scale);
+          int bh = borderedLengthOf(merged.loc_.h, scale);
+          int newArea = merged.borderedArea(device);
+          int origArea = mi->borderedArea(device) + mj->borderedArea(device);
+          return std::max(bw, bh) <= maxSize && newArea <= origArea;
+        });
   };
 
   while (true) {
-    int i, j;
-    bool updated = false;
-    std::unique_ptr<MergedROI> merged;
-    for (i = 0; i < mergedROIs.size(); i++) {
-      for (j = i + 1; j < mergedROIs.size(); j++) {
+    std::vector<int> groupIDs(mergedROIs.size());
+    std::iota(std::begin(groupIDs), std::end(groupIDs), 0);
+    for (int i = 0; i < mergedROIs.size(); i++) {
+      for (int j = i + 1; j < mergedROIs.size(); j++) {
         const auto& mi = mergedROIs[i].get();
         const auto& mj = mergedROIs[j].get();
-        merged = merge(mi, mj);
-        if (isMergeBenefit(merged, mi, mj)) {
-          updated = true;
-          break;
+        if (isMergeBenefit(mi, mj)) {
+          groupIDs[j] = groupIDs[i];
         }
       }
-      if (updated) break;
     }
-    if (!updated) break;
-    assert(j > i);
-    mergedROIs.push_back(std::move(merged));
-    mergedROIs.erase(mergedROIs.begin() + j);
-    mergedROIs.erase(mergedROIs.begin() + i);
+
+    std::map<int, std::vector<int>> idGroups;
+    for (int i = 0; i < groupIDs.size(); i++) {
+      idGroups[groupIDs[i]].push_back(i);
+    }
+    if (idGroups.size() == mergedROIs.size()) break;
+
+    std::vector<int> mergedROIIndicesToRemove;
+    std::vector<std::unique_ptr<MergedROI>> mergedROIsToAdd;
+    for (const auto& [_, idGroup] : idGroups) {
+      if (idGroup.size() == 1) continue;
+      std::vector<MergedROI*> group;
+      for (int i : idGroup) {
+        group.push_back(mergedROIs[i].get());
+        mergedROIIndicesToRemove.push_back(i);
+      }
+      mergedROIsToAdd.emplace_back(new MergedROI(group));
+    }
+    std::sort(mergedROIIndicesToRemove.begin(), mergedROIIndicesToRemove.end(), std::greater<>());
+    for (int i : mergedROIIndicesToRemove) {
+      mergedROIs.erase(mergedROIs.begin() + i);
+    }
+    mergedROIs.insert(mergedROIs.end(),
+                      std::make_move_iterator(mergedROIsToAdd.begin()),
+                      std::make_move_iterator(mergedROIsToAdd.end()));
   }
 
   for (auto& merged : mergedROIs) {

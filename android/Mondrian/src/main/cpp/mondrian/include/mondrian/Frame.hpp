@@ -1,7 +1,7 @@
 #ifndef FRAME_HPP_
 #define FRAME_HPP_
 
-#include <set>
+#include <list>
 
 #include "opencv2/core/mat.hpp"
 
@@ -26,6 +26,7 @@ class Frame {
   const VID vid;
   const FID fid;
   const Frame* prevFrame;
+  bool released;
   cv::Mat yuvMat;
   cv::Mat resizedGrayMat;
   std::vector<std::unique_ptr<ROI>> rois;
@@ -47,10 +48,12 @@ class Frame {
   const time_us enqueueTime;
   time_us fullInferenceStartTime = 0;
   time_us fullInferenceEndTime = 0;
-  time_us opticalFlowROIProcessStartTime = 0;
-  time_us opticalFlowROIProcessEndTime = 0;
   time_us pixelDiffROIProcessStartTime = 0;
   time_us pixelDiffROIProcessEndTime = 0;
+  time_us opticalFlowROIProcessStartTime = 0;
+  time_us opticalFlowROIProcessEndTime = 0;
+  time_us filterStartTime = 0;
+  time_us filterEndTime = 0;
   time_us resizeStartTime = 0;
   time_us resizeEndTime = 0;
   time_us mergeROIStartTime = 0;
@@ -133,8 +136,9 @@ struct FrameComp {
   }
 };
 
-using Stream = std::set<Frame*, FrameComp>;
-using MultiStream = std::map<int, Stream>;
+using FrameSet = std::set<Frame*, FrameComp>;
+using Stream = std::list<Frame*>;
+using MultiStream = std::map<VID, Stream>;
 
 std::string str(const Stream& stream);
 

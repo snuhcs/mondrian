@@ -17,6 +17,7 @@ struct ROIExtractorConfig {
   int PD_INTERVAL;
   float MIN_PD_ROI_SIZE;
   float MAX_PD_ROI_SIZE;
+  bool OF_TRACK_CENTER;
   float OF_CONF_THRES;
   float OF_ROI_PADDING;
   float PD_EAT_OVERLAP_THRES;
@@ -88,8 +89,7 @@ struct MondrianConfig {
   bool LOG_BOXES;
   bool LOG_FRAME;
   bool LOG_ROI;
-  bool LOG_MERGED_ROI;
-  float INTERPOLATION_THRES;
+  int INTERPOLATION_THRES;
   int FULL_FRAME_INTERVAL;
   int LATENCY_SLO_MS;
   int ROI_SIZE; // Used for Emulated Batch or ROI-wise Inference

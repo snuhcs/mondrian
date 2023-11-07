@@ -11,7 +11,9 @@
 
 #include "mondrian/Config.hpp"
 #include "mondrian/DataType.hpp"
+
 #include "mondrian/Frame.hpp"
+#include "mondrian/ROIExtractor.hpp"
 
 namespace md {
 
@@ -19,7 +21,6 @@ class FrameBuffer;
 class InferenceEngine;
 class Logger;
 class PackedCanvas;
-class ROIExtractor;
 class ROIPacker;
 class ROIResizer;
 class PatchReconstructor;
@@ -31,6 +32,8 @@ class Mondrian {
   ~Mondrian();
 
   void enqueue(const VID vid, const cv::Mat& yuvMat);
+
+  void dumpLogs() const;
 
  private:
   void enqueue(Frame* frame);
@@ -47,11 +50,15 @@ class Mondrian {
 
   void handlePackedCanvasesResults(std::map<Device, std::vector<PackedCanvas>>& packedCanvasesTable, int currID);
 
-  void handleROIWiseResults(std::map<Device, std::vector<PackedCanvas>>& packedCanvasesTable);
+  void handleROIWiseResults(std::map<Device, std::vector<PackedCanvas>>& packedCanvasesTable, int currID);
+
+  void freeMats(const MultiStream& frames);
 
   void releaseFrames(const MultiStream& frames);
 
-  void log(const Frame* frame);
+  void logFrame(const Frame* frame);
+
+  void logFrames(const MultiStream& streams);
 
   const MondrianConfig config_;
   const time_us startTime_;
@@ -93,11 +100,10 @@ class Mondrian {
   std::thread logThread_;
   std::mutex logMtx_;
   std::condition_variable resultsCV_;
-  std::map<VID, std::map<FID, std::pair<time_us, std::vector<BoundingBox>>>> results_;
+  std::list<MultiStream> results_;
   std::unique_ptr<Logger> loggerBoxes_;
   std::unique_ptr<Logger> loggerFrame_;
   std::unique_ptr<Logger> loggerROI_;
-  std::unique_ptr<Logger> loggerMergedROI_;
 
   // Tracer
   std::unique_ptr<chrome_tracer::ChromeTracer> tracer_;

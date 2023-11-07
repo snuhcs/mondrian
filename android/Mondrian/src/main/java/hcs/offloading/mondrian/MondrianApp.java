@@ -34,6 +34,7 @@ public class MondrianApp implements VideoLoader.Callback {
     }
 
     private static class VideoConfig {
+        int numStreams;
         String path;
         int fps;
     }
@@ -49,17 +50,26 @@ public class MondrianApp implements VideoLoader.Callback {
         this.outputView = outputView;
 
         List<VideoConfig> videoConfigs = parseVideoConfigs();
-        handle = createHandle(videoConfigs.size());
-
-        for (int vid = 0; vid < videoConfigs.size(); vid++) {
-            VideoConfig config = videoConfigs.get(vid);
-            videoLoaders.add(new VideoLoader(vid, config.path, config.fps, this));
+        int startVid = 0;
+        for (VideoConfig config : videoConfigs) {
+            videoLoaders.add(new VideoLoader(startVid, config.numStreams, config.path, config.fps, this));
+            startVid += config.numStreams;
+        }
+        int numVideos = startVid;
+        handle = createHandle(numVideos);
+        for (VideoLoader videoLoader : videoLoaders) {
+            videoLoader.start();
         }
     }
 
     @Override
     public void onFrame(int vid, Mat yuvMat) {
         enqueue(handle, vid, yuvMat.getNativeObjAddr());
+    }
+
+    @Override
+    public void onVideoEnd() {
+        dumpLogs(handle);
     }
 
     public void close() {
@@ -77,8 +87,11 @@ public class MondrianApp implements VideoLoader.Callback {
         List<VideoConfig> videoConfigs = new ArrayList<>();
         for (int i = 0; i < videoConfigsJson.length(); i++) {
             JSONObject videoConfigJson = videoConfigsJson.getJSONObject(i);
-            assert (videoConfigJson.has("path") && videoConfigJson.has("fps"));
+            assert (videoConfigJson.has("num_streams")
+                    && videoConfigJson.has("path")
+                    && videoConfigJson.has("fps"));
             VideoConfig videoConfig = new VideoConfig();
+            videoConfig.numStreams = videoConfigJson.getInt("num_streams");
             videoConfig.path = videoConfigJson.getString("path");
             videoConfig.fps = videoConfigJson.getInt("fps");
             videoConfigs.add(videoConfig);
@@ -107,6 +120,8 @@ public class MondrianApp implements VideoLoader.Callback {
     private native long createHandle(int numVideos);
 
     private native void enqueue(long handle, int vid, long yuvMatAddr);
+
+    private native void dumpLogs(long handle);
 
     private native void close(long handle);
 }

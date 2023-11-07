@@ -55,7 +55,6 @@ class ROI {
       Frame* frame,
       const Rect& origLoc,
       const ROIType type,
-      const Origin origin,
       const int label,
       const OFFeatures ofFeatures,
       const float confidence,
@@ -85,10 +84,6 @@ class ROI {
 
   ROIType type() const {
     return features.type;
-  }
-
-  Origin origin() const {
-    return features.origin;
   }
 
   void setLabel(int label) {

@@ -3,7 +3,7 @@
 #include <sstream>
 
 #include "mondrian/Frame.hpp"
-#include "mondrian/ROIExtractor.hpp"
+#include "mondrian/ROIExtractorStream.hpp"
 #include "mondrian/Log.hpp"
 
 namespace md {
@@ -113,38 +113,35 @@ std::string str(const ROIPackerType& roiPackerType) {
   assert(false);
 }
 
-Origin originOf(const std::string& originStr) {
-  if (originStr == "INVALID") {
-    return Origin::INVALID;
-  } else if (originStr == "FULL_FRAME") {
-    return Origin::FULL_FRAME;
-  } else if (originStr == "PACKED_CANVAS") {
-    return Origin::PACKED_CANVAS;
-  } else if (originStr == "PD") {
-    return Origin::PD;
-  } else if (originStr == "INTERPOLATE") {
-    return Origin::INTERPOLATE;
-  } else if (originStr == "NEW_FULL_FRAME") {
-    return Origin::NEW_FULL_FRAME;
-  } else if (originStr == "NEW_PACKED_CANVAS") {
-    return Origin::NEW_PACKED_CANVAS;
+BoxOrigin boxOriginOf(const std::string& boxOriginStr) {
+  if (boxOriginStr == "INVALID") {
+    return BoxOrigin::INVALID;
+  } else if (boxOriginStr == "FULL_FRAME") {
+    return BoxOrigin::FULL_FRAME;
+  } else if (boxOriginStr == "NEW_FULL_FRAME") {
+    return BoxOrigin::NEW_FULL_FRAME;
+  } else if (boxOriginStr == "PACKED_CANVAS") {
+    return BoxOrigin::PACKED_CANVAS;
+  } else if (boxOriginStr == "NEW_PACKED_CANVAS") {
+    return BoxOrigin::NEW_PACKED_CANVAS;
+  } else if (boxOriginStr == "INTERPOLATE") {
+    return BoxOrigin::INTERPOLATE;
   } else {
-    LOGE("Unknown origin: %s", originStr.c_str());
+    LOGE("Unknown boxOrigin: %s", boxOriginStr.c_str());
     assert(false);
   }
 }
 
-std::string str(const Origin& origin) {
-  switch (origin) {
-    case Origin::INVALID: return "INVALID";
-    case Origin::FULL_FRAME: return "FULL_FRAME";
-    case Origin::PACKED_CANVAS: return "PACKED_CANVAS";
-    case Origin::PD: return "PD";
-    case Origin::INTERPOLATE: return "INTERPOLATE";
-    case Origin::NEW_FULL_FRAME: return "NEW_FULL_FRAME";
-    case Origin::NEW_PACKED_CANVAS: return "NEW_PACKED_CANVAS";
+std::string str(const BoxOrigin& boxOrigin) {
+  switch (boxOrigin) {
+    case BoxOrigin::INVALID: return "INVALID";
+    case BoxOrigin::FULL_FRAME: return "FULL_FRAME";
+    case BoxOrigin::NEW_FULL_FRAME: return "NEW_FULL_FRAME";
+    case BoxOrigin::PACKED_CANVAS: return "PACKED_CANVAS";
+    case BoxOrigin::NEW_PACKED_CANVAS: return "NEW_PACKED_CANVAS";
+    case BoxOrigin::INTERPOLATE: return "INTERPOLATE";
   }
-  LOGE("Unknown origin: %d", origin);
+  LOGE("Unknown boxOrigin: %d", boxOrigin);
   assert(false);
 }
 

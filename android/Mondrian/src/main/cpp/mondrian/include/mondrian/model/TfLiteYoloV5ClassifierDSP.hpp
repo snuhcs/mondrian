@@ -39,6 +39,8 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
 
   uint8_t* input; // 1 x inputSize.height x inputSize.width x 3
   uint8_t* outputs; // 1 x outputSize x 85 (boxes, maxConf, confidences)
+
+  inline static const int OUTPUT_ELEMS = 85;
 };
 
 } // namespace md

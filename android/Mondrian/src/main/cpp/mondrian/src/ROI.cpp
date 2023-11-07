@@ -10,7 +10,6 @@ ROI::ROI(const OID oid,
          Frame* frame,
          const Rect& origLoc,
          const ROIType type,
-         const Origin origin,
          const int label,
          const OFFeatures ofFeatures,
          const float confidence,
@@ -24,7 +23,6 @@ ROI::ROI(const OID oid,
           -1,         // height
           label,      // label
           type,       // type
-          origin,     // origin
           -1,         // xyRatio
           confidence, // confidence
           ofFeatures  // OFFeatures

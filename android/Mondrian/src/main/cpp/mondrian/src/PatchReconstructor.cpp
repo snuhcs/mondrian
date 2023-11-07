@@ -83,13 +83,13 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
       if (maxROI->isProbing()) {
         std::unique_ptr<BoundingBox> probeBox(new BoundingBox(
             INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
-            box.confidence, box.label, Origin::FULL_FRAME));
+            box.confidence, box.label, BoxOrigin::PACKED_CANVAS));
         maxROI->setProbingBox(probeBox.get());
         maxROI->frame()->probingBoxesTable[Device::GPU].push_back(std::move(probeBox));
       } else {
         std::unique_ptr<BoundingBox> newBox(new BoundingBox(
             INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
-            box.confidence, box.label, Origin::INVALID));
+            box.confidence, box.label, BoxOrigin::PACKED_CANVAS));
         maxROI->frame()->boxes.push_back(std::move(newBox));
       }
     }
@@ -135,8 +135,9 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   float max = 0;
   for (int i = 0; i < boxes.size(); i++) {
     for (int j = 0; j < rois.size(); j++) {
-      float iou = boxes[i]->loc.iou(rois[j]->paddedLoc);
-      costMatrix[i][j] = iou;
+      float iou = boxes[i]->loc.iou(rois[j]->origLoc);
+      float overlap = boxes[i]->loc.intersection(rois[j]->paddedLoc) / boxes[i]->loc.area;
+      costMatrix[i][j] = iou * overlap;
       if (iou > max) {
         max = iou;
       }
@@ -153,21 +154,16 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   // -1 means that box is not assigned to any ROI
   HungarianAlgorithm::Solve(costMatrix, assignment);
 
-  for (unsigned int x = 0; x < boxes.size(); x++) {
-    if (assignment[x] == -1 || assignment[x] >= rois.size()) {
-      unassignedBoxes.push_back(boxes[x]);
+  for (unsigned int i = 0; i < boxes.size(); i++) {
+    if (costMatrix[i][assignment[i]] == max) {
+      unassignedBoxes.push_back(boxes[i]);
       continue;
     }
-
-    ROI* srcROI = rois[assignment[x]];
-
-    boxes[x]->oid = srcROI->oid;
-    boxes[x]->setSrcROI(srcROI);
-    if (!isFullFrame) {
-      boxes[x]->origin = srcROI->origin();
-    }
-    srcROI->setBox(boxes[x]);
-    srcROI->setLabel(boxes[x]->label);
+    ROI* srcROI = rois[assignment[i]];
+    boxes[i]->oid = srcROI->oid;
+    boxes[i]->setSrcROI(srcROI);
+    srcROI->setBox(boxes[i]);
+    srcROI->setLabel(boxes[i]->label);
   }
 
   // 2. Handle unassigned boxes
@@ -178,9 +174,9 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
       assert(oid < endOID);
       box->oid = oid++;
       if (isFullFrame) {
-        box->origin = Origin::NEW_FULL_FRAME;
+        box->origin = BoxOrigin::NEW_FULL_FRAME;
       } else {
-        box->origin = Origin::NEW_PACKED_CANVAS;
+        box->origin = BoxOrigin::NEW_PACKED_CANVAS;
       }
       assert(box->srcROI() == nullptr);
     }
@@ -191,6 +187,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     for (BoundingBox* box : boxes) {
       assert(box->oid != INVALID_OID);
       if (box->srcROI() != nullptr) {
+        assert(box->loc.intersection(box->srcROI()->paddedLoc) > 0);
         assert(box->srcROI()->box() == box);
         assert(box->srcROI()->label() == box->label);
         assert(box->srcROI()->oid == box->oid);
@@ -199,6 +196,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     for (auto& roi : rois) {
       assert(roi->oid != INVALID_OID);
       if (roi->box() != nullptr) {
+        assert(roi->paddedLoc.intersection(roi->box()->loc) > 0);
         assert(roi->box()->oid == roi->oid);
       }
     }
