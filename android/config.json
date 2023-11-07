@@ -7,6 +7,7 @@
         }
     ],
     "execution_type": "mondrian",
+    "back_to_back_processing": false,
     "log_boxes": true,
     "log_roi": true,
     "log_frame": true,

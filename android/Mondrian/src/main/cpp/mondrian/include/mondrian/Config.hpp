@@ -86,6 +86,7 @@ struct PatchReconstructorConfig {
 
 struct MondrianConfig {
   ExecutionType EXECUTION_TYPE;
+  bool BACK_TO_BACK_PROCESSING;
   bool LOG_BOXES;
   bool LOG_FRAME;
   bool LOG_ROI;

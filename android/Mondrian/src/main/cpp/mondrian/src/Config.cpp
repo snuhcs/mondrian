@@ -137,6 +137,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   assert(json.isObject());
 
   config.EXECUTION_TYPE = executionTypeOf(parseString(json, "execution_type"));
+  config.BACK_TO_BACK_PROCESSING = parseBool(json, "back_to_back_processing");
   config.LOG_BOXES = parseBool(json, "log_boxes");
   config.LOG_ROI = parseBool(json, "log_roi");
   config.LOG_FRAME = parseBool(json, "log_frame");
@@ -206,6 +207,7 @@ void MondrianConfig::print() const {
   std::stringstream ss;
   ss << "========== MondrianConfig ==========" << std::endl;
   ss << "EXECUTION_TYPE: " << md::str(EXECUTION_TYPE) << std::endl;
+  ss << "BACK_TO_BACK_PROCESSING: " << BACK_TO_BACK_PROCESSING << std::endl;
   ss << "LOG_BOXES: " << LOG_BOXES << std::endl;
   ss << "LOG_ROI: " << LOG_ROI << std::endl;
   ss << "LOG_FRAME: " << LOG_FRAME << std::endl;
