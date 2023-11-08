@@ -91,7 +91,7 @@ struct MondrianConfig {
   bool LOG_ROI;
   int INTERPOLATION_THRES;
   int FULL_FRAME_INTERVAL;
-  int LATENCY_SLO_MS;
+  int SCHEDULE_INTERVAL_US;
   int ROI_SIZE; // Used for Emulated Batch or ROI-wise Inference
   ROIExtractorConfig roiExtractorConfig;
   ROIResizerConfig roiResizerConfig;

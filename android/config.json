@@ -12,7 +12,7 @@
     "log_frame": true,
     "interpolation_thres": 1,
     "full_frame_interval": 1,
-    "latency_slo_ms": 4000,
+    "schedule_interval_us": 2000000,
     "roi_size": 128,
     "roi_extractor": {
         "extraction_size": [

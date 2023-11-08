@@ -83,7 +83,6 @@ class Mondrian {
   // Thread: Scheduling
   const std::string scheduleThreadTag = "scheduleThread";
   std::thread scheduleThread_;
-  const time_us scheduleInterval_;
   time_us planningTime_;
   int numIntervals_;
   bool stop_;

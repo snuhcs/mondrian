@@ -26,7 +26,6 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
       startTime_(NowMicros()),
       numFirstFrameReadyVideos_(0),
       numVideos_(numVideos),
-      scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2),
       planningTime_(0),
       numIntervals_(0),
       stop_(false),
@@ -121,7 +120,7 @@ void Mondrian::workSchedule() {
       return numFirstFrameReadyVideos_ == numVideos_;
     });
   }
-  std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval_));
+  std::this_thread::sleep_for(std::chrono::microseconds(config_.SCHEDULE_INTERVAL_US));
 
   while (!stop_) {
     time_us scheduleStart = NowMicros();
@@ -176,7 +175,7 @@ void Mondrian::workSchedule() {
     }
     std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
         /*latencyTable=*/latencyTable,
-        /*interval=*/scheduleInterval_,
+        /*interval=*/config_.SCHEDULE_INTERVAL_US,
         /*roiWiseInference=*/config_.EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE,
         /*startTimes=*/remainingTimesAfterPlanning);
     assert(!inferencePlan.empty());
@@ -225,7 +224,7 @@ void Mondrian::workSchedule() {
     tracer_->EndEvent(scheduleThreadTag, handle);
 
     // Wait for scheduling interval
-    time_us sleepTime = scheduleInterval_ - (NowMicros() - scheduleStart);
+    time_us sleepTime = config_.SCHEDULE_INTERVAL_US - (NowMicros() - scheduleStart);
     if (sleepTime > 0) {
       std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
     }

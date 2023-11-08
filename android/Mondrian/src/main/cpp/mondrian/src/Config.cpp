@@ -142,7 +142,7 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.LOG_FRAME = parseBool(json, "log_frame");
   config.INTERPOLATION_THRES = parseInt(json, "interpolation_thres");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
-  config.LATENCY_SLO_MS = parseInt(json, "latency_slo_ms");
+  config.SCHEDULE_INTERVAL_US = parseInt(json, "schedule_interval_us");
   config.ROI_SIZE = parseInt(json, "roi_size");
 
   config.roiExtractorConfig = parseROIExtractorConfig(json["roi_extractor"]);
@@ -209,7 +209,7 @@ void MondrianConfig::print() const {
   ss << "LOG_FRAME: " << LOG_FRAME << std::endl;
   ss << "INTERPOLATION_THRES: " << INTERPOLATION_THRES << std::endl;
   ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
-  ss << "LATENCY_SLO_MS: " << LATENCY_SLO_MS << std::endl;
+  ss << "SCHEDULE_INTERVAL_US: " << SCHEDULE_INTERVAL_US << std::endl;
   ss << "ROI_SIZE: " << ROI_SIZE << std::endl;
   LOGD("%s", ss.str().c_str());
   roiExtractorConfig.print();
