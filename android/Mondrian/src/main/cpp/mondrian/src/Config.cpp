@@ -142,6 +142,8 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.LOG_FRAME = parseBool(json, "log_frame");
   config.INTERPOLATION_THRES = parseInt(json, "interpolation_thres");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
+  config.USE_CANVAS_INTERVAL = parseBool(json, "use_canvas_interval");
+  config.SCHEDULE_INTERVAL_CANVASES = parseInt(json, "schedule_interval_canvases");
   config.SCHEDULE_INTERVAL_US = parseInt(json, "schedule_interval_us");
   config.ROI_SIZE = parseInt(json, "roi_size");
 
@@ -209,6 +211,8 @@ void MondrianConfig::print() const {
   ss << "LOG_FRAME: " << LOG_FRAME << std::endl;
   ss << "INTERPOLATION_THRES: " << INTERPOLATION_THRES << std::endl;
   ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
+  ss << "USE_CANVAS_INTERVAL: " << USE_CANVAS_INTERVAL << std::endl;
+  ss << "SCHEDULE_INTERVAL_CANVASES: " << SCHEDULE_INTERVAL_CANVASES << std::endl;
   ss << "SCHEDULE_INTERVAL_US: " << SCHEDULE_INTERVAL_US << std::endl;
   ss << "ROI_SIZE: " << ROI_SIZE << std::endl;
   LOGD("%s", ss.str().c_str());
