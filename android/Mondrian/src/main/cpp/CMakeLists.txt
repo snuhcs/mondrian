@@ -44,7 +44,7 @@ add_library(
     mondrian/src/PackedCanvas.cpp
     mondrian/src/PatchReconstructor.cpp
     mondrian/src/ROI.cpp
-    mondrian/src/ROIExtractorStream.cpp
+    mondrian/src/ROIExtractor.cpp
     mondrian/src/ROIPacker.cpp
     mondrian/src/ROIPrioritizer.cpp
     mondrian/src/ROIResizer.cpp

@@ -13,7 +13,6 @@
 #include "mondrian/DataType.hpp"
 
 #include "mondrian/Frame.hpp"
-#include "mondrian/ROIExtractor.hpp"
 
 namespace md {
 
@@ -21,6 +20,7 @@ class FrameBuffer;
 class InferenceEngine;
 class Logger;
 class PackedCanvas;
+class ROIExtractor;
 class ROIPacker;
 class ROIResizer;
 class PatchReconstructor;

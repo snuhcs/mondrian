@@ -14,7 +14,7 @@
 #include "mondrian/PackedCanvas.hpp"
 #include "mondrian/PatchReconstructor.hpp"
 #include "mondrian/ROI.hpp"
-#include "mondrian/ROIExtractorStream.hpp"
+#include "mondrian/ROIExtractor.hpp"
 #include "mondrian/ROIPacker.hpp"
 #include "mondrian/ROIResizer.hpp"
 #include "mondrian/Utils.hpp"
@@ -85,12 +85,12 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
       }
     }
   }
-  ROIExtractor_ = std::make_unique<ROIExtractorStream>(config_.roiExtractorConfig,
-                                                       config_.EXECUTION_TYPE,
-                                                       maxMergeSize,
-                                                       config_.ROI_SIZE,
-                                                       ROIResizer_.get(),
-                                                       tracer_.get());
+  ROIExtractor_ = std::make_unique<ROIExtractor>(config_.roiExtractorConfig,
+                                                 config_.EXECUTION_TYPE,
+                                                 maxMergeSize,
+                                                 config_.ROI_SIZE,
+                                                 ROIResizer_.get(),
+                                                 tracer_.get());
 
   // Start postprocessing thread
   postprocessThread_ = std::thread([this]() {
