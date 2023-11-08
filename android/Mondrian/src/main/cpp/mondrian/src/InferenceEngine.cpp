@@ -13,7 +13,7 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
                                  JNIEnv* env,
                                  jobject app,
                                  chrome_tracer::ChromeTracer* tracer)
-    : config_(config), tracer_(tracer) {
+    : config_(config), tracer_(tracer), numRemainingInputs_(0) {
   int maxPackedCanvasSize = -1;
   for (const auto& [device, workerConfig] : config_.WORKER_CONFIGS) {
     for (const auto& inputSize : workerConfig.INPUT_SIZES) {
@@ -90,6 +90,10 @@ void InferenceEngine::enqueue(const cv::Mat& rgbMat,
                               const int inputSize,
                               const bool isFullFrame,
                               const Key key) {
+  {
+    std::lock_guard<std::mutex> resultLock(resultMtx_);
+    numRemainingInputs_++;
+  }
   workers_[device]->enqueue(rgbMat, inputSize, isFullFrame, key);
 }
 
@@ -109,6 +113,7 @@ Result InferenceEngine::getResult(Key key, bool isCheckedKey) {
 
 void InferenceEngine::enqueueResult(const Key key, const Result& result) {
   std::unique_lock<std::mutex> resultLock(resultMtx_);
+  numRemainingInputs_--;
   results_.emplace(key, result);
   resultLock.unlock();
   resultCv_.notify_all();
@@ -118,6 +123,13 @@ void InferenceEngine::waitForAnyResults() {
   std::unique_lock<std::mutex> resultLock(resultMtx_);
   resultCv_.wait(resultLock, [this]() {
     return !results_.empty();
+  });
+}
+
+void InferenceEngine::waitForInferenceEnd() {
+  std::unique_lock<std::mutex> resultLock(resultMtx_);
+  resultCv_.wait(resultLock, [this]() {
+    return numRemainingInputs_ == 0;
   });
 }
 

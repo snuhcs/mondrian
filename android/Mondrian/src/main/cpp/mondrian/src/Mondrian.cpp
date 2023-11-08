@@ -5,6 +5,8 @@
 #include <numeric>
 #include <utility>
 
+#include "opencv2/core/mat.hpp"
+
 #include "mondrian/FrameBuffer.hpp"
 #include "mondrian/InferenceEngine.hpp"
 #include "mondrian/InferencePlanner.hpp"
@@ -120,7 +122,23 @@ void Mondrian::workSchedule() {
       return numFirstFrameReadyVideos_ == numVideos_;
     });
   }
-  std::this_thread::sleep_for(std::chrono::microseconds(config_.SCHEDULE_INTERVAL_US));
+  if (config_.USE_CANVAS_INTERVAL) {
+    int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(Device::GPU).INPUT_SIZES.back();
+    VID dummyVId = numVideos_;
+    for (int fid = 0; fid < config_.SCHEDULE_INTERVAL_CANVASES; fid++) {
+      inferenceEngine_->enqueue(
+          cv::Mat(inputSize, inputSize, CV_8UC3, cv::Scalar(114, 114, 114)),
+          Device::GPU,
+          inputSize,
+          false,
+          {dummyVId, fid});
+    }
+    for (int fid = 0; fid < config_.SCHEDULE_INTERVAL_CANVASES; fid++) {
+      inferenceEngine_->getResult({dummyVId, fid}, false);
+    }
+  } else {
+    std::this_thread::sleep_for(std::chrono::microseconds(config_.SCHEDULE_INTERVAL_US));
+  }
 
   while (!stop_) {
     time_us scheduleStart = NowMicros();
@@ -169,16 +187,26 @@ void Mondrian::workSchedule() {
     std::map<Device, time_us> remainingTimes = inferenceEngine_->remainingTimes();
 
     time_us planStart = NowMicros();
-    std::map<Device, time_us> remainingTimesAfterPlanning;
-    for (auto& [device, remainingTime] : remainingTimes) {
-      remainingTimesAfterPlanning[device] = std::max(remainingTime - planningTime_, 0LL);
+    std::vector<InferenceInfo> inferencePlan;
+    if (config_.USE_CANVAS_INTERVAL) {
+      time_us accumulatedLatency = 0;
+      for (int i = 0; i < config_.SCHEDULE_INTERVAL_CANVASES; i++) {
+        int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(Device::GPU).INPUT_SIZES.back();
+        time_us latency = latencyTable.at(Device::GPU).at({inputSize, false});
+        accumulatedLatency += latency;
+        inferencePlan.push_back({Device::GPU, inputSize, latency, accumulatedLatency});
+      }
+    } else {
+      std::map<Device, time_us> remainingTimesAfterPlanning;
+      for (auto& [device, remainingTime] : remainingTimes) {
+        remainingTimesAfterPlanning[device] = std::max(remainingTime - planningTime_, 0LL);
+      }
+      inferencePlan = InferencePlanner::getInferencePlan(
+          /*latencyTable=*/latencyTable,
+          /*interval=*/config_.SCHEDULE_INTERVAL_US,
+          /*roiWiseInference=*/config_.EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE,
+          /*startTimes=*/remainingTimesAfterPlanning);
     }
-    std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
-        /*latencyTable=*/latencyTable,
-        /*interval=*/config_.SCHEDULE_INTERVAL_US,
-        /*roiWiseInference=*/config_.EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE,
-        /*startTimes=*/remainingTimesAfterPlanning);
-    assert(!inferencePlan.empty());
     LOGD("[Schedule %d] FullFid=%d | RemainingTimes %s | PlanningTime %lld | LatencyTable %s",
          currID,
          fullFrameTarget != nullptr ? fullFrameTarget->fid : -1,
@@ -223,10 +251,14 @@ void Mondrian::workSchedule() {
     LOGD("[Schedule %d] ========== End   at %lld ==========", currID, NowMicros() - startTime_);
     tracer_->EndEvent(scheduleThreadTag, handle);
 
-    // Wait for scheduling interval
-    time_us sleepTime = config_.SCHEDULE_INTERVAL_US - (NowMicros() - scheduleStart);
-    if (sleepTime > 0) {
-      std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
+    if (config_.USE_CANVAS_INTERVAL) {
+      inferenceEngine_->waitForInferenceEnd();
+    } else {
+      // Wait for scheduling interval
+      time_us sleepTime = config_.SCHEDULE_INTERVAL_US - (NowMicros() - scheduleStart);
+      if (sleepTime > 0) {
+        std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
+      }
     }
   }
 }
