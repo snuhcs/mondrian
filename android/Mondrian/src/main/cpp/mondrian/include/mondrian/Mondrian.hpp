@@ -42,6 +42,10 @@ class Mondrian {
 
   void workSchedule();
 
+  void waitForAllVideoReady();
+
+  void waitForFirstInterval();
+
   void workPostprocess();
 
   void workLog();

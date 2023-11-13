@@ -102,6 +102,8 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   // Start scheduling thread
   scheduleThread_ = std::thread([this]() {
     assert(sched_setaffinity_big_or_primary());
+    waitForAllVideoReady();
+    waitForFirstInterval();
     workSchedule();
   });
 }
@@ -115,31 +117,6 @@ Mondrian::~Mondrian() {
 }
 
 void Mondrian::workSchedule() {
-  {
-    std::unique_lock<std::mutex> startLock(startMtx_);
-    startCV_.wait(startLock, [this]() {
-      assert(numFirstFrameReadyVideos_ <= numVideos_);
-      return numFirstFrameReadyVideos_ == numVideos_;
-    });
-  }
-  if (config_.USE_CANVAS_INTERVAL) {
-    int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(Device::GPU).INPUT_SIZES.back();
-    VID dummyVId = numVideos_;
-    for (int fid = 0; fid < config_.SCHEDULE_INTERVAL_CANVASES; fid++) {
-      inferenceEngine_->enqueue(
-          cv::Mat(inputSize, inputSize, CV_8UC3, cv::Scalar(114, 114, 114)),
-          Device::GPU,
-          inputSize,
-          false,
-          {dummyVId, fid});
-    }
-    for (int fid = 0; fid < config_.SCHEDULE_INTERVAL_CANVASES; fid++) {
-      inferenceEngine_->getResult({dummyVId, fid}, false);
-    }
-  } else {
-    std::this_thread::sleep_for(std::chrono::microseconds(config_.SCHEDULE_INTERVAL_US));
-  }
-
   while (!stop_) {
     time_us scheduleStart = NowMicros();
     int currID = numIntervals_++;
@@ -260,6 +237,34 @@ void Mondrian::workSchedule() {
         std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
       }
     }
+  }
+}
+
+void Mondrian::waitForAllVideoReady() {
+  std::unique_lock<std::mutex> startLock(startMtx_);
+  startCV_.wait(startLock, [this]() {
+    assert(numFirstFrameReadyVideos_ <= numVideos_);
+    return numFirstFrameReadyVideos_ == numVideos_;
+  });
+}
+
+void Mondrian::waitForFirstInterval() {
+  if (config_.USE_CANVAS_INTERVAL) {
+    int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(Device::GPU).INPUT_SIZES.back();
+    VID dummyVId = numVideos_;
+    for (int fid = 0; fid < config_.SCHEDULE_INTERVAL_CANVASES; fid++) {
+      inferenceEngine_->enqueue(
+          cv::Mat(inputSize, inputSize, CV_8UC3, cv::Scalar(114, 114, 114)),
+          Device::GPU,
+          inputSize,
+          false,
+          {dummyVId, fid});
+    }
+    for (int fid = 0; fid < config_.SCHEDULE_INTERVAL_CANVASES; fid++) {
+      inferenceEngine_->getResult({dummyVId, fid}, false);
+    }
+  } else {
+    std::this_thread::sleep_for(std::chrono::microseconds(config_.SCHEDULE_INTERVAL_US));
   }
 }
 
