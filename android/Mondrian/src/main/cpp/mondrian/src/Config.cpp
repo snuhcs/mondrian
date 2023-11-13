@@ -53,6 +53,7 @@ static std::string parseString(const Json::Value& json, const std::string& key) 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   ROIExtractorConfig config = {};
   auto extraction_size = parseInts(json, "extraction_size", 2);
+  config.BACK_TO_BACK_PROCESSING = parseBool(json, "back_to_back_processing");
   config.EXTRACTION_SIZE = cv::Size(extraction_size[0], extraction_size[1]);
   config.PD_INTERVAL = parseInt(json, "pd_interval");
   config.MIN_PD_ROI_SIZE = parseFloat(json, "min_pd_roi_size");
@@ -137,7 +138,6 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   assert(json.isObject());
 
   config.EXECUTION_TYPE = executionTypeOf(parseString(json, "execution_type"));
-  config.BACK_TO_BACK_PROCESSING = parseBool(json, "back_to_back_processing");
   config.LOG_BOXES = parseBool(json, "log_boxes");
   config.LOG_ROI = parseBool(json, "log_roi");
   config.LOG_FRAME = parseBool(json, "log_frame");
@@ -207,7 +207,6 @@ void MondrianConfig::print() const {
   std::stringstream ss;
   ss << "========== MondrianConfig ==========" << std::endl;
   ss << "EXECUTION_TYPE: " << md::str(EXECUTION_TYPE) << std::endl;
-  ss << "BACK_TO_BACK_PROCESSING: " << BACK_TO_BACK_PROCESSING << std::endl;
   ss << "LOG_BOXES: " << LOG_BOXES << std::endl;
   ss << "LOG_ROI: " << LOG_ROI << std::endl;
   ss << "LOG_FRAME: " << LOG_FRAME << std::endl;
@@ -229,6 +228,7 @@ void MondrianConfig::print() const {
 void ROIExtractorConfig::print() const {
   std::stringstream ss;
   ss << "========== ROIExtractorConfig ==========" << std::endl;
+  ss << "BACK_TO_BACK_PROCESSING: " << BACK_TO_BACK_PROCESSING << std::endl;
   ss << "EXTRACTION_SIZE: ["
      << EXTRACTION_SIZE.width << ", "
      << EXTRACTION_SIZE.height << "]" << std::endl;

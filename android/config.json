@@ -7,7 +7,6 @@
         }
     ],
     "execution_type": "mondrian",
-    "back_to_back_processing": false,
     "log_boxes": true,
     "log_roi": true,
     "log_frame": true,
@@ -18,6 +17,7 @@
     "schedule_interval_us": 2000000,
     "roi_size": 128,
     "roi_extractor": {
+        "back_to_back_processing": false,
         "extraction_size": [
             960,
             540
