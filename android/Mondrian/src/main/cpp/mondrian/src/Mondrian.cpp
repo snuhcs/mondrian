@@ -194,8 +194,13 @@ void Mondrian::workSchedule() {
     tracer_->EndEvent(scheduleThreadTag, handle);
 
     // Prepare Packed Canvases
-    handle = tracer_->BeginEvent(scheduleThreadTag, "packCanvases(" + std::to_string(currID) + ")");
-    std::map<Device, std::vector<PackedCanvas>> packedCanvasesTable = ROIPacker_->packCanvases(
+    handle = tracer_->BeginEvent(scheduleThreadTag, "pack(" + std::to_string(currID) + ")");
+    ROIPacker_->pack(
+        /*currID=*/currID,
+        /*streams=*/streams,
+        /*inferencePlan=*/inferencePlan,
+        /*fullFrameTarget=*/fullFrameTarget);
+    auto packedCanvasesTable = ROIPacker_->generatePackedCanvases(
         /*currID=*/currID,
         /*streams=*/streams,
         /*inferencePlan=*/inferencePlan,
