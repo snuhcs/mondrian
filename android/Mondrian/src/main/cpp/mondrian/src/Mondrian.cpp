@@ -166,12 +166,15 @@ void Mondrian::workSchedule() {
     time_us planStart = NowMicros();
     std::vector<InferenceInfo> inferencePlan;
     if (config_.USE_CANVAS_INTERVAL) {
+      // TODO: Support other processors
+      Device targetDevice = Device::GPU;
       time_us accumulatedLatency = 0;
+      assert(config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).INPUT_SIZES.size() == 1);
+      int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).INPUT_SIZES.front();
       for (int i = 0; i < config_.SCHEDULE_INTERVAL_CANVASES; i++) {
-        int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(Device::GPU).INPUT_SIZES.back();
-        time_us latency = latencyTable.at(Device::GPU).at({inputSize, false});
+        time_us latency = latencyTable.at(targetDevice).at({inputSize, false});
         accumulatedLatency += latency;
-        inferencePlan.push_back({Device::GPU, inputSize, latency, accumulatedLatency});
+        inferencePlan.push_back({targetDevice, inputSize, latency, accumulatedLatency});
       }
     } else {
       std::map<Device, time_us> remainingTimesAfterPlanning;
