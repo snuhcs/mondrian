@@ -19,12 +19,14 @@ ROIExtractor::ROIExtractor(const ROIExtractorConfig& config,
                            const ExecutionType executionType,
                            const int maxMergeSize,
                            const int roiSize,
+                           const int numCanvases,
                            ROIResizer* roiResizer,
                            chrome_tracer::ChromeTracer* tracer)
     : config_(config),
       executionType_(executionType),
       maxMergeSize_(maxMergeSize),
       roiSize_(roiSize),
+      numCanvases_(numCanvases),
       ROIResizer_(roiResizer),
       tracer_(tracer),
       stop_(false),
@@ -68,7 +70,11 @@ MultiStream ROIExtractor::collectFrames(int currID) {
 
   std::unique_lock<std::mutex> OFLock(OFMtx_);
   OFCv_.wait(OFLock, [this]() {
-    return !isOFProcessing_ && !isPostprocessing_ && PostprocessWaiting_.empty();
+    if (config_.BACK_TO_BACK_PROCESSING) {
+      return isFullyPacked_;
+    } else {
+      return !isOFProcessing_ && !isPostprocessing_ && PostprocessWaiting_.empty();
+    }
   });
 
   time_us scheduledTime = NowMicros();

@@ -90,6 +90,7 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
                                                  config_.EXECUTION_TYPE,
                                                  maxMergeSize,
                                                  config_.ROI_SIZE,
+                                                 config_.SCHEDULE_INTERVAL_CANVASES,
                                                  ROIResizer_.get(),
                                                  tracer_.get());
 
@@ -198,11 +199,34 @@ void Mondrian::workSchedule() {
 
     // Prepare Packed Canvases
     handle = tracer_->BeginEvent(scheduleThreadTag, "pack(" + std::to_string(currID) + ")");
-    ROIPacker_->pack(
-        /*currID=*/currID,
-        /*streams=*/streams,
-        /*inferencePlan=*/inferencePlan,
-        /*fullFrameTarget=*/fullFrameTarget);
+    if (!config_.roiExtractorConfig.BACK_TO_BACK_PROCESSING) {
+      ROIPacker_->pack(
+          /*currID=*/currID,
+          /*streams=*/streams,
+          /*inferencePlan=*/inferencePlan,
+          /*fullFrameTarget=*/fullFrameTarget);
+    } else {
+      const auto isAllPacked = [](Frame* frame) -> bool {
+        for (const auto& mergedROI : frame->mergedROIs) {
+          if (!mergedROI->isPacked()) {
+            return false;
+          }
+        }
+        for (const auto& [device, probingROIs] : frame->probingROIsTable) {
+          for (const auto& probingROI : probingROIs) {
+            if (!probingROI->isPacked()) {
+              return false;
+            }
+          }
+        }
+        return true;
+      };
+      for (const auto& [vid, stream] : streams) {
+        for (const auto& frame : stream) {
+          assert(frame == fullFrameTarget || isAllPacked(frame));
+        }
+      }
+    }
     auto packedCanvasesTable = ROIPacker_->generatePackedCanvases(
         /*currID=*/currID,
         /*streams=*/streams,

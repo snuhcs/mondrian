@@ -21,6 +21,7 @@ class ROIExtractor {
                const ExecutionType executionType,
                const int maxMergeSize,
                const int roiSize,
+               const int numCanvases,
                ROIResizer* roiResizer,
                chrome_tracer::ChromeTracer* tracer);
 
@@ -46,14 +47,19 @@ class ROIExtractor {
   void postprocess(Frame* currFrame) const;
 
   bool stop_;
+
+  // BACK_TO_BACK_PROCESSING == false
   bool isOFProcessing_;
   bool isPostprocessing_;
   bool collecting_;
+  // BACK_TO_BACK_PROCESSING == true
+  bool isFullyPacked_;
 
   const ROIExtractorConfig config_;
   const ExecutionType executionType_;
   const int maxMergeSize_;
   const int roiSize_;
+  const int numCanvases_;
 
   ROIResizer* ROIResizer_;
 
