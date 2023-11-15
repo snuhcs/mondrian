@@ -48,7 +48,6 @@ struct ROIResizerConfig {
 };
 
 struct ROIPackerConfig {
-  bool NO_DOWNSAMPLING_FOR_LAST_FRAME;
   ROIPackerType TYPE;
 
   void print() const;

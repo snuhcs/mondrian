@@ -85,7 +85,6 @@ ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
 
 ROIPackerConfig parseROIPackerConfig(const Json::Value& json) {
   ROIPackerConfig config = {};
-  config.NO_DOWNSAMPLING_FOR_LAST_FRAME = parseBool(json, "no_downsampling_for_last_frame");
   config.TYPE = roiPackerTypeOf(parseString(json, "type"));
   return config;
 }
@@ -263,7 +262,6 @@ void ROIResizerConfig::print() const {
 void ROIPackerConfig::print() const {
   std::stringstream ss;
   ss << "========== ROIPackerConfig ==========" << std::endl;
-  ss << "NO_DOWNSAMPLING_FOR_LAST_FRAME: " << NO_DOWNSAMPLING_FOR_LAST_FRAME << std::endl;
   ss << "TYPE: " << md::str(TYPE) << std::endl;
   LOGD("%s", ss.str().c_str());
 }

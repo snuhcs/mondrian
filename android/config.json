@@ -46,7 +46,6 @@
         "probe_iou_thres": 0.5
     },
     "roi_packer": {
-        "no_downsampling_for_last_frame": true,
         "type": "min_consecutive_drop"
     },
     "inference_engine": {

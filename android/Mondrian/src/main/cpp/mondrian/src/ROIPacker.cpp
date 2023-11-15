@@ -40,8 +40,7 @@ void ROIPacker::processLastFrame(
   } else { // MONDRIAN, EMULATED_BATCH
     IntPairs frameBoxWHs = lastFrame->boxesIfLast(
         /*roiResizer=*/roiResizer_,
-        /*executionType=*/executionType_,
-        /*noDownsampling=*/config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
+        /*executionType=*/executionType_);
 
     std::vector<std::vector<IntRect>>& freeRectsVecForLast =
         freeRectsVecTable.at(LAST_FRAME_DEVICE);
@@ -50,8 +49,7 @@ void ROIPacker::processLastFrame(
     lastFrame->prepareFrameLast(indices,
                                 locations,
                                 executionType_,
-                                roiSize_,
-                                config_.NO_DOWNSAMPLING_FOR_LAST_FRAME);
+                                roiSize_);
   }
 }
 
