@@ -11,6 +11,7 @@
         android:theme="@style/Theme.Mondrian">
         <activity
             android:name="hcs.offloading.mondrian.MainActivity"
+            android:screenOrientation="landscape"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
