@@ -90,7 +90,7 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
             startVid += config.numStreams;
             totalFrames += config.numStreams * videoLoader.numFrames;
         }
-        totalFramesView.setText(String.format("%05d", totalFrames));
+        totalFramesView.setText(String.format("%04d", totalFrames));
         int numVideos = startVid;
         handle = createHandle(numVideos);
         for (VideoLoader videoLoader : videoLoaders) {
@@ -125,8 +125,8 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
         Pair<Integer, Long> last = countTimes.get(countTimes.size() - 1);
         double fps = 1e9 * (last.first - first.first) / (last.second - first.second);
         fpsView.post(() -> fpsView.setText(String.format("%02.1f", fps)));
-        frameCountView.post(() -> frameCountView.setText(String.format("%05d", frameCount)));
-        if (countTimes.size() > 10) {
+        frameCountView.post(() -> frameCountView.setText(String.format("%04d", frameCount)));
+        if (countTimes.size() > 50) {
             countTimes.remove(0);
         }
     }
