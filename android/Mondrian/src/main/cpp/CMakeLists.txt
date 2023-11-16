@@ -61,6 +61,7 @@ add_library(
 
 target_link_libraries(
     mondrian
+    -landroid # for native window
     ${log-lib}
     jsoncpp
     opencv_core
