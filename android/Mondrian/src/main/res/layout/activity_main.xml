@@ -6,7 +6,7 @@
     tools:context="hcs.offloading.mondrian.MainActivity"
     android:orientation="horizontal">
 
-    <ImageView
+    <SurfaceView
         android:id="@+id/inputView"
         android:layout_width="0dp"
         android:layout_height="fill_parent"

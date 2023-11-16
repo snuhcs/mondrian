@@ -69,25 +69,27 @@ Java_hcs_offloading_mondrian_JniRenderer_drawFrameByte(JNIEnv* env,
                                                        jbyteArray img,
                                                        jint width,
                                                        jint height) {
+  auto imgVal = reinterpret_cast<uint8_t*>(env->GetByteArrayElements(img, JNI_FALSE));
+
   ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
   if (window == nullptr) return false;
   ANativeWindow_acquire(window);
   ANativeWindow_Buffer buffer;
 
   ANativeWindow_setBuffersGeometry(window, 0, 0, WINDOW_FORMAT_RGBA_8888);
-  int32_t errLock = ANativeWindow_lock(window, &buffer, NULL);
+  int32_t errLock = ANativeWindow_lock(window, &buffer, nullptr);
   if (errLock != 0) {
-    LOGD("ANativeWindow_lock failed with error code: %d", errLock);
+    LOGE("ANativeWindow_lock failed with error code: %d", errLock);
     ANativeWindow_release(window);
     return false;
   }
 
   auto* outPtr = reinterpret_cast<uint8_t*>(buffer.bits);
-  std::memcpy(outPtr, img, 4 * width * height);
+  std::memcpy(outPtr, imgVal, 4 * width * height);
 
   int32_t errUnlockAndPost = ANativeWindow_unlockAndPost(window);
   if (errUnlockAndPost != 0) {
-    LOGD("ANativeWindow_unlockAndPost failed with error code: %d", errUnlockAndPost);
+    LOGE("ANativeWindow_unlockAndPost failed with error code: %d", errUnlockAndPost);
     ANativeWindow_release(window);
     return false;
   }

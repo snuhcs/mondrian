@@ -1,9 +1,14 @@
 {
     "video_configs": [
         {
-            "num_streams": 4,
-            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
-            "fps": 15
+            "num_streams": 1,
+            "path": "/data/local/tmp/video/mta_test_cam_0.mp4",
+            "fps": 30
+        },
+        {
+            "num_streams": 1,
+            "path": "/data/local/tmp/video/mta_test_cam_1.mp4",
+            "fps": 30
         }
     ],
     "execution_type": "mondrian",
@@ -62,7 +67,7 @@
                 ]
             }
         },
-        "draw_inference_result": false,
+        "draw_inference_result": true,
         "conf_thres": 0.5,
         "iou_thres": 0.5,
         "profile_warmups": 3,
