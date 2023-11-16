@@ -23,7 +23,7 @@
             android:textSize="20sp" />
 
         <TextView
-            android:id="@+id/fps"
+            android:id="@+id/fpsView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -44,7 +44,7 @@
             android:textSize="20sp" />
 
         <TextView
-            android:id="@+id/processed_frames"
+            android:id="@+id/frameCountView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -65,7 +65,7 @@
             android:textSize="20sp" />
 
         <TextView
-            android:id="@+id/total_frames"
+            android:id="@+id/totalFramesView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"

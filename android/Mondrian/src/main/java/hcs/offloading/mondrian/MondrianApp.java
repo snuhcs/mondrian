@@ -1,11 +1,14 @@
 package hcs.offloading.mondrian;
 
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
 import android.util.Log;
+import android.util.Pair;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -20,8 +23,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
+@SuppressLint("DefaultLocale")
 public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback {
     static {
         if (!OpenCVLoader.initDebug()) Log.e("OpenCV", "Unable to load OpenCV!");
@@ -51,10 +57,17 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
     private final List<Mat> inputRgbMats = new ArrayList<>();
     private final List<Mat> inputResizedRgbMats = new ArrayList<>();
     private final List<byte[]> inputBuffers = new ArrayList<>();
+
     private final ImageView outputView;
+
+    private final List<Pair<Integer, Long>> countTimes = new LinkedList<>();
+    private final AtomicInteger frameCount = new AtomicInteger(0);
+    private final TextView fpsView;
+    private final TextView frameCountView;
+
     private final List<VideoLoader> videoLoaders = new ArrayList<>();
 
-    public MondrianApp(List<SurfaceView> inputViews, ImageView outputView) throws JSONException, IOException {
+    public MondrianApp(List<SurfaceView> inputViews, ImageView outputView, TextView fpsView, TextView frameCountView, TextView totalFramesView) throws JSONException, IOException {
         this.inputViews = inputViews;
         for (SurfaceView inputView : inputViews) {
             inputView.getHolder().addCallback(this);
@@ -65,13 +78,19 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
             inputBuffers.add(new byte[(int) (4 * inputSize.width * inputSize.height)]);
         }
         this.outputView = outputView;
+        this.fpsView = fpsView;
+        this.frameCountView = frameCountView;
 
         List<VideoConfig> videoConfigs = parseVideoConfigs();
+        int totalFrames = 0;
         int startVid = 0;
         for (VideoConfig config : videoConfigs) {
-            videoLoaders.add(new VideoLoader(startVid, config.numStreams, config.path, config.fps, this));
+            VideoLoader videoLoader = new VideoLoader(startVid, config.numStreams, config.path, config.fps, this);
+            videoLoaders.add(videoLoader);
             startVid += config.numStreams;
+            totalFrames += config.numStreams * videoLoader.numFrames;
         }
+        totalFramesView.setText(String.format("%05d", totalFrames));
         int numVideos = startVid;
         handle = createHandle(numVideos);
         for (VideoLoader videoLoader : videoLoaders) {
@@ -81,6 +100,10 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
 
     @Override
     public void onFrame(int vid, Mat yuvMat) {
+        int count = frameCount.getAndIncrement();
+        if (count % 10 == 0) {
+            updateFPS(count);
+        }
         if (isSurfaceSet && vid < inputViews.size()) {
             Mat inputRgbMat = inputRgbMats.get(vid);
             Mat inputResizedRgbMat = inputResizedRgbMats.get(vid);
@@ -92,6 +115,20 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
             JniRenderer.draw(inputView.getHolder(), inputBuffer, (int) inputSize.width, (int) inputSize.height);
         }
         enqueue(handle, vid, yuvMat.getNativeObjAddr());
+    }
+
+    private void updateFPS(int frameCount) {
+        long currTime = System.nanoTime();
+        countTimes.add(new Pair<>(frameCount, currTime));
+        if (countTimes.size() == 1) return;
+        Pair<Integer, Long> first = countTimes.get(0);
+        Pair<Integer, Long> last = countTimes.get(countTimes.size() - 1);
+        double fps = 1e9 * (last.first - first.first) / (last.second - first.second);
+        fpsView.post(() -> fpsView.setText(String.format("%02.1f", fps)));
+        frameCountView.post(() -> frameCountView.setText(String.format("%05d", frameCount)));
+        if (countTimes.size() > 10) {
+            countTimes.remove(0);
+        }
     }
 
     @Override
