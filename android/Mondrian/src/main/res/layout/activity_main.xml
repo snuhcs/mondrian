@@ -9,7 +9,7 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:layout_marginLeft="20dp"
+        android:layout_marginLeft="40dp"
         android:orientation="vertical">
 
         <TextView
@@ -81,7 +81,7 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:layout_marginLeft="20dp"
+        android:layout_marginLeft="40dp"
         android:orientation="vertical">
 
         <TextView
@@ -115,7 +115,7 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:layout_marginLeft="50dp"
+        android:layout_marginLeft="40dp"
         android:orientation="vertical">
 
         <TextView
@@ -129,9 +129,9 @@
 
         <ImageView
             android:id="@+id/outputView"
-            android:layout_width="250dp"
-            android:layout_height="250dp"
-            android:layout_marginTop="20dp"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_marginTop="50dp"
             android:contentDescription="@string/inference_output"
             tools:srcCompat="@tools:sample/avatars" />
 
