@@ -51,7 +51,7 @@ public class VideoLoader implements Runnable {
         int height = format.getInteger(MediaFormat.KEY_HEIGHT);
         int frameRate = format.getInteger(MediaFormat.KEY_FRAME_RATE);
         long durationUs = format.getLong(MediaFormat.KEY_DURATION);
-        numFrames = (frameRate * durationUs) / 1000000L;
+        numFrames = Math.round((double) (frameRate * durationUs) / 1000000.0);
         yuvBytes = new byte[width * height * 12 / 8]; // 12 bit for each YUV420 pixel
         yuvMat = new Mat(height + height / 2, width, CvType.CV_8UC1);
 

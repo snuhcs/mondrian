@@ -100,7 +100,8 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
 
     @Override
     public void onFrame(int vid, Mat yuvMat) {
-        int count = frameCount.getAndIncrement();
+        int count = frameCount.incrementAndGet();
+        frameCountView.post(() -> frameCountView.setText(String.format("%04d", count)));
         if (count % 10 == 0) {
             updateFPS(count);
         }
@@ -125,7 +126,6 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
         Pair<Integer, Long> last = countTimes.get(countTimes.size() - 1);
         double fps = 1e9 * (last.first - first.first) / (last.second - first.second);
         fpsView.post(() -> fpsView.setText(String.format("%02.1f", fps)));
-        frameCountView.post(() -> frameCountView.setText(String.format("%04d", frameCount)));
         if (countTimes.size() > 50) {
             countTimes.remove(0);
         }
