@@ -19,7 +19,7 @@
     "full_frame_interval": 1,
     "use_canvas_interval": true,
     "schedule_interval_canvases": 4,
-    "schedule_interval_us": 2000000,
+    "schedule_interval_us": 4000000,
     "roi_size": 128,
     "roi_extractor": {
         "back_to_back_processing": false,
@@ -63,7 +63,7 @@
                 "model": "yolov5m",
                 "dataset": "mta",
                 "input_sizes": [
-                    640
+                    1280
                 ]
             }
         },
