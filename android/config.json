@@ -2,12 +2,12 @@
     "video_configs": [
         {
             "num_streams": 1,
-            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
+            "path": "/data/local/tmp/video/mta_test_cam_3_500.mp4",
             "fps": 30
         },
         {
             "num_streams": 1,
-            "path": "/data/local/tmp/video/mta_test_cam_5.mp4",
+            "path": "/data/local/tmp/video/mta_test_cam_5_500.mp4",
             "fps": 30
         }
     ],
@@ -17,9 +17,9 @@
     "log_frame": true,
     "interpolation_thres": 1,
     "full_frame_interval": 1,
-    "use_canvas_interval": true,
+    "use_canvas_interval": false,
     "schedule_interval_canvases": 4,
-    "schedule_interval_us": 4000000,
+    "schedule_interval_us": 2000000,
     "roi_size": 128,
     "roi_extractor": {
         "back_to_back_processing": false,
