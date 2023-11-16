@@ -8,6 +8,7 @@ import android.widget.ImageView;
 import org.json.JSONException;
 
 import java.io.IOException;
+import java.util.List;
 
 import hcs.offloading.mondrian.databinding.ActivityMainBinding;
 
@@ -20,11 +21,11 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(ActivityMainBinding.inflate(getLayoutInflater()).getRoot());
 
-        SurfaceView inputView = findViewById(R.id.inputView);
+        List<SurfaceView> inputViews = List.of(findViewById(R.id.inputView0), findViewById(R.id.inputView1));
         ImageView outputView = findViewById(R.id.outputView);
 
         try {
-            app = new MondrianApp(inputView, outputView);
+            app = new MondrianApp(inputViews, outputView);
         } catch (JSONException | IOException e) {
             e.printStackTrace();
         }

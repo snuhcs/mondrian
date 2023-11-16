@@ -12,10 +12,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
@@ -49,17 +46,24 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
 
     private final long handle;
     private boolean isSurfaceSet = false;
-    private final Size inputSize = new Size(960, 540);
-    private final SurfaceView inputView;
-    private final Mat inputRgbMat = new Mat();
-    private final Mat inputResizedRgbMat = new Mat();
-    private final byte[] inputBuffer = new byte[4 * (int) inputSize.width * (int) inputSize.height];
+    private final Size inputSize = new Size(640, 360);
+    private final List<SurfaceView> inputViews;
+    private final List<Mat> inputRgbMats = new ArrayList<>();
+    private final List<Mat> inputResizedRgbMats = new ArrayList<>();
+    private final List<byte[]> inputBuffers = new ArrayList<>();
     private final ImageView outputView;
     private final List<VideoLoader> videoLoaders = new ArrayList<>();
 
-    public MondrianApp(SurfaceView inputView, ImageView outputView) throws JSONException, IOException {
-        this.inputView = inputView;
-        this.inputView.getHolder().addCallback(this);
+    public MondrianApp(List<SurfaceView> inputViews, ImageView outputView) throws JSONException, IOException {
+        this.inputViews = inputViews;
+        for (SurfaceView inputView : inputViews) {
+            inputView.getHolder().addCallback(this);
+        }
+        for (int i = 0; i < inputViews.size(); i++) {
+            inputRgbMats.add(new Mat());
+            inputResizedRgbMats.add(new Mat());
+            inputBuffers.add(new byte[(int) (4 * inputSize.width * inputSize.height)]);
+        }
         this.outputView = outputView;
 
         List<VideoConfig> videoConfigs = parseVideoConfigs();
@@ -77,7 +81,11 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
 
     @Override
     public void onFrame(int vid, Mat yuvMat) {
-        if (isSurfaceSet && vid == 0) {
+        if (isSurfaceSet && vid < inputViews.size()) {
+            Mat inputRgbMat = inputRgbMats.get(vid);
+            Mat inputResizedRgbMat = inputResizedRgbMats.get(vid);
+            byte[] inputBuffer = inputBuffers.get(vid);
+            SurfaceView inputView = inputViews.get(vid);
             Imgproc.cvtColor(yuvMat, inputRgbMat, Imgproc.COLOR_YUV2RGBA_NV12);
             Imgproc.resize(inputRgbMat, inputResizedRgbMat, inputSize, 0, 0, Imgproc.INTER_LINEAR);
             inputResizedRgbMat.get(0, 0, inputBuffer);
@@ -139,7 +147,9 @@ public class MondrianApp implements VideoLoader.Callback, SurfaceHolder.Callback
     @Override
     public void surfaceCreated(@NonNull SurfaceHolder surfaceHolder) {
         Log.d(TAG, "surface view created");
-        inputView.getHolder().setFixedSize((int) inputSize.width, (int) inputSize.height);
+        for (SurfaceView inputView : inputViews) {
+            inputView.getHolder().setFixedSize((int) inputSize.width, (int) inputSize.height);
+        }
         isSurfaceSet = true;
     }
 

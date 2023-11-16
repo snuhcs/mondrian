@@ -3,26 +3,138 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="hcs.offloading.mondrian.MainActivity"
-    android:orientation="horizontal">
+    android:orientation="horizontal"
+    tools:context="hcs.offloading.mondrian.MainActivity">
 
-    <SurfaceView
-        android:id="@+id/inputView"
-        android:layout_width="0dp"
-        android:layout_height="fill_parent"
-        android:layout_weight="1"
-        android:layout_gravity="center"
-        android:layout_margin="5dp"
-        tools:srcCompat="@tools:sample/avatars"
-        android:contentDescription="@string/video_input" />
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="20dp"
+        android:orientation="vertical">
 
-    <ImageView
-        android:id="@+id/outputView"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:layout_gravity="center"
-        android:layout_margin="5dp"
-        tools:srcCompat="@tools:sample/avatars"
-        android:contentDescription="@string/inference_output" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="60dp"
+            android:gravity="center"
+            android:text="@string/fps"
+            android:textColor="@color/white"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/fps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="0dp"
+            android:gravity="center"
+            android:text="@string/default_fps"
+            android:textColor="@color/white"
+            android:textSize="25sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="@string/processed_frames"
+            android:textColor="@color/white"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/processed_frames"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="0dp"
+            android:gravity="center"
+            android:text="@string/default_frames"
+            android:textColor="@color/white"
+            android:textSize="25sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="@string/total_frames"
+            android:textColor="@color/white"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/total_frames"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="0dp"
+            android:gravity="center"
+            android:text="@string/default_frames"
+            android:textColor="@color/white"
+            android:textSize="25sp" />
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="20dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="@string/input_videos"
+            android:textColor="@color/white"
+            android:textSize="25sp" />
+
+        <SurfaceView
+            android:id="@+id/inputView0"
+            android:layout_width="640px"
+            android:layout_height="360px"
+            android:layout_marginTop="20dp"
+            android:contentDescription="@string/input_videos"
+            tools:srcCompat="@tools:sample/avatars" />
+
+        <SurfaceView
+            android:id="@+id/inputView1"
+            android:layout_width="640px"
+            android:layout_height="360px"
+            android:layout_marginTop="20dp"
+            android:contentDescription="@string/input_videos"
+            tools:srcCompat="@tools:sample/avatars" />
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="50dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="@string/inference_output"
+            android:textColor="@color/white"
+            android:textSize="25sp" />
+
+        <ImageView
+            android:id="@+id/outputView"
+            android:layout_width="250dp"
+            android:layout_height="250dp"
+            android:layout_marginTop="20dp"
+            android:contentDescription="@string/inference_output"
+            tools:srcCompat="@tools:sample/avatars" />
+
+    </LinearLayout>
 
 </LinearLayout>
