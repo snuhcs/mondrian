@@ -153,6 +153,25 @@ struct Rect {
   std::string str() const;
 };
 
+struct IntRect {
+  int l;
+  int t;
+  int r;
+  int b;
+  int w;
+  int h;
+  int area;
+
+  IntRect(int l, int t, int r, int b)
+      : l(l), t(t), r(r), b(b), w(r - l), h(b - t), area((r - l) * (b - t)) {};
+
+  std::string str() const {
+    std::stringstream ss;
+    ss << "(" << l << ", " << t << ", " << r << ", " << b << ")";
+    return ss.str();
+  }
+};
+
 template<typename T>
 std::string safeGet(const std::map<Device, T>& m, Device device) {
   if (m.find(device) != m.end()) {
