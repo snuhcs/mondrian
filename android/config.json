@@ -1,14 +1,9 @@
 {
     "video_configs": [
         {
-            "num_streams": 1,
-            "path": "/data/local/tmp/video/mta_test_cam_3_500.mp4",
-            "fps": 30
-        },
-        {
-            "num_streams": 1,
-            "path": "/data/local/tmp/video/mta_test_cam_5_500.mp4",
-            "fps": 30
+            "num_streams": 4,
+            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
+            "fps": 15
         }
     ],
     "execution_type": "mondrian",
@@ -63,11 +58,11 @@
                 "model": "yolov5m",
                 "dataset": "mta",
                 "input_sizes": [
-                    1280
+                    640
                 ]
             }
         },
-        "draw_inference_result": true,
+        "draw_inference_result": false,
         "conf_thres": 0.5,
         "iou_thres": 0.5,
         "profile_warmups": 3,
