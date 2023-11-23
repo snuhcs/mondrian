@@ -260,7 +260,10 @@ void Mondrian::workSchedule() {
     LOGD("[Schedule %d] ========== End   at %lld ==========", currID, NowMicros() - startTime_);
     tracer_->EndEvent(scheduleThreadTag, handle);
 
-    if (config_.USE_CANVAS_INTERVAL) {
+    bool anyInferenceExists = fullFrameTarget != nullptr
+        || std::any_of(packedCanvasesTable.begin(), packedCanvasesTable.end(),
+                       [](const auto& it) { return !it.second.empty(); });
+    if (config_.USE_CANVAS_INTERVAL && anyInferenceExists) {
       inferenceEngine_->waitForInferenceEnd();
     } else {
       // Wait for scheduling interval
