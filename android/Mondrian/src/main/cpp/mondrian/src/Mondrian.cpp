@@ -5,6 +5,8 @@
 #include <numeric>
 #include <utility>
 
+#include "opencv2/core/mat.hpp"
+
 #include "mondrian/FrameBuffer.hpp"
 #include "mondrian/InferenceEngine.hpp"
 #include "mondrian/InferencePlanner.hpp"
@@ -14,7 +16,7 @@
 #include "mondrian/PackedCanvas.hpp"
 #include "mondrian/PatchReconstructor.hpp"
 #include "mondrian/ROI.hpp"
-#include "mondrian/ROIExtractorStream.hpp"
+#include "mondrian/ROIExtractor.hpp"
 #include "mondrian/ROIPacker.hpp"
 #include "mondrian/ROIResizer.hpp"
 #include "mondrian/Utils.hpp"
@@ -26,7 +28,6 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
       startTime_(NowMicros()),
       numFirstFrameReadyVideos_(0),
       numVideos_(numVideos),
-      scheduleInterval_(config_.LATENCY_SLO_MS * 1000 / 2),
       planningTime_(0),
       numIntervals_(0),
       stop_(false),
@@ -85,12 +86,13 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
       }
     }
   }
-  ROIExtractor_ = std::make_unique<ROIExtractorStream>(config_.roiExtractorConfig,
-                                                       config_.EXECUTION_TYPE,
-                                                       maxMergeSize,
-                                                       config_.ROI_SIZE,
-                                                       ROIResizer_.get(),
-                                                       tracer_.get());
+  ROIExtractor_ = std::make_unique<ROIExtractor>(config_.roiExtractorConfig,
+                                                 config_.EXECUTION_TYPE,
+                                                 maxMergeSize,
+                                                 config_.ROI_SIZE,
+                                                 config_.SCHEDULE_INTERVAL_CANVASES,
+                                                 ROIResizer_.get(),
+                                                 tracer_.get());
 
   // Start postprocessing thread
   postprocessThread_ = std::thread([this]() {
@@ -101,6 +103,8 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
   // Start scheduling thread
   scheduleThread_ = std::thread([this]() {
     assert(sched_setaffinity_big_or_primary());
+    waitForAllVideoReady();
+    waitForFirstInterval();
     workSchedule();
   });
 }
@@ -114,15 +118,6 @@ Mondrian::~Mondrian() {
 }
 
 void Mondrian::workSchedule() {
-  {
-    std::unique_lock<std::mutex> startLock(startMtx_);
-    startCV_.wait(startLock, [this]() {
-      assert(numFirstFrameReadyVideos_ <= numVideos_);
-      return numFirstFrameReadyVideos_ == numVideos_;
-    });
-  }
-  std::this_thread::sleep_for(std::chrono::microseconds(scheduleInterval_));
-
   while (!stop_) {
     time_us scheduleStart = NowMicros();
     int currID = numIntervals_++;
@@ -170,16 +165,29 @@ void Mondrian::workSchedule() {
     std::map<Device, time_us> remainingTimes = inferenceEngine_->remainingTimes();
 
     time_us planStart = NowMicros();
-    std::map<Device, time_us> remainingTimesAfterPlanning;
-    for (auto& [device, remainingTime] : remainingTimes) {
-      remainingTimesAfterPlanning[device] = std::max(remainingTime - planningTime_, 0LL);
+    std::vector<InferenceInfo> inferencePlan;
+    if (config_.USE_CANVAS_INTERVAL) {
+      // TODO: Support other processors
+      Device targetDevice = Device::GPU;
+      time_us accumulatedLatency = 0;
+      assert(config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).INPUT_SIZES.size() == 1);
+      int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).INPUT_SIZES.front();
+      for (int i = 0; i < config_.SCHEDULE_INTERVAL_CANVASES; i++) {
+        time_us latency = latencyTable.at(targetDevice).at({inputSize, false});
+        accumulatedLatency += latency;
+        inferencePlan.push_back({targetDevice, inputSize, latency, accumulatedLatency});
+      }
+    } else {
+      std::map<Device, time_us> remainingTimesAfterPlanning;
+      for (auto& [device, remainingTime] : remainingTimes) {
+        remainingTimesAfterPlanning[device] = std::max(remainingTime - planningTime_, 0LL);
+      }
+      inferencePlan = InferencePlanner::getInferencePlan(
+          /*latencyTable=*/latencyTable,
+          /*interval=*/config_.SCHEDULE_INTERVAL_US,
+          /*roiWiseInference=*/config_.EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE,
+          /*startTimes=*/remainingTimesAfterPlanning);
     }
-    std::vector<InferenceInfo> inferencePlan = InferencePlanner::getInferencePlan(
-        /*latencyTable=*/latencyTable,
-        /*interval=*/scheduleInterval_,
-        /*roiWiseInference=*/config_.EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE,
-        /*startTimes=*/remainingTimesAfterPlanning);
-    assert(!inferencePlan.empty());
     LOGD("[Schedule %d] FullFid=%d | RemainingTimes %s | PlanningTime %lld | LatencyTable %s",
          currID,
          fullFrameTarget != nullptr ? fullFrameTarget->fid : -1,
@@ -190,8 +198,36 @@ void Mondrian::workSchedule() {
     tracer_->EndEvent(scheduleThreadTag, handle);
 
     // Prepare Packed Canvases
-    handle = tracer_->BeginEvent(scheduleThreadTag, "packCanvases(" + std::to_string(currID) + ")");
-    std::map<Device, std::vector<PackedCanvas>> packedCanvasesTable = ROIPacker_->packCanvases(
+    handle = tracer_->BeginEvent(scheduleThreadTag, "pack(" + std::to_string(currID) + ")");
+    if (!config_.roiExtractorConfig.BACK_TO_BACK_PROCESSING) {
+      ROIPacker_->pack(
+          /*currID=*/currID,
+          /*streams=*/streams,
+          /*inferencePlan=*/inferencePlan,
+          /*fullFrameTarget=*/fullFrameTarget);
+    } else {
+      const auto isAllPacked = [](Frame* frame) -> bool {
+        for (const auto& mergedROI : frame->mergedROIs) {
+          if (!mergedROI->isPacked()) {
+            return false;
+          }
+        }
+        for (const auto& [device, probingROIs] : frame->probingROIsTable) {
+          for (const auto& probingROI : probingROIs) {
+            if (!probingROI->isPacked()) {
+              return false;
+            }
+          }
+        }
+        return true;
+      };
+      for (const auto& [vid, stream] : streams) {
+        for (const auto& frame : stream) {
+          assert(frame == fullFrameTarget || isAllPacked(frame));
+        }
+      }
+    }
+    auto packedCanvasesTable = ROIPacker_->generatePackedCanvases(
         /*currID=*/currID,
         /*streams=*/streams,
         /*inferencePlan=*/inferencePlan,
@@ -224,11 +260,46 @@ void Mondrian::workSchedule() {
     LOGD("[Schedule %d] ========== End   at %lld ==========", currID, NowMicros() - startTime_);
     tracer_->EndEvent(scheduleThreadTag, handle);
 
-    // Wait for scheduling interval
-    time_us sleepTime = scheduleInterval_ - (NowMicros() - scheduleStart);
-    if (sleepTime > 0) {
-      std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
+    bool anyInferenceExists = fullFrameTarget != nullptr
+        || std::any_of(packedCanvasesTable.begin(), packedCanvasesTable.end(),
+                       [](const auto& it) { return !it.second.empty(); });
+    if (config_.USE_CANVAS_INTERVAL && anyInferenceExists) {
+      inferenceEngine_->waitForInferenceEnd();
+    } else {
+      // Wait for scheduling interval
+      time_us sleepTime = config_.SCHEDULE_INTERVAL_US - (NowMicros() - scheduleStart);
+      if (sleepTime > 0) {
+        std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
+      }
     }
+  }
+}
+
+void Mondrian::waitForAllVideoReady() {
+  std::unique_lock<std::mutex> startLock(startMtx_);
+  startCV_.wait(startLock, [this]() {
+    assert(numFirstFrameReadyVideos_ <= numVideos_);
+    return numFirstFrameReadyVideos_ == numVideos_;
+  });
+}
+
+void Mondrian::waitForFirstInterval() {
+  if (config_.USE_CANVAS_INTERVAL) {
+    int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(Device::GPU).INPUT_SIZES.back();
+    VID dummyVId = numVideos_;
+    for (int fid = 0; fid < config_.SCHEDULE_INTERVAL_CANVASES; fid++) {
+      inferenceEngine_->enqueue(
+          cv::Mat(inputSize, inputSize, CV_8UC3, cv::Scalar(114, 114, 114)),
+          Device::GPU,
+          inputSize,
+          false,
+          {dummyVId, fid});
+    }
+    for (int fid = 0; fid < config_.SCHEDULE_INTERVAL_CANVASES; fid++) {
+      inferenceEngine_->getResult({dummyVId, fid}, false);
+    }
+  } else {
+    std::this_thread::sleep_for(std::chrono::microseconds(config_.SCHEDULE_INTERVAL_US));
   }
 }
 

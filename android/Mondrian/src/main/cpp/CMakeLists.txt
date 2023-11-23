@@ -44,7 +44,7 @@ add_library(
     mondrian/src/PackedCanvas.cpp
     mondrian/src/PatchReconstructor.cpp
     mondrian/src/ROI.cpp
-    mondrian/src/ROIExtractorStream.cpp
+    mondrian/src/ROIExtractor.cpp
     mondrian/src/ROIPacker.cpp
     mondrian/src/ROIPrioritizer.cpp
     mondrian/src/ROIResizer.cpp
@@ -61,6 +61,7 @@ add_library(
 
 target_link_libraries(
     mondrian
+    -landroid # for native window
     ${log-lib}
     jsoncpp
     opencv_core

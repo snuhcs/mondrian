@@ -1,18 +1,16 @@
 package hcs.offloading.mondrian;
 
-import android.graphics.Bitmap;
+import android.annotation.SuppressLint;
 import android.util.Log;
+import android.view.SurfaceView;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.android.Utils;
 import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
-import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,22 +37,33 @@ public class MondrianApp implements VideoLoader.Callback {
         int fps;
     }
 
-    private static final String TAG = MondrianApp.class.getName();
     private static final String VIDEO_CONFIG_PATH = "/data/local/tmp/config.json";
 
     private final long handle;
-    private final ImageView outputView;
     private final List<VideoLoader> videoLoaders = new ArrayList<>();
+    private final MondrianUI mondrianUI;
 
-    public MondrianApp(ImageView outputView) throws JSONException, IOException {
-        this.outputView = outputView;
-
+    @SuppressLint("DefaultLocale")
+    public MondrianApp(List<SurfaceView> inputViews,
+                       ImageView outputView,
+                       TextView fpsView,
+                       TextView frameCountView,
+                       TextView totalFramesView) throws JSONException, IOException {
+        mondrianUI = new MondrianUI(
+                inputViews,
+                outputView,
+                fpsView,
+                frameCountView);
         List<VideoConfig> videoConfigs = parseVideoConfigs();
+        int totalFrames = 0;
         int startVid = 0;
         for (VideoConfig config : videoConfigs) {
-            videoLoaders.add(new VideoLoader(startVid, config.numStreams, config.path, config.fps, this));
+            VideoLoader videoLoader = new VideoLoader(startVid, config.numStreams, config.path, config.fps, this);
+            videoLoaders.add(videoLoader);
             startVid += config.numStreams;
+            totalFrames += config.numStreams * videoLoader.numFrames;
         }
+        totalFramesView.setText(String.format("%04d", totalFrames));
         int numVideos = startVid;
         handle = createHandle(numVideos);
         for (VideoLoader videoLoader : videoLoaders) {
@@ -64,7 +73,12 @@ public class MondrianApp implements VideoLoader.Callback {
 
     @Override
     public void onFrame(int vid, Mat yuvMat) {
+//        mondrianUI.onFrame(vid, yuvMat);
         enqueue(handle, vid, yuvMat.getNativeObjAddr());
+    }
+
+    public void drawOutput(long rgbMatAddr, List<BoundingBox> results, long device) {
+        mondrianUI.drawOutput(rgbMatAddr, results, device);
     }
 
     @Override
@@ -97,24 +111,6 @@ public class MondrianApp implements VideoLoader.Callback {
             videoConfigs.add(videoConfig);
         }
         return videoConfigs;
-    }
-
-    public void drawOutput(long rgbMatAddr, List<BoundingBox> results, long device) {
-        Mat rgbMat = new Mat(rgbMatAddr);
-        if (device == 1) {
-            Imgproc.putText(rgbMat, "GPU", new Point(10, 80), 0, 3, new Scalar(0, 0, 255), 8);
-        } else if (device == 2) {
-            Imgproc.putText(rgbMat, "DSP", new Point(10, 80), 0, 3, new Scalar(255, 0, 0), 8);
-        } else {
-            assert(false);
-        }
-        Bitmap bitmap = Bitmap.createBitmap(rgbMat.cols(), rgbMat.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(rgbMat, bitmap);
-        Bitmap outputBitmap = ImageUtils.drawBoxes(bitmap, results);
-        outputView.post(() -> {
-            outputView.setImageBitmap(outputBitmap);
-            rgbMat.release();
-        });
     }
 
     private native long createHandle(int numVideos);

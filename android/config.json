@@ -12,9 +12,12 @@
     "log_frame": true,
     "interpolation_thres": 1,
     "full_frame_interval": 1,
-    "latency_slo_ms": 4000,
+    "use_canvas_interval": false,
+    "schedule_interval_canvases": 4,
+    "schedule_interval_us": 2000000,
     "roi_size": 128,
     "roi_extractor": {
+        "back_to_back_processing": false,
         "extraction_size": [
             960,
             540
@@ -43,7 +46,6 @@
         "probe_iou_thres": 0.5
     },
     "roi_packer": {
-        "no_downsampling_for_last_frame": true,
         "type": "min_consecutive_drop"
     },
     "inference_engine": {

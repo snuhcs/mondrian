@@ -13,6 +13,7 @@
 namespace md {
 
 struct ROIExtractorConfig {
+  bool BACK_TO_BACK_PROCESSING;
   cv::Size EXTRACTION_SIZE;
   int PD_INTERVAL;
   float MIN_PD_ROI_SIZE;
@@ -47,7 +48,6 @@ struct ROIResizerConfig {
 };
 
 struct ROIPackerConfig {
-  bool NO_DOWNSAMPLING_FOR_LAST_FRAME;
   ROIPackerType TYPE;
 
   void print() const;
@@ -91,7 +91,9 @@ struct MondrianConfig {
   bool LOG_ROI;
   int INTERPOLATION_THRES;
   int FULL_FRAME_INTERVAL;
-  int LATENCY_SLO_MS;
+  bool USE_CANVAS_INTERVAL;
+  int SCHEDULE_INTERVAL_CANVASES;
+  int SCHEDULE_INTERVAL_US;
   int ROI_SIZE; // Used for Emulated Batch or ROI-wise Inference
   ROIExtractorConfig roiExtractorConfig;
   ROIResizerConfig roiResizerConfig;

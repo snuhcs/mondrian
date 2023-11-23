@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">Mondrian</string>
+    <string name="input_videos">Input Videos</string>
     <string name="inference_output">Inference Output</string>
+    <string name="fps">FPS</string>
+    <string name="default_fps">00.0</string>
+    <string name="processed_frames">Processed\nFrames</string>
+    <string name="default_frames">00000</string>
+    <string name="total_frames">Total\nFrames</string>
 </resources>

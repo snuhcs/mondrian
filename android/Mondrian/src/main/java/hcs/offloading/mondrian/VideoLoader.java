@@ -4,6 +4,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.util.Log;
 
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -20,6 +21,7 @@ public class VideoLoader implements Runnable {
     private final int startVid;
     private final int numStreams;
     private final int fps;
+    public final long numFrames;
 
     private final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
     private final MediaExtractor extractor;
@@ -47,6 +49,9 @@ public class VideoLoader implements Runnable {
         MediaFormat format = extractor.getTrackFormat(videoTrackIndex);
         int width = format.getInteger(MediaFormat.KEY_WIDTH);
         int height = format.getInteger(MediaFormat.KEY_HEIGHT);
+        int frameRate = format.getInteger(MediaFormat.KEY_FRAME_RATE);
+        long durationUs = format.getLong(MediaFormat.KEY_DURATION);
+        numFrames = Math.round((double) (frameRate * durationUs) / 1000000.0);
         yuvBytes = new byte[width * height * 12 / 8]; // 12 bit for each YUV420 pixel
         yuvMat = new Mat(height + height / 2, width, CvType.CV_8UC1);
 

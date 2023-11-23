@@ -41,6 +41,8 @@ class InferenceEngine {
 
   void waitForAnyResults();
 
+  void waitForInferenceEnd();
+
   bool isReady(Key key);
 
   LatencyTable latencyTable() const;
@@ -56,6 +58,7 @@ class InferenceEngine {
   std::map<Device, std::unique_ptr<Worker>> workers_;
   std::vector<std::unique_ptr<Classifier>> classifiers_;
 
+  int numRemainingInputs_;
   std::mutex resultMtx_;
   std::condition_variable resultCv_;
   std::map<Key, Result> results_;

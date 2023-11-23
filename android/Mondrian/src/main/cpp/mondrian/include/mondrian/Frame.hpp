@@ -93,14 +93,12 @@ class Frame {
   void resetProbeROIs();
 
   IntPairs boxesIfLast(ROIResizer* roiResizer,
-                       ExecutionType executionType,
-                       bool noDownsampling);
+                       ExecutionType executionType);
 
   void prepareFrameLast(const IntPairs& indices,
                         const IntPairs& locations,
                         ExecutionType executionType,
-                        int roiSize,
-                        bool noDownsampling);
+                        int roiSize);
 
   bool isReadyToMarry() const;
 

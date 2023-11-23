@@ -239,14 +239,13 @@ void Frame::resetProbeROIs() {
 }
 
 IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
-                            ExecutionType executionType,
-                            bool noDownsampling) {
+                            ExecutionType executionType) {
   // TODO: Synchronize simulation with add logics
   IntPairs boxWHs;
   for (const auto& mergedROI : mergedROIs) {
     // TODO: Make below two condition as single value(or function) of condition
     float scale = mergedROI->targetScale(LAST_FRAME_DEVICE);
-    if (executionType == ExecutionType::MONDRIAN && noDownsampling) {
+    if (executionType == ExecutionType::MONDRIAN) {
       scale = 1.0f;
     }
     auto [bw, bh] = mergedROI->borderedMatWH(scale);
@@ -275,8 +274,7 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
 void Frame::prepareFrameLast(const IntPairs& indices,
                              const IntPairs& locations,
                              ExecutionType executionType,
-                             int roiSize,
-                             bool noDownsampling) {
+                             int roiSize) {
   int numPackedROIs = (int) indices.size();
   assert(numPackedROIs == locations.size());
   isLastFrame = true;
@@ -284,7 +282,7 @@ void Frame::prepareFrameLast(const IntPairs& indices,
   int packedROIIndex = 0;
   for (const auto& mergedROI : mergedROIs) {
     if (packedROIIndex >= numPackedROIs) break;
-    if (executionType == ExecutionType::MONDRIAN && noDownsampling) {
+    if (executionType == ExecutionType::MONDRIAN) {
       mergedROI->setTargetScale(1.0f);
     }
     mergedROI->setPackInfo(LAST_FRAME_DEVICE,

@@ -53,6 +53,7 @@ static std::string parseString(const Json::Value& json, const std::string& key) 
 ROIExtractorConfig parseROIExtractorConfig(const Json::Value& json) {
   ROIExtractorConfig config = {};
   auto extraction_size = parseInts(json, "extraction_size", 2);
+  config.BACK_TO_BACK_PROCESSING = parseBool(json, "back_to_back_processing");
   config.EXTRACTION_SIZE = cv::Size(extraction_size[0], extraction_size[1]);
   config.PD_INTERVAL = parseInt(json, "pd_interval");
   config.MIN_PD_ROI_SIZE = parseFloat(json, "min_pd_roi_size");
@@ -84,7 +85,6 @@ ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
 
 ROIPackerConfig parseROIPackerConfig(const Json::Value& json) {
   ROIPackerConfig config = {};
-  config.NO_DOWNSAMPLING_FOR_LAST_FRAME = parseBool(json, "no_downsampling_for_last_frame");
   config.TYPE = roiPackerTypeOf(parseString(json, "type"));
   return config;
 }
@@ -142,7 +142,9 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
   config.LOG_FRAME = parseBool(json, "log_frame");
   config.INTERPOLATION_THRES = parseInt(json, "interpolation_thres");
   config.FULL_FRAME_INTERVAL = parseInt(json, "full_frame_interval");
-  config.LATENCY_SLO_MS = parseInt(json, "latency_slo_ms");
+  config.USE_CANVAS_INTERVAL = parseBool(json, "use_canvas_interval");
+  config.SCHEDULE_INTERVAL_CANVASES = parseInt(json, "schedule_interval_canvases");
+  config.SCHEDULE_INTERVAL_US = parseInt(json, "schedule_interval_us");
   config.ROI_SIZE = parseInt(json, "roi_size");
 
   config.roiExtractorConfig = parseROIExtractorConfig(json["roi_extractor"]);
@@ -209,7 +211,9 @@ void MondrianConfig::print() const {
   ss << "LOG_FRAME: " << LOG_FRAME << std::endl;
   ss << "INTERPOLATION_THRES: " << INTERPOLATION_THRES << std::endl;
   ss << "FULL_FRAME_INTERVAL: " << FULL_FRAME_INTERVAL << std::endl;
-  ss << "LATENCY_SLO_MS: " << LATENCY_SLO_MS << std::endl;
+  ss << "USE_CANVAS_INTERVAL: " << USE_CANVAS_INTERVAL << std::endl;
+  ss << "SCHEDULE_INTERVAL_CANVASES: " << SCHEDULE_INTERVAL_CANVASES << std::endl;
+  ss << "SCHEDULE_INTERVAL_US: " << SCHEDULE_INTERVAL_US << std::endl;
   ss << "ROI_SIZE: " << ROI_SIZE << std::endl;
   LOGD("%s", ss.str().c_str());
   roiExtractorConfig.print();
@@ -223,6 +227,7 @@ void MondrianConfig::print() const {
 void ROIExtractorConfig::print() const {
   std::stringstream ss;
   ss << "========== ROIExtractorConfig ==========" << std::endl;
+  ss << "BACK_TO_BACK_PROCESSING: " << BACK_TO_BACK_PROCESSING << std::endl;
   ss << "EXTRACTION_SIZE: ["
      << EXTRACTION_SIZE.width << ", "
      << EXTRACTION_SIZE.height << "]" << std::endl;
@@ -257,7 +262,6 @@ void ROIResizerConfig::print() const {
 void ROIPackerConfig::print() const {
   std::stringstream ss;
   ss << "========== ROIPackerConfig ==========" << std::endl;
-  ss << "NO_DOWNSAMPLING_FOR_LAST_FRAME: " << NO_DOWNSAMPLING_FOR_LAST_FRAME << std::endl;
   ss << "TYPE: " << md::str(TYPE) << std::endl;
   LOGD("%s", ss.str().c_str());
 }
