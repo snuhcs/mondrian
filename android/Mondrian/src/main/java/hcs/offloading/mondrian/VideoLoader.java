@@ -15,12 +15,13 @@ import java.nio.ByteBuffer;
 public class VideoLoader implements Runnable {
     private static final String TAG = VideoLoader.class.getName();
     private static final int MEDIACODEC_TIMEOUT_US = 1000;
+    private static int numAllStreams = 0;
 
     private final Thread thread;
     private final Callback callback;
     private final int startVid;
-    private final int numStreams;
     private final int fps;
+    public final int numStreams;
     public final long numFrames;
 
     private final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
@@ -35,11 +36,13 @@ public class VideoLoader implements Runnable {
         void onVideoEnd();
     }
 
-    public VideoLoader(int startVid, int numStreams, String videoPath, int fps, Callback callback) throws IOException {
-        this.startVid = startVid;
+    public VideoLoader(int numStreams, String videoPath, int fps, Callback callback) throws IOException {
         this.numStreams = numStreams;
         this.fps = fps;
         this.callback = callback;
+
+        this.startVid = numAllStreams;
+        numAllStreams += numStreams;
 
         extractor = new MediaExtractor();
         extractor.setDataSource(videoPath);
