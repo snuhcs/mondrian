@@ -12,7 +12,7 @@
     "log_frame": true,
     "interpolation_thres": 1,
     "full_frame_interval": 1,
-    "use_canvas_interval": false,
+    "use_canvas_interval": true,
     "schedule_interval_canvases": 4,
     "schedule_interval_us": 2000000,
     "roi_size": 128,
