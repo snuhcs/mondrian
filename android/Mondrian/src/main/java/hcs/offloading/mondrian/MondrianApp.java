@@ -54,18 +54,22 @@ public class MondrianApp implements VideoLoader.Callback {
                 outputView,
                 fpsView,
                 frameCountView);
+
         List<VideoConfig> videoConfigs = parseVideoConfigs();
-        int totalFrames = 0;
-        int startVid = 0;
         for (VideoConfig config : videoConfigs) {
-            VideoLoader videoLoader = new VideoLoader(startVid, config.numStreams, config.path, config.fps, this);
-            videoLoaders.add(videoLoader);
-            startVid += config.numStreams;
-            totalFrames += config.numStreams * videoLoader.numFrames;
+            videoLoaders.add(new VideoLoader(config.numStreams, config.path, config.fps, this));
         }
+
+        long totalFrames = videoLoaders.stream()
+                .map(videoLoader -> videoLoader.numStreams * videoLoader.numFrames)
+                .reduce(0L, Long::sum);
         totalFramesView.setText(String.format("%04d", totalFrames));
-        int numVideos = startVid;
+
+        int numVideos = videoLoaders.stream()
+                .map(videoLoader -> videoLoader.numStreams)
+                .reduce(0, Integer::sum);
         handle = createHandle(numVideos);
+
         for (VideoLoader videoLoader : videoLoaders) {
             videoLoader.start();
         }
