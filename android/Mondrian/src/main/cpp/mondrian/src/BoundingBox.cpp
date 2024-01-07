@@ -6,7 +6,7 @@ namespace md {
 
 BoundingBox::BoundingBox(OID oid,
                          PID pid,
-                         const Rect& loc,
+                         const cv::Rect2f& loc,
                          const float confidence,
                          int label,
                          BoxOrigin origin)
@@ -31,7 +31,10 @@ std::string BoundingBox::header() {
   ss << "bid" << DELIM
      << "oid" << DELIM
      << "pid" << DELIM
-     << Rect::header("box") << DELIM
+     << "box_l" << DELIM
+     << "box_t" << DELIM
+     << "box_r" << DELIM
+     << "box_b" << DELIM
      << "confidence" << DELIM
      << "label" << DELIM
      << "srcROI" << DELIM
@@ -45,7 +48,10 @@ std::string BoundingBox::str() const {
   ss << bid << DELIM
      << oid << DELIM
      << pid << DELIM
-     << loc.str() << DELIM
+     << loc.x << DELIM
+     << loc.y << DELIM
+     << loc.x + loc.width << DELIM
+     << loc.y + loc.height << DELIM
      << confidence << DELIM
      << COCO_LABELS[label] << DELIM
      << srcROIID_ << DELIM

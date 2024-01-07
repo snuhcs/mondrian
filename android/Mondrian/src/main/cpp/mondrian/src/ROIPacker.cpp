@@ -22,10 +22,10 @@ ROIPacker::ROIPacker(
 
 void ROIPacker::processLastFrame(
     Frame* lastFrame,
-    std::map<Device, std::vector<std::vector<IntRect>>>& freeRectsVecTable,
+    std::map<Device, std::vector<std::vector<cv::Rect2i>>>& freeRectsVecTable,
     const std::map<Device, std::vector<InferenceInfo>>& inferencePlanTable) {
   if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
-    std::vector<std::vector<IntRect>>& freeRectsVec = freeRectsVecTable.at(Device::INVALID);
+    std::vector<std::vector<cv::Rect2i>>& freeRectsVec = freeRectsVecTable.at(Device::INVALID);
     const std::vector<InferenceInfo>& inferencePlan = inferencePlanTable.at(Device::INVALID);
     for (int i = 0; i < lastFrame->mergedROIs.size(); i++) {
       auto& mergedROI = lastFrame->mergedROIs[i];
@@ -38,12 +38,11 @@ void ROIPacker::processLastFrame(
                              roiSize_);
     }
   } else { // MONDRIAN, EMULATED_BATCH
-    IntPairs frameBoxWHs = lastFrame->boxesIfLast(
+    auto frameBoxWHs = lastFrame->boxesIfLast(
         /*roiResizer=*/roiResizer_,
         /*executionType=*/executionType_);
 
-    std::vector<std::vector<IntRect>>& freeRectsVecForLast =
-        freeRectsVecTable.at(LAST_FRAME_DEVICE);
+    auto& freeRectsVecForLast = freeRectsVecTable.at(LAST_FRAME_DEVICE);
     auto [indices, locations] = ROIPacker::pack(freeRectsVecForLast, frameBoxWHs);
     ROIPacker::apply(freeRectsVecForLast, frameBoxWHs, indices);
     lastFrame->prepareFrameLast(indices,
@@ -55,10 +54,10 @@ void ROIPacker::processLastFrame(
 
 void ROIPacker::processMergedROI(
     MergedROI* mergedROI,
-    std::map<Device, std::vector<std::vector<IntRect>>>& freeRectsVecTable,
+    std::map<Device, std::vector<std::vector<cv::Rect2i>>>& freeRectsVecTable,
     const std::map<Device, std::vector<InferenceInfo>>& inferencePlanTable) {
   if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
-    std::vector<std::vector<IntRect>>& freeRectsVec = freeRectsVecTable[Device::INVALID];
+    std::vector<std::vector<cv::Rect2i>>& freeRectsVec = freeRectsVecTable[Device::INVALID];
     auto it = std::find_if(freeRectsVec.begin(), freeRectsVec.end(),
                            [](const auto& rects) { return !rects.empty(); });
     if (it == freeRectsVec.end()) return;
@@ -97,9 +96,9 @@ static std::map<Device, std::vector<InferenceInfo>> inferencePlanTableOf(
   return inferencePlanTable;
 }
 
-static std::map<Device, std::vector<std::vector<IntRect>>> freeRectsVecTableOf(
+static std::map<Device, std::vector<std::vector<cv::Rect2i>>> freeRectsVecTableOf(
     const std::map<Device, std::vector<InferenceInfo>>& inferencePlanTable) {
-  std::map<Device, std::vector<std::vector<IntRect>>> freeRectsVecTable;
+  std::map<Device, std::vector<std::vector<cv::Rect2i>>> freeRectsVecTable;
   for (const auto& [device, infos] : inferencePlanTable) {
     for (const auto& info : infos) {
       freeRectsVecTable[device].push_back({{0, 0, info.size, info.size}});
@@ -260,12 +259,12 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::generatePackedCanvases(
   return packedCanvasesTable;
 }
 
-std::pair<IntPairs, IntPairs> ROIPacker::pack(
-    const std::vector<std::vector<IntRect>>& freeRectsVec,
-    const IntPairs& boxWHs, bool backward) const {
+std::pair<Indices, std::vector<cv::Point2i>> ROIPacker::pack(
+    const std::vector<std::vector<cv::Rect2i>>& freeRectsVec,
+    const std::vector<cv::Size2i>& boxWHs, bool backward) const {
   auto copiedFreeRectsVec = freeRectsVec;
-  IntPairs packIndices;
-  IntPairs packLocations;
+  Indices packIndices;
+  std::vector<cv::Point2i> packLocations;
   for (const auto& [w, h] : boxWHs) {
     int pack_i = -1;
     int pack_j = -1;
@@ -288,9 +287,9 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
       assert(packIndices.size() == packLocations.size());
       return {packIndices, packLocations};
     }
-    const IntRect& rect = copiedFreeRectsVec[pack_i][pack_j];
+    const cv::Rect2i& rect = copiedFreeRectsVec[pack_i][pack_j];
     packIndices.emplace_back(pack_i, pack_j);
-    packLocations.emplace_back(rect.l, rect.t);
+    packLocations.emplace_back(rect.x, rect.y);
     if (executionType_ == ExecutionType::EMULATED_BATCH) {
       packBox(copiedFreeRectsVec, roiSize_, roiSize_, pack_i, pack_j);
     } else {
@@ -302,8 +301,9 @@ std::pair<IntPairs, IntPairs> ROIPacker::pack(
   return {packIndices, packLocations};
 }
 
-void ROIPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
-                      const IntPairs& boxWH, const IntPairs& indices) const {
+void ROIPacker::apply(std::vector<std::vector<cv::Rect2i>>& freeRectsVec,
+                      const std::vector<cv::Size2i>& boxWH,
+                      const Indices& indices) const {
   assert(indices.size() <= boxWH.size());
   for (int i = 0; i < indices.size(); i++) {
     auto [w, h] = boxWH[i];
@@ -316,13 +316,13 @@ void ROIPacker::apply(std::vector<std::vector<IntRect>>& freeRectsVec,
   }
 }
 
-int ROIPacker::getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, int w, int h) {
+int ROIPacker::getBestFitFreeRectIndex(const std::vector<cv::Rect2i>& freeRects, int w, int h) {
   int minRemainingArea = INT_MAX / 2;
   int best_index = -1;
   for (int i = 0; i < freeRects.size(); i++) {
-    const IntRect& freeRect = freeRects[i];
+    const cv::Rect2i& freeRect = freeRects[i];
     if (canFit(w, h, freeRect)) {
-      int remainingArea = freeRect.area - w * h;
+      int remainingArea = freeRect.area() - w * h;
       if (minRemainingArea > remainingArea) {
         minRemainingArea = remainingArea;
         best_index = i;
@@ -332,31 +332,33 @@ int ROIPacker::getBestFitFreeRectIndex(const std::vector<IntRect>& freeRects, in
   return best_index;
 }
 
-void ROIPacker::packBox(std::vector<std::vector<IntRect>>& freeRectsVec,
+void ROIPacker::packBox(std::vector<std::vector<cv::Rect2i>>& freeRectsVec,
                         int w, int h, int pack_i, int pack_j) {
   assert(pack_i < freeRectsVec.size() && pack_j < freeRectsVec[pack_i].size());
-  IntRect freeRectToPack = freeRectsVec[pack_i][pack_j];
+  cv::Rect2i freeRectToPack = freeRectsVec[pack_i][pack_j];
   freeRectsVec[pack_i].erase(freeRectsVec[pack_i].begin() + pack_j);
   auto [rect0, rect1] = splitFreeRect(w, h, freeRectToPack);
-  if (rect0.area > 0) {
+  if (rect0.area() > 0) {
     freeRectsVec[pack_i].push_back(rect0);
   }
-  if (rect1.area > 0) {
+  if (rect1.area() > 0) {
     freeRectsVec[pack_i].push_back(rect1);
   }
 }
 
-bool ROIPacker::canFit(int w, int h, const IntRect& freeRect) {
-  return w <= freeRect.w && h <= freeRect.h;
+bool ROIPacker::canFit(int w, int h, const cv::Rect2i& freeRect) {
+  return w <= freeRect.width && h <= freeRect.height;
 }
 
-std::pair<IntRect, IntRect> ROIPacker::splitFreeRect(int w, int h, const IntRect& freeRect) {
-  if (freeRect.w > freeRect.h) {
-    return {IntRect(freeRect.l + w, freeRect.t, freeRect.r, freeRect.b),
-            IntRect(freeRect.l, freeRect.t + h, freeRect.l + w, freeRect.b)};
+std::pair<cv::Rect2i, cv::Rect2i> ROIPacker::splitFreeRect(int w,
+                                                           int h,
+                                                           const cv::Rect2i& freeRect) {
+  if (freeRect.width > freeRect.height) {
+    return {{freeRect.x + w, freeRect.y, freeRect.width - w, freeRect.height},
+            {freeRect.x, freeRect.y + h, w, freeRect.height - h}};
   } else {
-    return {IntRect(freeRect.l, freeRect.t + h, freeRect.r, freeRect.b),
-            IntRect(freeRect.l + w, freeRect.t, freeRect.r, freeRect.t + h)};
+    return {{freeRect.x, freeRect.y + h, freeRect.width, freeRect.height - h},
+            {freeRect.x + w, freeRect.y, freeRect.width - w, h}};
   }
 }
 

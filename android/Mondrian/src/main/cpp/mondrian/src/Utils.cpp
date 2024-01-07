@@ -39,7 +39,7 @@ cv::Mat extractRgbROIFromYuvMat(cv::Mat yuvMat, int l, int t, int r, int b) {
   return rgbROI;
 }
 
-std::vector<Rect> extractPD(const cv::Mat& prevGrayMat, const cv::Mat& nextGrayMat) {
+std::vector<cv::Rect2i> extractPD(const cv::Mat& prevGrayMat, const cv::Mat& nextGrayMat) {
   assert(prevGrayMat.size() == nextGrayMat.size());
   cv::Mat mat;
   cv::absdiff(prevGrayMat, nextGrayMat, mat);
@@ -61,53 +61,48 @@ std::vector<Rect> extractPD(const cv::Mat& prevGrayMat, const cv::Mat& nextGrayM
       /*anchor=*/cv::Point(-1, -1),
       /*iterations==*/2);
 
-  std::vector<std::vector<cv::Point>> contours;
+  std::vector<std::vector<cv::Point2i>> contours;
   cv::Mat hierarchy;
   cv::findContours(mat, contours, hierarchy,
       /*mode=*/cv::RETR_EXTERNAL,
       /*method=*/cv::CHAIN_APPROX_SIMPLE);
 
-  std::vector<Rect> boxes;
-  for (const std::vector<cv::Point>& contour : contours) {
-    std::vector<cv::Point> approxCurve;
+  std::vector<cv::Rect2i> boxes;
+  for (const std::vector<cv::Point2i>& contour : contours) {
+    std::vector<cv::Point2i> approxCurve;
     cv::approxPolyDP(contour, approxCurve,
         /*epsilon=*/cv::arcLength(contour, true) * 0.02,
         /*closed=*/true);
-    cv::Rect2f box = cv::boundingRect(approxCurve);
-    assert(box.width > 0 && box.height > 0);
-    boxes.emplace_back(
-        box.x,
-        box.y,
-        box.x + box.width,
-        box.y + box.height);
+    boxes.push_back(cv::boundingRect(approxCurve));
   }
 
   for (const auto& box : boxes) {
-    assert(0 <= box.l
-               && 0 <= box.t
-               && box.r <= prevGrayMat.cols
-               && box.b <= prevGrayMat.rows);
+    assert(box.width > 0 && box.height > 0);
+    assert(0 <= box.x
+               && 0 <= box.y
+               && box.x + box.width <= prevGrayMat.cols
+               && box.y + box.height <= prevGrayMat.rows);
   }
   return boxes;
 }
 
 std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
                                           const cv::Mat& nextGrayMat,
-                                          const std::vector<Rect>& prevRects,
+                                          const std::vector<cv::Rect2f>& prevRects,
                                           bool useCenter,
                                           int* numFeaturePoints) {
   assert(prevGrayMat.size() == nextGrayMat.size());
 
   std::vector<int> startEndIndices = {0};
   std::vector<cv::Point2f> prevPoints;
-  for (const Rect& prevRect : prevRects) {
-    int l = std::max((int) prevRect.l, 0);
-    int t = std::max((int) prevRect.t, 0);
-    int r = std::min((int) prevRect.r, prevGrayMat.cols);
-    int b = std::min((int) prevRect.b, prevGrayMat.rows);
+  for (const cv::Rect2f& prevRect : prevRects) {
+    int l = std::max((int) prevRect.x, 0);
+    int t = std::max((int) prevRect.y, 0);
+    int r = std::min((int) (prevRect.x + prevRect.width), prevGrayMat.cols);
+    int b = std::min((int) (prevRect.y + prevRect.height), prevGrayMat.rows);
     std::vector<cv::Point2f> aRectPoints;
     if (!useCenter) { // Add offset to corner prevPoints.
-      cv::goodFeaturesToTrack(prevGrayMat(cv::Rect(l, t, r - l, b - t)), aRectPoints,
+      cv::goodFeaturesToTrack(prevGrayMat(cv::Rect2i(l, t, r - l, b - t)), aRectPoints,
           /*maxCorners=*/50,
           /*qualityLevel=*/0.01,
           /*minDistance=*/5.0,
@@ -121,8 +116,7 @@ std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
       });
     }
     if (aRectPoints.empty()) { // Use center point if no corners are found.
-      aRectPoints.emplace_back((prevRect.l + prevRect.r) / 2,
-                               (prevRect.t + prevRect.b) / 2);
+      aRectPoints.push_back((prevRect.tl() + prevRect.br()) * 0.5f);
     }
     startEndIndices.push_back(startEndIndices.back() + int(aRectPoints.size()));
     prevPoints.insert(prevPoints.end(), aRectPoints.begin(), aRectPoints.end());
@@ -189,7 +183,9 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
       sortedBoxes.erase(startIt);
 
       for (auto it = sortedBoxes.begin(); it != sortedBoxes.end();) {
-        if (max.loc.iou(it->loc) >= iouThres) {
+        float interArea = (max.loc & it->loc).area();
+        float iou = interArea / (max.loc.area() + it->loc.area() - interArea);
+        if (iou >= iouThres) {
           it = sortedBoxes.erase(it);
         } else {
           it++;
@@ -223,7 +219,9 @@ void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
       sortedBoxes.erase(startIt);
 
       for (auto it = sortedBoxes.begin(); it != sortedBoxes.end();) {
-        if (boxes[max]->loc.iou(boxes[*it]->loc) >= iouThres) {
+        float interArea = (boxes[max]->loc & boxes[*it]->loc).area();
+        float iou = interArea / (boxes[max]->loc.area() + boxes[*it]->loc.area() - interArea);
+        if (iou >= iouThres) {
           it = sortedBoxes.erase(it);
         } else {
           it++;
@@ -236,6 +234,21 @@ void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
       boxes.erase(boxes.begin() + i);
     }
   }
+}
+
+cv::Rect2f operator*(const cv::Rect2f& rect, const float scale) {
+  return {rect.x * scale,
+          rect.y * scale,
+          rect.width * scale,
+          rect.height * scale};
+}
+
+cv::Rect2f& operator*=(cv::Rect2f& rect, const float scale) {
+  rect.x *= scale;
+  rect.y *= scale;
+  rect.width *= scale;
+  rect.height *= scale;
+  return rect;
 }
 
 bool sched_setaffinity_big() {

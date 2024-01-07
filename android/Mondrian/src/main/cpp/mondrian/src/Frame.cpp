@@ -60,13 +60,13 @@ void Frame::eatPDROIs(float overlap_thres) {
     ROI* maxOverlapROI = nullptr;
     float maxIntersection = -1;
     for (ROI* ofROI : ofROIs) {
-      float intersection = pdROI->paddedLoc.intersection(ofROI->origLoc);
+      float intersection = (pdROI->paddedLoc & ofROI->origLoc).area();
       if (intersection > maxIntersection) {
         maxOverlapROI = ofROI;
         maxIntersection = intersection;
       }
     }
-    if (maxIntersection / pdROI->paddedArea() >= overlap_thres) {
+    if (maxIntersection / pdROI->paddedLoc.area() >= overlap_thres) {
       assert(maxOverlapROI != nullptr);
       maxOverlapROI->eatPD(pdROI->paddedLoc);
       it = rois.erase(it);
@@ -92,9 +92,9 @@ void Frame::filterPDROIs(float overlap_thres) {
     auto& pdROI = *it;
     float ofCoverage = 0;
     for (ROI* ofROI : OFROIs) {
-      ofCoverage += pdROI->paddedLoc.intersection(ofROI->paddedLoc);
+      ofCoverage += (pdROI->paddedLoc & ofROI->paddedLoc).area();
     }
-    if (ofCoverage / pdROI->paddedArea() >= overlap_thres) {
+    if (ofCoverage / pdROI->paddedLoc.area() >= overlap_thres) {
       it = rois.erase(it);
     } else {
       it++;
@@ -119,7 +119,8 @@ void Frame::resizeROIs(ROIResizer* roiResizer,
   for (auto& roi : rois) {
     if (executionType == ExecutionType::EMULATED_BATCH
         || executionType == ExecutionType::ROI_WISE_INFERENCE) {
-      float scale = std::min(1.0f, (float) (roiSize - 2 * MergedROI::BORDER) / roi->paddedLoc.maxWH);
+      float maxWH = std::max(roi->paddedLoc.width, roi->paddedLoc.height);
+      float scale = std::min(1.0f, (float) (roiSize - 2 * MergedROI::BORDER) / maxWH);
       for (const auto& device : DEVICES) {
         roi->scaleTo(scale, ROIResizer::INVALID_LEVEL, device);
       }
@@ -129,7 +130,7 @@ void Frame::resizeROIs(ROIResizer* roiResizer,
     if (roi->type() == ROIType::OF) {
       auto scaleLevelTable = roiResizer->getTargetScale(roi->oid,
                                                         roi->features,
-                                                        roi->paddedArea());
+                                                        roi->paddedLoc.area());
       for (const auto& [device, scaleAndLevel] : scaleLevelTable) {
         const auto& [scale, level] = scaleAndLevel;
         assert(0.0f < scale && scale <= 1.0f);
@@ -178,7 +179,7 @@ void Frame::resetMergedROIs() {
 
 void Frame::mergeMergedROIs(int maxSize) {
   assert(testROIsIntegrity());
-  
+
   std::vector<int> root(mergedROIs.size());
   std::iota(root.begin(), root.end(), 0);
 
@@ -191,7 +192,7 @@ void Frame::mergeMergedROIs(int maxSize) {
 
   for (int i = 0; i < mergedROIs.size(); i++) {
     for (int j = i + 1; j < mergedROIs.size(); j++) {
-      if (mergedROIs[i]->loc().overlap(mergedROIs[j]->loc())) {
+      if ((mergedROIs[i]->loc() & mergedROIs[j]->loc()).area() > 0) {
         int ri = findRoot(i);
         int rj = findRoot(j);
         if (ri != rj) {
@@ -227,7 +228,9 @@ void Frame::mergeMergedROIs(int maxSize) {
 void Frame::sortMergedROIs() {
   std::sort(mergedROIs.begin(), mergedROIs.end(),
             [](const std::unique_ptr<MergedROI>& m0, const std::unique_ptr<MergedROI>& m1) {
-              return m0->loc().maxWH > m1->loc().maxWH;
+              float maxWH0 = std::max(m0->loc().width, m0->loc().height);
+              float maxWH1 = std::max(m1->loc().width, m1->loc().height);
+              return maxWH0 > maxWH1;
             });
 }
 
@@ -238,10 +241,10 @@ void Frame::resetProbeROIs() {
   probingROIsTable.clear();
 }
 
-IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
-                            ExecutionType executionType) {
+std::vector<cv::Size2i> Frame::boxesIfLast(ROIResizer* roiResizer,
+                                           ExecutionType executionType) {
   // TODO: Synchronize simulation with add logics
-  IntPairs boxWHs;
+  std::vector<cv::Size2i> boxWHs;
   for (const auto& mergedROI : mergedROIs) {
     // TODO: Make below two condition as single value(or function) of condition
     float scale = mergedROI->targetScale(LAST_FRAME_DEVICE);
@@ -258,12 +261,12 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
     }
     roi->probeScalesTable = roiResizer->getProbingCandidatesTable(roi->targetScaleTable(),
                                                                   roi->scaleLevel(),
-                                                                  roi->paddedArea());
+                                                                  roi->paddedLoc.area());
     for (const auto& [device, probeScales] : roi->probeScalesTable) {
       if (device != PROBING_DEVICE) continue; // TODO: Handle probing for DSP
       for (auto probeScale : probeScales) {
-        int bw = MergedROI::borderedLengthOf(roi->paddedLoc.w, probeScale);
-        int bh = MergedROI::borderedLengthOf(roi->paddedLoc.h, probeScale);
+        int bw = MergedROI::borderedLengthOf(roi->paddedLoc.width, probeScale);
+        int bh = MergedROI::borderedLengthOf(roi->paddedLoc.height, probeScale);
         boxWHs.emplace_back(bw, bh);
       }
     }
@@ -271,8 +274,8 @@ IntPairs Frame::boxesIfLast(ROIResizer* roiResizer,
   return boxWHs;
 }
 
-void Frame::prepareFrameLast(const IntPairs& indices,
-                             const IntPairs& locations,
+void Frame::prepareFrameLast(const Indices& indices,
+                             const std::vector<cv::Point2i>& locations,
                              ExecutionType executionType,
                              int roiSize) {
   int numPackedROIs = (int) indices.size();

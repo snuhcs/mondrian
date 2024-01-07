@@ -16,8 +16,7 @@ using PID = int;
 using RID = int;
 using BID = int;
 using OID = int;
-using IntPair = std::pair<int, int>;
-using IntPairs = std::vector<std::pair<int, int>>;
+using Indices = std::vector<std::pair<int, int>>;
 
 extern const OID INVALID_OID;
 extern const char DELIM;
@@ -82,76 +81,6 @@ enum class ROIPackerType {
 ROIPackerType roiPackerTypeOf(const std::string& roiPackerTypeStr);
 
 std::string str(const ROIPackerType& roiPackerType);
-
-struct Rect {
-  float l;
-  float t;
-  float r;
-  float b;
-  float w;
-  float h;
-  float minWH;
-  float maxWH;
-  float area;
-
-  Rect() {}
-
-  Rect(float l, float t, float r, float b) : l(l), t(t), r(r), b(b) {
-    w = r - l;
-    h = b - t;
-    minWH = std::min(w, h);
-    maxWH = std::max(w, h);
-    area = w * h;
-  };
-
-  Rect(const Rect& r) : Rect(r.l, r.t, r.r, r.b) {};
-
-  std::pair<float, float> center() const {
-    return {(r + l) / 2,
-            (b + t) / 2};
-  }
-
-  bool isValid() const {
-    return l <= r && t <= b;
-  }
-
-  bool overlap(const Rect& other) const {
-    return l < other.r && r > other.l && t < other.b && b > other.t;
-  }
-
-  float intersection(const Rect& other) const {
-    float width = std::min(r, other.r) - std::max(l, other.l);
-    float height = std::min(b, other.b) - std::max(t, other.t);
-    if (width <= 0 || height <= 0) {
-      return 0;
-    } else {
-      return width * height;
-    }
-  }
-
-  float iou(const Rect& other) const {
-    float inter = intersection(other);
-    return inter / (area + other.area - inter);
-  }
-
-  static Rect merge(const Rect& rect0, const Rect& rect1) {
-    return {std::min(rect0.l, rect1.l),
-            std::min(rect0.t, rect1.t),
-            std::max(rect0.r, rect1.r),
-            std::max(rect0.b, rect1.b)};
-  }
-
-  Rect clip(const Rect& other) const {
-    return {std::min(std::max(l, other.l), other.r),
-            std::min(std::max(t, other.t), other.b),
-            std::min(std::max(r, other.l), other.r),
-            std::min(std::max(b, other.t), other.b)};
-  }
-
-  static std::string header(const char* rectName);
-
-  std::string str() const;
-};
 
 template<typename T>
 std::string safeGet(const std::map<Device, T>& m, Device device) {

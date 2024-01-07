@@ -22,11 +22,11 @@ struct RectTrackingResult {
   std::vector<float> errors;
 };
 
-std::vector<Rect> extractPD(const cv::Mat& prevGrayMat, const cv::Mat& nextGrayMat);
+std::vector<cv::Rect2i> extractPD(const cv::Mat& prevGrayMat, const cv::Mat& nextGrayMat);
 
 std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
                                           const cv::Mat& nextGrayMat,
-                                          const std::vector<Rect>& prevRects,
+                                          const std::vector<cv::Rect2f>& prevRects,
                                           bool useCenter,
                                           int* numFeaturePoints = nullptr);
 
@@ -35,6 +35,10 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes,
 
 void nms(std::vector<std::unique_ptr<BoundingBox>>& boxes,
          const int numLabels, const float iouThres);
+
+cv::Rect2f operator*(const cv::Rect2f& rect, const float scale);
+
+cv::Rect2f& operator*=(cv::Rect2f& rect, const float scale);
 
 bool sched_setaffinity_primary();
 

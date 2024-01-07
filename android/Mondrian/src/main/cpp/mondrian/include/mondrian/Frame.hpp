@@ -92,11 +92,11 @@ class Frame {
 
   void resetProbeROIs();
 
-  IntPairs boxesIfLast(ROIResizer* roiResizer,
-                       ExecutionType executionType);
+  std::vector<cv::Size2i> boxesIfLast(ROIResizer* roiResizer,
+                                      ExecutionType executionType);
 
-  void prepareFrameLast(const IntPairs& indices,
-                        const IntPairs& locations,
+  void prepareFrameLast(const Indices& indices,
+                        const std::vector<cv::Point2i>& locations,
                         ExecutionType executionType,
                         int roiSize);
 
@@ -114,6 +114,18 @@ class Frame {
   int height() const {
     assert(height_ != 0);
     return height_;
+  }
+
+  cv::Size2i wh() const {
+    return {width_, height_};
+  }
+
+  cv::Rect2i recti() const {
+    return {0, 0, width_, height_};
+  }
+
+  cv::Rect2f rectf() const {
+    return {0.0f, 0.0f, (float) width_, (float) height_};
   }
 
   Key getKey() const {

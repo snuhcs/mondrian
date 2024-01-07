@@ -29,8 +29,8 @@ class ROI {
   Frame* const frame;
   const RID rid;
   OID oid;
-  const Rect origLoc;
-  Rect paddedLoc;
+  const cv::Rect2f origLoc;
+  cv::Rect2f paddedLoc;
   Features features;
 
  private:
@@ -53,25 +53,21 @@ class ROI {
 
   ROI(const OID oid,
       Frame* frame,
-      const Rect& origLoc,
+      const cv::Rect2f& origLoc,
       const ROIType type,
       const int label,
       const OFFeatures ofFeatures,
       const float confidence,
       const float padding);
 
-  void setPaddedLoc(const Rect& newOrigLoc);
+  void setPaddedLoc(const cv::Rect2f& newOrigLoc);
 
-  void eatPD(const Rect& PDRect);
+  void eatPD(const cv::Rect2f& PDRect);
 
   static std::pair<OID, OID> getNewOIDs(unsigned long num) {
     OID minOID = nextOID_.fetch_add(num);
     OID maxOID = minOID + num;
     return {minOID, maxOID};
-  }
-
-  float paddedArea() const {
-    return paddedLoc.area;
   }
 
   std::map<Device, float> targetScaleTable() const {

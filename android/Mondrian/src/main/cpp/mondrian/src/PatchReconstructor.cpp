@@ -15,36 +15,6 @@ PatchReconstructor::PatchReconstructor(const PatchReconstructorConfig& config,
                                        ROIResizer* roiResizer)
     : config_(config), ROIResizer_(roiResizer) {}
 
-static Rect moveResizeROIPos(const MergedROI* mergedROI) {
-  auto [rw, rh] = mergedROI->resizedMatWH();
-  auto [x, y] = mergedROI->packedXY();
-  auto packX = x + MergedROI::BORDER;
-  auto packY = y + MergedROI::BORDER;
-  auto newL = float(packX);
-  auto newT = float(packY);
-  auto newR = float(packX + rw);
-  auto newB = float(packY + rh);
-  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
-  return {newL, newT, newR, newB};
-}
-
-static Rect reconstructBoxPos(const BoundingBox& packedBox, const MergedROI* mergedROI) {
-  float scale = mergedROI->targetScale();
-  const Rect& packedBoxLoc = packedBox.loc;
-  const Rect& mergedROILoc = mergedROI->loc();
-  auto [x, y] = mergedROI->packedXY();
-  auto packX = float(x + MergedROI::BORDER);
-  auto packY = float(y + MergedROI::BORDER);
-  auto width = float(mergedROI->frame()->width());
-  auto height = float(mergedROI->frame()->height());
-  float newL = std::max(0.0f, (packedBoxLoc.l - packX) / scale + mergedROILoc.l);
-  float newT = std::max(0.0f, (packedBoxLoc.t - packY) / scale + mergedROILoc.t);
-  float newR = std::min(width, (packedBoxLoc.r - packX) / scale + mergedROILoc.l);
-  float newB = std::min(height, (packedBoxLoc.b - packY) / scale + mergedROILoc.t);
-  assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
-  return {newL, newT, newR, newB};
-}
-
 void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
                                             const std::vector<BoundingBox>& results) const {
   time_us reconstructStartTime = NowMicros();
@@ -71,8 +41,8 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
     MergedROI* maxROI = nullptr;
     for (MergedROI* mergedROI : packedROIs) {
       assert(mergedROI->isPacked());
-      float intersection = box.loc.intersection(moveResizeROIPos(mergedROI));
-      float overlapRatio = intersection / box.loc.area;
+      float intersection = (box.loc & static_cast<cv::Rect2f>(mergedROI->packedLoc())).area();
+      float overlapRatio = intersection / box.loc.area();
       if (maxOverlap < overlapRatio) {
         maxOverlap = overlapRatio;
         maxROI = mergedROI;
@@ -82,13 +52,13 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
       // filter overly large boxes from packed inference by PROBE_IOU_THRES
       if (maxROI->isProbing()) {
         std::unique_ptr<BoundingBox> probeBox(new BoundingBox(
-            INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
+            INVALID_OID, packedCanvas.pid, maxROI->reconstructBoxPos(box),
             box.confidence, box.label, BoxOrigin::PACKED_CANVAS));
         maxROI->setProbingBox(probeBox.get());
         maxROI->frame()->probingBoxesTable[Device::GPU].push_back(std::move(probeBox));
       } else {
         std::unique_ptr<BoundingBox> newBox(new BoundingBox(
-            INVALID_OID, packedCanvas.pid, reconstructBoxPos(box, maxROI),
+            INVALID_OID, packedCanvas.pid, maxROI->reconstructBoxPos(box),
             box.confidence, box.label, BoxOrigin::PACKED_CANVAS));
         maxROI->frame()->boxes.push_back(std::move(newBox));
       }
@@ -135,8 +105,9 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
   float max = 0;
   for (int i = 0; i < boxes.size(); i++) {
     for (int j = 0; j < rois.size(); j++) {
-      float iou = boxes[i]->loc.iou(rois[j]->origLoc);
-      float overlap = boxes[i]->loc.intersection(rois[j]->paddedLoc) / boxes[i]->loc.area;
+      float intersection = (boxes[i]->loc & rois[j]->origLoc).area();
+      float iou = intersection / (boxes[i]->loc.area() + rois[j]->origLoc.area() - intersection);
+      float overlap = (boxes[i]->loc & rois[j]->paddedLoc).area() / boxes[i]->loc.area();
       costMatrix[i][j] = iou * overlap;
       if (iou > max) {
         max = iou;
@@ -187,7 +158,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     for (BoundingBox* box : boxes) {
       assert(box->oid != INVALID_OID);
       if (box->srcROI() != nullptr) {
-        assert(box->loc.intersection(box->srcROI()->paddedLoc) > 0);
+        assert((box->loc & box->srcROI()->paddedLoc).area() > 0);
         assert(box->srcROI()->box() == box);
         assert(box->srcROI()->label() == box->label);
         assert(box->srcROI()->oid == box->oid);
@@ -196,7 +167,7 @@ void PatchReconstructor::matchBoxesROIs(Frame* frame, bool isFullFrame) const {
     for (auto& roi : rois) {
       assert(roi->oid != INVALID_OID);
       if (roi->box() != nullptr) {
-        assert(roi->paddedLoc.intersection(roi->box()->loc) > 0);
+        assert((roi->paddedLoc & roi->box()->loc).area() > 0);
         assert(roi->box()->oid == roi->oid);
       }
     }

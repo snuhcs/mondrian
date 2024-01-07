@@ -14,7 +14,7 @@ class MergedROI {
  public:
   static inline int BORDER = 2;
   static inline const cv::Scalar BORDER_COLOR{255, 255, 255};
-  static inline const IntPair INVALID_XY{-1, -1};
+  static inline const cv::Point2i INVALID_XY{-1, -1};
 
   MergedROI(ROI* roi, bool isProbing);
 
@@ -64,7 +64,7 @@ class MergedROI {
     return rois_;
   }
 
-  Rect loc() const {
+  cv::Rect2f loc() const {
     return loc_;
   }
 
@@ -78,7 +78,7 @@ class MergedROI {
     return packedXY_ != INVALID_XY;
   }
 
-  IntPair packedXY() const {
+  cv::Point2i packedXY() const {
     return packedXY_;
   }
 
@@ -115,7 +115,7 @@ class MergedROI {
   }
 
   int borderedArea(Device device) const {
-    return borderedAreaOf(loc_.w, loc_.h, targetScaleTable_.at(device));
+    return borderedAreaOf(loc_.width, loc_.height, targetScaleTable_.at(device));
   }
 
   static int borderedAreaOf(float width, float height, float scale) {
@@ -128,24 +128,24 @@ class MergedROI {
     return std::max(1, toInt(edgeLength * scale));
   }
 
-  IntPair resizedMatWH() const {
-    return {resizedLengthOf(loc_.w, targetScale()),
-            resizedLengthOf(loc_.h, targetScale())};
+  cv::Size2i resizedMatWH() const {
+    return {resizedLengthOf(loc_.width, targetScale()),
+            resizedLengthOf(loc_.height, targetScale())};
   }
 
   static int borderedLengthOf(float edgeLength, float scale) {
     return resizedLengthOf(edgeLength, scale) + 2 * BORDER;
   }
 
-  IntPair borderedMatWH(float scale) {
-    return {borderedLengthOf(loc_.w, scale),
-            borderedLengthOf(loc_.h, scale)};
+  cv::Size2i borderedMatWH(float scale) {
+    return {borderedLengthOf(loc_.width, scale),
+            borderedLengthOf(loc_.height, scale)};
   }
 
-  IntPair borderedMatWH(Device device) const {
+  cv::Size2i borderedMatWH(Device device) const {
     assert(device != Device::INVALID);
-    return {borderedLengthOf(loc_.w, targetScale(device)),
-            borderedLengthOf(loc_.h, targetScale(device))};
+    return {borderedLengthOf(loc_.width, targetScale(device)),
+            borderedLengthOf(loc_.height, targetScale(device))};
   }
 
   cv::Mat mat() const;
@@ -155,10 +155,14 @@ class MergedROI {
   cv::Mat borderedMat(Device device) const;
 
   void setPackInfo(Device device,
-                   IntPair xy,
+                   cv::Point2i xy,
                    int packedCanvasIndex,
                    ExecutionType executionType,
                    int roiSize);
+
+  cv::Rect2i packedLoc() const;
+
+  cv::Rect2f reconstructBoxPos(const BoundingBox& packedBox) const;
 
   static std::string header();
 
@@ -167,12 +171,12 @@ class MergedROI {
  private:
   Frame* const frame_;
   const std::vector<ROI*> rois_;
-  const Rect loc_;
+  const cv::Rect2f loc_;
   std::map<Device, float> targetScaleTable_;
   std::vector<Device> devicePriority_;
 
   PID pid_;
-  IntPair packedXY_;
+  cv::Point2i packedXY_;
   int packedCanvasIndex_;
   int packedCanvasSize_;
   bool isInferenced_;

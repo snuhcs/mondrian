@@ -1,9 +1,9 @@
 {
     "video_configs": [
         {
-            "num_streams": 4,
-            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
-            "fps": 15
+            "num_streams": 2,
+            "path": "/data/local/tmp/video/mta_short_test_cam_3.mp4",
+            "fps": 30
         }
     ],
     "execution_type": "mondrian",

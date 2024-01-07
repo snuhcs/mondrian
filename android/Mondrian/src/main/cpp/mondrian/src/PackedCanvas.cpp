@@ -20,7 +20,7 @@ PackedCanvas::PackedCanvas(const std::set<MergedROI*>& mergedROIs,
     int bh = borderMat.rows;
     auto [packX, packY] = mergedROI->packedXY();
 
-    cv::Rect rect(packX, packY, bw, bh);
+    cv::Rect2i rect(packX, packY, bw, bh);
     auto& m = packedMat;
     if (!(0 <= rect.x && 0 <= rect.width && rect.x + rect.width <= m.cols && 0 <= rect.y &&
         0 <= rect.height && rect.y + rect.height <= m.rows)) {

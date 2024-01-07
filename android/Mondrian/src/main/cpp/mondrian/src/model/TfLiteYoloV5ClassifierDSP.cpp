@@ -142,12 +142,12 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::postprocess(int width, int h
     float maxConfidence = dequantize(maxConfidenceQuant)
         * dequantize(outputs[i * OUTPUT_ELEMS + 4]);
     if (maxLabel == 0 && maxConfidence > confThres) {
-      Rect rect = reconstructBox((float) dequantize(outputs[i * OUTPUT_ELEMS + 0]),
-                                 (float) dequantize(outputs[i * OUTPUT_ELEMS + 1]),
-                                 (float) dequantize(outputs[i * OUTPUT_ELEMS + 2]),
-                                 (float) dequantize(outputs[i * OUTPUT_ELEMS + 3]),
-                                 (float) width, (float) height);
-      if (rect.l <= rect.r && rect.t <= rect.b) {
+      cv::Rect2f rect = reconstructBox((float) dequantize(outputs[i * OUTPUT_ELEMS + 0]),
+                                       (float) dequantize(outputs[i * OUTPUT_ELEMS + 1]),
+                                       (float) dequantize(outputs[i * OUTPUT_ELEMS + 2]),
+                                       (float) dequantize(outputs[i * OUTPUT_ELEMS + 3]),
+                                       (float) width, (float) height);
+      if (rect.width >= 0 && rect.height >= 0) {
         boxes.emplace_back(INVALID_OID, -1, rect, maxConfidence, maxLabel, BoxOrigin::INVALID);
       }
     }
@@ -155,8 +155,8 @@ std::vector<BoundingBox> TfLiteYoloV5ClassifierDSP::postprocess(int width, int h
   return boxes;
 }
 
-Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float h,
-                                               float imageWidth, float imageHeight) const {
+cv::Rect2f TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float h,
+                                                 float imageWidth, float imageHeight) const {
   x *= (float) inputSize.width;
   y *= (float) inputSize.height;
   w *= (float) inputSize.width;
@@ -170,7 +170,7 @@ Rect TfLiteYoloV5ClassifierDSP::reconstructBox(float x, float y, float w, float 
   float newR = std::min(imageWidth, ((x + w / 2 - xPad) / gain));
   float newB = std::min(imageHeight, ((y + h / 2 - yPad) / gain));
   assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
-  return {newL, newT, newR, newB};
+  return {newL, newT, newR - newL, newB - newT};
 }
 
 Device TfLiteYoloV5ClassifierDSP::device() const {
