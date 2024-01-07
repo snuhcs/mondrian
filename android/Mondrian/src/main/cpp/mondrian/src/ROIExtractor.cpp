@@ -262,21 +262,24 @@ void ROIExtractor::processPD(Frame* currFrame) const {
   assert(prevFrame != nullptr && prevFrame != currFrame);
 
   // PD ROI Extraction with Scaled Image
-  std::vector<Rect> scaledPDRects = extractPD(prevFrame->resizedGrayMat,
-                                              currFrame->resizedGrayMat);
+  std::vector<cv::Rect2i> scaledPDRects = extractPD(prevFrame->resizedGrayMat,
+                                                    currFrame->resizedGrayMat);
 
   // Rescale PD ROI size
-  std::vector<Rect> pdRects;
+  std::vector<cv::Rect2f> pdRects;
   std::transform(
       scaledPDRects.begin(), scaledPDRects.end(), std::back_inserter(pdRects),
-      [wRatio, hRatio](Rect& resizedPDRect) -> Rect {
-        return {resizedPDRect.l / wRatio, resizedPDRect.t / hRatio,
-                resizedPDRect.r / wRatio, resizedPDRect.b / hRatio};
+      [wRatio, hRatio](cv::Rect2i& resizedPDRect) -> cv::Rect2f {
+        return {(float) resizedPDRect.x / wRatio,
+                (float) resizedPDRect.y / hRatio,
+                (float) resizedPDRect.width / wRatio,
+                (float) resizedPDRect.height / hRatio};
       });
 
   // Generate PD ROIs
-  for (const Rect& pdRect : pdRects) {
-    if (config_.MIN_PD_ROI_SIZE <= pdRect.minWH && pdRect.maxWH <= config_.MAX_PD_ROI_SIZE) {
+  for (const cv::Rect2f& pdRect : pdRects) {
+    if (config_.MIN_PD_ROI_SIZE <= std::min(pdRect.width, pdRect.height)
+        && std::max(pdRect.width, pdRect.height) <= config_.MAX_PD_ROI_SIZE) {
       currFrame->rois.emplace_back(new ROI(
           /*oid=*/INVALID_OID,
           /*frame=*/currFrame,
@@ -292,9 +295,9 @@ void ROIExtractor::processPD(Frame* currFrame) const {
 }
 
 struct PrevBox {
-  PrevBox(const Rect& loc, OID oid, float confidence, int label)
+  PrevBox(const cv::Rect2f& loc, OID oid, float confidence, int label)
       : loc(loc), oid(oid), confidence(confidence), label(label) {}
-  Rect loc;
+  cv::Rect2f loc;
   OID oid;
   float confidence;
   int label;
@@ -305,7 +308,6 @@ void ROIExtractor::processOF(Frame* currFrame) const {
                      [](auto& roi) { return roi->type() == ROIType::PD; }));
   currFrame->opticalFlowROIProcessStartTime = NowMicros();
 
-  Rect imageSize(0.0f, 0.0f, float(currFrame->width()), float(currFrame->height()));
   float wRatio = (float) currFrame->resizedGrayMat.cols / (float) currFrame->width();
   float hRatio = (float) currFrame->resizedGrayMat.rows / (float) currFrame->height();
 
@@ -315,8 +317,8 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   if (prevFrame->useInferenceResultForOF) {
     for (const auto& box : prevFrame->boxes) {
       if (box->confidence < config_.OF_CONF_THRES) continue;
-      Rect clippedLoc = box->loc.clip(imageSize);
-      if (clippedLoc.minWH < 1) continue;
+      cv::Rect2f clippedLoc = box->loc & currFrame->rectf();
+      if (std::min(clippedLoc.width, clippedLoc.height) < 1) continue;
       prevBoxes.emplace_back(
           /*loc=*/clippedLoc,
           /*oid=*/box->oid,
@@ -334,20 +336,21 @@ void ROIExtractor::processOF(Frame* currFrame) const {
   }
 
   // Convert prevBoxes into scaled prevRects
-  std::vector<Rect> scaledPrevRects;
+  std::vector<cv::Rect2f> scaledPrevRects;
   std::transform(
       prevBoxes.begin(), prevBoxes.end(), std::back_inserter(scaledPrevRects),
-      [wRatio, hRatio](const PrevBox& box) -> Rect {
-        return {box.loc.l * wRatio,
-                box.loc.t * hRatio,
-                box.loc.r * wRatio,
-                box.loc.b * hRatio};
+      [wRatio, hRatio](const PrevBox& box) -> cv::Rect2f {
+        return {box.loc.x * wRatio,
+                box.loc.y * hRatio,
+                box.loc.width * wRatio,
+                box.loc.height * hRatio};
       });
   for (const auto& scaledRect : scaledPrevRects) {
-    assert(0 <= scaledRect.l && scaledRect.l <= scaledRect.r &&
-        scaledRect.r <= currFrame->resizedGrayMat.cols &&
-        0 <= scaledRect.t && scaledRect.t <= scaledRect.b &&
-        scaledRect.b <= currFrame->resizedGrayMat.rows);
+    assert(0 <= scaledRect.x
+               && scaledRect.x <= scaledRect.x + scaledRect.width
+               && scaledRect.x + scaledRect.width <= currFrame->resizedGrayMat.cols
+               && 0 <= scaledRect.y && scaledRect.y <= scaledRect.y + scaledRect.height
+               && scaledRect.y + scaledRect.height <= currFrame->resizedGrayMat.rows);
   }
 
   // OF ROI Extraction with Scaled Image
@@ -370,11 +373,11 @@ void ROIExtractor::processOF(Frame* currFrame) const {
     OFFeatures ofFeatures(_shifts, trackingResult.statuses, trackingResult.errors);
     const PrevBox& prevBox = prevBoxes[i];
     auto [shiftX, shiftY] = ofFeatures.shiftAvg;
-    Rect currLoc = Rect(prevBox.loc.l + shiftX,
-                        prevBox.loc.t + shiftY,
-                        prevBox.loc.r + shiftX,
-                        prevBox.loc.b + shiftY).clip(imageSize);
-    if (currLoc.minWH < 1) continue;
+    cv::Rect2f currLoc = cv::Rect2f(prevBox.loc.x + shiftX,
+                                    prevBox.loc.y + shiftY,
+                                    prevBox.loc.width,
+                                    prevBox.loc.height) & currFrame->rectf();
+    if (std::min(currLoc.width, currLoc.height) < 1) continue;
     currFrame->rois.emplace_back(new ROI(
         /*oid=*/prevBox.oid,
         /*frame=*/currFrame,

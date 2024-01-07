@@ -188,9 +188,11 @@ std::map<Device, std::vector<float>> ROIResizer::getProbingCandidatesTable(
 }
 
 bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
+  float intersection = (box->loc & referenceBox->loc).area();
+  float iou = intersection / (box->loc.area() + referenceBox->loc.area() - intersection);
   return box != nullptr && referenceBox != nullptr
       && box->label == referenceBox->label
-      && box->loc.iou(referenceBox->loc) > config_.PROBE_IOU_THRES
+      && iou > config_.PROBE_IOU_THRES
       && box->confidence > config_.PROBE_CONF_THRES;
 }
 

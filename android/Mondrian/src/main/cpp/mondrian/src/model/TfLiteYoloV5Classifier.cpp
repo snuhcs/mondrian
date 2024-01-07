@@ -25,7 +25,7 @@ TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(const std::string& modelName,
   ss << "/data/local/tmp/models/";
   if (dataset != "coco") {
     ss << dataset << "-"
-    << (forFullFrame ? "full" : "pack") << "-";
+       << (forFullFrame ? "full" : "pack") << "-";
   }
   ss << modelName << "-"
      << inputSize << "-"
@@ -122,12 +122,12 @@ std::vector<BoundingBox> TfLiteYoloV5Classifier::postprocess(int width, int heig
     }
     maxConfidence *= outputs[i * OUTPUT_ELEMS + 4];
     if (maxLabel == 0 && maxConfidence > confThres) {
-      Rect rect = reconstructBox((float) outputs[i * OUTPUT_ELEMS + 0],
-                                 (float) outputs[i * OUTPUT_ELEMS + 1],
-                                 (float) outputs[i * OUTPUT_ELEMS + 2],
-                                 (float) outputs[i * OUTPUT_ELEMS + 3],
-                                 (float) width, (float) height);
-      if (rect.l <= rect.r && rect.t <= rect.b) {
+      cv::Rect2f rect = reconstructBox((float) outputs[i * OUTPUT_ELEMS + 0],
+                                       (float) outputs[i * OUTPUT_ELEMS + 1],
+                                       (float) outputs[i * OUTPUT_ELEMS + 2],
+                                       (float) outputs[i * OUTPUT_ELEMS + 3],
+                                       (float) width, (float) height);
+      if (rect.width >= 0 && rect.height >= 0) {
         boxes.emplace_back(INVALID_OID, -1, rect, maxConfidence, maxLabel, BoxOrigin::INVALID);
       }
     }
@@ -135,8 +135,8 @@ std::vector<BoundingBox> TfLiteYoloV5Classifier::postprocess(int width, int heig
   return boxes;
 }
 
-Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
-                                            float imageWidth, float imageHeight) const {
+cv::Rect2f TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
+                                                  float imageWidth, float imageHeight) const {
   x *= (float) inputSize.width;
   y *= (float) inputSize.height;
   w *= (float) inputSize.width;
@@ -150,7 +150,7 @@ Rect TfLiteYoloV5Classifier::reconstructBox(float x, float y, float w, float h,
   float newR = std::min(imageWidth, ((x + w / 2 - xPad) / gain));
   float newB = std::min(imageHeight, ((y + h / 2 - yPad) / gain));
   assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
-  return {newL, newT, newR, newB};
+  return {newL, newT, newR - newL, newB - newT};
 }
 
 Device TfLiteYoloV5Classifier::device() const {

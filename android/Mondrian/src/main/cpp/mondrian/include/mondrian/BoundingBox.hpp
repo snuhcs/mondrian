@@ -3,6 +3,8 @@
 
 #include <atomic>
 
+#include "opencv2/opencv.hpp"
+
 #include "mondrian/DataType.hpp"
 
 namespace md {
@@ -16,7 +18,7 @@ struct BoundingBox {
   const BID bid;
   OID oid;
   PID pid;
-  Rect loc;
+  const cv::Rect2f loc;
   float confidence;
   int label;
   BoxOrigin origin;
@@ -24,7 +26,7 @@ struct BoundingBox {
 
   BoundingBox(OID oid,
               PID pid,
-              const Rect& loc,
+              const cv::Rect2f& loc,
               const float confidence,
               int label,
               BoxOrigin origin);

@@ -145,22 +145,4 @@ std::string str(const BoxOrigin& boxOrigin) {
   assert(false);
 }
 
-std::string Rect::header(const char* rectName) {
-  std::stringstream ss;
-  ss << rectName << "_l" << DELIM
-     << rectName << "_t" << DELIM
-     << rectName << "_r" << DELIM
-     << rectName << "_b";
-  return ss.str();
-}
-
-std::string Rect::str() const {
-  std::stringstream ss;
-  ss << l << DELIM
-     << t << DELIM
-     << r << DELIM
-     << b;
-  return ss.str();
-}
-
 } // namespace md

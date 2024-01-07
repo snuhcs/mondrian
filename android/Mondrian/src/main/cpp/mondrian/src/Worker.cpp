@@ -160,10 +160,10 @@ void Worker::drawInferenceResult(const cv::Mat& rgbMat,
     const md::BoundingBox& b = boxes.at(i);
     jobject box = env_->NewObject(
         class_BoundingBox_, BoundingBox_init_,
-        int(std::round(b.loc.l)),
-        int(std::round(b.loc.t)),
-        int(std::round(b.loc.r)),
-        int(std::round(b.loc.b)),
+        (int) std::round(b.loc.x),
+        (int) std::round(b.loc.y),
+        (int) std::round(b.loc.x + b.loc.width),
+        (int) std::round(b.loc.y + b.loc.height),
         b.confidence,
         b.label);
     env_->CallVoidMethod(jBoxes, ArrayList_add_, i, box);
@@ -176,7 +176,7 @@ void Worker::drawInferenceResult(const cv::Mat& rgbMat,
     assert(rgbMat.rows <= maxPackedCanvasSize_ && rgbMat.cols <= maxPackedCanvasSize_);
     auto* jRgbMat = new cv::Mat(maxPackedCanvasSize_, maxPackedCanvasSize_,
                                 CV_8UC3, cv::Scalar(0, 0, 0));
-    cv::Rect rect(0, 0, rgbMat.cols, rgbMat.rows);
+    cv::Rect2i rect(0, 0, rgbMat.cols, rgbMat.rows);
     rgbMat.copyTo((*jRgbMat)(rect));
     env_->CallVoidMethod(app_, MondrianApp_drawOutput_, (long) jRgbMat, jBoxes, (long) device_);
   }

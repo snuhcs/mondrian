@@ -8,7 +8,7 @@ namespace md {
 
 ROI::ROI(const OID oid,
          Frame* frame,
-         const Rect& origLoc,
+         const cv::Rect2f& origLoc,
          const ROIType type,
          const int label,
          const OFFeatures ofFeatures,
@@ -30,10 +30,10 @@ ROI::ROI(const OID oid,
       mergedROI(nullptr),
       box_(nullptr),
       boxID_(-1) {
-  setPaddedLoc({std::max(0.0f, origLoc.l - padding),
-                std::max(0.0f, origLoc.t - padding),
-                std::min((float) frame->width(), origLoc.r + padding),
-                std::min((float) frame->height(), origLoc.b + padding)});
+  setPaddedLoc({origLoc.x - padding,
+                origLoc.y - padding,
+                origLoc.width + 2 * padding,
+                origLoc.height + 2 * padding});
 
   for (Device device : DEVICES) {
     targetScaleTable_[device] = 1.0f; // TODO: Start with targetScale_(-1) and assert
@@ -42,15 +42,15 @@ ROI::ROI(const OID oid,
 
 }
 
-void ROI::setPaddedLoc(const Rect& newPaddedLoc) {
-  paddedLoc = newPaddedLoc;
-  features.width = paddedLoc.w;
-  features.height = paddedLoc.h;
-  features.xyRatio = (float) paddedLoc.w / (float) paddedLoc.h;
+void ROI::setPaddedLoc(const cv::Rect2f& newPaddedLoc) {
+  paddedLoc = newPaddedLoc & frame->rectf();
+  features.width = paddedLoc.width;
+  features.height = paddedLoc.height;
+  features.xyRatio = (float) paddedLoc.width / (float) paddedLoc.height;
 }
 
-void ROI::eatPD(const Rect& PDRect) {
-  setPaddedLoc(Rect::merge(paddedLoc, PDRect));
+void ROI::eatPD(const cv::Rect2f& PDRect) {
+  setPaddedLoc(paddedLoc | PDRect);
 }
 
 void ROI::scaleTo(float newTargetScale, int newScaleLevel, Device device) {
@@ -66,8 +66,14 @@ std::string ROI::header() {
      << "fid" << DELIM
      << "rid" << DELIM
      << "oid" << DELIM
-     << Rect::header("origLoc") << DELIM
-     << Rect::header("paddedLoc") << DELIM
+     << "origLoc_l" << DELIM
+     << "origLoc_t" << DELIM
+     << "origLoc_r" << DELIM
+     << "origLoc_b" << DELIM
+     << "paddedLoc_l" << DELIM
+     << "paddedLoc_t" << DELIM
+     << "paddedLoc_r" << DELIM
+     << "paddedLoc_b" << DELIM
      << Features::header() << DELIM
      << "targetScale[GPU]" << DELIM
      << "targetScale[DSP]" << DELIM
@@ -82,15 +88,20 @@ std::string ROI::header() {
   return ss.str();
 }
 
-
 std::string ROI::str() const {
   std::stringstream ss;
   ss << frame->vid << DELIM
      << frame->fid << DELIM
      << rid << DELIM
      << oid << DELIM
-     << origLoc.str() << DELIM
-     << paddedLoc.str() << DELIM
+     << origLoc.x << DELIM
+     << origLoc.y << DELIM
+     << origLoc.x + origLoc.width << DELIM
+     << origLoc.y + origLoc.height << DELIM
+     << paddedLoc.x << DELIM
+     << paddedLoc.y << DELIM
+     << paddedLoc.x + paddedLoc.width << DELIM
+     << paddedLoc.y + paddedLoc.height << DELIM
      << features.str() << DELIM
      << safeGet<float>(targetScaleTable_, Device::GPU) << DELIM
      << safeGet<float>(targetScaleTable_, Device::DSP) << DELIM

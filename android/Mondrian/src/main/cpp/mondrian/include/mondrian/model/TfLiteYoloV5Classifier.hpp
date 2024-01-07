@@ -26,8 +26,8 @@ class TfLiteYoloV5Classifier : public Classifier {
 
   Device device() const override;
 
-  Rect reconstructBox(float x, float y, float w, float h,
-                      float imageWidth, float imageHeight) const;
+  cv::Rect2f reconstructBox(float x, float y, float w, float h,
+                            float imageWidth, float imageHeight) const;
 
   TfLiteDelegate* delegate;
   std::unique_ptr<tflite::Interpreter> interpreter;

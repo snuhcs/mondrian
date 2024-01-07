@@ -30,10 +30,10 @@ static std::vector<ROI*> roisOf(const std::vector<MergedROI*>& mergedROIs) {
   return rois;
 }
 
-static Rect locOf(const std::vector<MergedROI*>& mergedROIs) {
-  Rect loc = mergedROIs[0]->loc();
+static cv::Rect2f locOf(const std::vector<MergedROI*>& mergedROIs) {
+  cv::Rect2f loc = mergedROIs[0]->loc();
   for (int i = 1; i < mergedROIs.size(); i++) {
-    loc = Rect::merge(loc, mergedROIs[i]->loc());
+    loc |= mergedROIs[i]->loc();
   }
   return loc;
 }
@@ -86,8 +86,8 @@ void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, i
         merged.targetScaleTable_.end(),
         [&merged, &mi, &mj, maxSize](const auto& deviceAndScale) -> bool {
           const auto& [device, scale] = deviceAndScale;
-          int bw = borderedLengthOf(merged.loc_.w, scale);
-          int bh = borderedLengthOf(merged.loc_.h, scale);
+          int bw = borderedLengthOf(merged.loc_.width, scale);
+          int bh = borderedLengthOf(merged.loc_.height, scale);
           int newArea = merged.borderedArea(device);
           int origArea = mi->borderedArea(device) + mj->borderedArea(device);
           return std::max(bw, bh) <= maxSize && newArea <= origArea;
@@ -141,16 +141,16 @@ void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, i
 }
 
 cv::Mat MergedROI::mat() const {
-  int l = std::max(0, std::min(frame_->width(), int(loc_.l)));
-  int t = std::max(0, std::min(frame_->height(), int(loc_.t)));
-  int r = std::max(0, std::min(frame_->width(), int(loc_.r)));
-  int b = std::max(0, std::min(frame_->height(), int(loc_.b)));
+  int l = std::max(0, std::min(frame_->width(), (int) loc_.x));
+  int t = std::max(0, std::min(frame_->height(), (int) loc_.y));
+  int r = std::max(0, std::min(frame_->width(), (int) (loc_.x + loc_.width)));
+  int b = std::max(0, std::min(frame_->height(), (int) (loc_.y + loc_.height)));
   return extractRgbROIFromYuvMat(frame_->yuvMat, l, t, r, b);
 }
 
 cv::Mat MergedROI::resizedMat(Device device) const {
-  int rw = resizedLengthOf(loc_.w, targetScaleTable_.at(device));
-  int rh = resizedLengthOf(loc_.h, targetScaleTable_.at(device));
+  int rw = resizedLengthOf(loc_.width, targetScaleTable_.at(device));
+  int rh = resizedLengthOf(loc_.height, targetScaleTable_.at(device));
   cv::Mat rgbMat;
   cv::resize(mat(), rgbMat, cv::Size(rw, rh));
   return rgbMat;
@@ -161,37 +161,59 @@ cv::Mat MergedROI::borderedMat(Device device) const {
   cv::copyMakeBorder(rgbMat, rgbMat,
                      BORDER, BORDER, BORDER, BORDER,
                      cv::BORDER_CONSTANT, BORDER_COLOR);
-  int bw = borderedLengthOf(loc_.w, targetScaleTable_.at(device));
-  int bh = borderedLengthOf(loc_.h, targetScaleTable_.at(device));
+  int bw = borderedLengthOf(loc_.width, targetScaleTable_.at(device));
+  int bh = borderedLengthOf(loc_.height, targetScaleTable_.at(device));
   assert(bw == rgbMat.cols && bh == rgbMat.rows);
   return rgbMat;
 }
 
 void MergedROI::setPackInfo(Device device,
-                            IntPair xy,
+                            cv::Point2i xy,
                             int packedCanvasIndex,
                             ExecutionType executionType,
                             int roiSize) {
   if (executionType == ExecutionType::EMULATED_BATCH
       || executionType == ExecutionType::ROI_WISE_INFERENCE) {
-    int bw = borderedLengthOf(loc_.w, targetScaleTable_.at(Device::GPU));
-    int bh = borderedLengthOf(loc_.h, targetScaleTable_.at(Device::GPU));
+    int bw = borderedLengthOf(loc_.width, targetScaleTable_.at(Device::GPU));
+    int bh = borderedLengthOf(loc_.height, targetScaleTable_.at(Device::GPU));
     if (roiSize < std::max(bw, bh)) {
       LOGE("ROISize %d < bw %d or bh %d", roiSize, bw, bh);
       assert(false);
     }
-    xy.first += (roiSize - bw) / 2;
-    xy.second += (roiSize - bh) / 2;
+    xy.x += (roiSize - bw) / 2;
+    xy.y += (roiSize - bh) / 2;
   }
   dispatchTargetDevice_ = device;
   packedXY_ = xy;
   packedCanvasIndex_ = packedCanvasIndex;
 }
 
+cv::Rect2i MergedROI::packedLoc() const {
+  auto [rw, rh] = resizedMatWH();
+  return {packedXY_.x + MergedROI::BORDER,
+          packedXY_.y + MergedROI::BORDER,
+          rw,
+          rh};
+}
+
+cv::Rect2f MergedROI::reconstructBoxPos(const BoundingBox& packedBox) const {
+  cv::Rect2f reconBox = packedBox.loc;
+  reconBox -= static_cast<cv::Point2f>(packedXY_);
+  reconBox -= cv::Point2f((float) MergedROI::BORDER, (float) MergedROI::BORDER);
+  reconBox *= targetScale();
+  reconBox += loc_.tl();
+  reconBox &= frame_->rectf();
+  assert(reconBox.width >= 0 && reconBox.height >= 0);
+  return reconBox;
+}
+
 std::string MergedROI::header() {
   std::stringstream ss;
   ss << "mergedROIs" << DELIM
-     << Rect::header("mergedLoc") << DELIM
+     << "mergedLoc_l" << DELIM
+     << "mergedLoc_t" << DELIM
+     << "mergedLoc_r" << DELIM
+     << "mergedLoc_b" << DELIM
      << "mergedScale[GPU]" << DELIM
      << "mergedScale[DSP]" << DELIM
      << "pid" << DELIM
@@ -215,7 +237,10 @@ std::string MergedROI::str() const {
     }
   }
   ss << DELIM;
-  ss << loc_.str() << DELIM
+  ss << loc_.x << DELIM
+     << loc_.y << DELIM
+     << loc_.x + loc_.width << DELIM
+     << loc_.y + loc_.height << DELIM
      << (targetScaleTable_.find(Device::GPU) != targetScaleTable_.end()
          ? targetScaleTable_.at(Device::GPU)
          : -1) << DELIM
@@ -223,8 +248,8 @@ std::string MergedROI::str() const {
          ? targetScaleTable_.at(Device::DSP)
          : -1) << DELIM
      << pid_ << DELIM
-     << packedXY_.first << DELIM
-     << packedXY_.second << DELIM
+     << packedXY_.x << DELIM
+     << packedXY_.y << DELIM
      << packedCanvasIndex_ << DELIM
      << packedCanvasSize_ << DELIM
      << ::md::str(dispatchTargetDevice_) << DELIM

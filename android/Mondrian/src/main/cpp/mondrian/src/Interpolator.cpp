@@ -63,10 +63,10 @@ void Interpolator::extrapolateLeft(std::vector<ROI*> rois, int idx) {
   for (int i = idx; i > 0; i--) {
     ROI* prevROI = rois.at(i - 1);
     ROI* currROI = rois.at(i);
-    std::pair<float, float> currCenter = currROI->box()->loc.center();
+    cv::Point2f currCenter = (currROI->box()->loc.tl() + currROI->box()->loc.br()) * 0.5;
     std::pair<float, float> currShift = currROI->features.ofFeatures.shiftAvg;
-    std::pair<float, float> prevCenter = {currCenter.first - currShift.first,
-                                          currCenter.second - currShift.second};
+    std::pair<float, float> prevCenter = {currCenter.x - currShift.first,
+                                          currCenter.y - currShift.second};
     BoundingBox* currBox = currROI->box();
     assert(currBox->oid == currROI->oid);
     addBoxWithRefBox(prevROI, currBox, prevCenter);
@@ -78,10 +78,10 @@ void Interpolator::extrapolateRight(std::vector<ROI*> rois, int idx) {
   for (int i = idx + 1; i < rois.size(); i++) {
     ROI* prevROI = rois.at(i - 1);
     ROI* currROI = rois.at(i);
-    std::pair<float, float> prevCenter = prevROI->box()->loc.center();
+    cv::Point2f prevCenter = (prevROI->box()->loc.tl() + prevROI->box()->loc.br()) * 0.5;
     std::pair<float, float> currShift = currROI->features.ofFeatures.shiftAvg;
-    std::pair<float, float> currCenter = {prevCenter.first + currShift.first,
-                                          prevCenter.second + currShift.second};
+    std::pair<float, float> currCenter = {prevCenter.x + currShift.first,
+                                          prevCenter.y + currShift.second};
     BoundingBox* prevBox = prevROI->box();
     assert(prevBox->oid == prevROI->oid);
     addBoxWithRefBox(currROI, prevBox, currCenter);
@@ -104,11 +104,11 @@ void Interpolator::interpolateBetween(std::vector<ROI*> rois, int leftIdx, int r
   for (int i = leftIdx + 1; i < rightIdx; i++) {
     ROI* prevROI = rois.at(i - 1);
     ROI* currROI = rois.at(i);
-    std::pair<float, float> prevCenter = prevROI->box()->loc.center();
+    cv::Point2f prevCenter = (prevROI->box()->loc.tl() + prevROI->box()->loc.br()) * 0.5;
     std::pair<float, float> currShift = currROI->features.ofFeatures.shiftAvg;
     std::pair<float, float> currCenter = {
-        prevCenter.first + currShift.first * roiBoxMoveRatio.first,
-        prevCenter.second + currShift.second * roiBoxMoveRatio.second};
+        prevCenter.x + currShift.first * roiBoxMoveRatio.first,
+        prevCenter.y + currShift.second * roiBoxMoveRatio.second};
     BoundingBox* prevBox = prevROI->box();
     assert(prevBox->oid == prevROI->oid);
     addBoxWithRefBox(currROI, prevBox, currCenter);
@@ -128,25 +128,25 @@ std::pair<float, float> Interpolator::sumMotionVectors(std::vector<ROI*> rois,
 
 std::pair<float, float> Interpolator::getBoxShift(std::vector<ROI*> rois, int start, int end) {
   BoundingBox* box1 = rois.at(start)->box();
-  std::pair<float, float> c1 = box1->loc.center();
+  cv::Point2f c1 = (box1->loc.tl() + box1->loc.br()) * 0.5;
   BoundingBox* box2 = rois.at(end)->box();
-  std::pair<float, float> c2 = box2->loc.center();
-  return {c2.first - c1.first, c2.second - c1.second};
+  cv::Point2f c2 = (box2->loc.tl() + box2->loc.br()) * 0.5;
+  return {c2.x - c1.x, c2.y - c1.y};
 }
 
 void Interpolator::addBoxWithRefBox(ROI* currROI, const BoundingBox* refBox,
                                     const std::pair<float, float>& newCenter) {
-  float newL = newCenter.first - refBox->loc.w / 2;
-  float newT = newCenter.second - refBox->loc.h / 2;
-  float newR = newL + refBox->loc.w;
-  float newB = newT + refBox->loc.h;
+  float newL = newCenter.first - refBox->loc.width / 2;
+  float newT = newCenter.second - refBox->loc.height / 2;
+  float newR = newL + refBox->loc.width;
+  float newB = newT + refBox->loc.height;
   newL = std::min(float(currROI->frame->width()), std::max(0.0f, newL));
   newT = std::min(float(currROI->frame->height()), std::max(0.0f, newT));
   newR = std::min(float(currROI->frame->width()), std::max(0.0f, newR));
   newB = std::min(float(currROI->frame->height()), std::max(0.0f, newB));
   assert(0 <= newL && 0 <= newT);
   assert(newL <= newR && newT <= newB);
-  Rect newBox(newL, newT, newR, newB);
+  cv::Rect2f newBox(newL, newT, newR - newL, newB - newT);
   currROI->frame->boxes.emplace_back(new BoundingBox(
       refBox->oid, -1, newBox, refBox->confidence, refBox->label, BoxOrigin::INTERPOLATE));
 

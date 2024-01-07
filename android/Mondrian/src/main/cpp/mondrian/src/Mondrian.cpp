@@ -171,7 +171,8 @@ void Mondrian::workSchedule() {
       Device targetDevice = Device::GPU;
       time_us accumulatedLatency = 0;
       assert(config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).INPUT_SIZES.size() == 1);
-      int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).INPUT_SIZES.front();
+      int inputSize =
+          config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).INPUT_SIZES.front();
       for (int i = 0; i < config_.SCHEDULE_INTERVAL_CANVASES; i++) {
         time_us latency = latencyTable.at(targetDevice).at({inputSize, false});
         accumulatedLatency += latency;
@@ -423,15 +424,19 @@ void Mondrian::handleROIWiseResults(
     inferenceFrames.insert(mergedROI->frame());
     const float mergedScale = mergedROI->targetScale();
     for (BoundingBox& b : result.boxes) {
-      float newL = std::max(0.0f, (b.loc.l - float(x)) / mergedScale + mergedROI->loc().l);
-      float newT = std::max(0.0f, (b.loc.t - float(y)) / mergedScale + mergedROI->loc().t);
-      float newR = std::max(0.0f, (b.loc.r - float(x)) / mergedScale + mergedROI->loc().l);
-      float newB = std::max(0.0f, (b.loc.b - float(y)) / mergedScale + mergedROI->loc().t);
+      float newL = std::max(
+          0.0f, (b.loc.x - (float) x) / mergedScale + mergedROI->loc().x);
+      float newT = std::max(
+          0.0f, (b.loc.y - (float) y) / mergedScale + mergedROI->loc().y);
+      float newR = std::max(
+          0.0f, (b.loc.x + b.loc.width - (float) x) / mergedScale + mergedROI->loc().x);
+      float newB = std::max(
+          0.0f, (b.loc.y + b.loc.height - (float) y) / mergedScale + mergedROI->loc().y);
       assert(0 <= newL && 0 <= newT && newL <= newR && newT <= newB);
       mergedROI->frame()->boxes.emplace_back(new BoundingBox(
           INVALID_OID,
           packedCanvas.pid,
-          Rect(newL, newT, newR, newB),
+          cv::Rect2f(newL, newT, newR - newL, newB - newT),
           b.confidence,
           b.label,
           BoxOrigin::PACKED_CANVAS));
