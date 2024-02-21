@@ -1,4 +1,5 @@
 {
+    "log_dir": "/data/data/hcs.offloading.mondrian/log/20240101000000",
     "video_configs": [
         {
             "num_streams": 2,

@@ -8,18 +8,18 @@
 
 namespace md {
 
-Logger::Logger(const char* logPath) : baseTime(NowMicros()) {
-  if (std::remove(logPath) == 0) {
-    LOGD("Logger %s remove success", logPath);
+Logger::Logger(const std::string& logPath) : baseTime(NowMicros()) {
+  if (std::remove(logPath.c_str()) == 0) {
+    LOGD("Logger %s remove success", logPath.c_str());
   } else {
-    LOGE("Logger %s remove failed", logPath);
+    LOGE("Logger %s remove failed", logPath.c_str());
   }
 
   logFile_ = std::ofstream(logPath, std::ofstream::app);
   if (logFile_.is_open()) {
-    LOGD("Logger %s create success", logPath);
+    LOGD("Logger %s create success", logPath.c_str());
   } else {
-    LOGE("Logger %s create failed", logPath);
+    LOGE("Logger %s create failed", logPath.c_str());
   }
 }
 

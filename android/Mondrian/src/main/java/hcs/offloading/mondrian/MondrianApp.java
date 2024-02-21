@@ -12,10 +12,14 @@ import org.json.JSONObject;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class MondrianApp implements VideoLoader.Callback {
@@ -37,7 +41,7 @@ public class MondrianApp implements VideoLoader.Callback {
         int fps;
     }
 
-    private static final String VIDEO_CONFIG_PATH = "/data/local/tmp/config.json";
+    private static final String CONFIG_PATH = "/data/local/tmp/config.json";
 
     private final long handle;
     private final List<VideoLoader> videoLoaders = new ArrayList<>();
@@ -68,7 +72,9 @@ public class MondrianApp implements VideoLoader.Callback {
         int numVideos = videoLoaders.stream()
                 .map(videoLoader -> videoLoader.numStreams)
                 .reduce(0, Integer::sum);
-        handle = createHandle(numVideos);
+        String logDir = parseAndCreateLogDir();
+        Files.copy(Paths.get(CONFIG_PATH), Paths.get(logDir + "/" + "config.json"));
+        handle = createHandle(logDir, numVideos);
 
         for (VideoLoader videoLoader : videoLoaders) {
             videoLoader.start();
@@ -97,8 +103,20 @@ public class MondrianApp implements VideoLoader.Callback {
         close(handle);
     }
 
+    @SuppressLint("AssertionSideEffect")
+    private static String parseAndCreateLogDir() throws JSONException, IOException {
+        String jsonStr = new String(Files.readAllBytes(Paths.get(CONFIG_PATH)));
+        JSONObject configJson = new JSONObject(jsonStr);
+        assert (configJson.has("log_dir"));
+        String logDirPath = configJson.getString("log_dir");
+        File logDir = new File(logDirPath);
+        assert (!logDir.exists());
+        assert (logDir.mkdirs());
+        return logDirPath;
+    }
+
     private static List<VideoConfig> parseVideoConfigs() throws JSONException, IOException {
-        String jsonStr = new String(Files.readAllBytes(Paths.get(VIDEO_CONFIG_PATH)));
+        String jsonStr = new String(Files.readAllBytes(Paths.get(CONFIG_PATH)));
         JSONObject configJson = new JSONObject(jsonStr);
         JSONArray videoConfigsJson = configJson.getJSONArray("video_configs");
 
@@ -117,7 +135,7 @@ public class MondrianApp implements VideoLoader.Callback {
         return videoConfigs;
     }
 
-    private native long createHandle(int numVideos);
+    private native long createHandle(String logDir, int numVideos);
 
     private native void enqueue(long handle, int vid, long yuvMatAddr);
 

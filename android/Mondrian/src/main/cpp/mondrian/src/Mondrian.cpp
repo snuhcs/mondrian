@@ -23,7 +23,11 @@
 
 namespace md {
 
-Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app)
+Mondrian::Mondrian(const std::string& logDir,
+                   int numVideos,
+                   const MondrianConfig& config,
+                   JNIEnv* env,
+                   jobject app)
     : config_(config),
       startTime_(NowMicros()),
       numFirstFrameReadyVideos_(0),
@@ -44,15 +48,15 @@ Mondrian::Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, job
 
   // Create loggers
   if (config.LOG_FRAME) {
-    loggerFrame_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/frame.csv");
+    loggerFrame_ = std::make_unique<Logger>(logDir + "/" + "frame.csv");
     loggerFrame_->logFrameHeader();
   }
   if (config.LOG_ROI) {
-    loggerROI_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/roi.csv");
+    loggerROI_ = std::make_unique<Logger>(logDir + "/" + "roi.csv");
     loggerROI_->logROIHeader();
   }
   if (config.LOG_BOXES) {
-    loggerBoxes_ = std::make_unique<Logger>("/data/data/hcs.offloading.mondrian/boxes.csv");
+    loggerBoxes_ = std::make_unique<Logger>(logDir + "/" + "boxes.csv");
     loggerBoxes_->logBoxesHeader();
   }
 

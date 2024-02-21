@@ -14,10 +14,14 @@
 
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_hcs_offloading_mondrian_MondrianApp_createHandle(JNIEnv* env, jobject thiz, jint numVideos) {
+Java_hcs_offloading_mondrian_MondrianApp_createHandle(JNIEnv* env,
+                                                      jobject thiz,
+                                                      jstring logDir,
+                                                      jint numVideos) {
   auto configPath = "/data/local/tmp/config.json";
   auto config = md::parseMondrianConfig(configPath);
-  return reinterpret_cast<long>(new md::Mondrian(config, numVideos, env, thiz));
+  std::string logDirStr(env->GetStringUTFChars(logDir, nullptr));
+  return reinterpret_cast<long>(new md::Mondrian(logDirStr, numVideos, config, env, thiz));
 }
 
 extern "C"

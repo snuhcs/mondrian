@@ -27,7 +27,11 @@ class PatchReconstructor;
 
 class Mondrian {
  public:
-  Mondrian(const MondrianConfig& config, int numVideos, JNIEnv* env, jobject app);
+  Mondrian(const std::string& logDir,
+           int numVideos,
+           const MondrianConfig& config,
+           JNIEnv* env,
+           jobject app);
 
   ~Mondrian();
 

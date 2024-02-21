@@ -14,7 +14,7 @@ class ROI;
 
 class Logger {
  public:
-  Logger(const char* logPath);
+  Logger(const std::string& logPath);
 
   ~Logger();
 
