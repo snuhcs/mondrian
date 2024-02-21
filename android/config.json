@@ -1,9 +1,11 @@
 {
-    "log_dir": "/data/data/hcs.offloading.mondrian/log/20240101000000",
+    "log_dir": "/data/data/hcs.offloading.mondrian/log/240101000000",
     "video_configs": [
         {
             "num_streams": 2,
-            "path": "/data/local/tmp/video/mta_short_test_cam_3.mp4",
+            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
+            "start_index": 0,
+            "end_index": 500,
             "fps": 30
         }
     ],

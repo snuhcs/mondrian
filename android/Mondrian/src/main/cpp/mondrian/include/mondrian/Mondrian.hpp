@@ -3,6 +3,7 @@
 
 #include <jni.h>
 
+#include <fstream>
 #include <thread>
 #include <queue>
 
@@ -29,6 +30,7 @@ class Mondrian {
  public:
   Mondrian(const std::string& logDir,
            int numVideos,
+           int numTotalFrames,
            const MondrianConfig& config,
            JNIEnv* env,
            jobject app);
@@ -64,6 +66,8 @@ class Mondrian {
 
   void releaseFrames(const MultiStream& frames);
 
+  void logProgress(float progress);
+
   void logFrame(const Frame* frame);
 
   void logFrames(const MultiStream& streams);
@@ -83,7 +87,12 @@ class Mondrian {
   std::unique_ptr<PatchReconstructor> patchReconstructor_;
 
   // To support synchronized start
-  int numVideos_;
+  const std::string logDir_;
+  const int numVideos_;
+  const int numTotalFrames_;
+  int numProcessedFrames_;
+  std::ofstream progressFile_;
+  const int logProgressInterval = 10;
   int numFirstFrameReadyVideos_;
   std::mutex startMtx_;
   std::condition_variable startCV_;

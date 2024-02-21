@@ -1,5 +1,7 @@
 package hcs.offloading.mondrian;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 import android.annotation.SuppressLint;
 import android.util.Log;
 import android.view.SurfaceView;
@@ -16,10 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 public class MondrianApp implements VideoLoader.Callback {
@@ -33,12 +32,6 @@ public class MondrianApp implements VideoLoader.Callback {
         System.loadLibrary("opencv_video");
         System.loadLibrary("opencv_imgcodecs");
         System.loadLibrary("opencv_imgproc");
-    }
-
-    private static class VideoConfig {
-        int numStreams;
-        String path;
-        int fps;
     }
 
     private static final String CONFIG_PATH = "/data/local/tmp/config.json";
@@ -59,22 +52,25 @@ public class MondrianApp implements VideoLoader.Callback {
                 fpsView,
                 frameCountView);
 
-        List<VideoConfig> videoConfigs = parseVideoConfigs();
-        for (VideoConfig config : videoConfigs) {
-            videoLoaders.add(new VideoLoader(config.numStreams, config.path, config.fps, this));
+        List<VideoLoader.VideoConfig> videoConfigs = parseVideoConfigs();
+        for (VideoLoader.VideoConfig config : videoConfigs) {
+            videoLoaders.add(new VideoLoader(config, this));
         }
 
-        long totalFrames = videoLoaders.stream()
-                .map(videoLoader -> videoLoader.numStreams * videoLoader.numFrames)
-                .reduce(0L, Long::sum);
-        totalFramesView.setText(String.format("%04d", totalFrames));
 
-        int numVideos = videoLoaders.stream()
-                .map(videoLoader -> videoLoader.numStreams)
+        int numVideos = videoConfigs.stream()
+                .map(config -> config.numStreams)
                 .reduce(0, Integer::sum);
+        int numTotalFrames = videoConfigs.stream()
+                .map(config -> (config.endIndex - config.startIndex) * config.numStreams)
+                .reduce(0, Integer::sum);
+
+        totalFramesView.setText(String.format("%04d", numTotalFrames));
+
         String logDir = parseAndCreateLogDir();
-        Files.copy(Paths.get(CONFIG_PATH), Paths.get(logDir + "/" + "config.json"));
-        handle = createHandle(logDir, numVideos);
+        Files.copy(Paths.get(CONFIG_PATH), Paths.get(logDir + "/" + "config.json"), REPLACE_EXISTING);
+
+        handle = createHandle(logDir, numVideos, numTotalFrames);
 
         for (VideoLoader videoLoader : videoLoaders) {
             videoLoader.start();
@@ -103,39 +99,44 @@ public class MondrianApp implements VideoLoader.Callback {
         close(handle);
     }
 
-    @SuppressLint("AssertionSideEffect")
     private static String parseAndCreateLogDir() throws JSONException, IOException {
         String jsonStr = new String(Files.readAllBytes(Paths.get(CONFIG_PATH)));
         JSONObject configJson = new JSONObject(jsonStr);
         assert (configJson.has("log_dir"));
         String logDirPath = configJson.getString("log_dir");
         File logDir = new File(logDirPath);
-        assert (!logDir.exists());
-        assert (logDir.mkdirs());
+        logDir.mkdirs();
+        assert (logDir.exists());
         return logDirPath;
     }
 
-    private static List<VideoConfig> parseVideoConfigs() throws JSONException, IOException {
+    private static List<VideoLoader.VideoConfig> parseVideoConfigs() throws JSONException, IOException {
         String jsonStr = new String(Files.readAllBytes(Paths.get(CONFIG_PATH)));
         JSONObject configJson = new JSONObject(jsonStr);
         JSONArray videoConfigsJson = configJson.getJSONArray("video_configs");
 
-        List<VideoConfig> videoConfigs = new ArrayList<>();
+        List<VideoLoader.VideoConfig> videoConfigs = new ArrayList<>();
         for (int i = 0; i < videoConfigsJson.length(); i++) {
             JSONObject videoConfigJson = videoConfigsJson.getJSONObject(i);
             assert (videoConfigJson.has("num_streams")
                     && videoConfigJson.has("path")
                     && videoConfigJson.has("fps"));
-            VideoConfig videoConfig = new VideoConfig();
+            VideoLoader.VideoConfig videoConfig = new VideoLoader.VideoConfig();
             videoConfig.numStreams = videoConfigJson.getInt("num_streams");
             videoConfig.path = videoConfigJson.getString("path");
+            videoConfig.startIndex = videoConfigJson.getInt("start_index");
+            videoConfig.endIndex = videoConfigJson.getInt("end_index");
             videoConfig.fps = videoConfigJson.getInt("fps");
+            assert (0 < videoConfig.numStreams);
+            assert (0 <= videoConfig.startIndex);
+            assert (videoConfig.startIndex < videoConfig.endIndex);
+            assert (0 <= videoConfig.fps);
             videoConfigs.add(videoConfig);
         }
         return videoConfigs;
     }
 
-    private native long createHandle(String logDir, int numVideos);
+    private native long createHandle(String logDir, int numVideos, int numTotalFrames);
 
     private native void enqueue(long handle, int vid, long yuvMatAddr);
 

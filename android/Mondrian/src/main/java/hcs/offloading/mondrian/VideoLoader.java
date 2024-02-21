@@ -4,7 +4,6 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
-import android.util.Log;
 
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -13,16 +12,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class VideoLoader implements Runnable {
-    private static final String TAG = VideoLoader.class.getName();
     private static final int MEDIACODEC_TIMEOUT_US = 1000;
     private static int numAllStreams = 0;
 
     private final Thread thread;
     private final Callback callback;
     private final int startVid;
-    private final int fps;
-    public final int numStreams;
-    public final long numFrames;
+    private final VideoConfig config;
 
     private final MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
     private final MediaExtractor extractor;
@@ -36,16 +32,23 @@ public class VideoLoader implements Runnable {
         void onVideoEnd();
     }
 
-    public VideoLoader(int numStreams, String videoPath, int fps, Callback callback) throws IOException {
-        this.numStreams = numStreams;
-        this.fps = fps;
+    public static class VideoConfig {
+        int numStreams;
+        String path;
+        int startIndex;
+        int endIndex;
+        int fps;
+    }
+
+    public VideoLoader(VideoConfig config, Callback callback) throws IOException {
+        this.config = config;
         this.callback = callback;
 
         this.startVid = numAllStreams;
-        numAllStreams += numStreams;
+        numAllStreams += config.numStreams;
 
         extractor = new MediaExtractor();
-        extractor.setDataSource(videoPath);
+        extractor.setDataSource(config.path);
         int videoTrackIndex = videoTrackIndexOf(extractor);
         assert videoTrackIndex != -1;
 
@@ -53,8 +56,9 @@ public class VideoLoader implements Runnable {
         int width = format.getInteger(MediaFormat.KEY_WIDTH);
         int height = format.getInteger(MediaFormat.KEY_HEIGHT);
         int frameRate = format.getInteger(MediaFormat.KEY_FRAME_RATE);
-        long durationUs = format.getLong(MediaFormat.KEY_DURATION);
-        numFrames = Math.round((double) (frameRate * durationUs) / 1000000.0);
+        if (config.fps == 0) {
+            config.fps = frameRate;
+        }
         yuvBytes = new byte[width * height * 12 / 8]; // 12 bit for each YUV420 pixel
         yuvMat = new Mat(height + height / 2, width, CvType.CV_8UC1);
 
@@ -100,7 +104,7 @@ public class VideoLoader implements Runnable {
     public void run() {
         assert(Utils.schedSetAffinityLittle());
         boolean enqueueEnd = false;
-        long intervalNs = (long) (1e9 / fps);
+        long intervalNs = (long) (1e9 / config.fps);
         int frameIndex = 0;
         long firstFrameFinishedTimeNs = -1;
         while (true) {
@@ -122,13 +126,13 @@ public class VideoLoader implements Runnable {
             decoder.releaseOutputBuffer(outputIndex, false);
 
             // Wait for interval
-            if (fps > 0 && frameIndex >= 2) {
+            if (config.fps > 0 && frameIndex >= 2) {
                 assert firstFrameFinishedTimeNs != -1;
                 long requiredNs = firstFrameFinishedTimeNs + (frameIndex - 1) * intervalNs;
                 sleepFor(requiredNs - System.nanoTime());
             }
 
-            for (int vid = startVid; vid < startVid + numStreams; vid++) {
+            for (int vid = startVid; vid < startVid + config.numStreams; vid++) {
                 callback.onFrame(vid, yuvMat);
             }
             if (frameIndex == 1) {
@@ -137,6 +141,9 @@ public class VideoLoader implements Runnable {
                 firstFrameFinishedTimeNs = System.nanoTime();
             }
             frameIndex++;
+            if (frameIndex == config.endIndex) {
+                break;
+            }
         }
         sleepFor(5000); // Wait 5s for processing end
         callback.onVideoEnd();

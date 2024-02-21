@@ -25,17 +25,25 @@ namespace md {
 
 Mondrian::Mondrian(const std::string& logDir,
                    int numVideos,
+                   int numTotalFrames,
                    const MondrianConfig& config,
                    JNIEnv* env,
                    jobject app)
     : config_(config),
       startTime_(NowMicros()),
       numFirstFrameReadyVideos_(0),
+      logDir_(logDir),
       numVideos_(numVideos),
+      numTotalFrames_(numTotalFrames),
+      numProcessedFrames_(0),
+      progressFile_(logDir + "/" + "progress"),
       planningTime_(0),
       numIntervals_(0),
       stop_(false),
       ROIResizer_(new ROIResizer(config.roiResizerConfig)) {
+  assert(progressFile_.is_open());
+  progressFile_ << std::setiosflags(std::ios::fixed) << std::setprecision(3);
+  logProgress(0);
   tracer_ = std::make_unique<chrome_tracer::ChromeTracer>();
   inferenceEngine_ = std::make_unique<InferenceEngine>(
       config.inferenceEngineConfig, env, app, tracer_.get());
@@ -48,15 +56,15 @@ Mondrian::Mondrian(const std::string& logDir,
 
   // Create loggers
   if (config.LOG_FRAME) {
-    loggerFrame_ = std::make_unique<Logger>(logDir + "/" + "frame.csv");
+    loggerFrame_ = std::make_unique<Logger>(logDir_ + "/" + "frame.csv");
     loggerFrame_->logFrameHeader();
   }
   if (config.LOG_ROI) {
-    loggerROI_ = std::make_unique<Logger>(logDir + "/" + "roi.csv");
+    loggerROI_ = std::make_unique<Logger>(logDir_ + "/" + "roi.csv");
     loggerROI_->logROIHeader();
   }
   if (config.LOG_BOXES) {
-    loggerBoxes_ = std::make_unique<Logger>(logDir + "/" + "boxes.csv");
+    loggerBoxes_ = std::make_unique<Logger>(logDir_ + "/" + "boxes.csv");
     loggerBoxes_->logBoxesHeader();
   }
 
@@ -470,6 +478,12 @@ void Mondrian::releaseFrames(const MultiStream& streams) {
   }
 }
 
+void Mondrian::logProgress(float progress) {
+  progressFile_.seekp(0);
+  progressFile_ << progress;
+  progressFile_.flush();
+}
+
 void Mondrian::logFrame(const Frame* frame) {
   if (loggerFrame_) {
     std::lock_guard<std::mutex> lock(loggerFrame_->mtx());
@@ -486,35 +500,17 @@ void Mondrian::logFrame(const Frame* frame) {
     loggerBoxes_->logBoxes(frame);
     loggerBoxes_->flush();
   }
+  numProcessedFrames_++;
+  if (numTotalFrames_ == numProcessedFrames_ || numProcessedFrames_ % logProgressInterval == 0) {
+    logProgress((float) numProcessedFrames_ / (float) numTotalFrames_);
+  }
 }
 
 void Mondrian::logFrames(const MultiStream& streams) {
-  if (loggerFrame_) {
-    std::lock_guard<std::mutex> lock(loggerFrame_->mtx());
-    for (const auto& [vid, stream] : streams) {
-      for (const auto& frame : stream) {
-        loggerFrame_->logFrame(frame);
-      }
+  for (const auto& [vid, stream] : streams) {
+    for (const auto& frame : stream) {
+      logFrame(frame);
     }
-    loggerFrame_->flush();
-  }
-  if (loggerROI_) {
-    std::lock_guard<std::mutex> lock(loggerROI_->mtx());
-    for (const auto& [vid, stream] : streams) {
-      for (const auto& frame : stream) {
-        loggerROI_->logROIs(frame);
-      }
-    }
-    loggerROI_->flush();
-  }
-  if (loggerBoxes_) {
-    std::lock_guard<std::mutex> lock(loggerBoxes_->mtx());
-    for (const auto& [vid, stream] : streams) {
-      for (const auto& frame : stream) {
-        loggerBoxes_->logBoxes(frame);
-      }
-    }
-    loggerBoxes_->flush();
   }
 }
 
@@ -662,7 +658,7 @@ void Mondrian::workLog() {
 void Mondrian::dumpLogs() const {
   LOGD("[Mondrian] Dumping logs");
   bool success = tracer_->DumpToFile(
-      /*logPath=*/"/data/data/hcs.offloading.mondrian/trace.json",
+      /*logPath=*/logDir_ + "/" + "trace.json",
       /*do_validate=*/false);
   assert(success);
 }

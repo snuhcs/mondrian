@@ -17,11 +17,12 @@ JNIEXPORT jlong JNICALL
 Java_hcs_offloading_mondrian_MondrianApp_createHandle(JNIEnv* env,
                                                       jobject thiz,
                                                       jstring logDir,
-                                                      jint numVideos) {
+                                                      jint numVideos,
+                                                      jint numTotalFrames) {
   auto configPath = "/data/local/tmp/config.json";
   auto config = md::parseMondrianConfig(configPath);
   std::string logDirStr(env->GetStringUTFChars(logDir, nullptr));
-  return reinterpret_cast<long>(new md::Mondrian(logDirStr, numVideos, config, env, thiz));
+  return reinterpret_cast<long>(new md::Mondrian(logDirStr, numVideos, numTotalFrames, config, env, thiz));
 }
 
 extern "C"
