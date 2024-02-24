@@ -35,8 +35,7 @@ public class VideoLoader implements Runnable {
     public static class VideoConfig {
         int numStreams;
         String path;
-        int startIndex;
-        int endIndex;
+        int numFrames;
         int fps;
     }
 
@@ -141,7 +140,7 @@ public class VideoLoader implements Runnable {
                 firstFrameFinishedTimeNs = System.nanoTime();
             }
             frameIndex++;
-            if (frameIndex == config.endIndex) {
+            if (frameIndex == config.numFrames) {
                 break;
             }
         }

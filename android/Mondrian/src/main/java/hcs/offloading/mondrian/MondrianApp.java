@@ -62,7 +62,7 @@ public class MondrianApp implements VideoLoader.Callback {
                 .map(config -> config.numStreams)
                 .reduce(0, Integer::sum);
         int numTotalFrames = videoConfigs.stream()
-                .map(config -> (config.endIndex - config.startIndex) * config.numStreams)
+                .map(config -> config.numStreams * config.numFrames)
                 .reduce(0, Integer::sum);
 
         totalFramesView.setText(String.format("%04d", numTotalFrames));
@@ -124,12 +124,10 @@ public class MondrianApp implements VideoLoader.Callback {
             VideoLoader.VideoConfig videoConfig = new VideoLoader.VideoConfig();
             videoConfig.numStreams = videoConfigJson.getInt("num_streams");
             videoConfig.path = videoConfigJson.getString("path");
-            videoConfig.startIndex = videoConfigJson.getInt("start_index");
-            videoConfig.endIndex = videoConfigJson.getInt("end_index");
+            videoConfig.numFrames = videoConfigJson.getInt("num_frames");
             videoConfig.fps = videoConfigJson.getInt("fps");
             assert (0 < videoConfig.numStreams);
-            assert (0 <= videoConfig.startIndex);
-            assert (videoConfig.startIndex < videoConfig.endIndex);
+            assert (0 < videoConfig.numFrames);
             assert (0 <= videoConfig.fps);
             videoConfigs.add(videoConfig);
         }
