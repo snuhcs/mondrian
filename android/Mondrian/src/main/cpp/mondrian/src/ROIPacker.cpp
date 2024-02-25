@@ -27,9 +27,11 @@ void ROIPacker::processLastFrame(
   if (executionType_ == ExecutionType::ROI_WISE_INFERENCE) {
     std::vector<std::vector<cv::Rect2i>>& freeRectsVec = freeRectsVecTable.at(Device::INVALID);
     const std::vector<InferenceInfo>& inferencePlan = inferencePlanTable.at(Device::INVALID);
-    for (int i = 0; i < lastFrame->mergedROIs.size(); i++) {
+    assert(freeRectsVec.size() == inferencePlan.size());
+    int numMergedROIsToPack = std::min(lastFrame->mergedROIs.size(), inferencePlan.size());
+    for (int i = 0; i < numMergedROIsToPack; i++) {
       auto& mergedROI = lastFrame->mergedROIs[i];
-      assert(!freeRectsVec[i].empty());
+      assert(freeRectsVec[i].size() == 1);
       freeRectsVec[i].clear();
       mergedROI->setPackInfo(inferencePlan[i].device,
                              {0, 0},
@@ -85,15 +87,16 @@ void ROIPacker::processMergedROI(
 static std::map<Device, std::vector<InferenceInfo>> inferencePlanTableOf(
     const std::vector<InferenceInfo>& inferencePlan, ExecutionType executionType) {
   std::map<Device, std::vector<InferenceInfo>> inferencePlanTable;
-  for (const auto& info : inferencePlan) {
-    if (executionType == ExecutionType::ROI_WISE_INFERENCE) {
-      // Perform device-agnostic dispatching for ROI-wise inference
-      inferencePlanTable[Device::INVALID].push_back(info);
-    } else {
+  if (executionType == ExecutionType::ROI_WISE_INFERENCE) {
+    // Perform device-agnostic dispatching for ROI-wise inference
+    inferencePlanTable[Device::INVALID] = inferencePlan;
+    return inferencePlanTable;
+  } else {
+    for (const auto& info : inferencePlan) {
       inferencePlanTable[info.device].push_back(info);
     }
+    return inferencePlanTable;
   }
-  return inferencePlanTable;
 }
 
 static std::map<Device, std::vector<std::vector<cv::Rect2i>>> freeRectsVecTableOf(
@@ -114,6 +117,7 @@ void ROIPacker::pack(const int currID,
   time_us startTime = NowMicros();
 
   // Split inferencePlan by device and prepare free rects for each device
+  assert (!inferencePlan.empty());
   auto inferencePlanTable = inferencePlanTableOf(inferencePlan, executionType_);
   auto freeRectsVecTable = freeRectsVecTableOf(inferencePlanTable);
 
