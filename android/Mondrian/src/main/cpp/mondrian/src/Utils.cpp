@@ -130,13 +130,15 @@ std::vector<RectTrackingResult> extractOF(const cv::Mat& prevGrayMat,
   std::vector<cv::Point2f> nextPoints;
   std::vector<uchar> statuses;
   std::vector<float> errors;
-  cv::calcOpticalFlowPyrLK(prevGrayMat, nextGrayMat, prevPoints, nextPoints, statuses, errors,
-      /*winSize=*/cv::Size(15, 15),
-      /*maxLevel=*/2,
-      /*criteria=*/cv::TermCriteria(
-          /*type=*/cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
-          /*maxCount=*/10,
-          /*epsilon=*/0.03));
+  if (!prevPoints.empty()) {
+    cv::calcOpticalFlowPyrLK(prevGrayMat, nextGrayMat, prevPoints, nextPoints, statuses, errors,
+        /*winSize=*/cv::Size(15, 15),
+        /*maxLevel=*/2,
+        /*criteria=*/cv::TermCriteria(
+            /*type=*/cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
+            /*maxCount=*/10,
+            /*epsilon=*/0.03));
+  }
   assert(prevPoints.size() == nextPoints.size());
   assert(prevPoints.size() == statuses.size());
   assert(prevPoints.size() == errors.size());
