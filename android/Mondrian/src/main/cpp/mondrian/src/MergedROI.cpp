@@ -79,8 +79,9 @@ void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, i
     }
   }
 
-  auto isMergeBenefit = [maxSize](MergedROI* mi, MergedROI* mj) -> bool {
-    MergedROI merged(std::vector<MergedROI*>{mi, mj});
+  auto isMergeBenefit = [maxSize](const std::unique_ptr<MergedROI>& mi,
+                                  const std::unique_ptr<MergedROI>& mj) -> bool {
+    MergedROI merged(std::vector<MergedROI*>{mi.get(), mj.get()});
     return std::all_of(
         merged.targetScaleTable_.begin(),
         merged.targetScaleTable_.end(),
@@ -95,42 +96,25 @@ void MergedROI::mergeROIs(std::vector<std::unique_ptr<MergedROI>>& mergedROIs, i
   };
 
   while (true) {
-    std::vector<int> groupIDs(mergedROIs.size());
-    std::iota(std::begin(groupIDs), std::end(groupIDs), 0);
+    std::pair<int, int> mergeIdx = {-1, -1};
     for (int i = 0; i < mergedROIs.size(); i++) {
       for (int j = i + 1; j < mergedROIs.size(); j++) {
-        const auto& mi = mergedROIs[i].get();
-        const auto& mj = mergedROIs[j].get();
-        if (isMergeBenefit(mi, mj)) {
-          groupIDs[j] = groupIDs[i];
+        if (isMergeBenefit(mergedROIs[i], mergedROIs[j])) {
+          mergeIdx = {i, j};
+          break;
         }
       }
+      if (mergeIdx != std::make_pair(-1, -1)) break;
     }
+    if (mergeIdx == std::make_pair(-1, -1)) break;
 
-    std::map<int, std::vector<int>> idGroups;
-    for (int i = 0; i < groupIDs.size(); i++) {
-      idGroups[groupIDs[i]].push_back(i);
-    }
-    if (idGroups.size() == mergedROIs.size()) break;
-
-    std::vector<int> mergedROIIndicesToRemove;
-    std::vector<std::unique_ptr<MergedROI>> mergedROIsToAdd;
-    for (const auto& [_, idGroup] : idGroups) {
-      if (idGroup.size() == 1) continue;
-      std::vector<MergedROI*> group;
-      for (int i : idGroup) {
-        group.push_back(mergedROIs[i].get());
-        mergedROIIndicesToRemove.push_back(i);
-      }
-      mergedROIsToAdd.emplace_back(new MergedROI(group));
-    }
-    std::sort(mergedROIIndicesToRemove.begin(), mergedROIIndicesToRemove.end(), std::greater<>());
-    for (int i : mergedROIIndicesToRemove) {
-      mergedROIs.erase(mergedROIs.begin() + i);
-    }
-    mergedROIs.insert(mergedROIs.end(),
-                      std::make_move_iterator(mergedROIsToAdd.begin()),
-                      std::make_move_iterator(mergedROIsToAdd.end()));
+    auto merged = std::make_unique<MergedROI>(std::vector<MergedROI*>{
+        mergedROIs[mergeIdx.first].get(),
+        mergedROIs[mergeIdx.second].get()});
+    assert(mergeIdx.first < mergeIdx.second);
+    mergedROIs.erase(mergedROIs.begin() + mergeIdx.second);
+    mergedROIs.erase(mergedROIs.begin() + mergeIdx.first);
+    mergedROIs.push_back(std::move(merged));
   }
 
   for (auto& merged : mergedROIs) {
