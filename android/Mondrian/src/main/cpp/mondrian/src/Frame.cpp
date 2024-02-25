@@ -116,17 +116,7 @@ void Frame::assignPDROIIDs() {
 void Frame::resizeROIs(ROIResizer* roiResizer,
                        ExecutionType executionType,
                        int roiSize) {
-  for (auto& roi : rois) {
-    if (executionType == ExecutionType::EMULATED_BATCH
-        || executionType == ExecutionType::ROI_WISE_INFERENCE) {
-      float maxWH = std::max(roi->paddedLoc.width, roi->paddedLoc.height);
-      float scale = std::min(1.0f, (float) (roiSize - 2 * MergedROI::BORDER) / maxWH);
-      for (const auto& device : DEVICES) {
-        roi->scaleTo(scale, ROIResizer::INVALID_LEVEL, device);
-      }
-      continue;
-    }
-
+  const auto scaleWithResizer = [](ROI* roi, ROIResizer* roiResizer) {
     if (roi->type() == ROIType::OF) {
       auto scaleLevelTable = roiResizer->getTargetScale(roi->oid,
                                                         roi->features,
@@ -140,6 +130,29 @@ void Frame::resizeROIs(ROIResizer* roiResizer,
       for (Device device : DEVICES) {
         roi->scaleTo(1.0f, ROIResizer::INVALID_LEVEL, device);
       }
+    }
+  };
+
+  const auto scaleToFixed = [](ROI* roi, int targetSize) {
+    float maxWH = std::max(roi->paddedLoc.width, roi->paddedLoc.height);
+    float scale = std::min(1.0f, (float) (targetSize - 2 * MergedROI::BORDER) / maxWH);
+    for (const auto& device : DEVICES) {
+      roi->scaleTo(scale, ROIResizer::INVALID_LEVEL, device);
+    }
+    int bw = MergedROI::borderedLengthOf(roi->paddedLoc.width, scale);
+    int bh = MergedROI::borderedLengthOf(roi->paddedLoc.height, scale);
+    if (targetSize < std::max(bw, bh)) {
+      LOGE("targetSize %d < bw %d or bh %d", targetSize, bw, bh);
+      assert(false);
+    }
+  };
+
+  for (auto& roi : rois) {
+    if (executionType == ExecutionType::EMULATED_BATCH
+        || executionType == ExecutionType::ROI_WISE_INFERENCE) {
+      scaleToFixed(roi.get(), roiSize);
+    } else {
+      scaleWithResizer(roi.get(), roiResizer);
     }
   }
 }
