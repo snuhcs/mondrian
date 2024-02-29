@@ -4,7 +4,7 @@
         {
             "num_streams": 1,
             "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
-            "num_frames": 2460,
+            "num_frames": 4922,
             "fps": 30
         }
     ],
@@ -39,9 +39,9 @@
         "static_target_area": 0.0,
         "dataset": "mta",
         "voting_window_size": 5,
-        "area_shift": 0.0,
+        "area_shift": 1000.0,
         "scale_shift": 0.0,
-        "num_probe_steps": 0,
+        "num_probe_steps": 5,
         "only_smaller_probing": true,
         "probe_step_size": 0.1,
         "probe_conf_thres": 0.0,
@@ -60,7 +60,8 @@
                 "model": "yolov5m",
                 "dataset": "mta",
                 "input_sizes": [
-                    640
+                    640,
+                    1280
                 ]
             }
         },
