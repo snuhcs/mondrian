@@ -191,6 +191,7 @@ bool ChromeTracer::DumpToFile(const std::string& logPath,
     return false;
   }
   logFile << log;
+  logFile.flush();
   logFile.close();
   return true;
 }

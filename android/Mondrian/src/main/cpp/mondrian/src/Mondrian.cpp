@@ -502,6 +502,9 @@ void Mondrian::logFrame(const Frame* frame) {
   }
   numProcessedFrames_++;
   if (numTotalFrames_ == numProcessedFrames_ || numProcessedFrames_ % logProgressInterval == 0) {
+    if (numTotalFrames_ == numProcessedFrames_) {
+      dumpLogs();
+    }
     logProgress((float) numProcessedFrames_ / (float) numTotalFrames_);
   }
 }

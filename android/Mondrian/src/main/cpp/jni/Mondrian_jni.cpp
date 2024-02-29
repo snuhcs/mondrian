@@ -36,13 +36,6 @@ Java_hcs_offloading_mondrian_MondrianApp_enqueue(JNIEnv* env, jobject thiz,
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_hcs_offloading_mondrian_MondrianApp_dumpLogs(JNIEnv* env, jobject thiz, jlong handle) {
-  auto* mondrian = (md::Mondrian*) handle;
-  mondrian->dumpLogs();
-}
-
-extern "C"
-JNIEXPORT void JNICALL
 Java_hcs_offloading_mondrian_MondrianApp_close(JNIEnv* env, jobject thiz, jlong handle) {
   auto* mondrian = (md::Mondrian*) handle;
   delete mondrian;

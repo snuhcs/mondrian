@@ -28,8 +28,6 @@ public class VideoLoader implements Runnable {
 
     public interface Callback {
         void onFrame(int vid, Mat yuvMat);
-
-        void onVideoEnd();
     }
 
     public static class VideoConfig {
@@ -144,8 +142,6 @@ public class VideoLoader implements Runnable {
                 break;
             }
         }
-        sleepFor(5000); // Wait 5s for processing end
-        callback.onVideoEnd();
     }
 
     private static boolean enqueueStream(MediaCodec decoder, MediaExtractor extractor) {
