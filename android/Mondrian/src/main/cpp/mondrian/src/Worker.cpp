@@ -79,7 +79,7 @@ void Worker::work() {
 
     // Enqueue & draw result
     engine_->enqueueResult(input.key, {boxes, detectionStart, detectionEnd, device_});
-    if (draw_ && !input.full) {
+    if (draw_) {
       drawInferenceResult(input.rgbMat, boxes, input.full);
     }
     time_us end = NowMicros();

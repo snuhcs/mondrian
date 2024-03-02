@@ -31,7 +31,7 @@ Frame::Frame(const VID vid, const FID fid, const cv::Mat& yuvMat,
 
 cv::Mat Frame::rgbMat() const {
   cv::Mat rgbMat;
-  cv::cvtColor(yuvMat, rgbMat, cv::COLOR_YUV2RGB_NV12);
+  cv::cvtColor(yuvMat, rgbMat, cv::COLOR_YUV2RGB_I420);
   return rgbMat;
 }
 
@@ -39,7 +39,7 @@ void Frame::prepareResizedGrayMat(const cv::Size& targetSize) {
   assert(yuvMat.rows % 3 == 0);
   width_ = yuvMat.cols;
   height_ = yuvMat.rows * 2 / 3;
-  cv::cvtColor(yuvMat, resizedGrayMat, cv::COLOR_YUV2GRAY_NV12, 1);
+  cv::cvtColor(yuvMat, resizedGrayMat, cv::COLOR_YUV2GRAY_I420, 1);
   cv::resize(resizedGrayMat, resizedGrayMat, targetSize, 0, 0, CV_INTER_LINEAR);
 }
 

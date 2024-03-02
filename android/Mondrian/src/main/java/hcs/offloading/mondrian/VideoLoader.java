@@ -1,5 +1,7 @@
 package hcs.offloading.mondrian;
 
+import android.graphics.ImageFormat;
+import android.media.Image;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
@@ -24,6 +26,7 @@ public class VideoLoader implements Runnable {
     private final MediaExtractor extractor;
     private final MediaCodec decoder;
     private final byte[] yuvBytes;
+    private final byte[] rowBytes;
     private final Mat yuvMat;
 
     public interface Callback {
@@ -57,6 +60,7 @@ public class VideoLoader implements Runnable {
             config.fps = frameRate;
         }
         yuvBytes = new byte[width * height * 12 / 8]; // 12 bit for each YUV420 pixel
+        rowBytes = new byte[width];
         yuvMat = new Mat(height + height / 2, width, CvType.CV_8UC1);
 
         extractor.selectTrack(videoTrackIndex);
@@ -99,7 +103,7 @@ public class VideoLoader implements Runnable {
 
     @Override
     public void run() {
-        assert(Utils.schedSetAffinityLittle());
+        assert (Utils.schedSetAffinityLittle());
         boolean enqueueEnd = false;
         long intervalNs = (long) (1e9 / config.fps);
         int frameIndex = 0;
@@ -117,8 +121,49 @@ public class VideoLoader implements Runnable {
                 continue;
             }
 
-            ByteBuffer outputBuffer = decoder.getOutputBuffer(outputIndex);
-            outputBuffer.get(yuvBytes);
+            Image image = decoder.getOutputImage(outputIndex);
+            assert (image.getFormat() == ImageFormat.YUV_420_888);
+
+            // https://gist.github.com/FWStelian/4c3dcd35960d6eabbe661c3448dd5539
+            Image.Plane[] planes = image.getPlanes();
+            int width = image.getWidth();
+            int height = image.getHeight();
+            int offset = 0;
+            for (int i = 0; i < planes.length; i++) {
+                ByteBuffer buffer = planes[i].getBuffer();
+                int rowStride = planes[i].getRowStride();
+                assert (rowStride <= rowBytes.length);
+                int pixelStride = planes[i].getPixelStride();
+                int w = (i == 0) ? width : width / 2;
+                int h = (i == 0) ? height : height / 2;
+                for (int row = 0; row < h; row++) {
+                    int bytesPerPixel = ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8;
+                    if (pixelStride == bytesPerPixel) {
+                        int length = w * bytesPerPixel;
+                        buffer.get(yuvBytes, offset, length);
+                        // Advance buffer the remainder of the row stride, unless on the last row.
+                        // Otherwise, this will throw an IllegalArgumentException because the buffer
+                        // doesn't include the last padding.
+                        if (h - row != 1) {
+                            buffer.position(buffer.position() + rowStride - length);
+                        }
+                        offset += length;
+                    } else {
+                        // On the last row only read the width of the image minus the pixel stride
+                        // plus one. Otherwise, this will throw a BufferUnderflowException because the
+                        // buffer doesn't include the last padding.
+                        if (h - row == 1) {
+                            buffer.get(rowBytes, 0, width - pixelStride + 1);
+                        } else {
+                            buffer.get(rowBytes, 0, rowStride);
+                        }
+                        for (int col = 0; col < w; col++) {
+                            yuvBytes[offset++] = rowBytes[col * pixelStride];
+                        }
+                    }
+                }
+            }
+
             yuvMat.put(0, 0, yuvBytes);
             decoder.releaseOutputBuffer(outputIndex, false);
 

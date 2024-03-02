@@ -25,15 +25,22 @@ cv::Vec3b yuv2rgb(uchar Y, uchar U, uchar V) {
 
 cv::Mat extractRgbROIFromYuvMat(cv::Mat yuvMat, int l, int t, int r, int b) {
   assert(yuvMat.rows % 3 == 0);
+  const int width = yuvMat.cols;
   const int height = yuvMat.rows * 2 / 3;
-
   cv::Mat rgbROI(b - t, r - l, CV_8UC3);
-  for (int y = t; y < b; y++) {
-    for (int x = l; x < r; x++) {
-      uchar Y = yuvMat.at<uchar>(y, x);
-      uchar U = yuvMat.at<uchar>(height + y / 2, x - x % 2);
-      uchar V = yuvMat.at<uchar>(height + y / 2, x - x % 2 + 1);
-      rgbROI.at<cv::Vec3b>(y - t, x - l) = yuv2rgb(Y, U, V);
+  for (int i = t; i < b; i++) {
+    for (int j = l; j < r; j++) {
+      int uvIndex = width / 2 * i / 2 + j / 2;
+      uchar Y = yuvMat.at<uchar>(
+          std::min(i, height - 1),
+          std::min(j, width - 1));
+      uchar U = yuvMat.at<uchar>(
+          std::min(uvIndex / width, height / 4 - 1) + height,
+          uvIndex % width);
+      uchar V = yuvMat.at<uchar>(
+          std::min(uvIndex / width, height / 4 - 1) + height + height / 4,
+          uvIndex % width);
+      rgbROI.at<cv::Vec3b>(i - t, j - l) = yuv2rgb(Y, U, V);
     }
   }
   return rgbROI;
