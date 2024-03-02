@@ -11,14 +11,18 @@
 
 namespace md {
 
+// https://fourcc.org/fccyvrgb.php
+//  R = 1.164(Y - 16)                  + 1.596(V - 128)
+//  G = 1.164(Y - 16) - 0.391(U - 128) - 0.813(V - 128)
+//  B = 1.164(Y - 16) + 2.018(U - 128)
 cv::Vec3b yuv2rgb(uchar Y, uchar U, uchar V) {
-  int C = Y - 16;
-  int D = U - 128;
-  int E = V - 128;
+  int C = (int) Y - 16;
+  int D = (int) U - 128;
+  int E = (int) V - 128;
 
-  uchar R = cv::saturate_cast<uchar>((298 * C + 409 * E + 128) >> 8);
-  uchar G = cv::saturate_cast<uchar>((298 * C - 100 * D - 208 * E + 128) >> 8);
-  uchar B = cv::saturate_cast<uchar>((298 * C + 516 * D + 128) >> 8);
+  uchar R = cv::saturate_cast<uchar>((298 * C + 409 * E) >> 8);
+  uchar G = cv::saturate_cast<uchar>((298 * C - 100 * D - 208 * E) >> 8);
+  uchar B = cv::saturate_cast<uchar>((298 * C + 516 * D) >> 8);
 
   return {R, G, B};
 }
