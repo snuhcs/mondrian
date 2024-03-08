@@ -207,6 +207,11 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::generatePackedCanvases(
     const std::vector<InferenceInfo>& inferencePlan,
     const md::Frame* fullFrameTarget) {
   time_us startTime = NowMicros();
+  for (const auto& [vid, stream] : streams) {
+    for (Frame* frame : stream) {
+      frame->packingStartTime = startTime;
+    }
+  }
 
   // Group MergedROIs by packed canvas index
   std::map<Device, std::map<int, std::set<MergedROI*>>> groupedMergedROIsTable;
@@ -252,6 +257,11 @@ std::map<Device, std::vector<PackedCanvas>> ROIPacker::generatePackedCanvases(
     }
   }
   time_us releaseTime = NowMicros();
+  for (const auto& [vid, stream] : streams) {
+    for (Frame* frame : stream) {
+      frame->packingEndTime = releaseTime;
+    }
+  }
 
   LOGD("[Schedule %d] Generating Packed Canvases "
        "// total=%lld grouping=%lld generating=%lld release=%lld",
