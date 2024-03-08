@@ -94,7 +94,7 @@ class ROI {
 
   static std::string header();
 
-  std::string str() const;
+  std::string str(time_us baseTime) const;
 };
 
 } // namespace md

@@ -166,7 +166,7 @@ class MergedROI {
 
   static std::string header();
 
-  std::string str() const;
+  std::string str(time_us baseTime) const;
 
  private:
   Frame* const frame_;
@@ -179,12 +179,19 @@ class MergedROI {
   cv::Point2i packedXY_;
   int packedCanvasIndex_;
   int packedCanvasSize_;
+
   bool isInferenced_;
   Device dispatchTargetDevice_;
 
   bool isProbing_;
   std::map<Device, BoundingBox*> probingBoxTable_;
   std::map<Device, BID> probingBoxIDTable_;
+
+ public:
+  time_us packedInferenceStartTime = 0;
+  time_us packedInferenceEndTime = 0;
+  time_us reconstructStartTime = 0;
+  time_us reconstructEndTime = 0;
 };
 
 } // namespace md

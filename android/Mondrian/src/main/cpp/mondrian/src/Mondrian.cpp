@@ -55,16 +55,17 @@ Mondrian::Mondrian(const std::string& logDir,
   config_.test();
 
   // Create loggers
+  time_us baseTime = NowMicros();
   if (config.LOG_FRAME) {
-    loggerFrame_ = std::make_unique<Logger>(logDir_ + "/" + "frame.csv");
+    loggerFrame_ = std::make_unique<Logger>(logDir_ + "/" + "frame.csv", baseTime);
     loggerFrame_->logFrameHeader();
   }
   if (config.LOG_ROI) {
-    loggerROI_ = std::make_unique<Logger>(logDir_ + "/" + "roi.csv");
+    loggerROI_ = std::make_unique<Logger>(logDir_ + "/" + "roi.csv", baseTime);
     loggerROI_->logROIHeader();
   }
   if (config.LOG_BOXES) {
-    loggerBoxes_ = std::make_unique<Logger>(logDir_ + "/" + "boxes.csv");
+    loggerBoxes_ = std::make_unique<Logger>(logDir_ + "/" + "boxes.csv", baseTime);
     loggerBoxes_->logBoxesHeader();
   }
 
@@ -386,12 +387,9 @@ void Mondrian::handlePackedCanvasesResults(
     for (MergedROI* packedROI : packedCanvas.packedROIs) {
       packedROI->setInferenced(true);
     }
-    for (Frame* frame : packedCanvas.getPackedFrames()) {
-      if (frame->deviceIfFullFrame == Device::INVALID) {
-        frame->inferenceFrameSize = inputSize;
-        frame->packedInferenceStartTime = result.detectionStart;
-        frame->packedInferenceEndTime = result.detectionEnd;
-      }
+    for (MergedROI* mergedROI : packedCanvas.packedROIs) {
+      mergedROI->packedInferenceStartTime = result.detectionStart;
+      mergedROI->packedInferenceEndTime = result.detectionEnd;
     }
     patchReconstructor_->assignBoxesToFrame(packedCanvas, result.boxes);
 
@@ -430,8 +428,8 @@ void Mondrian::handleROIWiseResults(
     MergedROI* mergedROI = *packedCanvas.packedROIs.begin();
     if (mergedROI->frame()->deviceIfFullFrame == Device::INVALID) {
       mergedROI->frame()->inferenceFrameSize = packedCanvas.packedCanvasSize;
-      mergedROI->frame()->packedInferenceStartTime = result.detectionStart;
-      mergedROI->frame()->packedInferenceEndTime = result.detectionEnd;
+      mergedROI->packedInferenceStartTime = result.detectionStart;
+      mergedROI->packedInferenceEndTime = result.detectionEnd;
     }
     inferenceFrames.insert(mergedROI->frame());
     const float mergedScale = mergedROI->targetScale();

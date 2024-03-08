@@ -88,7 +88,7 @@ std::string ROI::header() {
   return ss.str();
 }
 
-std::string ROI::str() const {
+std::string ROI::str(time_us baseTime) const {
   std::stringstream ss;
   ss << frame->vid << DELIM
      << frame->fid << DELIM
@@ -111,7 +111,7 @@ std::string ROI::str() const {
      << safeGetSize<float>(probeScalesTable, Device::DSP) << DELIM
      << safeGetSize<MergedROI*>(roisForProbingTable, Device::GPU) << DELIM
      << safeGetSize<MergedROI*>(roisForProbingTable, Device::DSP) << DELIM
-     << mergedROI->str() << DELIM // TODO: Remove redundant mergedROI
+     << mergedROI->str(baseTime) << DELIM // TODO: Remove redundant mergedROI
      << boxID_;
   return ss.str();
 }

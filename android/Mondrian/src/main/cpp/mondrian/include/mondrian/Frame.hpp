@@ -61,10 +61,6 @@ class Frame {
   time_us packingStartTime = 0;
   time_us packingEndTime = 0;
   time_us scheduledTime = 0;
-  time_us packedInferenceStartTime = 0;
-  time_us packedInferenceEndTime = 0;
-  time_us reconstructStartTime = 0;
-  time_us reconstructEndTime = 0;
   time_us endTime = 0;
 
   Frame(const VID vid, const FID fid, const cv::Mat& yuvMat,

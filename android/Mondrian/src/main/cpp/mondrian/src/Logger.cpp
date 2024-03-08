@@ -8,7 +8,7 @@
 
 namespace md {
 
-Logger::Logger(const std::string& logPath) : baseTime(NowMicros()) {
+Logger::Logger(const std::string& logPath, time_us baseTime) : baseTime(baseTime) {
   if (std::remove(logPath.c_str()) == 0) {
     LOGD("Logger %s remove success", logPath.c_str());
   } else {
@@ -60,7 +60,7 @@ void Logger::logFrame(const Frame* frame) {
 void Logger::logROIs(const Frame* frame) {
   if (!logFile_.is_open() || frame == nullptr) return;
   for (const auto& roi : frame->rois) {
-    logFile_ << roi->str() << '\n';
+    logFile_ << roi->str(baseTime) << '\n';
   }
 }
 

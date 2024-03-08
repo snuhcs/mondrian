@@ -66,9 +66,9 @@ void PatchReconstructor::assignBoxesToFrame(PackedCanvas& packedCanvas,
   }
 
   time_us reconstructEndTime = NowMicros();
-  for (Frame* frame : packedFrames) {
-    frame->reconstructStartTime = reconstructStartTime;
-    frame->reconstructEndTime = reconstructEndTime;
+  for (MergedROI* mergedROI : packedROIs) {
+    mergedROI->reconstructStartTime = reconstructStartTime;
+    mergedROI->reconstructEndTime = reconstructEndTime;
   }
 }
 

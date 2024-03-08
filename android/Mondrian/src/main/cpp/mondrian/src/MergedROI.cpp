@@ -208,11 +208,16 @@ std::string MergedROI::header() {
      << "dispatchTargetDevice" << DELIM
      << "isProbing" << DELIM
      << "probingBoxID[GPU]" << DELIM
-     << "probingBoxID[DSP]";
+     << "probingBoxID[DSP]" << DELIM
+     << "packedInferenceStartTime" << DELIM
+     << "packedInferenceEndTime" << DELIM
+     << "reconstructStartTime" << DELIM
+     << "reconstructEndTime";
   return ss.str();
 }
 
-std::string MergedROI::str() const {
+std::string MergedROI::str(time_us baseTime) const {
+  auto fromBaseTime = [baseTime](time_us time) { return time != 0 ? time - baseTime : 0; };
   std::stringstream ss;
   for (int i = 0; i < rois_.size(); i++) {
     ss << rois_[i]->rid;
@@ -243,7 +248,11 @@ std::string MergedROI::str() const {
          : -1) << DELIM
      << (probingBoxIDTable_.find(Device::DSP) != probingBoxIDTable_.end()
          ? probingBoxIDTable_.at(Device::DSP)
-         : -1);
+         : -1) << DELIM
+     << fromBaseTime(packedInferenceStartTime) << DELIM
+     << fromBaseTime(packedInferenceEndTime) << DELIM
+     << fromBaseTime(reconstructStartTime) << DELIM
+     << fromBaseTime(reconstructEndTime);
   return ss.str();
 }
 

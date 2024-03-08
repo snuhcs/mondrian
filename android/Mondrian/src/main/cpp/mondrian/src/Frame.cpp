@@ -406,10 +406,6 @@ std::string Frame::header() {
      << "packingStartTime" << DELIM
      << "packingEndTime" << DELIM
      << "scheduledTime" << DELIM
-     << "packedInferenceStartTime" << DELIM
-     << "packedInferenceEndTime" << DELIM
-     << "reconstructStartTime" << DELIM
-     << "reconstructEndTime" << DELIM
      << "endTime";
   return ss.str();
 }
@@ -446,10 +442,6 @@ std::string Frame::str(time_us baseTime) const {
      << fromBaseTime(packingStartTime) << DELIM
      << fromBaseTime(packingEndTime) << DELIM
      << fromBaseTime(scheduledTime) << DELIM
-     << fromBaseTime(packedInferenceStartTime) << DELIM
-     << fromBaseTime(packedInferenceEndTime) << DELIM
-     << fromBaseTime(reconstructStartTime) << DELIM
-     << fromBaseTime(reconstructEndTime) << DELIM
      << fromBaseTime(endTime);
   return ss.str();
 }
