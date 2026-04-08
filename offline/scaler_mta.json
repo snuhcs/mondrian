@@ -1,0 +1,1056 @@
+{
+  "feature_names": [
+    "maxEdgeLength",
+    "area",
+    "xyRatio",
+    "shiftAvg",
+    "shiftStd",
+    "shiftNcc",
+    "avgErr"
+  ],
+  "num_levels": 5,
+  "thresholds": [
+    4437.0,
+    5265.200000000001,
+    6300.0,
+    7795.798499232001,
+    Infinity
+  ],
+  "tree": {
+    "feature": "area",
+    "threshold": 4438.5,
+    "left": {
+      "value": 0
+    },
+    "right": {
+      "feature": "area",
+      "threshold": 5267.0,
+      "left": {
+        "feature": "maxEdgeLength",
+        "threshold": 86.5,
+        "left": {
+          "feature": "area",
+          "threshold": 5211.0,
+          "left": {
+            "feature": "xyRatio",
+            "threshold": 1.05929,
+            "left": {
+              "feature": "avgErr",
+              "threshold": 7.882,
+              "left": {
+                "value": 1
+              },
+              "right": {
+                "feature": "shiftStd",
+                "threshold": 0.21057,
+                "left": {
+                  "value": 0
+                },
+                "right": {
+                  "value": 1
+                }
+              }
+            },
+            "right": {
+              "feature": "shiftNcc",
+              "threshold": -0.01953,
+              "left": {
+                "feature": "shiftNcc",
+                "threshold": -0.02399,
+                "left": {
+                  "value": 1
+                },
+                "right": {
+                  "value": 0
+                }
+              },
+              "right": {
+                "feature": "shiftNcc",
+                "threshold": 0.80241,
+                "left": {
+                  "value": 1
+                },
+                "right": {
+                  "feature": "shiftNcc",
+                  "threshold": 0.81194,
+                  "left": {
+                    "value": 0
+                  },
+                  "right": {
+                    "feature": "shiftNcc",
+                    "threshold": 0.835,
+                    "left": {
+                      "feature": "maxEdgeLength",
+                      "threshold": 82.5,
+                      "left": {
+                        "value": 0
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    },
+                    "right": {
+                      "value": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "right": {
+            "feature": "area",
+            "threshold": 5227.5,
+            "left": {
+              "feature": "avgErr",
+              "threshold": 4.6761,
+              "left": {
+                "value": 1
+              },
+              "right": {
+                "value": 0
+              }
+            },
+            "right": {
+              "value": 1
+            }
+          }
+        },
+        "right": {
+          "feature": "xyRatio",
+          "threshold": 1.7,
+          "left": {
+            "feature": "shiftAvg",
+            "threshold": 0.02317,
+            "left": {
+              "value": 1
+            },
+            "right": {
+              "feature": "shiftNcc",
+              "threshold": 0.5191,
+              "left": {
+                "feature": "xyRatio",
+                "threshold": 1.57519,
+                "left": {
+                  "feature": "area",
+                  "threshold": 4900.0,
+                  "left": {
+                    "value": 1
+                  },
+                  "right": {
+                    "value": 0
+                  }
+                },
+                "right": {
+                  "feature": "avgErr",
+                  "threshold": 7.2651,
+                  "left": {
+                    "feature": "xyRatio",
+                    "threshold": 1.67879,
+                    "left": {
+                      "value": 1
+                    },
+                    "right": {
+                      "value": 0
+                    }
+                  },
+                  "right": {
+                    "feature": "maxEdgeLength",
+                    "threshold": 90.5,
+                    "left": {
+                      "value": 0
+                    },
+                    "right": {
+                      "value": 1
+                    }
+                  }
+                }
+              },
+              "right": {
+                "feature": "shiftNcc",
+                "threshold": 0.87583,
+                "left": {
+                  "feature": "area",
+                  "threshold": 5145.5,
+                  "left": {
+                    "value": 1
+                  },
+                  "right": {
+                    "feature": "shiftStd",
+                    "threshold": 0.07611,
+                    "left": {
+                      "value": 0
+                    },
+                    "right": {
+                      "value": 1
+                    }
+                  }
+                },
+                "right": {
+                  "feature": "xyRatio",
+                  "threshold": 1.5578,
+                  "left": {
+                    "value": 1
+                  },
+                  "right": {
+                    "value": 0
+                  }
+                }
+              }
+            }
+          },
+          "right": {
+            "feature": "shiftStd",
+            "threshold": 0.08315,
+            "left": {
+              "feature": "shiftNcc",
+              "threshold": 0.45011,
+              "left": {
+                "feature": "maxEdgeLength",
+                "threshold": 93.5,
+                "left": {
+                  "value": 1
+                },
+                "right": {
+                  "feature": "shiftStd",
+                  "threshold": 0.05336,
+                  "left": {
+                    "value": 1
+                  },
+                  "right": {
+                    "value": 0
+                  }
+                }
+              },
+              "right": {
+                "feature": "shiftAvg",
+                "threshold": 0.4307,
+                "left": {
+                  "value": 1
+                },
+                "right": {
+                  "feature": "shiftNcc",
+                  "threshold": 0.96241,
+                  "left": {
+                    "value": 0
+                  },
+                  "right": {
+                    "value": 1
+                  }
+                }
+              }
+            },
+            "right": {
+              "feature": "shiftNcc",
+              "threshold": 0.65014,
+              "left": {
+                "value": 1
+              },
+              "right": {
+                "feature": "shiftAvg",
+                "threshold": 0.22344,
+                "left": {
+                  "value": 0
+                },
+                "right": {
+                  "value": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "right": {
+        "feature": "area",
+        "threshold": 6302.5,
+        "left": {
+          "feature": "area",
+          "threshold": 5627.0,
+          "left": {
+            "feature": "avgErr",
+            "threshold": 13.46731,
+            "left": {
+              "feature": "shiftStd",
+              "threshold": 0.17217,
+              "left": {
+                "feature": "shiftStd",
+                "threshold": 0.16692,
+                "left": {
+                  "feature": "xyRatio",
+                  "threshold": 1.2803,
+                  "left": {
+                    "feature": "shiftAvg",
+                    "threshold": 0.31431,
+                    "left": {
+                      "feature": "avgErr",
+                      "threshold": 9.67994,
+                      "left": {
+                        "value": 2
+                      },
+                      "right": {
+                        "value": 0
+                      }
+                    },
+                    "right": {
+                      "value": 1
+                    }
+                  },
+                  "right": {
+                    "feature": "avgErr",
+                    "threshold": 12.51268,
+                    "left": {
+                      "feature": "shiftAvg",
+                      "threshold": 0.20242,
+                      "left": {
+                        "value": 2
+                      },
+                      "right": {
+                        "value": 2
+                      }
+                    },
+                    "right": {
+                      "value": 1
+                    }
+                  }
+                },
+                "right": {
+                  "value": 0
+                }
+              },
+              "right": {
+                "feature": "avgErr",
+                "threshold": 5.05062,
+                "left": {
+                  "feature": "avgErr",
+                  "threshold": 4.82817,
+                  "left": {
+                    "value": 2
+                  },
+                  "right": {
+                    "value": 0
+                  }
+                },
+                "right": {
+                  "value": 2
+                }
+              }
+            },
+            "right": {
+              "feature": "avgErr",
+              "threshold": 14.3023,
+              "left": {
+                "feature": "shiftNcc",
+                "threshold": 0.18324,
+                "left": {
+                  "value": 2
+                },
+                "right": {
+                  "value": 0
+                }
+              },
+              "right": {
+                "feature": "area",
+                "threshold": 5319.0,
+                "left": {
+                  "value": 0
+                },
+                "right": {
+                  "value": 2
+                }
+              }
+            }
+          },
+          "right": {
+            "feature": "shiftNcc",
+            "threshold": 0.00114,
+            "left": {
+              "feature": "shiftStd",
+              "threshold": 13.09485,
+              "left": {
+                "value": 1
+              },
+              "right": {
+                "value": 2
+              }
+            },
+            "right": {
+              "feature": "avgErr",
+              "threshold": 13.76174,
+              "left": {
+                "feature": "shiftAvg",
+                "threshold": 0.09062,
+                "left": {
+                  "feature": "area",
+                  "threshold": 5630.0,
+                  "left": {
+                    "value": 1
+                  },
+                  "right": {
+                    "feature": "shiftAvg",
+                    "threshold": 0.00164,
+                    "left": {
+                      "value": 0
+                    },
+                    "right": {
+                      "feature": "avgErr",
+                      "threshold": 6.57494,
+                      "left": {
+                        "value": 2
+                      },
+                      "right": {
+                        "value": 2
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "feature": "xyRatio",
+                  "threshold": 1.22686,
+                  "left": {
+                    "feature": "avgErr",
+                    "threshold": 10.21999,
+                    "left": {
+                      "value": 2
+                    },
+                    "right": {
+                      "value": 1
+                    }
+                  },
+                  "right": {
+                    "feature": "shiftNcc",
+                    "threshold": 0.78503,
+                    "left": {
+                      "feature": "area",
+                      "threshold": 5771.5,
+                      "left": {
+                        "value": 2
+                      },
+                      "right": {
+                        "value": 2
+                      }
+                    },
+                    "right": {
+                      "feature": "shiftNcc",
+                      "threshold": 0.94821,
+                      "left": {
+                        "value": 2
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    }
+                  }
+                }
+              },
+              "right": {
+                "feature": "shiftAvg",
+                "threshold": 1.84301,
+                "left": {
+                  "value": 2
+                },
+                "right": {
+                  "feature": "shiftStd",
+                  "threshold": 0.32646,
+                  "left": {
+                    "value": 1
+                  },
+                  "right": {
+                    "value": 2
+                  }
+                }
+              }
+            }
+          }
+        },
+        "right": {
+          "feature": "area",
+          "threshold": 7798.5,
+          "left": {
+            "feature": "avgErr",
+            "threshold": 12.99217,
+            "left": {
+              "feature": "area",
+              "threshold": 6939.5,
+              "left": {
+                "feature": "maxEdgeLength",
+                "threshold": 101.5,
+                "left": {
+                  "feature": "avgErr",
+                  "threshold": 4.63596,
+                  "left": {
+                    "feature": "area",
+                    "threshold": 6669.5,
+                    "left": {
+                      "feature": "shiftStd",
+                      "threshold": 0.12672,
+                      "left": {
+                        "value": 1
+                      },
+                      "right": {
+                        "value": 3
+                      }
+                    },
+                    "right": {
+                      "value": 2
+                    }
+                  },
+                  "right": {
+                    "feature": "shiftStd",
+                    "threshold": 0.61725,
+                    "left": {
+                      "feature": "avgErr",
+                      "threshold": 7.15176,
+                      "left": {
+                        "value": 3
+                      },
+                      "right": {
+                        "value": 3
+                      }
+                    },
+                    "right": {
+                      "value": 3
+                    }
+                  }
+                },
+                "right": {
+                  "feature": "area",
+                  "threshold": 6518.5,
+                  "left": {
+                    "feature": "shiftStd",
+                    "threshold": 0.32006,
+                    "left": {
+                      "feature": "shiftAvg",
+                      "threshold": 0.0594,
+                      "left": {
+                        "value": 3
+                      },
+                      "right": {
+                        "value": 0
+                      }
+                    },
+                    "right": {
+                      "feature": "maxEdgeLength",
+                      "threshold": 112.0,
+                      "left": {
+                        "value": 3
+                      },
+                      "right": {
+                        "value": 0
+                      }
+                    }
+                  },
+                  "right": {
+                    "feature": "avgErr",
+                    "threshold": 10.76575,
+                    "left": {
+                      "feature": "shiftAvg",
+                      "threshold": 0.14444,
+                      "left": {
+                        "value": 3
+                      },
+                      "right": {
+                        "value": 0
+                      }
+                    },
+                    "right": {
+                      "feature": "shiftStd",
+                      "threshold": 0.05523,
+                      "left": {
+                        "value": 2
+                      },
+                      "right": {
+                        "value": 0
+                      }
+                    }
+                  }
+                }
+              },
+              "right": {
+                "feature": "area",
+                "threshold": 7016.5,
+                "left": {
+                  "feature": "shiftStd",
+                  "threshold": 0.10241,
+                  "left": {
+                    "feature": "shiftNcc",
+                    "threshold": 0.94872,
+                    "left": {
+                      "value": 2
+                    },
+                    "right": {
+                      "value": 1
+                    }
+                  },
+                  "right": {
+                    "feature": "avgErr",
+                    "threshold": 8.98234,
+                    "left": {
+                      "value": 1
+                    },
+                    "right": {
+                      "feature": "shiftStd",
+                      "threshold": 0.69029,
+                      "left": {
+                        "value": 1
+                      },
+                      "right": {
+                        "value": 3
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "feature": "xyRatio",
+                  "threshold": 1.34459,
+                  "left": {
+                    "feature": "area",
+                    "threshold": 7543.0,
+                    "left": {
+                      "feature": "shiftAvg",
+                      "threshold": 2.77302,
+                      "left": {
+                        "value": 1
+                      },
+                      "right": {
+                        "value": 2
+                      }
+                    },
+                    "right": {
+                      "feature": "area",
+                      "threshold": 7750.0,
+                      "left": {
+                        "value": 3
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    }
+                  },
+                  "right": {
+                    "feature": "avgErr",
+                    "threshold": 7.72202,
+                    "left": {
+                      "feature": "shiftStd",
+                      "threshold": 0.29807,
+                      "left": {
+                        "value": 2
+                      },
+                      "right": {
+                        "value": 2
+                      }
+                    },
+                    "right": {
+                      "feature": "shiftAvg",
+                      "threshold": 0.01196,
+                      "left": {
+                        "value": 1
+                      },
+                      "right": {
+                        "value": 3
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "right": {
+              "feature": "area",
+              "threshold": 7727.0,
+              "left": {
+                "feature": "shiftNcc",
+                "threshold": -0.00904,
+                "left": {
+                  "value": 0
+                },
+                "right": {
+                  "feature": "area",
+                  "threshold": 6315.5,
+                  "left": {
+                    "value": 0
+                  },
+                  "right": {
+                    "feature": "maxEdgeLength",
+                    "threshold": 86.5,
+                    "left": {
+                      "value": 1
+                    },
+                    "right": {
+                      "feature": "avgErr",
+                      "threshold": 18.03296,
+                      "left": {
+                        "value": 3
+                      },
+                      "right": {
+                        "value": 2
+                      }
+                    }
+                  }
+                }
+              },
+              "right": {
+                "feature": "area",
+                "threshold": 7743.5,
+                "left": {
+                  "value": 1
+                },
+                "right": {
+                  "feature": "shiftStd",
+                  "threshold": 1.13371,
+                  "left": {
+                    "value": 0
+                  },
+                  "right": {
+                    "value": 3
+                  }
+                }
+              }
+            }
+          },
+          "right": {
+            "feature": "avgErr",
+            "threshold": 15.21214,
+            "left": {
+              "feature": "shiftNcc",
+              "threshold": 0.4132,
+              "left": {
+                "feature": "shiftAvg",
+                "threshold": 1.84933,
+                "left": {
+                  "feature": "area",
+                  "threshold": 8249.5,
+                  "left": {
+                    "feature": "shiftAvg",
+                    "threshold": 0.02626,
+                    "left": {
+                      "value": 1
+                    },
+                    "right": {
+                      "feature": "maxEdgeLength",
+                      "threshold": 112.5,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    }
+                  },
+                  "right": {
+                    "feature": "shiftStd",
+                    "threshold": 0.67922,
+                    "left": {
+                      "feature": "xyRatio",
+                      "threshold": 1.56749,
+                      "left": {
+                        "value": 3
+                      },
+                      "right": {
+                        "value": 4
+                      }
+                    },
+                    "right": {
+                      "feature": "shiftNcc",
+                      "threshold": 0.25493,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "feature": "shiftStd",
+                  "threshold": 56.54151,
+                  "left": {
+                    "feature": "maxEdgeLength",
+                    "threshold": 122.5,
+                    "left": {
+                      "value": 3
+                    },
+                    "right": {
+                      "feature": "area",
+                      "threshold": 33824.5,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 2
+                      }
+                    }
+                  },
+                  "right": {
+                    "feature": "xyRatio",
+                    "threshold": 2.20634,
+                    "left": {
+                      "value": 3
+                    },
+                    "right": {
+                      "value": 0
+                    }
+                  }
+                }
+              },
+              "right": {
+                "feature": "area",
+                "threshold": 39035.0,
+                "left": {
+                  "feature": "area",
+                  "threshold": 33333.0,
+                  "left": {
+                    "feature": "area",
+                    "threshold": 27701.0,
+                    "left": {
+                      "feature": "area",
+                      "threshold": 21125.5,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 2
+                      }
+                    },
+                    "right": {
+                      "feature": "area",
+                      "threshold": 31018.0,
+                      "left": {
+                        "value": 3
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    }
+                  },
+                  "right": {
+                    "feature": "area",
+                    "threshold": 36166.0,
+                    "left": {
+                      "feature": "avgErr",
+                      "threshold": 12.42183,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 2
+                      }
+                    },
+                    "right": {
+                      "feature": "area",
+                      "threshold": 38280.0,
+                      "left": {
+                        "value": 2
+                      },
+                      "right": {
+                        "value": 4
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "feature": "area",
+                  "threshold": 49632.0,
+                  "left": {
+                    "feature": "area",
+                    "threshold": 47266.0,
+                    "left": {
+                      "feature": "maxEdgeLength",
+                      "threshold": 249.0,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 3
+                      }
+                    },
+                    "right": {
+                      "value": 0
+                    }
+                  },
+                  "right": {
+                    "feature": "shiftNcc",
+                    "threshold": 0.72616,
+                    "left": {
+                      "feature": "shiftNcc",
+                      "threshold": 0.63064,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    },
+                    "right": {
+                      "feature": "maxEdgeLength",
+                      "threshold": 356.5,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 3
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "right": {
+              "feature": "shiftStd",
+              "threshold": 0.43216,
+              "left": {
+                "feature": "shiftNcc",
+                "threshold": 0.967,
+                "left": {
+                  "feature": "maxEdgeLength",
+                  "threshold": 204.0,
+                  "left": {
+                    "feature": "shiftAvg",
+                    "threshold": 0.61229,
+                    "left": {
+                      "feature": "shiftAvg",
+                      "threshold": 0.33835,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 3
+                      }
+                    },
+                    "right": {
+                      "feature": "maxEdgeLength",
+                      "threshold": 178.5,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    }
+                  },
+                  "right": {
+                    "value": 3
+                  }
+                },
+                "right": {
+                  "value": 3
+                }
+              },
+              "right": {
+                "feature": "area",
+                "threshold": 32724.0,
+                "left": {
+                  "feature": "area",
+                  "threshold": 27858.0,
+                  "left": {
+                    "feature": "area",
+                    "threshold": 21442.0,
+                    "left": {
+                      "feature": "shiftAvg",
+                      "threshold": 5.06303,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 4
+                      }
+                    },
+                    "right": {
+                      "feature": "xyRatio",
+                      "threshold": 1.53114,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 4
+                      }
+                    }
+                  },
+                  "right": {
+                    "feature": "shiftAvg",
+                    "threshold": 31.99238,
+                    "left": {
+                      "feature": "shiftNcc",
+                      "threshold": 0.82302,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    },
+                    "right": {
+                      "feature": "maxEdgeLength",
+                      "threshold": 248.5,
+                      "left": {
+                        "value": 1
+                      },
+                      "right": {
+                        "value": 3
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "feature": "xyRatio",
+                  "threshold": 1.88338,
+                  "left": {
+                    "feature": "avgErr",
+                    "threshold": 15.72353,
+                    "left": {
+                      "feature": "shiftStd",
+                      "threshold": 37.82456,
+                      "left": {
+                        "value": 2
+                      },
+                      "right": {
+                        "value": 4
+                      }
+                    },
+                    "right": {
+                      "feature": "shiftStd",
+                      "threshold": 124.93196,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    }
+                  },
+                  "right": {
+                    "feature": "maxEdgeLength",
+                    "threshold": 263.0,
+                    "left": {
+                      "value": 2
+                    },
+                    "right": {
+                      "feature": "area",
+                      "threshold": 54679.0,
+                      "left": {
+                        "value": 4
+                      },
+                      "right": {
+                        "value": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "accuracy": 0.4657,
+  "feature_importances": {
+    "maxEdgeLength": 0.0336,
+    "area": 0.7412,
+    "xyRatio": 0.0273,
+    "shiftAvg": 0.0436,
+    "shiftStd": 0.0438,
+    "shiftNcc": 0.0465,
+    "avgErr": 0.0641
+  },
+  "num_train": 3554,
+  "num_test": 889
+}

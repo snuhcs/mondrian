@@ -4,4 +4,6 @@ opencv-python
 pandas
 scikit-learn
 scipy
+tensorflow-cpu==2.8.0
 tqdm
+ultralytics
