@@ -194,22 +194,7 @@ fi
 # =============================================================================
 print_step "Building APK"
 
-APK_PATH="android/Mondrian/build/outputs/apk/debug/Mondrian-debug.apk"
-
-echo "  Writing local.properties..."
-echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-
-echo "  Building (this may take a few minutes)..."
-cd android
-./gradlew assembleDebug
-cd "$SCRIPT_DIR"
-
-if [ -f "$APK_PATH" ]; then
-    echo -e "${GREEN}  APK built successfully: $APK_PATH${NC}"
-else
-    print_error "APK build failed. Check the Gradle output above."
-    exit 1
-fi
+"$SCRIPT_DIR/build.sh"
 
 # =============================================================================
 # Step 5: Push models and scale estimator to device
