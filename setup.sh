@@ -207,6 +207,20 @@ if ! command -v adb &> /dev/null; then
     echo ""
 else
     if adb devices | grep -q "device$"; then
+        # Auto-select device when multiple are connected
+        if [ -z "$ANDROID_SERIAL" ]; then
+            DEVICES=($(adb devices | grep "device$" | awk '{print $1}'))
+            if [ ${#DEVICES[@]} -gt 1 ]; then
+                echo "  Multiple devices detected:"
+                for i in "${!DEVICES[@]}"; do
+                    echo "    [$i] ${DEVICES[$i]}"
+                done
+                read -rp "  Select device [0]: " choice
+                choice=${choice:-0}
+                export ANDROID_SERIAL="${DEVICES[$choice]}"
+                echo "  Using: $ANDROID_SERIAL"
+            fi
+        fi
         adb shell mkdir -p /data/local/tmp/models/
 
         echo "  Pushing TFLite models..."
@@ -217,9 +231,14 @@ else
         echo "  Pushing scale estimator..."
         adb push offline/scale_estimator_mta.json /data/local/tmp/scale_estimator.json 2>/dev/null || true
 
-        echo -e "${GREEN}  Models pushed to device.${NC}"
+        echo "  Pushing example video and config..."
+        adb shell mkdir -p /data/local/tmp/video/
+        adb push example/MOT17-04_5s.mp4 /data/local/tmp/video/
+        adb push example/config.json /data/local/tmp/config.json
+
+        echo -e "${GREEN}  Models, example video, and config pushed to device.${NC}"
     else
-        echo -e "${YELLOW}  No device connected. Skipping model push.${NC}"
+        echo -e "${YELLOW}  No device connected. Skipping device push.${NC}"
         echo "  Connect a device and run: ./run.sh"
     fi
 fi
@@ -233,10 +252,11 @@ echo -e "${GREEN}Setup complete!${NC}"
 echo "========================================="
 echo ""
 echo "Next steps:"
-echo "  1. Push your video to the device:"
+echo "  1. Run the example:"
+echo "       ./run.sh"
+echo "  2. Or use your own video:"
 echo "       adb push <video_file> /data/local/tmp/video/"
-echo "  2. Edit android/config.json (set video path, num_frames, fps, etc.)"
-echo "  3. Push config and run:"
-echo "       adb push android/config.json /data/local/tmp/config.json"
+echo "       # Edit example/config.json (set video_configs.path, num_frames, fps)"
+echo "       adb push example/config.json /data/local/tmp/config.json"
 echo "       ./run.sh"
 echo ""

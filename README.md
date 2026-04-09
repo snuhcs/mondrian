@@ -7,7 +7,11 @@ On-device high-performance video analytics with compressive packed inference.
 **Paper**: [Mondrian: On-device high-performance video analytics with compressive packed inference](https://arxiv.org/abs/2403.07598)
 
 <p align="center">
-  <img src="mondrian.png" alt="Mondrian pipeline: input frames → ROI extraction → scaled ROIs → packed canvases for GPU/NPU inference" width="100%">
+  <video src="demo.mp4" autoplay loop muted playsinline width="100%"></video>
+</p>
+
+<p align="center">
+  <img src="mondrian.jpg" alt="Mondrian pipeline: input frames → ROI extraction → scaled ROIs → packed canvases for GPU/NPU inference" width="100%">
 </p>
 
 ## Overview
@@ -58,21 +62,25 @@ Connect an Android device via USB debugging or wireless debugging:
 adb devices  # should list your device
 ```
 
-Push your video and config to the device:
+**Quick start with the included example** (5-second clip from [MOT17-04](https://motchallenge.net/data/MOT17/)):
+
+`setup.sh` already pushes the example video and config to the device, so you can run immediately:
+
+```bash
+./run.sh
+# Running... [████████████████░░░░░░░░░░░░░░░░░░░░░░░░]  40%
+```
+
+**Using your own video:**
 
 ```bash
 # Push video
 adb push <video_file> /data/local/tmp/video/
 
-# Edit android/config.json (set video_configs.path, num_frames, fps, etc.)
-adb push android/config.json /data/local/tmp/config.json
-```
+# Edit example/config.json (set video_configs.path, num_frames, fps, etc.)
+adb push example/config.json /data/local/tmp/config.json
 
-Then install the APK, launch, and monitor progress:
-
-```bash
 ./run.sh
-# Running... [████████████████░░░░░░░░░░░░░░░░░░░░░░░░]  40%
 ```
 
 The script installs the APK, starts the app, and displays a live progress bar until processing completes. Press `Ctrl+C` to stop monitoring (the app continues running on the device).
@@ -160,6 +168,10 @@ setup.sh                    # One-time build pipeline (conda, models, SDK, APK)
 build.sh                    # Incremental APK build (after code changes)
 run.sh                      # Deploy APK, launch, and monitor progress
 pull.sh                     # Pull log files from device
+
+example/                    # Example video and config
+├── MOT17-04_5s.mp4         # 5s clip from MOT17-04 (1080p, 30fps)
+└── config.json             # Matching config for the example video
 
 offline/                    # Offline model preparation
 ├── export_tflite.py        # YOLO .pt → TFLite conversion

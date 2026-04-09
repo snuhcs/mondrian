@@ -278,3 +278,20 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+================================================================================
+MOT17 Dataset (example video)
+================================================================================
+
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+https://motchallenge.net/data/MOT17/
+
+The file example/MOT17-04_5s.mp4 is a 5-second excerpt from the MOT17-04
+sequence of the MOT17 benchmark dataset, re-encoded for use as an example input.
+
+Citation:
+
+  A. Milan, L. Leal-Taixe, I. Reid, S. Roth, and K. Schindler,
+  "MOT16: A Benchmark for Multi-Object Tracking,"
+  arXiv preprint arXiv:1603.00831, 2016.

@@ -2,9 +2,9 @@
     "log_dir": "/data/data/hcs.offloading.mondrian/log/240101000000",
     "video_configs": [
         {
-            "num_streams": 1,
-            "path": "/data/local/tmp/video/mta_test_cam_3.mp4",
-            "num_frames": 4922,
+            "num_streams": 2,
+            "path": "/data/local/tmp/video/MOT17-04_5s.mp4",
+            "num_frames": 150,
             "fps": 30
         }
     ],

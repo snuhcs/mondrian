@@ -20,7 +20,7 @@ NC='\033[0m'
 LOG_DIR=$(python3 -c "
 import json, sys
 try:
-    cfg = json.load(open('$SCRIPT_DIR/android/config.json'))
+    cfg = json.load(open('$SCRIPT_DIR/example/config.json'))
     # e.g. /data/data/hcs.offloading.mondrian/log/240101000000
     print(cfg['log_dir'].split('$PKG/')[-1])
 except: sys.exit(1)
