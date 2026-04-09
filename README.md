@@ -7,7 +7,7 @@ On-device high-performance video analytics with compressive packed inference.
 **Paper**: [Mondrian: On-device high-performance video analytics with compressive packed inference](https://arxiv.org/abs/2403.07598)
 
 <p align="center">
-  <video src="demo.mp4" autoplay loop muted playsinline width="100%"></video>
+  <img src="demo.gif" alt="Mondrian running on Galaxy S23" width="100%">
 </p>
 
 <p align="center">
