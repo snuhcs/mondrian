@@ -68,7 +68,7 @@ public class MondrianUI implements SurfaceHolder.Callback {
             Mat inputResizedRgbMat = inputResizedRgbMats.get(vid);
             byte[] inputBuffer = inputBuffers.get(vid);
             SurfaceView inputView = inputViews.get(vid);
-            Imgproc.cvtColor(yuvMat, inputRgbMat, Imgproc.COLOR_YUV2RGBA_NV12);
+            Imgproc.cvtColor(yuvMat, inputRgbMat, Imgproc.COLOR_YUV2RGBA_I420);
             Imgproc.resize(inputRgbMat, inputResizedRgbMat, inputSize, 0, 0, Imgproc.INTER_LINEAR);
             inputResizedRgbMat.get(0, 0, inputBuffer);
             JniRenderer.draw(inputView.getHolder(), inputBuffer, (int) inputSize.width, (int) inputSize.height);

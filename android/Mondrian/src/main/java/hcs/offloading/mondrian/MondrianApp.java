@@ -79,7 +79,7 @@ public class MondrianApp implements VideoLoader.Callback {
 
     @Override
     public void onFrame(int vid, Mat yuvMat) {
-//        mondrianUI.onFrame(vid, yuvMat);
+        mondrianUI.onFrame(vid, yuvMat);
         enqueue(handle, vid, yuvMat.getNativeObjAddr());
     }
 
