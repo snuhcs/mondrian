@@ -10,7 +10,7 @@ conda env create -f environment.yml
 conda activate mondrian-offline
 ```
 
-Or manually: Python 3.10 + `pip install -r requirements.txt`. Python 3.10 is required for TFLite export compatibility with the runtime (TFLite 2.8).
+Or manually: Python 3.10 + `pip install -r requirements.txt`.
 
 ## Pipeline Overview
 
