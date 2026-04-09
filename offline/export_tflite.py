@@ -45,7 +45,7 @@ def main():
     # Rename to a descriptive filename
     exported = Path(result)
     if exported.exists():
-        model_name = Path(args.model).stem.rstrip('u')  # yolov5mu -> yolov5m
+        model_name = Path(args.model).stem  # yolov5mu, yolov5lu, etc.
         quant = 'int8' if args.int8 else 'fp16'
         dest = args.output or str(exported.parent.parent / f'{model_name}-{args.imgsz}-{quant}.tflite')
         exported.rename(dest)

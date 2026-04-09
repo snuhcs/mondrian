@@ -74,9 +74,9 @@ fi
 
 # Export models (check each individually)
 MODELS_TO_EXPORT=(
-    "yolov5l.pt:1024:yolov5l-1024-fp16.tflite"
-    "yolov5m.pt:640:yolov5m-640-fp16.tflite"
-    "yolov5m.pt:1280:yolov5m-1280-fp16.tflite"
+    "yolov5lu.pt:1024:yolov5lu-1024-fp16.tflite"
+    "yolov5mu.pt:640:yolov5mu-640-fp16.tflite"
+    "yolov5mu.pt:1280:yolov5mu-1280-fp16.tflite"
 )
 
 all_models_exist=true
@@ -224,9 +224,9 @@ else
         adb shell mkdir -p /data/local/tmp/models/
 
         echo "  Pushing TFLite models..."
-        adb push yolov5l-1024-fp16.tflite /data/local/tmp/models/
-        adb push yolov5m-640-fp16.tflite /data/local/tmp/models/
-        adb push yolov5m-1280-fp16.tflite /data/local/tmp/models/
+        adb push yolov5lu-1024-fp16.tflite /data/local/tmp/models/
+        adb push yolov5mu-640-fp16.tflite /data/local/tmp/models/
+        adb push yolov5mu-1280-fp16.tflite /data/local/tmp/models/
 
         echo "  Pushing scale estimator..."
         adb push offline/scale_estimator_mta.json /data/local/tmp/scale_estimator.json 2>/dev/null || true

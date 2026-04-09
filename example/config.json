@@ -52,13 +52,13 @@
     },
     "inference_engine": {
         "full_device": "GPU",
-        "full_model": "/data/local/tmp/models/yolov5l-1024-fp16.tflite",
+        "full_model": "/data/local/tmp/models/yolov5lu-1024-fp16.tflite",
         "full_frame_size": 1024,
         "worker_configs": {
             "GPU": {
                 "models": {
-                    "640": "/data/local/tmp/models/yolov5m-640-fp16.tflite",
-                    "1280": "/data/local/tmp/models/yolov5m-1280-fp16.tflite"
+                    "640": "/data/local/tmp/models/yolov5mu-640-fp16.tflite",
+                    "1280": "/data/local/tmp/models/yolov5mu-1280-fp16.tflite"
                 }
             }
         },
