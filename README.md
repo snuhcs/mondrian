@@ -6,6 +6,10 @@ On-device high-performance video analytics with compressive packed inference.
 
 **Paper**: [Mondrian: On-device high-performance video analytics with compressive packed inference](https://arxiv.org/abs/2403.07598)
 
+<p align="center">
+  <img src="mondrian.png" alt="Mondrian pipeline: input frames → ROI extraction → scaled ROIs → packed canvases for GPU/NPU inference" width="100%">
+</p>
+
 ## Overview
 
 Mondrian is a multi-stream video analytics system that performs spatio-temporal packing of regions of interest (ROIs) for efficient object detection on Android devices. Tested on Ubuntu 22.04 with Galaxy S22, S23, and S25. It consists of:
@@ -72,6 +76,13 @@ Then install the APK, launch, and monitor progress:
 ```
 
 The script installs the APK, starts the app, and displays a live progress bar until processing completes. Press `Ctrl+C` to stop monitoring (the app continues running on the device).
+
+After modifying source code, rebuild and re-deploy with:
+
+```bash
+./build.sh   # incremental build (faster than setup.sh)
+./run.sh     # install + launch
+```
 
 ## Step 3: Collect & Interpret Results
 
@@ -146,6 +157,7 @@ Each thread communicates via named queues (`PDWaiting_` → `OFWaiting_` → `Po
 
 ```
 setup.sh                    # One-time build pipeline (conda, models, SDK, APK)
+build.sh                    # Incremental APK build (after code changes)
 run.sh                      # Deploy APK, launch, and monitor progress
 pull.sh                     # Pull log files from device
 
