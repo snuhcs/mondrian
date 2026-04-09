@@ -156,7 +156,7 @@ Runtime behavior is controlled by `android/config.json`:
 The runtime pipeline consists of 7 threads in a producer-consumer chain:
 
 1. **VideoLoader** — decodes video frames (YUV)
-2. **ROIExtractor::PDThread** — person detection to extract ROIs
+2. **ROIExtractor::PDThread** — pixel difference to extract ROIs
 3. **ROIExtractor::OFThread** — optical flow tracking + PD filtering
 4. **ROIExtractor::PostprocessThread** — ROI scaling and merging
 5. **Mondrian::scheduleThread** — inference scheduling + ROI packing
