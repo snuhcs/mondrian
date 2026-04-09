@@ -13,25 +13,13 @@
 
 namespace md {
 
-TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(const std::string& modelName,
+TfLiteYoloV5Classifier::TfLiteYoloV5Classifier(const std::string& modelPath,
                                                const int inputSize,
-                                               const bool forFullFrame,
-                                               const std::string& dataset,
                                                const float confThres,
                                                const float iouThres)
-    : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 63,
+    : Classifier(NUM_LABELS, inputSize, (inputSize / 32) * (inputSize / 32) * 21,
                  confThres, iouThres) {
-  std::stringstream ss;
-  ss << "/data/local/tmp/models/";
-  if (dataset != "coco") {
-    ss << dataset << "-"
-       << (forFullFrame ? "full" : "pack") << "-";
-  }
-  ss << modelName << "-"
-     << inputSize << "-"
-     << "fp16.tflite";
-
-  auto model = tflite::FlatBufferModel::BuildFromFile(ss.str().c_str());
+  auto model = tflite::FlatBufferModel::BuildFromFile(modelPath.c_str());
   if (model == nullptr) {
     LOGE("YoloV5 model load failed");
   } else {
@@ -114,13 +102,12 @@ std::vector<BoundingBox> TfLiteYoloV5Classifier::postprocess(int width, int heig
     float maxConfidence = 0;
     int maxLabel = -1;
     for (int label = 0; label < numLabels; label++) {
-      float confidence = outputs[i * OUTPUT_ELEMS + 5 + label];
+      float confidence = outputs[i * OUTPUT_ELEMS + 4 + label];
       if (maxConfidence < confidence) {
         maxConfidence = confidence;
         maxLabel = label;
       }
     }
-    maxConfidence *= outputs[i * OUTPUT_ELEMS + 4];
     if (maxLabel == 0 && maxConfidence > confThres) {
       cv::Rect2f rect = reconstructBox((float) outputs[i * OUTPUT_ELEMS + 0],
                                        (float) outputs[i * OUTPUT_ELEMS + 1],

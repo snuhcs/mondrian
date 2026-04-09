@@ -10,10 +10,8 @@ namespace md {
 
 class TfLiteYoloV5ClassifierDSP : public Classifier {
  public:
-  TfLiteYoloV5ClassifierDSP(const std::string& modelName,
+  TfLiteYoloV5ClassifierDSP(const std::string& modelPath,
                             const int inputSize,
-                            const bool forFullFrame,
-                            const std::string& dataset,
                             const float confThres,
                             const float iouThres);
 
@@ -38,9 +36,9 @@ class TfLiteYoloV5ClassifierDSP : public Classifier {
   float outputScale;
 
   uint8_t* input; // 1 x inputSize.height x inputSize.width x 3
-  uint8_t* outputs; // 1 x outputSize x 85 (boxes, maxConf, confidences)
+  uint8_t* outputs; // 1 x outputSize x 84 (boxes, confidences)
 
-  inline static const int OUTPUT_ELEMS = 85;
+  inline static const int OUTPUT_ELEMS = 84;
 };
 
 } // namespace md

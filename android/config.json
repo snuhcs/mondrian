@@ -37,7 +37,7 @@
     "roi_resizer": {
         "static_area": false,
         "static_target_area": 0.0,
-        "dataset": "mta",
+        "scale_estimator_fp16": "/data/local/tmp/scale_estimator.json",
         "voting_window_size": 5,
         "area_shift": 1000.0,
         "scale_shift": 0.0,
@@ -52,20 +52,17 @@
     },
     "inference_engine": {
         "full_device": "GPU",
-        "full_model": "yolov5l",
-        "full_dataset": "mta",
+        "full_model": "/data/local/tmp/models/yolov5l-1024-fp16.tflite",
         "full_frame_size": 1024,
         "worker_configs": {
             "GPU": {
-                "model": "yolov5m",
-                "dataset": "mta",
-                "input_sizes": [
-                    640,
-                    1280
-                ]
+                "models": {
+                    "640": "/data/local/tmp/models/yolov5m-640-fp16.tflite",
+                    "1280": "/data/local/tmp/models/yolov5m-1280-fp16.tflite"
+                }
             }
         },
-        "draw_inference_result": false,
+        "draw_inference_result": true,
         "conf_thres": 0.5,
         "iou_thres": 0.5,
         "profile_warmups": 3,

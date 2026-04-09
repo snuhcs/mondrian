@@ -71,7 +71,10 @@ ROIResizerConfig parseROIResizerConfig(const Json::Value& json) {
   ROIResizerConfig config = {};
   config.STATIC_AREA = parseBool(json, "static_area");
   config.STATIC_TARGET_AREA = parseFloat(json, "static_target_area");
-  config.DATASET = parseString(json, "dataset");
+  config.SCALE_ESTIMATOR_FP16 = parseString(json, "scale_estimator_fp16");
+  if (json.isMember("scale_estimator_int8")) {
+    config.SCALE_ESTIMATOR_INT8 = parseString(json, "scale_estimator_int8");
+  }
   config.VOTING_WINDOW_SIZE = parseInt(json, "voting_window_size");
   config.AREA_SHIFT = parseFloat(json, "area_shift");
   config.SCALE_SHIFT = parseFloat(json, "scale_shift");
@@ -95,10 +98,10 @@ static std::map<Device, WorkerConfig> parseWorkerConfigs(const Json::Value& json
     Device device = deviceOf(it.key().asString());
     const Json::Value& workerConfigJson = *it;
     WorkerConfig workerConfig = {};
-    workerConfig.MODEL = parseString(workerConfigJson, "model");
-    workerConfig.DATASET = parseString(workerConfigJson, "dataset");
-    for (const auto& value : workerConfigJson["input_sizes"]) {
-      workerConfig.INPUT_SIZES.push_back(value.asInt());
+    const Json::Value& modelsJson = workerConfigJson["models"];
+    for (auto modelIt = modelsJson.begin(); modelIt != modelsJson.end(); modelIt++) {
+      int inputSize = std::stoi(modelIt.key().asString());
+      workerConfig.MODELS[inputSize] = (*modelIt).asString();
     }
     workerConfigs[device] = workerConfig;
   }
@@ -108,8 +111,7 @@ static std::map<Device, WorkerConfig> parseWorkerConfigs(const Json::Value& json
 InferenceEngineConfig parseInferenceEngineConfig(const Json::Value& json) {
   InferenceEngineConfig config = {};
   config.FULL_DEVICE = deviceOf(parseString(json, "full_device"));
-  config.FULL_MODEL = parseString(json, "full_model");
-  config.FULL_DATASET = parseString(json, "full_dataset");
+  config.FULL_MODEL_PATH = parseString(json, "full_model");
   config.FULL_FRAME_SIZE = parseInt(json, "full_frame_size");
   config.WORKER_CONFIGS = parseWorkerConfigs(json["worker_configs"]);
   config.DRAW_INFERENCE_RESULT = parseBool(json, "draw_inference_result");
@@ -157,8 +159,6 @@ MondrianConfig parseMondrianConfig(const std::string& jsonPath) {
 }
 
 void MondrianConfig::test() const {
-  std::set<std::string> datasets = {"pretrained", "virat", "mta"};
-
   // Common
   if (EXECUTION_TYPE == ExecutionType::FRAME_WISE_INFERENCE) {
     assert(FULL_FRAME_INTERVAL == 0);
@@ -183,21 +183,21 @@ void MondrianConfig::test() const {
   if (EXECUTION_TYPE != ExecutionType::FRAME_WISE_INFERENCE) {
     assert(std::any_of(
         inferenceEngineConfig.WORKER_CONFIGS.begin(), inferenceEngineConfig.WORKER_CONFIGS.end(),
-        [](const auto& pair) { return !pair.second.INPUT_SIZES.empty(); }));
+        [](const auto& pair) { return !pair.second.MODELS.empty(); }));
   }
   if (EXECUTION_TYPE == ExecutionType::ROI_WISE_INFERENCE) {
     for (const auto& [device, workerConfig] : inferenceEngineConfig.WORKER_CONFIGS) {
-      assert(workerConfig.INPUT_SIZES.size() <= 1);
-      if (!workerConfig.INPUT_SIZES.empty()) {
-        assert(ROI_SIZE == *workerConfig.INPUT_SIZES.begin());
+      assert(workerConfig.MODELS.size() <= 1);
+      if (!workerConfig.MODELS.empty()) {
+        assert(ROI_SIZE == workerConfig.MODELS.begin()->first);
       }
     }
   }
   if (EXECUTION_TYPE == ExecutionType::EMULATED_BATCH) {
     for (const auto& [device, workerConfig] : inferenceEngineConfig.WORKER_CONFIGS) {
-      assert(std::all_of(
-          workerConfig.INPUT_SIZES.begin(), workerConfig.INPUT_SIZES.end(),
-          [this](int input_size) { return input_size % ROI_SIZE == 0; }));
+      for (const auto& [inputSize, modelPath] : workerConfig.MODELS) {
+        assert(inputSize % ROI_SIZE == 0);
+      }
     }
   }
 }
@@ -248,7 +248,8 @@ void ROIResizerConfig::print() const {
   ss << "========== ROIResizerConfig ==========" << std::endl;
   ss << "STATIC_AREA: " << STATIC_AREA << std::endl;
   ss << "STATIC_TARGET_AREA: " << STATIC_TARGET_AREA << std::endl;
-  ss << "DATASET: " << DATASET << std::endl;
+  ss << "SCALE_ESTIMATOR_FP16: " << SCALE_ESTIMATOR_FP16 << std::endl;
+  ss << "SCALE_ESTIMATOR_INT8: " << SCALE_ESTIMATOR_INT8 << std::endl;
   ss << "VOTING_WINDOW_SIZE: " << VOTING_WINDOW_SIZE << std::endl;
   ss << "AREA_SHIFT: " << AREA_SHIFT << std::endl;
   ss << "SCALE_SHIFT: " << SCALE_SHIFT << std::endl;
@@ -268,10 +269,8 @@ void ROIPackerConfig::print() const {
 
 std::string WorkerConfig::str() const {
   std::stringstream ss;
-  ss << MODEL << " ";
-  ss << DATASET << " ";
-  for (int input_size : INPUT_SIZES) {
-    ss << input_size << " ";
+  for (const auto& [inputSize, modelPath] : MODELS) {
+    ss << inputSize << "=" << modelPath << " ";
   }
   return ss.str();
 }
@@ -280,8 +279,7 @@ void InferenceEngineConfig::print() const {
   std::stringstream ss;
   ss << "========== InferenceEngineConfig ==========" << std::endl;
   ss << "FULL_DEVICE: " << str(FULL_DEVICE) << std::endl;
-  ss << "FULL_MODEL: " << FULL_MODEL << std::endl;
-  ss << "FULL_DATASET: " << FULL_DATASET << std::endl;
+  ss << "FULL_MODEL: " << FULL_MODEL_PATH << std::endl;
   ss << "FULL_FRAME_SIZE: " << FULL_FRAME_SIZE << std::endl;
   for (const auto& [device, workerConfig]: WORKER_CONFIGS) {
     ss << "WORKER_CONFIGS [" << str(device) << "]: " << workerConfig.str() << std::endl;

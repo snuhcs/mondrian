@@ -3,7 +3,7 @@
 Step 4: Train the ROI scale estimator.
 
 Input:  Scale canvases + YOLO model + original videos
-Output: scaler.json (decision tree for runtime ROI scaling)
+Output: scale_estimator.json (decision tree for runtime ROI scaling)
 
 The scale estimator predicts how much each ROI can be downscaled at runtime
 while still being detected. It uses optical flow features and ROI geometry
@@ -243,7 +243,7 @@ def main():
                         help='YOLO model (.pt path or model name)')
     parser.add_argument('--canvas-size', type=int, required=True)
     parser.add_argument('--output', required=True,
-                        help='Output scaler.json path')
+                        help='Output scale_estimator.json path')
     parser.add_argument('--iou-thres', type=float, default=0.5,
                         help='IoU threshold for detection matching')
     parser.add_argument('--conf-thres', type=float, default=0.3,

@@ -117,7 +117,7 @@ void ROIPacker::pack(const int currID,
   time_us startTime = NowMicros();
 
   // Split inferencePlan by device and prepare free rects for each device
-  assert (!inferencePlan.empty());
+  if (inferencePlan.empty()) return;
   auto inferencePlanTable = inferencePlanTableOf(inferencePlan, executionType_);
   auto freeRectsVecTable = freeRectsVecTableOf(inferencePlanTable);
 

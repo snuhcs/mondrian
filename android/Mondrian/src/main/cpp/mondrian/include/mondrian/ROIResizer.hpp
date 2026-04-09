@@ -7,15 +7,11 @@
 #include "mondrian/Config.hpp"
 #include "mondrian/Features.hpp"
 #include "mondrian/ROI.hpp"
-#include "mondrian/tree/VIRAT.hpp"
-#include "mondrian/tree/MTA.hpp"
+#include "mondrian/ScaleEstimator.hpp"
 
 namespace md {
 
 class ROI;
-
-using Predictor = std::function<int(
-    float, float, float, float, float, float, float)>;
 
 class ROIResizer {
  public:
@@ -63,12 +59,11 @@ class ROIResizer {
 
   std::vector<float> areaLevelsOf(Device device) const;
 
-  Predictor predictorOf(Device device) const;
-
-  static const std::map<std::pair<Device, std::string>,
-                        std::pair<Predictor, std::vector<float>>> PREDICTORS;
+  const ScaleEstimator& estimatorOf(Device device) const;
 
   const ROIResizerConfig config_;
+
+  std::map<Device, ScaleEstimator> estimators_;
 
   // Save prev prediction to smooth the predicted size
   std::map<Device, std::map<OID, CircularBuffer>> prevPredictionBufferTable_;

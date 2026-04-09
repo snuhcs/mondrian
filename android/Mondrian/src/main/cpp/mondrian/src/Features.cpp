@@ -162,7 +162,7 @@ std::string Features::str() const {
   std::stringstream ss;
   ss << width << DELIM
      << height << DELIM
-     << COCO_LABELS[label] << DELIM
+     << (label >= 0 && label < NUM_LABELS ? COCO_LABELS[label] : "unknown") << DELIM
      << ::md::str(type) << DELIM
      << xyRatio << DELIM
      << confidence << DELIM

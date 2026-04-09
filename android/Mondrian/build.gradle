@@ -44,7 +44,7 @@ android {
     }
     sourceSets {
         main {
-            jniLibs.srcDir 'cpp'
+            jniLibs.srcDir 'src/main/cpp/jniLibs'
         }
     }
 }

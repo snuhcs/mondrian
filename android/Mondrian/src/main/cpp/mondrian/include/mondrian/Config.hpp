@@ -32,7 +32,8 @@ struct ROIResizerConfig {
   // Predictive model configs
   bool STATIC_AREA;
   float STATIC_TARGET_AREA;
-  std::string DATASET;
+  std::string SCALE_ESTIMATOR_FP16;
+  std::string SCALE_ESTIMATOR_INT8;
   int VOTING_WINDOW_SIZE;
   float AREA_SHIFT;
   float SCALE_SHIFT;
@@ -54,17 +55,14 @@ struct ROIPackerConfig {
 };
 
 struct WorkerConfig {
-  std::string MODEL;
-  std::string DATASET;
-  std::vector<int> INPUT_SIZES;
+  std::map<int, std::string> MODELS;  // input_size → model_path
 
   std::string str() const;
 };
 
 struct InferenceEngineConfig {
   Device FULL_DEVICE;
-  std::string FULL_MODEL;
-  std::string FULL_DATASET;
+  std::string FULL_MODEL_PATH;
   int FULL_FRAME_SIZE;
   std::map<Device, WorkerConfig> WORKER_CONFIGS;
   bool DRAW_INFERENCE_RESULT;

@@ -1,82 +1,18 @@
-# Mondrian Offline Stage
+# Fine-Tuning Guide
 
-Prepares detection models and the ROI scale estimator for Mondrian's packed canvas inference.
+This guide covers training a custom scale estimator and/or fine-tuning the packed canvas detector on your own data. All steps are optional — Mondrian works out of the box with pre-trained models (see [README.md](README.md)).
 
-## Required Models
-
-The runtime needs three components:
-
-| Component | Role | Default |
-|-----------|------|---------|
-| **Full-frame detector** | Detects objects in full frames to extract ROIs | Pre-trained YOLOv5lu |
-| **Packed canvas detector** | Detects objects in packed canvases (2 sizes: 640, 1280) | Pre-trained YOLOv5mu |
-| **Scale estimator** | Predicts how much each ROI can be downscaled | `scaler_mta.json` (included) |
-
-All models use the ultralytics YOLOv5 updated (anchor-free) architecture.
-
-## Quick Start (No Training Required)
-
-Mondrian works out of the box with pre-trained models:
+## Prerequisites
 
 ```bash
-# Set up environment
-conda env create -f environment.yml
-conda activate mondrian-offline
-
-# Full-frame detector (for ROI extraction)
-python export_tflite.py --model yolov5lu.pt --imgsz 1024
-
-# Packed canvas detector (2 sizes)
-python export_tflite.py --model yolov5mu.pt --imgsz 640
-python export_tflite.py --model yolov5mu.pt --imgsz 1280
-```
-
-Deploy to device:
-- TFLite models: outputs of `export_tflite.py` above
-- Scale estimator: `scaler_mta.json` (included in this repository)
-
-For custom training (fine-tune on your own data and/or train a custom scale estimator), see [Custom Training](#custom-training) below.
-
-## Provided Files
-
-| File | Description |
-|------|-------------|
-| `scaler_mta.json` | Default scale estimator trained on MTA dataset. Works as a reasonable default for surveillance scenarios. |
-| `export_tflite.py` | Converts YOLO .pt models to TFLite format |
-
-## Runtime Deployment
-
-Push models and scaler to the Android device:
-
-```bash
-adb push *.tflite /data/local/tmp/models/
-adb push scaler_mta.json /data/local/tmp/scaler.json
-```
-
-Corresponding `config.json` fields:
-
-| File | Config field |
-|------|-------------|
-| Full-frame TFLite (1024) | `inference_engine.full_model`, `inference_engine.full_frame_size` |
-| Packed canvas TFLite (640, 1280) | `inference_engine.worker_configs.GPU.input_sizes` |
-| `scaler.json` | `roi_resizer` (or set `roi_resizer.static_area: true` to skip) |
-
----
-
-## Custom Training
-
-Use the scripts below to fine-tune models and/or train a scale estimator on your own videos. All steps are optional — you can run any combination depending on your needs.
-
-### Prerequisites
-
-```bash
+cd offline
 conda env create -f environment.yml
 conda activate mondrian-offline
 ```
 
-Or manually: Python 3.10 + `pip install -r requirements.txt`. Python 3.10 is required for TFLite export compatibility with the runtime (TF Lite 2.8).
+Or manually: Python 3.10 + `pip install -r requirements.txt`. Python 3.10 is required for TFLite export compatibility with the runtime (TFLite 2.8).
 
-### Pipeline Overview
+## Pipeline Overview
 
 ```
 Videos
@@ -92,7 +28,7 @@ Step 2 ─ pack_canvases ──→ packed canvases
   └─ --mode val   ──→ packed/val/  (for fine-tuning, optional)
   │
   ▼
-Step 3 ─ train_scale_estimator ──→ scaler.json
+Step 3 ─ train_scale_estimator ──→ scale_estimator.json
   │       (uses pre-trained YOLO by default)
   │
 Step 4 ─ export_tflite ──→ model.tflite
@@ -105,11 +41,11 @@ Optional ─ finetune_packed_detector ──→ fine-tuned model.pt
 |------|--------|------------|-----------|
 | 1 | `label_frames.py` | Videos | Skip if you provide your own `frames/` + `labels/` + `frame_map.json` |
 | 2 | `pack_canvases.py` | Step 1 output | `--mode scale` for Step 3; `--mode train/val` only if fine-tuning |
-| 3 | `train_scale_estimator.py` | Step 2 (scale) + videos | Optional — use `scaler_mta.json` as default |
+| 3 | `train_scale_estimator.py` | Step 2 (scale) + videos | Optional — use `scale_estimator_mta.json` as default |
 | 4 | `export_tflite.py` | model .pt | Required if using pre-trained model (Option A) |
 | F | `finetune_packed_detector.py` | Step 2 (train+val) | Optional — for higher packed canvas accuracy |
 
-### Complete Workflow Examples
+## Complete Workflow Examples
 
 Replace `VIDEOS` and `WS` with your paths.
 
@@ -118,7 +54,7 @@ VIDEOS="/path/to/video1.mp4 /path/to/video2.mp4"
 WS=./workspace
 ```
 
-#### Without fine-tuning (scale estimator only)
+### Without fine-tuning (scale estimator only)
 
 ```bash
 # Step 1: Label frames
@@ -133,7 +69,7 @@ for SIZE in 640 1280; do
     --videos $VIDEOS \
     --frame-map $WS/frame_map.json \
     --canvas-size $SIZE \
-    --output $WS/scaler_$SIZE.json
+    --output $WS/scale_estimator_$SIZE.json
 done
 
 # Step 4: Export pre-trained model
@@ -141,7 +77,7 @@ python export_tflite.py --model yolov5mu.pt --imgsz 640
 python export_tflite.py --model yolov5mu.pt --imgsz 1280
 ```
 
-#### With fine-tuning (full pipeline)
+### With fine-tuning (full pipeline)
 
 ```bash
 # Step 1: Label frames
@@ -167,12 +103,14 @@ for SIZE in 640 1280; do
     --frame-map $WS/frame_map.json \
     --model $MODEL \
     --canvas-size $SIZE \
-    --output $WS/scaler_$SIZE.json
+    --output $WS/scale_estimator_$SIZE.json
 
   # Step 4: Export fine-tuned model
   python export_tflite.py --model $MODEL --imgsz $SIZE
 done
 ```
+
+## Step Reference
 
 ### Step 1: Label Frames
 
@@ -223,8 +161,6 @@ python pack_canvases.py --input ./workspace --canvas-size 1280 --mode scale
 | | `workspace/packed/scale/{size}/info/*.json` — packing metadata |
 | **Debug** | `workspace/debug/packed_{mode}/*.jpg` — sample canvases with bboxes drawn (first 20) |
 
-The output follows the standard YOLOv5 training directory structure (`images/` + `labels/`).
-
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `--input` | *(required)* | Workspace directory |
@@ -248,13 +184,13 @@ python train_scale_estimator.py \
   --videos /path/to/video1.mp4 /path/to/video2.mp4 \
   --frame-map ./workspace/frame_map.json \
   --canvas-size 1280 \
-  --output ./workspace/scaler.json
+  --output ./workspace/scale_estimator.json
 ```
 
 | | Details |
 |---|---|
 | **Input** | Scale canvases (from Step 2) + original videos |
-| **Output** | `scaler.json` — decision tree for runtime |
+| **Output** | `scale_estimator.json` — decision tree for runtime |
 
 | Argument | Default | Description |
 |----------|---------|-------------|
@@ -263,7 +199,7 @@ python train_scale_estimator.py \
 | `--frame-map` | *(required)* | Path to frame_map.json |
 | `--model` | `yolov5mu.pt` | YOLO model for detection (pre-trained or fine-tuned .pt path) |
 | `--canvas-size` | *(required)* | Canvas size |
-| `--output` | *(required)* | Output scaler.json path |
+| `--output` | *(required)* | Output scale_estimator.json path |
 | `--num-levels` | `5` | Scale quantization levels |
 | `--max-depth` | `10` | Decision tree max depth |
 
@@ -311,7 +247,7 @@ python finetune_packed_detector.py \
 | **Input** | `workspace/packed/train/{size}/` + `workspace/packed/val/{size}/` |
 | **Output** | `workspace/models/yolov5mu/weights/best.pt` |
 
-After fine-tuning, use the resulting model in Step 3 (`--model ./workspace/models/yolov5mu/weights/best.pt`) and Step 4.
+After fine-tuning, use the resulting model in Step 3 (`--model`) and Step 4.
 
 | Argument | Default | Description |
 |----------|---------|-------------|
@@ -336,7 +272,7 @@ All intermediate files use standard formats so you can prepare them yourself:
 | `packed/*/labels/*.txt` | YOLO labels for packed canvases |
 | `packed/scale/*/info/*.json` | Packing metadata (ROI positions, scales) |
 | `split.json` | `{"train": [...], "val": [...]}` frame name lists |
-| `scaler.json` | Decision tree with feature names and thresholds |
+| `scale_estimator.json` | Decision tree with feature names and thresholds |
 
 ## Debug Visualizations
 
@@ -347,4 +283,4 @@ Each step automatically saves a small number of annotated images to `workspace/d
 - **`debug/packed_val/`** — Packed validation canvases with bounding boxes
 - **`debug/packed_scale/`** — Packed scale canvases with bounding boxes
 
-Up to 20 samples are saved per step. This helps verify that labeling is correct and that ROIs are properly packed and labeled in the canvases.
+Up to 20 samples are saved per step.

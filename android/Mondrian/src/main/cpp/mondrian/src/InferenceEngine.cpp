@@ -16,7 +16,7 @@ InferenceEngine::InferenceEngine(const InferenceEngineConfig& config,
     : config_(config), tracer_(tracer), numRemainingInputs_(0) {
   int maxPackedCanvasSize = -1;
   for (const auto& [device, workerConfig] : config_.WORKER_CONFIGS) {
-    for (const auto& inputSize : workerConfig.INPUT_SIZES) {
+    for (const auto& [inputSize, modelPath] : workerConfig.MODELS) {
       maxPackedCanvasSize = std::max(maxPackedCanvasSize, inputSize);
     }
   }
@@ -42,10 +42,8 @@ void InferenceEngine::addWorker(Device device,
   // classifiers for full frame inference
   if (device == config_.FULL_DEVICE) {
     std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-        config_.FULL_MODEL,
+        config_.FULL_MODEL_PATH,
         config_.FULL_FRAME_SIZE,
-        true,
-        config_.FULL_DATASET,
         config_.CONF_THRES,
         config_.IOU_THRES);
     classifierMap[{config_.FULL_FRAME_SIZE, true}] = classifier.get();
@@ -55,12 +53,10 @@ void InferenceEngine::addWorker(Device device,
   // classifiers for packed canvas inference
   if (config_.WORKER_CONFIGS.find(device) != config_.WORKER_CONFIGS.end()) {
     const WorkerConfig& workerConfig = config_.WORKER_CONFIGS.at(device);
-    for (const auto& inputSize : workerConfig.INPUT_SIZES) {
+    for (const auto& [inputSize, modelPath] : workerConfig.MODELS) {
       std::unique_ptr<Classifier> classifier = std::make_unique<T>(
-          workerConfig.MODEL,
+          modelPath,
           inputSize,
-          false,
-          workerConfig.DATASET,
           config_.CONF_THRES,
           config_.IOU_THRES);
       classifierMap[{inputSize, false}] = classifier.get();

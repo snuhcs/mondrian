@@ -10,10 +10,8 @@ namespace md {
 
 class TfLiteYoloV5Classifier : public Classifier {
  public:
-  TfLiteYoloV5Classifier(const std::string& modelName,
+  TfLiteYoloV5Classifier(const std::string& modelPath,
                          const int inputSize,
-                         const bool forFullFrame,
-                         const std::string& dataset,
                          const float confThres,
                          const float iouThres);
 
@@ -33,9 +31,9 @@ class TfLiteYoloV5Classifier : public Classifier {
   std::unique_ptr<tflite::Interpreter> interpreter;
 
   float* input; // 1 x inputSize.height x inputSize.width x 3
-  float* outputs; // 1 x outputSize x 85 (boxes, maxConf, confidences)
+  float* outputs; // 1 x outputSize x 84 (boxes, confidences)
 
-  inline static const int OUTPUT_ELEMS = 85;
+  inline static const int OUTPUT_ELEMS = 84;
 };
 
 } // namespace md

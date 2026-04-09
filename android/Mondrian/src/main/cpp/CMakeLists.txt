@@ -51,8 +51,7 @@ add_library(
     mondrian/src/Time.cpp
     mondrian/src/Utils.cpp
     mondrian/src/Worker.cpp
-    mondrian/src/tree/MTA.cpp
-    mondrian/src/tree/VIRAT.cpp
+    mondrian/src/ScaleEstimator.cpp
     mondrian/src/model/Classifier.cpp
     mondrian/src/model/TfLiteYoloV5Classifier.cpp
     mondrian/src/model/TfLiteYoloV5ClassifierDSP.cpp

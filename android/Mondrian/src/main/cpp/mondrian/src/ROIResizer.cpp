@@ -13,40 +13,22 @@ const int ROIResizer::STATIC_LEVEL = 0;
 
 const int ROIResizer::INVALID_LEVEL = -1;
 
-const std::map<std::pair<Device, std::string>,
-               std::pair<Predictor, std::vector<float>>> ROIResizer::PREDICTORS = {
-    {{Device::GPU, "virat"}, {VIRAT_FP16, {
-        333.913147627257,
-        638.5106976744186,
-        764.6907839189453,
-        880.0315355329949,
-        1e10
-    }}},
-    {{Device::GPU, "mta"}, {MTA_FP16, {
-        368.62745098039215,
-        459.33734939759046,
-        558.7062937062936,
-        848.4255998838352,
-        1e10
-    }}},
-    // TODO: Update dummy values to real values
-    {{Device::DSP, "virat"}, {VIRAT_INT8, {
-        333.913147627257,
-        638.5106976744186,
-        764.6907839189453,
-        880.0315355329949,
-        1e10
-    }}},
-    {{Device::DSP, "mta"}, {MTA_INT8, {
-        368.62745098039215,
-        459.33734939759046,
-        558.7062937062936,
-        848.4255998838352,
-        1e10
-    }}},
-};
+ROIResizer::ROIResizer(const ROIResizerConfig& config) : config_(config) {
+  // Load FP16 scale estimator (required for GPU)
+  if (!config_.STATIC_AREA && !config_.SCALE_ESTIMATOR_FP16.empty()) {
+    estimators_[Device::GPU].load(config_.SCALE_ESTIMATOR_FP16);
+  }
 
-ROIResizer::ROIResizer(const ROIResizerConfig& config) : config_(config) {}
+  // Load INT8 scale estimator (optional, for DSP)
+  if (!config_.STATIC_AREA && !config_.SCALE_ESTIMATOR_INT8.empty()) {
+    estimators_[Device::DSP].load(config_.SCALE_ESTIMATOR_INT8);
+  } else if (!config_.STATIC_AREA) {
+    LOGD("[ROIResizer] No INT8 scale estimator provided, DSP will use FP16 estimator");
+    if (estimators_.count(Device::GPU)) {
+      estimators_[Device::DSP].load(config_.SCALE_ESTIMATOR_FP16);
+    }
+  }
+}
 
 std::map<Device, std::pair<float, int>> ROIResizer::getTargetScale(const OID oid,
                                                                    const Features& features,
@@ -112,7 +94,7 @@ int ROIResizer::predictLevelWithFeatures(const Features& features, Device device
   auto& [shiftStdX, shiftStdY] = features.ofFeatures.shiftStd;
   float shiftAvg = shiftAvgX * shiftAvgX + shiftAvgY * shiftAvgY;
   float shiftStd = shiftStdX * shiftStdX + shiftStdY * shiftStdY;
-  return predictorOf(device)(
+  return estimatorOf(device).predict(
       std::max(features.width, features.height),
       features.width * features.height,
       features.xyRatio,
@@ -197,11 +179,19 @@ bool ROIResizer::isUsable(BoundingBox* box, BoundingBox* referenceBox) const {
 }
 
 std::vector<float> ROIResizer::areaLevelsOf(Device device) const {
-  return PREDICTORS.at({device, config_.DATASET}).second;
+  return estimatorOf(device).thresholds();
 }
 
-Predictor ROIResizer::predictorOf(Device device) const {
-  return PREDICTORS.at({device, config_.DATASET}).first;
+const ScaleEstimator& ROIResizer::estimatorOf(Device device) const {
+  auto it = estimators_.find(device);
+  if (it != estimators_.end() && it->second.isLoaded()) {
+    return it->second;
+  }
+  // Fallback to GPU estimator
+  auto gpuIt = estimators_.find(Device::GPU);
+  assert(gpuIt != estimators_.end() && gpuIt->second.isLoaded()
+         && "No scale estimator loaded");
+  return gpuIt->second;
 }
 
 ROIResizer::CircularBuffer::CircularBuffer(int numLevels, int capacity)

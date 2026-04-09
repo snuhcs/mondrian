@@ -1,9 +1,15 @@
 matplotlib
-numpy
+numpy<2.0
+onnx>=1.12.0,<1.17
+onnx2tf==1.17.0
+onnx_graphsurgeon
+onnxruntime
+onnxslim
 opencv-python
 pandas
 scikit-learn
 scipy
-tensorflow-cpu==2.8.0
+sng4onnx
+tensorflow==2.15.0
 tqdm
 ultralytics

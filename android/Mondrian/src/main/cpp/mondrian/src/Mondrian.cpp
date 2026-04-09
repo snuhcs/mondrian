@@ -94,7 +94,7 @@ Mondrian::Mondrian(const std::string& logDir,
   } else if (config_.EXECUTION_TYPE == ExecutionType::MONDRIAN) {
     maxMergeSize = INT_MAX;
     for (const auto& [device, workerConfig] : config_.inferenceEngineConfig.WORKER_CONFIGS) {
-      for (const int inputSize : workerConfig.INPUT_SIZES) {
+      for (const auto& [inputSize, modelPath] : workerConfig.MODELS) {
         maxMergeSize = std::min(maxMergeSize, inputSize);
       }
     }
@@ -183,9 +183,9 @@ void Mondrian::workSchedule() {
       // TODO: Support other processors
       Device targetDevice = Device::GPU;
       time_us accumulatedLatency = 0;
-      assert(config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).INPUT_SIZES.size() == 1);
+      assert(config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).MODELS.size() == 1);
       int inputSize =
-          config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).INPUT_SIZES.front();
+          config_.inferenceEngineConfig.WORKER_CONFIGS.at(targetDevice).MODELS.begin()->first;
       for (int i = 0; i < config_.SCHEDULE_INTERVAL_CANVASES; i++) {
         time_us latency = latencyTable.at(targetDevice).at({inputSize, false});
         accumulatedLatency += latency;
@@ -299,7 +299,7 @@ void Mondrian::waitForAllVideoReady() {
 
 void Mondrian::waitForFirstInterval() {
   if (config_.USE_CANVAS_INTERVAL) {
-    int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(Device::GPU).INPUT_SIZES.back();
+    int inputSize = config_.inferenceEngineConfig.WORKER_CONFIGS.at(Device::GPU).MODELS.rbegin()->first;
     VID dummyVId = numVideos_;
     for (int fid = 0; fid < config_.SCHEDULE_INTERVAL_CANVASES; fid++) {
       inferenceEngine_->enqueue(

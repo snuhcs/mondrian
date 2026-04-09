@@ -53,7 +53,7 @@ std::string BoundingBox::str() const {
      << loc.x + loc.width << DELIM
      << loc.y + loc.height << DELIM
      << confidence << DELIM
-     << COCO_LABELS[label] << DELIM
+     << (label >= 0 && label < NUM_LABELS ? COCO_LABELS[label] : "unknown") << DELIM
      << srcROIID_ << DELIM
      << ::md::str(origin) << DELIM
      << choiceOfBox;
