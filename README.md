@@ -2,6 +2,10 @@
 
 # Mondrian
 
+[![arXiv](https://img.shields.io/badge/arXiv-2403.07598-b31b1b.svg)](https://arxiv.org/abs/2403.07598)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Android-3ddc84.svg)](https://developer.android.com)
+
 On-device high-performance video analytics with compressive packed inference.
 
 **Paper**: [Mondrian: On-device high-performance video analytics with compressive packed inference](https://arxiv.org/abs/2403.07598)
