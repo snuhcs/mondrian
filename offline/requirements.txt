@@ -2,6 +2,10 @@ matplotlib
 numpy<2.0
 onnx==1.17.0
 onnx2tf==1.17.9
+onnx_graphsurgeon
+onnxruntime
+onnxslim
+sng4onnx
 opencv-python
 pandas
 scikit-learn
